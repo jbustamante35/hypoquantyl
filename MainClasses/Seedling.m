@@ -3,7 +3,7 @@
 
 classdef Seedling < handle
     properties (Access = public)
-    % Seedling properties
+    %% Seedling properties
         ExperimentName
         GenotypeName
         SeedlingName
@@ -15,13 +15,13 @@ classdef Seedling < handle
     end
     
     properties (Access = private)
-    % Private data
+    %% Private data
         Midline
         HypIdx = zeros(0,0);
     end
     
     methods (Access = public)
-    % Constructor and main functions
+    %% Constructor and main functions
         function obj = Seedling(varargin)
         %% Constructor for instancing a Seedling object
             try
@@ -142,7 +142,7 @@ classdef Seedling < handle
     end
     
     methods (Access = public)
-    % Various methods for this class
+    %% Various methods for this class
     
         function obj = setSeedlingName(obj, sn)
         %% Set name for Seedling
@@ -252,7 +252,7 @@ classdef Seedling < handle
     end
     
     methods (Access = private)
-    % Private helper methods
+    %% Private helper methods
         function hyp = check4Hypocotyl(obj, im)
         %% Search inputted image for valid Hypocotyl
             hyp = false;

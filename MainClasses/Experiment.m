@@ -3,19 +3,19 @@
 
 classdef Experiment < handle
     properties (Access = public)
-    % Experiment properties
+    %% Experiment properties
         ExperimentName
         ExperimentDate
         Genotypes
     end
     
     properties (Access = private)
-    % Private data properties
+    %% Private data properties
     
     end
     
     methods (Access = public)
-    % Constructor and main methods
+    %% Constructor and main methods
         function obj = Experiment(exptName)
         %% Constructor to instance Experiment with Name and Date
             obj.ExperimentName = getDirName(exptName);
@@ -32,12 +32,12 @@ classdef Experiment < handle
     end
     
     methods (Access = public)
-    % Various helper methods for other classes to use
+    %% Various helper methods for other classes to use
     
     end
     
     methods (Access = private)
-    % Private helper methods for this class
+    %% Private helper methods for this class
     
     % Set up date string for filename of results 
         function dout = getDateString(obj, datetype) %#ok<INUSL>

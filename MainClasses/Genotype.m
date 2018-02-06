@@ -3,7 +3,7 @@
 
 classdef Genotype < handle
     properties (Access = public)
-    % What data should this have?
+    %% What data should this have?
         ExperimentName
         GenotypeName
         TotalImages
@@ -11,13 +11,13 @@ classdef Genotype < handle
     end
     
     properties (Access = private)
-    % Private data to hold
+    %% Private data to hold
         RawImages
         RawSeedlings
     end
     
     methods (Access = public)
-    % Constructor and main methods
+    %% Constructor and main methods
         function obj = Genotype(experiment)
         %% Default constructor to initialize new program
             obj.ExperimentName = experiment;
@@ -40,9 +40,10 @@ classdef Genotype < handle
         % 
         % Find raw seedlings from each frame in range
             frm      = 1;
-            min_area = 6000; % Minimum cut-off area for objects found in image 
+            min_area = 6000;   % Minimum cut-off area for objects found in image 
+            max_area = 100000; % Minimum cut-off area for objects found in image 
             for i = rng
-                createMask(obj, obj.RawImages{i}, frm, min_area);
+                createMask(obj, obj.RawImages{i}, frm, min_area, max_area);
                 frm = frm + 1;
             end
 
@@ -59,7 +60,7 @@ classdef Genotype < handle
     
     
     methods (Access = public)
-    % Various helper functions
+    %% Various helper functions
         function im = getRawImage(obj, imNum)
             im = obj.RawImages{imNum};
         end
@@ -75,8 +76,8 @@ classdef Genotype < handle
     end
     
     methods (Access = private)
-    % Helper methods
-        function obj = createMask(obj, im, frm, min_area)
+    %% Helper methods
+        function obj = createMask(obj, im, frm, minAr, maxAr)
         %% Segmentation and Extraction of Seedling objects from raw image
         % This function binarizes a grayscale image at the given frame and
         % extracts features of a specified minimum size. Output is in the form
@@ -90,33 +91,24 @@ classdef Genotype < handle
         %   min_area: minimum cutoff size for objects labelled as a Seedling
 
             im_msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, 'ForegroundPolarity', 'bright');
-
-            % Method 1: raw BW
-%             cc     = bwconncomp(im_msk);
-%             prp    = regionprops(cc, im, 'all');
-
-            % Method 2: inverted BW
-            dd  = bwconncomp(imcomplement(im_msk));
-            prp = regionprops('table', dd, im, 'all');
-
-            % Filter out small objects 
-%             prp2_sort     = sortrows(prp2, 'Area', 'descend');
-%             prp2_sort_cut = prp2_sort(prp2_sort.Area > min_area, :);
-            prp_sort = sortrows(prp, 'Area', 'descend');
-            prp_sort = prp_sort(prp_sort.Area > min_area, :);
-            prp_good = table2struct(prp_sort);
+                    
+            % Segmentation Method 2: inverted BW, filtering out small objects
+            flt = bwareafilt(imcomplement(im_msk), [minAr maxAr]);
+            dd  = bwconncomp(flt);
+            p   = {'Area', 'BoundingBox', 'Image', 'WeightedCentroid', 'Orientation'};
+            prp = regionprops(dd, im, p);
 
             % Get grayscale/binary/skeleton image and coordinates of a RawSeedling
-            for i = 1:length(prp_good)
-                gry                      = imcrop(im, prp_good(i).BoundingBox);
-                skl                      = bwmorph(prp_good(i).Image, 'skel', inf);                
+            for i = 1:length(prp)
+                gry                      = imcrop(im, prp(i).BoundingBox);
+                skl                      = bwmorph(prp(i).Image, 'skel', inf);                
                 obj.RawSeedlings{i, frm} = Seedling(obj.ExperimentName,        ...
                                                     obj.GenotypeName,          ...
                                                     sprintf('Raw_%d', i),      ...
                                                     gry,                       ...
-                                                    double(prp_good(i).Image), ...
+                                                    double(prp(i).Image), ...
                                                     skl);
-                obj.RawSeedlings{i, frm}.setCoordinates(1, prp_good(i).WeightedCentroid);
+                obj.RawSeedlings{i, frm}.setCoordinates(1, prp(i).WeightedCentroid);
                 obj.RawSeedlings{i, frm}.setFrame(frm, 'b');
             end
             

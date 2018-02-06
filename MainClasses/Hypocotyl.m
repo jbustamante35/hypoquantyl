@@ -3,7 +3,7 @@
 
 classdef Hypocotyl < handle
     properties (Access = public)
-    % Hypocotyl properties
+    %% Hypocotyl properties
         ExperimentName
         GenotypeName
         SeedlingName
@@ -14,12 +14,12 @@ classdef Hypocotyl < handle
     end
     
     properties (Access = private)
-    % Private data stored here
+    %% Private data stored here
         Midline
     end
     
     methods (Access = public)
-    % Constructor and main methods
+    %% Constructor and main methods
 
         function obj = Hypocotyl(s)
         %% Constructor method for Hypocotyl
