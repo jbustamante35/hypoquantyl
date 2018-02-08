@@ -22,10 +22,16 @@ classdef Experiment < handle
             obj.ExperimentDate = getDateString(obj, 'long');
         end
         
-        function obj = FindGenotypes(obj, num)
+        function obj = AddGenotypes(obj, num)
         %% Load image stacks and store as Genotype objects
-            obj.Genotypes{num} = Genotype(obj.ExperimentName);
-            obj.Genotypes{num}.StackLoader;
+            if numel(obj.Genotypes) == 0
+                obj.Genotypes      = Genotype(obj.ExperimentName);
+                num                = 1;
+            else
+                obj.Genotypes(num) = Genotype(obj.ExperimentName);
+            end
+            
+            obj.Genotypes(num).StackLoader;
         
         end
         

@@ -27,23 +27,11 @@ classdef Hypocotyl < handle
             obj.GenotypeName   = s.GenotypeName; 
             obj.SeedlingName   = char(s.getSeedlingName);
             obj.HypocotylName  = sprintf('Hypocotyl_%d', str2double(obj.SeedlingName(end)));            
-            obj.Data = struct('Image_gray', zeros(0), ...
-                              'Image_BW',   zeros(0), ...
-                              'Skeleton',   zeros(0));
+            obj.Data           = struct('Image_gray', zeros(0), ...
+                                        'Image_BW',   zeros(0), ...
+                                        'Skeleton',   zeros(0));
         end
         
-%         function obj = Hypocotyl(hypName, im, bw, sk)
-%         %% Constructor method
-%             if nargin == 0
-%                 disp('nothing entered');
-%             else           
-%                 obj.HypocotylName = string(['Hypocotyl_' hypName]);
-%                 obj.Image_gray    = im;
-%                 obj.Image_BW      = bw;
-%                 obj.Skeleton      = sk;
-%             end
-% 
-%         end
         
     end
     

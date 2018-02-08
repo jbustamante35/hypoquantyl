@@ -30,7 +30,6 @@ classdef Genotype < handle
         %% Load raw images from directory 
             [obj.RawImages, exptName] = getImageFiles;          
             obj.GenotypeName          = getDirName(exptName);
-            obj.Seedlings             = cell(0);
             obj.TotalImages           = numel(obj.RawImages);
         end  
     
@@ -39,7 +38,7 @@ classdef Genotype < handle
         % This function calls createMask on each image of this Genotype
         % 
         % Find raw seedlings from each frame in range
-            frm      = 1;
+            frm      = 1;      % Set first frame for first Seedling
             min_area = 6000;   % Minimum cut-off area for objects found in image 
             max_area = 100000; % Minimum cut-off area for objects found in image 
             for i = rng
@@ -69,6 +68,10 @@ classdef Genotype < handle
             rawImages = obj.RawImages;
         end
         
+        function sd = getRawSeedling(obj, sdNum)
+            sd = obj.RawSeedlings{sdNum};
+        end
+        
         function rawSeedlings = getRawSeedlings(obj)
             rawSeedlings = obj.RawSeedlings;
         end                   
@@ -90,11 +93,12 @@ classdef Genotype < handle
         %   frm: time point in a stack of images
         %   min_area: minimum cutoff size for objects labelled as a Seedling
 
-            im_msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, 'ForegroundPolarity', 'bright');
-                    
             % Segmentation Method 2: inverted BW, filtering out small objects
-            flt = bwareafilt(imcomplement(im_msk), [minAr maxAr]);
+            msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, 'ForegroundPolarity', 'bright');          
+            flt = bwareafilt(imcomplement(msk), [minAr maxAr]);
             dd  = bwconncomp(flt);
+            
+            % Find objects in BW image
             p   = {'Area', 'BoundingBox', 'Image', 'WeightedCentroid', 'Orientation'};
             prp = regionprops(dd, im, p);
 
@@ -109,6 +113,7 @@ classdef Genotype < handle
                                                     double(prp(i).Image), ...
                                                     skl);
                 obj.RawSeedlings{i, frm}.setCoordinates(1, prp(i).WeightedCentroid);
+                obj.RawSeedlings{i, frm}.setPData(1, prp(i));
                 obj.RawSeedlings{i, frm}.setFrame(frm, 'b');
             end
             
@@ -120,15 +125,22 @@ classdef Genotype < handle
         % This function iterates through the inputted cell array to add only good Seedlings
         % Runs the algorithm for checking centroid coordinates of each Seedling to align correctly
             for i = 1:size(rawSeedlings, 1)
-                obj.Seedlings{i, 1} = Seedling(obj.ExperimentName, ...
-                                            obj.GenotypeName,   ...
-                                            num2str(i));
+                if numel(obj.Seedlings) == 0
+                    obj.Seedlings   = Seedling(obj.ExperimentName, ...
+                                               obj.GenotypeName,   ...
+                                               num2str(i));
+                else
+                    obj.Seedlings(i) = Seedling(obj.ExperimentName, ...
+                                                obj.GenotypeName,   ...
+                                                num2str(i));
+                end
             end
+            
             
             for i = 1:numel(obj.Seedlings)
                 for ii = 1:size(rawSeedlings, 2)
                     toCheck = rawSeedlings(:, ii);                    
-                    alignSeedling(obj, obj.Seedlings{i}, toCheck, [i ii]);
+                    alignSeedling(obj, obj.Seedlings(i), toCheck, [i ii]);
 %                     fprintf('Seedling %d, Frame %d \n', i, ii);
                 end
             end
@@ -167,6 +179,7 @@ classdef Genotype < handle
                 fs.increaseLifetime(1);
                 fs.setCoordinates(fs.getLifetime, rs{vIdx(1)}.getCoordinates(1));
                 fs.setImageData(  fs.getLifetime, rs{vIdx(1)}.getImageData(1));
+                fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
                 fs.setFrame(rs{vIdx(1)}.getFrame('b'), 'b');
                 
             % Mark RawSeedling as unavailable for next iterations
@@ -178,7 +191,8 @@ classdef Genotype < handle
                 
                 fs.increaseLifetime(1);
                 fs.setCoordinates(fs.getLifetime, rs{closer_idx}.getCoordinates(1));
-                fs.setImageData(  fs.getLifetime, rs{closer_idx}.getImageData(1));       
+                fs.setImageData(  fs.getLifetime, rs{closer_idx}.getImageData(1));
+                fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
                 fs.setFrame(rs{closer_idx}.getFrame('b'), 'd');
             
             % Mark RawSeedling as unavailable for next iterations
