@@ -9,15 +9,17 @@ classdef Seedling < handle
         SeedlingName
         Frame = zeros(1,2);
         Lifetime
-        Coordinates = cell(0);
-        Data         
+        Coordinates
+        Data        
+        PData
         Hypocotyl
     end
     
     properties (Access = private)
     %% Private data
         Midline
-        HypIdx = zeros(0,0);
+        HypIdx
+        
     end
     
     methods (Access = public)
@@ -45,20 +47,20 @@ classdef Seedling < handle
                     case 3
                         obj.ExperimentName = varargin{1};
                         obj.GenotypeName   = varargin{2};
-                        obj.SeedlingName   = string(['Seedling_' varargin{3}]);
+                        obj.SeedlingName   = char(['Seedling_' varargin{3}]);
                         Image_gray         = zeros(0,0);
                         Image_BW           = zeros(0,0);
                         Skeleton           = zeros(0,0);
 
                     case 4   
-                        obj.SeedlingName = string(['Seedling_' varargin{1}]);
+                        obj.SeedlingName = char(['Seedling_' varargin{1}]);
                         Image_gray       = varargin{2};
                         Image_BW         = varargin{3};
                         Skeleton         = varargin{4};
 
                     case 5
                         obj.ExperimentName = varargin{1};
-                        obj.SeedlingName   = string(['Seedling_' varargin{2}]);
+                        obj.SeedlingName   = char(['Seedling_' varargin{2}]);
                         Image_gray         = varargin{3};
                         Image_BW           = varargin{4};
                         Skeleton           = varargin{5};
@@ -66,7 +68,7 @@ classdef Seedling < handle
                     case 6
                         obj.ExperimentName = varargin{1};
                         obj.GenotypeName   = varargin{2};
-                        obj.SeedlingName   = string(['Seedling_' varargin{3}]);
+                        obj.SeedlingName   = char(['Seedling_' varargin{3}]);
                         Image_gray         = varargin{4};
                         Image_BW           = varargin{5};
                         Skeleton           = varargin{6};
@@ -81,8 +83,8 @@ classdef Seedling < handle
             end
             
             obj.Data  = struct('Image_gray', Image_gray, ...
-                                  'Image_BW',   Image_BW,   ...
-                                  'Skeleton',   Skeleton);
+                               'Image_BW',   Image_BW,   ...
+                               'Skeleton',   Skeleton);
             obj.Lifetime = 0;
 
         end
@@ -168,7 +170,7 @@ classdef Seedling < handle
                     return;
                     
                 case 2                    
-                    obj = varargin{1};
+                    obj    = varargin{1};
                     dt_out = obj.Data(varargin{2});
                     
                 case 3
@@ -203,13 +205,17 @@ classdef Seedling < handle
         function obj = setCoordinates(obj, frm, coords)
         %% Set coordinates of a Seedling at a specific frame
         % This method allows setting the xy-coordinates of a Seedling at given time point
-        % Coordinates come from 
-            obj.Coordinates{frm} = coords;    
+        % Coordinates come from the WeightedCentroid of the Seedling in a full image
+            if numel(obj.Coordinates) == 0
+                obj.Coordinates = coords;
+            else
+                obj.Coordinates(frm, :) = coords;    
+            end
         end
         
         function coords = getCoordinates(obj, frm)
         %% Returns coordinates at specified frame
-            coords = obj.Coordinates{frm};
+            coords = obj.Coordinates(frm, :);
         end
         
         function obj = setFrame(obj, frm, bd)
@@ -248,7 +254,21 @@ classdef Seedling < handle
             lt = obj.Lifetime;
         end        
             
-    
+        function obj = setPData(obj, frm, pd)
+        %% Set extra properties data for Seedling at given frame   
+        % If first frame, then initialize struct with given fieldnames
+            if numel(obj.PData) == 0
+                obj.PData = pd;
+            else
+                obj.PData(frm) = pd;
+            end
+        end
+        
+        function pd = getPData(obj, frm)
+        %% Return extra properties data at given frame
+            pd = obj.PData(frm);
+        end
+        
     end
     
     methods (Access = private)
