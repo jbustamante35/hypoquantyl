@@ -41,27 +41,26 @@ MIT license found in [LICENSE](./LICENSE) <br />
 
 ## To-Do:
 
-### Main Classes and Program Structure <br />
-	[ ] **HypoQuantyl**: Initializes program and loads Experiment folders
-	[ ] **Experiment**:	Loads folders containing multiple image stacks
-	[ ] **Genotype**: Loads image stacks containing growing seedlings
-	[ ] **Seedling**: Represents a single seedling throughout a time-lapse
-	[ ] **Hypocotyl**: Represents the hypocotyl portion of a single seedling
+### Main Classes and Program Structure
+[ ] | Class | 	Description
+--- | --- | ---
+[ ] | ::HypoQuantyl:: | Initializes program and loads Experiment folders
+[ ] | ::Experiment::  | Loads folders containing multiple image stacks
+[ ] |::Genotype::     | Loads image stacks containing growing seedlings
+[ ] |::Seedling::     | Represents a single seedling throughout a time-lapse
+[ ] |::Hypocotyl::    | Represents the hypocotyl portion of a single seedling
 
-### Algorithms <br \>
-	[ ] **FindHypocotyl**: Identifies region on a seedling containing the hypocotyl
-	[ ] **TrackHypocotyl**: Keeps track of hypocotyl during de-etiolation process
-	[ ] **FindGoodFrames**: Runs error-checking of each frame for each Seedling
-			#### collisionCheck: Check for collisions
-			#### outOfBoundsCheck: Check for Seedling growing off screen
-			#### badImageCheck: Check for frames where objects come out-of-focus
-	[ ] **IntegrationAlgorithm**: Integration method for measuring growing Hypocotyl
-			#### Corrects for curved geometry of hypocotyls for more accurate quantification
+### Algorithms
+[ ] | Algorithm | 	Description
+--- | --- | ---
+[ ] | ::FindHypocotyl:: | Identifies region on a seedling containing the hypocotyl
+[ ] | ::TrackHypocotyl:: | Keeps track of hypocotyl during de-etiolation process
+[ ] | ::FindGoodFrames:: | Runs error-checking of each frame for each Seedling
+[ ] | ::IntegrationAlgorithm:: | Integration method for measuring growing Hypocotyl
 
 ### Implementing to cyber infrastructure
-	[ ] **Create various accounts**: <br />
-			#### Univeristy Network <br />
-			#### CyVerse account <br />
-			#### Condor account <br />
-	[ ] **Set up submit files**: Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
-	[ ] **Run Test Data**: Run HypoQuantyl on Sample data on cloud computing environment
+[ ] | Infrastructure | 	Description
+--- | --- | ---
+	[ ] | ::Create accounts:: |(Univeristy Network, CyVerse account, Condor account)
+	[ ] | ::Set up submit files:: | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
+	[ ] | ::Run Test Data:: | Run HypoQuantyl on Sample data on cloud computing environment
