@@ -17,7 +17,7 @@ C) Instructions for using HypoQuantyl can be found in [HOWTO.md](./HOWTO.md) <br
 
 ### Installation
 - (to-do) Install program as Matlab executable <br />
-- (to-do) Use program for CyVerse upload <br />
+- (to-do) Program runs on CyVerse <br />
 
 ## Version Information
 02/06/2018 - HypoQuantyl Version 0.5
@@ -40,38 +40,28 @@ MIT license found in [LICENSE](./LICENSE) <br />
 - TBD
 
 ## To-Do:
-- Main Classes Features <br />
-	[ ] HypoQuantyl <br />
-		- Initializes program and loads Experiment folders <br />
-	[ ] Experiment <br />
-		- Loads folders containing multiple image stacks <br />
-	[ ] Genotype <br />
-		- Loads image stacks containing growing seedlings <br />
-	[ ] Seedling <br />
-		- Represents a single seedling throughout a time-lapse <br />
-	[ ] Hypocotyl <br />
-		- Represents the hypocotyl portion of a single seedling <br />
 
-- Algorithms <br \>
-	[ ] FindHypocotyl <br />
-		- Identifies region on a seedling containing the hypocotyl <br />
-	[ ] TrackHypocotyl <br />
-		- Keeps track of hypocotyl during de-etiolation process <br />
-	[ ] FindGoodFrames <br />
-		- Runs error-checking of each frame for each Seedling <br />
-		- collisionCheck: Check for collisions <br />
-		- outOfBoundsCheck: Check for Seedling growing off screen <br />
-		- badImageCheck: Check for frames where objects come out-of-focus <br />
-	[ ] IntegrationAlgorithm <br />
-		- Integration method for measuring growing Hypocotyl <br />
-		- Corrects for curved geometry of hypocotyls for more accurate quantification <br />
+### Main Classes and Program Structure <br />
+	[ ] **HypoQuantyl**: Initializes program and loads Experiment folders
+	[ ] **Experiment**:	Loads folders containing multiple image stacks
+	[ ] **Genotype**: Loads image stacks containing growing seedlings
+	[ ] **Seedling**: Represents a single seedling throughout a time-lapse
+	[ ] **Hypocotyl**: Represents the hypocotyl portion of a single seedling
 
-- Implementing to cyber infrastructure <br />
-	[ ] Create various accounts <br />
-		- Univeristy Network <br />
-		- CyVerse account <br />
-		- Condor account <br />
-	[ ] Set up submit files <br />
-		- Holds MATLAB MCR, HypoQuantyl, Data, I-Commands <br />
-	[ ] Run Test Data <br />
-		- Run HypoQuantyl on Sample data on cloud computing environment
+### Algorithms <br \>
+	[ ] **FindHypocotyl**: Identifies region on a seedling containing the hypocotyl
+	[ ] **TrackHypocotyl**: Keeps track of hypocotyl during de-etiolation process
+	[ ] **FindGoodFrames**: Runs error-checking of each frame for each Seedling
+			#### collisionCheck: Check for collisions
+			#### outOfBoundsCheck: Check for Seedling growing off screen
+			#### badImageCheck: Check for frames where objects come out-of-focus
+	[ ] **IntegrationAlgorithm**: Integration method for measuring growing Hypocotyl
+			#### Corrects for curved geometry of hypocotyls for more accurate quantification
+
+### Implementing to cyber infrastructure
+	[ ] **Create various accounts**: <br />
+			#### Univeristy Network <br />
+			#### CyVerse account <br />
+			#### Condor account <br />
+	[ ] **Set up submit files**: Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
+	[ ] **Run Test Data**: Run HypoQuantyl on Sample data on cloud computing environment
