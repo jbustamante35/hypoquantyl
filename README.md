@@ -42,7 +42,7 @@ MIT license found in [LICENSE](./LICENSE) <br />
 ## To-Do:
 
 ### Main Classes and Program Structure
-[ ] | Class | 	Description
+[ ] | Class | Description
 --- | --- | ---
 [ ] | ::HypoQuantyl:: | Initializes program and loads Experiment folders
 [ ] | ::Experiment::  | Loads folders containing multiple image stacks
@@ -51,16 +51,16 @@ MIT license found in [LICENSE](./LICENSE) <br />
 [ ] |::Hypocotyl::    | Represents the hypocotyl portion of a single seedling
 
 ### Algorithms
-[ ] | Algorithm | 	Description
+[ ] | Algorithm | Description
 --- | --- | ---
-[ ] | ::FindHypocotyl:: | Identifies region on a seedling containing the hypocotyl
-[ ] | ::TrackHypocotyl:: | Keeps track of hypocotyl during de-etiolation process
-[ ] | ::FindGoodFrames:: | Runs error-checking of each frame for each Seedling
+[ ] | ::FindHypocotyl:: 		   | Identifies region on a seedling containing the hypocotyl
+[ ] | ::TrackHypocotyl:: 		   | Keeps track of hypocotyl during de-etiolation process
+[ ] | ::FindGoodFrames:: 			 | Runs error-checking of each frame for each Seedling
 [ ] | ::IntegrationAlgorithm:: | Integration method for measuring growing Hypocotyl
 
 ### Implementing to cyber infrastructure
-[ ] | Infrastructure | 	Description
+[ ] | Infrastructure | Description
 --- | --- | ---
-	[ ] | ::Create accounts:: |(Univeristy Network, CyVerse account, Condor account)
-	[ ] | ::Set up submit files:: | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
-	[ ] | ::Run Test Data:: | Run HypoQuantyl on Sample data on cloud computing environment
+[ ] | ::Create accounts:: 		| Univeristy Network, CyVerse, Condor
+[ ] | ::Set up submit files:: | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
+[ ] | ::Run Test Data:: 			| Run HypoQuantyl on Sample data on cloud computing environment
