@@ -7,30 +7,55 @@ classdef Genotype < handle
         ExperimentName
         GenotypeName
         TotalImages
-        Seedlings        
+        NumberOfSeedlings
     end
     
     properties (Access = private)
     %% Private data to hold
         RawImages
         RawSeedlings
+        Seedlings
     end
     
+%% ------------------------- Primary Methods --------------------------- %%
+
     methods (Access = public)
     %% Constructor and main methods
-        function obj = Genotype(experiment)
+        function obj = Genotype(experiment, varargin)
         %% Default constructor to initialize new program
-            obj.ExperimentName = experiment;
-            obj.GenotypeName   = '';
-            obj.TotalImages    = 0;
-            obj.RawImages      = cell(0);
+            narginchk(1, 5);
+            if nargin == 1
+                setGenotypeName(obj, '');
+                obj.ExperimentName = experiment;                
+                obj.TotalImages    = 0;
+                obj.RawImages      = cell(0);
+            else
+                obj.ExperimentName = experiment;
+                expPrp = varargin{1};
+                imgExt = varargin{2};
+                sortBy = varargin{3};
+                visout = varargin{4};
+                obj.StackLoader(expPrp, imgExt, sortBy, visout);
+            end
+            
+            obj.NumberOfSeedlings = 0;
         end
 
-        function obj = StackLoader(obj)
+        function obj = StackLoader(obj, varargin)
         %% Load raw images from directory 
-            [obj.RawImages, exptName] = getImageFiles;          
-            obj.GenotypeName          = getDirName(exptName);
-            obj.TotalImages           = numel(obj.RawImages);
+        % Load images from directory 
+            if nargin == 0
+                [obj.RawImages, exptName] = getImageFiles;
+            else
+                expPrp = varargin{1};
+                imgExt = varargin{2};
+                sortBy = varargin{3};
+                visout = varargin{4};
+                [obj.RawImages, exptName] = getImageFiles(expPrp, imgExt, sortBy, visout);
+            end
+            
+            obj.GenotypeName = getDirName(exptName);
+            obj.TotalImages  = numel(obj.RawImages);
         end  
     
         function obj = AddSeedlingsFromRange(obj, rng)
@@ -38,11 +63,12 @@ classdef Genotype < handle
         % This function calls createMask on each image of this Genotype
         % 
         % Find raw seedlings from each frame in range
-            frm      = 1;      % Set first frame for first Seedling
-            min_area = 6000;   % Minimum cut-off area for objects found in image 
-            max_area = 100000; % Minimum cut-off area for objects found in image 
+            frm   = 1;      % Set first frame for first Seedling
+            MINAR = 3000;   % Minimum cut-off area for objects found in image 
+            MAXAR = 100000; % Minimum cut-off area for objects found in image 
+            
             for i = rng
-                createMask(obj, obj.RawImages{i}, frm, min_area, max_area);
+                createMask(obj, obj.RawImages{i}, frm, MINAR, MAXAR);
                 frm = frm + 1;
             end
 
@@ -53,30 +79,69 @@ classdef Genotype < handle
         % Calls an assortment of helper functions that filter out empty frames
         % and align Seedling objects through frames
             filterSeedlings(obj, obj.RawSeedlings);
+            obj.NumberOfSeedlings = length(obj.Seedlings);
         end        
         
     end
     
+%% ------------------------- Helper Methods ---------------------------- %%
     
     methods (Access = public)
     %% Various helper functions
-        function im = getRawImage(obj, imNum)
-            im = obj.RawImages{imNum};
+    
+        function obj = setGenotypeName(obj, gn)
+        %% Set name of Genotype
+            obj.GenotypeName = gn;
+        end
+    
+        function gn = getGenotypeName(obj)
+        %% Return name of Genotype
+            gn = obj.GenotypeName;
         end
         
-        function rawImages = getRawImages(obj)
+        function rawImages = getAllRawImages(obj)
+        %% Return all raw images
             rawImages = obj.RawImages;
+        end        
+        
+        function rawSeedlings = getAllRawSeedlings(obj)
+        %% Return all unindexed seedlings 
+            rawSeedlings = obj.RawSeedlings;
+        end  
+        
+        function im = getRawImage(obj, imNum)
+        %% Return single raw image
+            try
+                im = obj.RawImages{imNum};
+            catch e
+                fprintf(2, 'No RawImage at index %s \n', imNum);
+                fprintf(2, '%s \n', e.getReport);
+            end
         end
         
         function sd = getRawSeedling(obj, sdNum)
-            sd = obj.RawSeedlings{sdNum};
+        %% Return single unindexed seedlings
+            try
+                sd = obj.RawSeedlings{sdNum};
+            catch e
+                fprintf(2, 'No RawSeedling at index %s \n', sdNum);
+                fprintf(2, '%s \n', e.getReport);
+            end
+        end        
+        
+        function s = getSeedling(obj, sIdx)
+        %% Returns indexed seedling at desired index
+            try
+                s = obj.Seedlings(sIdx);
+            catch e
+                fprintf(2, 'No Seedling at index %d \n', sIdx);
+                fprintf(2, '%s \n', e.getReport);
+            end
         end
         
-        function rawSeedlings = getRawSeedlings(obj)
-            rawSeedlings = obj.RawSeedlings;
-        end                   
-        
     end
+
+%% ------------------------- Private Methods --------------------------- %%
     
     methods (Access = private)
     %% Helper methods
@@ -91,7 +156,8 @@ classdef Genotype < handle
         %   obj: this Genotype object
         %   im: grayscale image containing growing seedlings
         %   frm: time point in a stack of images
-        %   min_area: minimum cutoff size for objects labelled as a Seedling
+        %   minAr: minimum cutoff size for objects labelled as a Seedling
+        %   maxAr: maximum cutoff size for objects labelled as a Seedling
 
             % Segmentation Method 2: inverted BW, filtering out small objects
             msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, 'ForegroundPolarity', 'bright');          
@@ -99,25 +165,25 @@ classdef Genotype < handle
             dd  = bwconncomp(flt);
             
             % Find objects in BW image
-            p   = {'Area', 'BoundingBox', 'Image', 'WeightedCentroid', 'Orientation'};
+            p   = {'Area', 'BoundingBox', 'PixelList', 'Image', 'WeightedCentroid', 'Orientation'};
             prp = regionprops(dd, im, p);
 
             % Get grayscale/binary/skeleton image and coordinates of a RawSeedling
             for i = 1:length(prp)
-                gry                      = imcrop(im, prp(i).BoundingBox);
-                skl                      = bwmorph(prp(i).Image, 'skel', inf);                
-                obj.RawSeedlings{i, frm} = Seedling(obj.ExperimentName,        ...
-                                                    obj.GenotypeName,          ...
-                                                    sprintf('Raw_%d', i),      ...
-                                                    gry,                       ...
+                gray_im                  = imcrop(im, prp(i).BoundingBox);
+%                 skel_im                  = bwmorph(prp(i).Image, 'skel', inf);
+                skel_im                  = zeros(0,0);
+                obj.RawSeedlings{i, frm} = Seedling(obj.ExperimentName,   ...
+                                                    obj.GenotypeName,     ...
+                                                    sprintf('Raw_%d', i), ...
+                                                    gray_im,              ...
                                                     double(prp(i).Image), ...
-                                                    skl);
+                                                    skel_im);
                 obj.RawSeedlings{i, frm}.setCoordinates(1, prp(i).WeightedCentroid);
                 obj.RawSeedlings{i, frm}.setPData(1, prp(i));
                 obj.RawSeedlings{i, frm}.setFrame(frm, 'b');
             end
-            
-            % Create Hypocotyl objects from filtered objects            
+
         end
         
         function obj = filterSeedlings(obj, rawSeedlings)
@@ -150,8 +216,9 @@ classdef Genotype < handle
         function obj = alignSeedling(obj, fs, rs, frms)
         %% Compare coordinates of Seedlings at frame and select closest match from previous frame
         % Input:
-        %   fs: current single Seedling to sort
-        %   rs: all RawSeedlings at single frame
+        %   fs  : current Seedling to sort
+        %   rs  : all RawSeedlings at single frame
+        %   frms: indeces for frame and raw seedling index
         
         % Check for available RawSeedlings to check at this frame
             vFrm(1:length(rs)) = true;
@@ -173,8 +240,8 @@ classdef Genotype < handle
                 vIdx = find(vFrm == 1); 
             end                
 
-        % Set Data from 1st available RawSeedling if aligning 1st frame
             
+        % Set Data from 1st available RawSeedling if aligning 1st frame            
             if fs.getLifetime == 0                
                 fs.increaseLifetime(1);
                 fs.setCoordinates(fs.getLifetime, rs{vIdx(1)}.getCoordinates(1));
@@ -187,7 +254,7 @@ classdef Genotype < handle
                 
         % Search coordinates of available index and find closest match         
             else
-                closer_idx = compareCoords(obj, fs.getCoordinates(fs.getLifetime), rs(vIdx));
+                closer_idx = compareCoords(fs.getCoordinates(fs.getLifetime), rs(vIdx));
                 
                 fs.increaseLifetime(1);
                 fs.setCoordinates(fs.getLifetime, rs{closer_idx}.getCoordinates(1));
@@ -199,35 +266,6 @@ classdef Genotype < handle
                 rs{closer_idx}.setSeedlingName(UNAVAILABLE_MSG);
             end
 
-        end
-        
-        function minDistIdx = compareCoords(obj, pf,  cf)
-        %% Compare coordinates of previous frame with current frame
-        % If coordinates are within set error percent, it is added to the
-        % next frame of the Seedling. Otherwise the frame is skipped. 
-        % pf: coordinates of previous frame for current Seedling
-        % cf: frame of Seedlings currently comparing to pf
-        % d : Euclidean distances between pf and cf
-        % minDistIdx: Seedling index where input coordinate is closest 
-        
-            if length(cf) > 1
-                d = cell(1, length(cf));
-                
-                for i = 1:length(cf)
-                    d{i} = pdist([pf; cf{i}.getCoordinates(1)]);
-                end
-                                
-                x = cat(1, d{:});
-                m = x == min(x(:));                
-                n = char(cf{m}.getSeedlingName);
-                
-            else                                
-                n = char(cf{1}.getSeedlingName);                
-            end
-            
-            % Return Seedling name to determine which data to extract 
-            minDistIdx = str2double(n(end));                
-        
         end
     end
 end
