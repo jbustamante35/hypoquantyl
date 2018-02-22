@@ -7,25 +7,28 @@ classdef HypoQuantyl < handle
         AnalysisName
         AnalysisDate
         Experiments
+        NumExperiments
     
     end
     
     properties (Access = private)
     %% Private data for this class    
-        NumExperiments
+       
+    
     end
     
-    
+
     methods (Access = public)
     %% Constructor and Main methods
         function obj = HypoQuantyl(varargin)
         %% Constructor method for Main Program
             narginchk(1, 2);
+            
             switch nargin
                 case 1
-                    obj.AnalysisName        = getDirName(pwd);
-                    obj.AnalysisDate        = getDateString(obj, 'long');
-                    obj.Experiments         = LoadExperiments(pwd);
+                    obj.AnalysisName = getDirName(pwd);
+                    obj.AnalysisDate = getDateString(obj, 'long');
+                    obj.Experiments  = LoadExperiment(obj);
                     
                 case 2
                     disp(varargin{1});
@@ -40,9 +43,10 @@ classdef HypoQuantyl < handle
        
     end
     
+    
     methods (Access = public)
     %% Main helper methods
-        function obj = LoadExperiments(obj, fin)
+        function obj = LoadExperiment(obj, num)
         %% Loads folders containing different experiment conditions
             if numel(obj.Experiments) == 0
                 obj.Experiments    = dir('*');

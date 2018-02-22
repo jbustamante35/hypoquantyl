@@ -1,4 +1,4 @@
-function name_out = getDirName(name_in)
+function [name_out, name_in] = getDirName(name_in)
 %% getDirName: function to parse folder name from current path
 % This is simple really
 % 
@@ -13,10 +13,12 @@ function name_out = getDirName(name_in)
 % 
 % 
 
-if isunix
-    p = regexp(name_in, '\/', 'split');
-else
-    p = regexp(name_in, '\\', 'split');
-end
+    if isunix
+        p = regexp(name_in, '\/', 'split');
+    else
+        p = regexp(name_in, '\\', 'split');
+    end
 
-name_out = p{end};
+    name_out = p{end};
+
+end
