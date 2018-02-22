@@ -5,7 +5,7 @@ Image analysis tool used for tracking localized growth of hypocotyls in a high-t
 A) What is this program for? <br />
 B) How does this program work? <br />
 C) Instructions for using HypoQuantyl can be found in [HOWTO.md](./HOWTO.md) <br />
-	- Sample data can be found in [Sample Data](./SampleData) <br />
+    - Sample data can be found in [Sample Data](./SampleData) <br />
 
 ## Getting Started
 ### Dependencies
@@ -22,16 +22,17 @@ C) Instructions for using HypoQuantyl can be found in [HOWTO.md](./HOWTO.md) <br
 ## Version Information
 02/06/2018 - HypoQuantyl Version 0.5
 
+
 ## Authors
 ### Main Author
 **Julian Bustamante**, Cellular and Molecular Biology Program (<jbustamante@wisc.edu>) <br />
-	University of Wisconsin - Madison <br />
-	Department of Botany <br />
+    University of Wisconsin - Madison <br />
+    Department of Botany <br />
 
 ### Contributing Author
 **Nathan Miller**, Senior Scientist (<ndmill@gmail.com>) <br />
-	University of Wisconsin - Madison <br />
-	Department of Botany <br />
+    University of Wisconsin - Madison <br />
+    Department of Botany <br />
 
 ## License
 MIT license found in [LICENSE](./LICENSE) <br />
@@ -41,26 +42,26 @@ MIT license found in [LICENSE](./LICENSE) <br />
 
 ## To-Do:
 
-### Main Classes and Program Structure
+### Main Classes
 [ ] | Class | Description
 --- | --- | ---
-[ ] | ::HypoQuantyl:: | Initializes program and loads Experiment folders
-[ ] | ::Experiment::  | Loads folders containing multiple image stacks
-[ ] |::Genotype::     | Loads image stacks containing growing seedlings
-[ ] |::Seedling::     | Represents a single seedling throughout a time-lapse
-[ ] |::Hypocotyl::    | Represents the hypocotyl portion of a single seedling
+[ ] | HypoQuantyl | Initializes program and loads Experiment folders
+[ ] | Experiment  | Loads folders containing multiple image stacks
+[ ] | Genotype    | Loads image stacks containing growing seedlings
+[ ] | Seedling    | Represents a single seedling throughout a time-lapse
+[ ] | Hypocotyl   | Represents the hypocotyl portion of a single seedlings
 
 ### Algorithms
 [ ] | Algorithm | Description
 --- | --- | ---
-[ ] | ::FindHypocotyl:: 		   | Identifies region on a seedling containing the hypocotyl
-[ ] | ::TrackHypocotyl:: 		   | Keeps track of hypocotyl during de-etiolation process
-[ ] | ::FindGoodFrames:: 			 | Runs error-checking of each frame for each Seedling
-[ ] | ::IntegrationAlgorithm:: | Integration method for measuring growing Hypocotyl
+[ ] | FindHypocotyl        | Identifies region on a seedling containing the hypocotyl
+[ ] | TrackHypocotyl       | Keeps track of hypocotyl during de-etiolation process
+[ ] | FindGoodFrames       | Runs error-checking of each frame for each Seedling
+[ ] | IntegrationAlgorithm | Integration method for measuring growing Hypocotyl
 
-### Implementing to cyber infrastructure
+### Implementing to Cyber Infrastructure
 [ ] | Infrastructure | Description
 --- | --- | ---
-[ ] | ::Create accounts:: 		| Univeristy Network, CyVerse, Condor
-[ ] | ::Set up submit files:: | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
-[ ] | ::Run Test Data:: 			| Run HypoQuantyl on Sample data on cloud computing environment
+[ ] | Create accounts     | Univeristy Network, CyVerse, HTCondor
+[ ] | Set up submit files | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
+[ ] | Run Test Data       | Run HypoQuantyl on Sample data on cloud computing environment
