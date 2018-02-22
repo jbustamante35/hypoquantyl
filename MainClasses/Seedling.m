@@ -12,15 +12,19 @@ classdef Seedling < handle
         Coordinates
         Data        
         PData
-        Hypocotyl
+        MyHypocotyl
     end
     
     properties (Access = private)
     %% Private data
         Midline
+        AnchorPoints
         HypIdx
+        PreHypocotyl
         
     end
+    
+%% ------------------------- Primary Methods --------------------------- %%
     
     methods (Access = public)
     %% Constructor and main functions
@@ -82,14 +86,15 @@ classdef Seedling < handle
                 fprintf(2, e.Message);
             end
             
-            obj.Data  = struct('Image_gray', Image_gray, ...
-                               'Image_BW',   Image_BW,   ...
-                               'Skeleton',   Skeleton);
-            obj.Lifetime = 0;
+            obj.Data         = struct('Image_gray', Image_gray, ...
+                                      'Image_BW',   Image_BW,   ...
+                                      'Skeleton',   Skeleton);
+            obj.Lifetime     = 0;
+            obj.AnchorPoints = zeros(0, 0, 0);            
 
         end
         
-        function obj = FindHypocotyl(obj, frm, sz1, sz2, vis)
+        function obj = FindHypocotyl(obj, frm, hypln, crpsz)
         %% Find Hypocotyl with defined sizes within Seedling object
         % This function crops the top [h x w] of a Seedling
         % This may need to be more dynamic to account for Seedlings growing add odd angles. 
@@ -97,23 +102,45 @@ classdef Seedling < handle
         % Basically this should know the general 'shape' of a Hypocotyl. [how do I do this?]
         %
         % Input:
-        %   frm: frame in which to search for Hypocotyl
-        %   sz1: [2 x 1] array defining the size of the search box to find a Hypocotyl 
-        %   sz2: [2 x 1] array defining the fixed size each Hypocotyl should be
-        
-        % sz = [300 100] seems to be a decent size to test 
-            rgn = [0 0 sz1];
-            im  = structfun(@(x) imcrop(x, rgn), obj.getImageData(frm), 'UniformOutput', 0);                        
-        
-        % Search region from BW image for objects
-            dd  = bwconncomp(im.Image_BW);
-            prp = regionprops('table', dd, im.Image_BW, 'all');
-            gr  = imcrop(im.Image_gray, prp.BoundingBox);
-            bw  = prp.Image{1};
+        %   obj  : this Seedling object 
+        %   frm  : frame in which to search for Hypocotyl
+        %   hypln: length defining the search size for a Hypocotyl 
+        %   crpsz: [2 x 1] array defining the scaled size of each Hypocotyl 
+        % 
+        % Output:
+        %   obj  : function sets AnchorPoints and PreHypocotyl 
                         
-        % Crop the object to size determined by sz2
-            fim = imcrop(gr, [0 0 sz2]);            
+        % Store 4x2 matrix as this Seedling's AnchorPoints coordinates
+            dd     = bwconncomp(obj.getImageData(frm, 'bw'));
+            p      = 'PixelList';
+            props  = regionprops(dd, p);
+            idx    = props.PixelList;
             
+            if obj.AnchorPoints == 0
+                obj.AnchorPoints = getAnchorPoints(idx, hypln);
+            else 
+                obj.AnchorPoints(:, :, frm) = getAnchorPoints(idx, hypln);
+            end                
+
+        % Crop out PreHypocotyl for use as training data
+            hyp = processHypocotyl(obj.getImageData(frm, 'gray'), ...
+                                   obj.getAnchorPointsAtFrame(frm), crpsz);
+            
+            if isempty(obj.PreHypocotyl)
+                obj.PreHypocotyl      = Hypocotyl(obj.ExperimentName, ...
+                                                  obj.GenotypeName,   ...
+                                                  obj.SeedlingName,   ...
+                                                  'raw', hyp, 1);
+            else
+                obj.PreHypocotyl(frm) = Hypocotyl(obj.ExperimentName, ...
+                                                  obj.GenotypeName,   ...
+                                                  obj.SeedlingName,   ...
+                                                  'raw', hyp, frm);
+            end                               
+
+        end
+        
+        
         % Instance a Hypocotyl object and set images to each frame 
         % NOTE: needs to check for valid Hypocotyl in each frame
         %   [hypVisible, hypFrm] = check4Hypocotyl(fim);
@@ -122,26 +149,11 @@ classdef Seedling < handle
         %   else 
         %       obj.Hypocotyl   = Hypocotyl(obj); % Instance Hypocotyl for Seedling
         %       obj.HypIdx(frm) = hypFrm;         % Start indexing frames containing valid Hypocotyl
-        %   end
-        
-%             for i = 1:obj.getLifetime
-                
-        
-        % Visualize objects in a figure
-            if vis
-                figure;
-                subplot(231); imagesc(im.Image_gray), colormap gray, axis image;
-                subplot(232); imagesc(im.Image_BW), colormap gray, axis image;
-                subplot(233); imagesc(im.Skeleton), colormap gray, axis image;
-                subplot(234); imagesc(gr), colormap gray, axis image;
-                subplot(235); imagesc(bw), colormap gray, axis image;
-                subplot(236); imagesc(fim), colormap gray, axis image;
-            end
-            
-            
-        end
+        %   end                              
                 
     end
+    
+%% ------------------------- Helper Methods ---------------------------- %%
     
     methods (Access = public)
     %% Various methods for this class
@@ -179,13 +191,13 @@ classdef Seedling < handle
                     req = varargin{3};
                     try
                         switch req
-                            case 'Image_gray'
+                            case 'gray'
                                 dt_out = dtf.Image_gray;
 
-                            case 'Image_BW'
+                            case 'bw'
                                 dt_out = dtf.Image_BW;
 
-                            case 'Skeleton'
+                            case 'skel'
                                 dt_out = dtf.Skeleton;                           
                         end
                         
@@ -269,17 +281,39 @@ classdef Seedling < handle
             pd = obj.PData(frm);
         end
         
+        function pts = getAnchorPointsAtFrame(obj, frm)
+        %% Returns 4x2 array of 4 anchor points representing Hypocotyl
+            try
+                pts = obj.AnchorPoints(:, :, frm);
+            catch e
+                fprintf(2, 'No AnchorPoints at index %s \n', frm);
+                fprintf(2, '%s \n', e.getReport);
+            end
+        end        
+        
+        function hyps = getAllPreHypocotyls(obj)
+        %% Returns all PreHypocotyls
+            hyps = obj.PreHypocotyl;
+        end
+        
+        function hyp = getPreHypocotyl(obj, frm)
+        %% Return PreHypocotyl at desired frame
+            try
+                hyp = obj.PreHypocotyl(frm);
+            catch e
+                fprintf(2, 'No PreHypocotyl at index %s \n', frm);
+                fprintf(2, '%s \n', e.getReport);
+            end
+        end
+            
+        
     end
+    
+%% ------------------------- Private Methods --------------------------- %%
     
     methods (Access = private)
     %% Private helper methods
-        function hyp = check4Hypocotyl(obj, im)
-        %% Search inputted image for valid Hypocotyl
-            hyp = false;
-            
-            
 
-        end
     
     end
     
