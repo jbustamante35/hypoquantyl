@@ -183,11 +183,23 @@ classdef Seedling < handle
                     
                 case 2                    
                     obj    = varargin{1};
-                    dt_out = obj.Data(varargin{2});
+                    try
+                        frm    = varargin{2};
+                        dt_out = obj.Data(frm);
+                    catch e
+                        fprintf(2, 'No image at frame %d \n', frm);
+                    end
                     
                 case 3
                     obj = varargin{1};
-                    dtf = obj.Data(varargin{2});
+                    
+                    try
+                        frm    = varargin{2};
+                        dt_out = obj.Data(frm);
+                    catch e
+%                         fprintf(2, 'No image at frame %d \n', frm);
+                    end
+                    
                     req = varargin{3};
                     try
                         switch req
@@ -202,7 +214,7 @@ classdef Seedling < handle
                         end
                         
                     catch e
-                        fprintf(2, 'Error requesting field, %d', e.Message);
+                        fprintf(2, 'Error requesting field, %s', e.message);
                         dt_out = {};
                         return;
                     end
@@ -227,7 +239,13 @@ classdef Seedling < handle
         
         function coords = getCoordinates(obj, frm)
         %% Returns coordinates at specified frame
-            coords = obj.Coordinates(frm, :);
+        % Make sure to check for nan (no coordinate found at frame
+            try
+                coords = obj.Coordinates(frm, :);
+            catch e
+                fprintf('No coordinate found at frame %d \n', frm);
+                coords = [nan nan];
+            end
         end
         
         function obj = setFrame(obj, frm, bd)
