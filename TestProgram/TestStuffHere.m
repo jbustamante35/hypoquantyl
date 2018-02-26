@@ -79,7 +79,7 @@ function TestStuffHere(e, n, m, f)
         
         ps = sprintf('%s\t%s\t%s\t%s', pp{1}, pp{2}, pp{3}, pp{4});
         cs = sprintf('%.02f %.02f', wc(i,2), wc(i,1));
-        t = sprintf('%s %s Frame %d \n AnchorPoints %s \n Centroid %s', ...
+        t = sprintf('%s \n %s Frame %d \n AnchorPoints %s \n Centroid %s', ...
                     g.GenotypeName, s.getSeedlingName, i, ps, cs);
         title(t);
 
@@ -95,7 +95,7 @@ function TestStuffHere(e, n, m, f)
         plot(ap(3,1,i), ap(3,2,i),'go');
         plot(ap(4,1,i), ap(4,2,i),'mo');
 %         plot(wc(i,2),   wc(i,1),  'ko');                        
-        t = sprintf('%s %s Frame %d \n Orientation %.02f', ...
+        t = sprintf('%s \n %s Frame %d \n Orientation %.02f', ...
                     g.GenotypeName, s.getSeedlingName, i, o(i));
         title(t);        
         
@@ -107,7 +107,7 @@ function TestStuffHere(e, n, m, f)
         figs = figs + 1;
         im = s.getImageData(i, 'gray');
         histogram(im);
-        t = sprintf('%s %s Frame %d \n MeanInt %.02f', ...
+        t = sprintf('%s \n %s Frame %d \n MeanInt %.02f', ...
                     g.GenotypeName, s.getSeedlingName, i, mean(im(:)));
         title(t);        
         
@@ -118,7 +118,7 @@ function TestStuffHere(e, n, m, f)
         plot(o, 'r--');
         hold on;
         plot(i, o(i), 'bo');
-        t = sprintf('%s %s Frame %d \n Orientation %.02f', ...
+        t = sprintf('%s \n %s Frame %d \n Orientation %.02f', ...
                     g.GenotypeName, s.getSeedlingName, i, o(i));
         title(t);
 
@@ -130,8 +130,8 @@ function TestStuffHere(e, n, m, f)
         hyp = h.getImageData('gray');
         imagesc(hyp);
         colormap gray, axis image;
-        t = sprintf('%s %s Frame %d \n %s', ...
-                g.getGenotypeName, s.getSeedlingName, h.getHypocotylName);
+        t = sprintf('%s \n %s Frame %d \n %s', ...
+                g.getGenotypeName, s.getSeedlingName, i, h.getHypocotylName);
         title(t);
         
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -141,7 +141,7 @@ function TestStuffHere(e, n, m, f)
         h = s.getPreHypocotyl(i);
         hyp = h.getImageData('gray');
         histogram(hyp);
-        t = sprintf('%s %s Frame %d \n MeanInt %.02f', ...
+        t = sprintf('%s \n %s Frame %d \n MeanInt %.02f', ...
                     g.GenotypeName, h.getHypocotylName, i, mean(hyp(:)));
         title(t);                
 
@@ -150,4 +150,34 @@ function TestStuffHere(e, n, m, f)
     end
     
     
+end
+
+function NotInFunctionB
+%% For presentation purposes
+n = 2;
+m = 3;
+t1 = 10;
+t2 = 2;
+
+%% Repeat same Seedling
+for i = 1 : t1
+    TestStuffHere(e, n, m, 0);
+end
+
+%% All Seedlings
+for i = 1 : t2
+    for i = 1 : e.NumberOfGenotypes
+        g = e.getGenotype(i);
+        for j = 1 : g.NumberOfSeedlings
+            s = g.getSeedling(j);
+            TestStuffHere(e, i, j, 0);
+        end
+    end
+end
+
+
+%%
+
+
+
 end

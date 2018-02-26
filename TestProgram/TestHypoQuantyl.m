@@ -141,3 +141,33 @@ function e = TestHypoQuantyl(a, z, l, c, v)
 end
 
 
+function NotInFunctionA
+%% For presentation purposes
+n = 2;
+m = 3;
+t1 = 10;
+t2 = 2;
+
+%% Repeat same Seedling
+for i = 1 : t1
+    TestStuffHere(e, n, m, 0);
+end
+
+%% All Seedlings
+for i = 1 : t2
+    for i = 1 : e.NumberOfGenotypes
+        g = e.getGenotype(i);
+        for j = 1 : g.NumberOfSeedlings
+            s = g.getSeedling(j);
+            TestStuffHere(e, i, j, 0);
+        end
+    end
+end
+
+%%
+
+
+
+
+end
+
