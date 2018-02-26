@@ -1,8 +1,9 @@
-function e = TestHypoQuantyl(a, z, l, c, v)
+function e = TestHypoQuantyl(r, a, z, l, c, v)
 %% TestHypoQuantyl: perform test runs of HypoQuantyl
 % This function 
 % 
 % Input:
+%   r: number of randomly-selected folders to run
 %   a: first frame to add Seedlings
 %   z: last frame to add Seedlings
 %   l: length for cropping out Hypocotyls from Seedlings
@@ -13,33 +14,35 @@ function e = TestHypoQuantyl(a, z, l, c, v)
 %   e: full Experiment after analysis 
 % 
 
-%% Create Experiment in current directory
-    tic;
+%% Create Experiment in current directory    
     e      = Experiment(pwd);
-    d      = dir(pwd);
-    d(1:2) = [];
+    [d, ~] = sortDirectory(pwd);
+    d      = table2struct(d);
+    dIdx   = randi(numel(d), 1, r);
+    d      = d(dIdx);
     
 %% Add Genotypes and Seedlings for each subfolder in current directory
     for i = 1 : length(d)
+        tic;
         e.AddGenotypes(d(i), '*', 'name', 0);
         
-        s = e.getGenotype(i);
-        if z > s.TotalImages
-            s.AddSeedlingsFromRange(a:z);
+        g = e.getGenotype(i);
+        if z > g.TotalImages
+            g.AddSeedlingsFromRange(a:z);
         else
-            s.AddSeedlingsFromRange(a:z);
+            g.AddSeedlingsFromRange(a:z);
         end
         
-        s.SortSeedlings;
+        g.SortSeedlings;
         
         format shortg;
-        fprintf('%d sec to analyze %d frames from %d Seedlings \n', ...
-        toc,            z,      numel(e.getGenotype(i).NumberOfSeedlings));
+        fprintf('%.02f sec to analyze %d frames from %d Seedlings \n', ...
+                toc,                z,              g.NumberOfSeedlings);
     end
     
 %% Iterate through all Genotypes and all Seedlings to find Hypocotyls
-    tic;
     for i = 1 : e.NumberOfGenotypes
+        tic;
         g = e.getGenotype(i);
         for ii = 1 : g.NumberOfSeedlings
             s = g.getSeedling(ii);
@@ -47,8 +50,9 @@ function e = TestHypoQuantyl(a, z, l, c, v)
                 s.FindHypocotyl(iii, l, c);
             end            
         end
-    end
-    fprintf('%d sec to find hypocotyls for %d frames \n', toc, e.NumberOfGenotypes);
+        fprintf('%.02f sec to find hypocotyls for %d frames \n', ...
+                toc,                        s.getLifetime);
+    end    
 
 
 %% Visualize various output images to verify data

@@ -25,7 +25,8 @@ classdef Genotype < handle
         %% Default constructor to initialize new program
             narginchk(1, 5);
             if nargin == 1
-                setGenotypeName(obj, '');
+%                 setGenotypeName(obj, '');
+                obj.GenotypeName   = '';
                 obj.ExperimentName = experiment;                
                 obj.TotalImages    = 0;
                 obj.RawImages      = cell(0);
@@ -80,6 +81,7 @@ classdef Genotype < handle
         % and align Seedling objects through frames
             filterSeedlings(obj, obj.RawSeedlings);
             obj.NumberOfSeedlings = length(obj.Seedlings);
+            fprintf('%d RawSeedlings\n', numel(obj.RawSeedlings));
         end        
         
     end
@@ -217,7 +219,7 @@ classdef Genotype < handle
         %% Compare coordinates of Seedlings at frame and select closest match from previous frame
         % Input:
         %   fs  : current Seedling to sort
-        %   rs  : all RawSeedlings at single frame
+        %   rs  : cell array of all RawSeedlings at single frame
         %   frms: indeces for frame and raw seedling index
         
         % Check for available RawSeedlings to check at this frame
@@ -225,20 +227,20 @@ classdef Genotype < handle
             UNAVAILABLE_MSG    = 'unavailable';
             
             for i = 1:length(vFrm)
-                if isempty(rs{i}) 
+                if isempty(rs{i})
                     vFrm(i) = false;
                     break;
                 elseif strcmp(rs{i}.SeedlingName, UNAVAILABLE_MSG)
                     vFrm(i) = false;
                 end
             end
-        
-            if sum(vFrm) <= 0                 
-                fprintf(2, 'No valid Seedlings at %s [%d, %d] \n', num2str(vFrm), frms(1), frms(2));
-                return; 
+            
+            if sum(vFrm) <= 0
+%                 fprintf(2, 'No valid Seedlings at %s [%d, %d] \n', num2str(vFrm), frms(1), frms(2));
+                return;
             else
-                vIdx = find(vFrm == 1); 
-            end                
+                vIdx = find(vFrm == 1);
+            end
 
             
         % Set Data from 1st available RawSeedling if aligning 1st frame            
@@ -257,13 +259,16 @@ classdef Genotype < handle
                 closer_idx = compareCoords(fs.getCoordinates(fs.getLifetime), rs(vIdx));
                 
                 fs.increaseLifetime(1);
-                fs.setCoordinates(fs.getLifetime, rs{closer_idx}.getCoordinates(1));
-                fs.setImageData(  fs.getLifetime, rs{closer_idx}.getImageData(1));
-                fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
-                fs.setFrame(rs{closer_idx}.getFrame('b'), 'd');
-            
-            % Mark RawSeedling as unavailable for next iterations
-                rs{closer_idx}.setSeedlingName(UNAVAILABLE_MSG);
+                
+                if ~isnan(closer_idx)
+                    fs.setCoordinates(fs.getLifetime, rs{closer_idx}.getCoordinates(1));
+                    fs.setImageData(  fs.getLifetime, rs{closer_idx}.getImageData(1));
+                    fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
+                    fs.setFrame(rs{closer_idx}.getFrame('b'), 'd');
+                    
+                % Mark RawSeedling as unavailable for next iterations
+                    rs{closer_idx}.setSeedlingName(UNAVAILABLE_MSG);
+                end
             end
 
         end
