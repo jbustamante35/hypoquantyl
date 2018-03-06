@@ -104,7 +104,19 @@ classdef Experiment < handle
             end
         end
     
-        
+        function S = combineSeedlings(obj)
+        %% Combine all Seedlings from all Genotypes into single object array
+            n = sum(cat(1, obj.getGenotype(':').NumberOfSeedlings));
+            S = repmat(Seedling(''), [1 n]);
+            j = 1;
+            for i = 1 : obj.NumberOfGenotypes
+                g = obj.getGenotype(i);
+                for ii = 1 : g.NumberOfSeedlings
+                    S(j) = g.getSeedling(ii);
+                    j = j + 1;
+                end
+            end
+        end
         
         function check_outOfFrame(obj, frm, s)
         %% Check if Seedling grows out of frame 

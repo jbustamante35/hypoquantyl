@@ -4,15 +4,19 @@ function editfiles(pc, project)
 switch pc
     case 'wr' 
     % Winry-Rockbell Linux
-        pth = '/home/jbustamante/';
+        pth = '/home/jbustamante/Dropbox/';
         
     case 'wp'
     % Winry-Rockbell Windows
-        pth = 'C:\Users\Julian Bustamante\';
+        pth = 'C:\Users\Julian Bustamante\Dropbox\';
+        
+    case 'rd'
+    % Edgar Lab Remote Desktop
+        pth = '/home/jbustamante/';
         
     case 'rt'
     % Rin-Tohsaka Linux
-        pth = '/home/yan-yan11/';
+        pth = '/home/yan-yan11/Dropbox/';
         
     case 'mc'
     % Unnamed MacOSX
@@ -26,16 +30,20 @@ end
 switch project
     case 'qd'
     % QuantDRaCALA_v2
-        prjDir = 'Dropbox/EdSpalding_Lab/Software/QD2/QuantDRaCALA_v2/';
+        prjDir = 'EdSpalding_Lab/Software/QD2/QuantDRaCALA_v2/';
         
     case 'sz'
     % Sphinctolyzer
-        prjDir = 'Dropbox/KevinBill_Lab/Sphinctalyzer/sphinctolyzer/';
+        prjDir = 'KevinBill_Lab/Sphinctalyzer/sphinctolyzer/';
         
     case 'hq'
     % HypoQuantyl
-        prjDir = 'Dropbox/EdSpalding_Lab/Software/HypoQuantyl';
+        prjDir = 'EdSpalding_Lab/Software/HypoQuantyl';
         
+    case 'rd'
+    % Edgar Lab Remote Desktop: just get into HypoQuantyl
+        prjDir = 'Software/HypoQuantyl';
+    
     otherwise
         fprintf(2, 'Project not found\n');
         return;
@@ -84,7 +92,7 @@ function [dirs, fils] = sortFiles(ain)
             dirs.path = strcat(dirs.folder, '\', dirs.name);
         end        
     catch e
-        fprintf(2, 'Directory empty\n');
+        fprintf(2, 'Directory empty(@sortFiles): %s \n', ain);
         return;
     end
 end
@@ -102,7 +110,7 @@ function subd = go2Dir(din)
     try
         subd = runProgram(din);
     catch e
-        fprintf(2, 'Directory empty\n');
+        fprintf(2, 'Directory empty(@go2Dir): %s \n', din);
         subd = [];
         return;
     end
