@@ -81,7 +81,7 @@ classdef Genotype < handle
         % and align Seedling objects through frames
             filterSeedlings(obj, obj.RawSeedlings);
             obj.NumberOfSeedlings = length(obj.Seedlings);
-            fprintf('%d RawSeedlings\n', numel(obj.RawSeedlings));
+%             fprintf('%d RawSeedlings\n', numel(obj.RawSeedlings));
         end        
         
     end
