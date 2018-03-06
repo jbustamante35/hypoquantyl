@@ -24,6 +24,7 @@ function e = TestHypoQuantyl(r, a, z, l, c, v)
 %% Add Genotypes and Seedlings for each subfolder in current directory
     for i = 1 : length(d)
         tic;
+        fprintf('Analyzing %s \t', d(i).name);
         e.AddGenotypes(d(i), '*', 'name', 0);
         
         g = e.getGenotype(i);
@@ -35,7 +36,7 @@ function e = TestHypoQuantyl(r, a, z, l, c, v)
         
         g.SortSeedlings;
         
-        format shortg;
+        format shortg;        
         fprintf('%.02f sec to analyze %d frames from %d Seedlings \n', ...
                 toc,                z,              g.NumberOfSeedlings);
     end
@@ -44,13 +45,15 @@ function e = TestHypoQuantyl(r, a, z, l, c, v)
     for i = 1 : e.NumberOfGenotypes
         tic;
         g = e.getGenotype(i);
+        fprintf('Finding Hypocotyl from %s \t', g.getGenotypeName);
         for ii = 1 : g.NumberOfSeedlings
             s = g.getSeedling(ii);
+            fprintf('%s \t', s.getSeedlingName);
             for iii = 1 : s.getLifetime
                 s.FindHypocotyl(iii, l, c);
             end            
         end
-        fprintf('%.02f sec to find hypocotyls for %d frames \n', ...
+        fprintf('%.02f sec to find hypocotyls from %d frames \n', ...
                 toc,                        s.getLifetime);
     end    
 
