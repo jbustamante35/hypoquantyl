@@ -44,8 +44,6 @@ classdef Hypocotyl < handle
             
 
             h = sprintf('%s_%s_{%d}', n, obj.SeedlingName(end), frm);
-            h = sprintf('%s_{%s}_{%d}', n, obj.SeedlingName(end), frm);
-
             setHypocotylName(obj, h);
             obj.Data = struct('Image_gray', im,       ...
                               'Image_BW',   zeros(0), ...
