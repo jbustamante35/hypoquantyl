@@ -202,6 +202,7 @@ classdef Seedling < handle
                     
                     req = varargin{3};
                     try
+                        dtf = obj.Data(frm);
                         switch req
                             case 'gray'
                                 dt_out = dtf.Image_gray;

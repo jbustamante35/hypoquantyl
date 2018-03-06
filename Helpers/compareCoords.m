@@ -33,7 +33,7 @@ function minDistIdx = compareCoords(pf,  cf)
             minIdx  = d == min(d);
             minName = char(cf{minIdx}.getSeedlingName);
         else
-            fprintf(2, 'No coordinates found at any index\n');
+%             fprintf(2, 'No coordinates found at any index\n');
             return;
         end
 
@@ -41,7 +41,7 @@ function minDistIdx = compareCoords(pf,  cf)
         if ~isempty(cf{1})
             minName = char(cf{1}.getSeedlingName);
         else
-            fprintf(2, 'No coordinates found at any index\n');
+%             fprintf(2, 'No coordinates found at any index\n');
             return;
         end
             
@@ -51,7 +51,7 @@ function minDistIdx = compareCoords(pf,  cf)
     if ~isempty(minName)
         minDistIdx = str2double(minName(end));
     else
-        fprintf(2, 'No coordinates found at any index\n');
+%         fprintf(2, 'No coordinates found at any index\n');
         return;
     end
     
