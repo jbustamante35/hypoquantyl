@@ -3,7 +3,7 @@ function cntr = extractContour(bw, max_size)
 % This function blah
 %
 % Usage:
-%   cntr = extractContour(im, bw, max_size)
+%   cntr = extractContour(bw, max_size)
 %
 % Input:
 %   bw: bw image 
@@ -13,7 +13,7 @@ function cntr = extractContour(bw, max_size)
 %   cntr: various data from contour at given frame 
 %
 
-%% Get boundaries of seedling
+%% Get boundaries of inputted bw image
     bnd0 = bwboundaries(bw, 'noholes');
     bnds = bnd0{1};
 
