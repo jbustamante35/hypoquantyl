@@ -10,6 +10,7 @@ classdef ContourJB < handle
     end
     
     properties (Access = private)
+        Origin
         Gray
         BW
     end
@@ -18,20 +19,20 @@ classdef ContourJB < handle
         function obj = ContourJB(varargin)
         %% Constructor to initialize object
             if isempty(varargin)
-                obj.Gray    = [];
-                obj.BW      = [];
                 obj.Bounds  = [];
                 obj.Dists   = [];
                 obj.Sums    = [];
                 obj.Interps = [];
             else
-                obj.Gray    = [];
-                obj.BW      = [];
                 obj.Bounds  = varargin{1};
                 obj.Dists   = varargin{2};
                 obj.Sums    = varargin{3};
                 obj.Interps = varargin{4};
             end
+            
+            obj.Origin  = '';
+            obj.Gray    = [];
+            obj.BW      = [];
         end
         
         function obj = setGrayImageAtFrame(obj, im, frm)
@@ -53,5 +54,16 @@ classdef ContourJB < handle
         %% Return grayscale image at given frame
             bw = obj.BW{frm};
         end
+        
+        function obj = setOrigin(obj, org)
+        %% Designate origin of contour
+            obj.Origin = org;
+        end
+        
+        function org = getOrigin(obj)
+        %% Returns origin of contour
+            org = obj.Origin;
+        end
+        
     end
 end
