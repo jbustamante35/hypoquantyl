@@ -111,33 +111,42 @@ classdef Seedling < handle
         %   obj  : function sets AnchorPoints and PreHypocotyl 
                         
         % Store 4x2 matrix as this Seedling's AnchorPoints coordinates
-            dd     = bwconncomp(obj.getImageData(frm, 'bw'));
-            p      = 'PixelList';
-            props  = regionprops(dd, p);
-            idx    = props.PixelList;
-            
-            if obj.AnchorPoints == 0
-                obj.AnchorPoints = getAnchorPoints(idx, hypln);
-            else 
-                obj.AnchorPoints(:, :, frm) = getAnchorPoints(idx, hypln);
-            end                
+            try
+                dd     = bwconncomp(obj.getImageData(frm, 'bw'));
+                p      = 'PixelList';
+                props  = regionprops(dd, p);
+                idx    = props.PixelList;
 
-        % Crop out PreHypocotyl for use as training data
-            hyp = processHypocotyl(obj.getImageData(frm, 'gray'), ...
-                                   obj.getAnchorPointsAtFrame(frm), crpsz);
-            
-            if isempty(obj.PreHypocotyl)
-                obj.PreHypocotyl      = Hypocotyl(obj.ExperimentName, ...
-                                                  obj.GenotypeName,   ...
-                                                  obj.SeedlingName,   ...
-                                                  'raw', hyp, 1);
-            else
+                if obj.AnchorPoints == 0
+                    obj.AnchorPoints = getAnchorPoints(idx, hypln);
+                else 
+                    obj.AnchorPoints(:, :, frm) = getAnchorPoints(idx, hypln);
+                end                   
+
+            % Crop out PreHypocotyl for use as training data
+                hyp = processHypocotyl(obj.getImageData(frm, 'gray'), ...
+                                       obj.getAnchorPointsAtFrame(frm), crpsz);
+
+                if isempty(obj.PreHypocotyl)
+                    obj.PreHypocotyl      = Hypocotyl(obj.ExperimentName, ...
+                                                      obj.GenotypeName,   ...
+                                                      obj.SeedlingName,   ...
+                                                      'raw', hyp, 1);
+                else
+                    obj.PreHypocotyl(frm) = Hypocotyl(obj.ExperimentName, ...
+                                                      obj.GenotypeName,   ...
+                                                      obj.SeedlingName,   ...
+                                                      'raw', hyp, frm);
+                end
+                
+            catch 
+                fprintf('No image data found at %s Frame %d \n', obj.getSeedlingName, frm);
                 obj.PreHypocotyl(frm) = Hypocotyl(obj.ExperimentName, ...
                                                   obj.GenotypeName,   ...
                                                   obj.SeedlingName,   ...
-                                                  'raw', hyp, frm);
-            end                               
-
+                                                  'raw', [], frm);
+                return;
+            end            
         end
         
         
