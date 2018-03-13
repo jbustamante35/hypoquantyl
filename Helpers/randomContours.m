@@ -37,6 +37,8 @@ for i = 1 : num_seeds
 
     CTRS(i).setGrayImageAtFrame(im, 1);
     CTRS(i).setBWImageAtFrame(bw, 1);
+    org = sprintf('%s_%s_%s_Frm%d', rs.ExperimentName, rs.GenotypeName, rs.getSeedlingName, rFrm);
+    CTRS(i).setOrigin(org);
 end
 
 %% Visualize output if desired
@@ -58,7 +60,7 @@ if vis
         subplot(122);
         imagesc(bw), colormap gray, axis image;
         hold on;
-        plot(CTRS(i).Bounds(:,2), CTRS(i).Bounds(:,1), 'rx';
+        plot(CTRS(i).Bounds(:,2), CTRS(i).Bounds(:,1), 'rx');
         plot(CTRS(i).Interps(:,2), CTRS(i).Interps(:,1), 'g.');
         hold off;
 
