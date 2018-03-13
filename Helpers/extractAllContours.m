@@ -29,6 +29,10 @@ function ctrs = extractAllContours(seed_in, max_size, cont_ver)
                     for ii = 1 : numel(fn)
                         ctrs.(fn{ii}){i} = tmp.(fn{ii});
                     end
+                    
+                    org = sprintf('%s_%s_%s_Frm%d', seed_in.ExperimentName, seed_in.GenotypeName,...
+                                                    seed_in.getSeedlingName, i);
+                    ctrs.setOrigin(org);
                 end
             catch
                 fprintf('Attempting alternate method. \n');
@@ -46,6 +50,9 @@ function ctrs = extractAllContours(seed_in, max_size, cont_ver)
                     ctrs.Dists{i}   = dL;
                     ctrs.Sums{i}    = L;
                     ctrs.Interps{i} = I;
+                    org = sprintf('%s_%s_%s_Frm%d', seed_in.ExperimentName, seed_in.GenotypeName,...
+                                                    seed_in.getSeedlingName, i);
+                    ctrs.setOrigin(org);                    
                 end
             catch
                 fprintf('Attempting alternate method. \n');
