@@ -1,0 +1,216 @@
+function pcaSweep(pcaX, pcaY, chg, pc, upFn, dwnFn, stp)
+%% pcaSweep: sweep through mean principal component scores 
+% NOTE: This function only works for my custom PCA for now, but I'll work on generalizing it to be
+% more flexible in the future. Run the testSweep function for testing and debugging.
+%
+% This function performs an iterative step up and down through a single principal component, where
+% the iterative step is defined by user input. User also determines which principal component to
+% iterate through. 
+% 
+%  After calculating the new PCA scores, a single new plot generates synthetic images of the
+%  original mean PCA scores and 2 synthetic images representing an iterative step up and down
+%  overlaid on the same plot. 
+%
+%  See the testSweep function below to see how you can use this to sweep through all principal
+%  components for multiple iterative steps. [or read help performSweep]
+%
+% Usage:
+%   pcaSweep(pcaX, pcaY, chg, pc, upFn, dwnFn, stp)
+%
+% Input:
+%   pcaX: structure containing x-coordinate output from custom pcaAnalysis
+%   pcaY: structure containing y-coordinate output from custom pcaAnalysis
+%   shp: [2 x 1] array defining the size to reshape the data
+%   chg: 1 to iteratively change x-coordinate PCs, 2 to change y-coordinate PCs
+%   pc: principal component to iteratively sweep
+%   upFn: function handle to positively sweep PCs
+%   dwnFn: function handle to negatively sweep PCs
+%   stp: number of steps to sweep PCs by iterator function
+%
+% Output: n/a
+%   This function outputs a single plot of the original synthetic contour (dotted black line) and a
+%   single step up (solid green line) or down (solid red line) defined by inputted function handles.
+%
+
+%% Store data in easier variables
+% rawD = {pcaX.InputData;  pcaY.InputData};
+mnsD = {pcaX.MeanVals;   pcaY.MeanVals};
+eigV = {pcaX.EigVectors; pcaY.EigVectors};
+scrD = {pcaX.PCAscores;  pcaY.PCAscores};
+% orgD = {pcaX.SimData;    pcaY.SimData};
+
+%% Function handle to generate simulated data
+simMe = @(x, y, z) ((x * y') + z);
+
+%% Mean and StDev of all PCs in x and y coords
+meanScores = cellfun(@(x) mean(x), scrD, 'UniformOutput', 0);
+sdvScores  = cellfun(@(x) std(x), scrD, 'UniformOutput', 0);
+
+%% PCn of x-coord +1 StDev above mean
+% Choose 1 (x-coords) or 2 (y-coords) for dimension to change
+% Choose principal component to change and hold
+hld = 3 - chg;
+val = sdvScores{chg}(pc) * stp;
+
+% Iterative function to change mean PC score
+itrUp                 = upFn(meanScores{chg}(pc), val);
+itrDwn                = dwnFn(meanScores{chg}(pc), val);
+[upScores, dwnScores] = deal(meanScores{chg});
+
+upScores(pc)  = itrUp;
+dwnScores(pc) = itrDwn;
+
+% New cell array with updated mean PC scores
+if chg == 1
+    newScoresUp  = {upScores ; meanScores{hld}};
+    newScoresDwn = {dwnScores ; meanScores{hld}};
+else
+    newScoresUp  = {meanScores{hld} ; upScores};
+    newScoresDwn = {meanScores{hld} ; dwnScores};
+end
+
+% Create new synthetic representative images with updated PC scores
+orgSim = cellfun(@(x, y, z) simMe(x, y, z), meanScores, eigV, mnsD, 'UniformOutput', 0);
+upSim  = cellfun(@(x, y, z) simMe(x, y, z), newScoresUp, eigV, mnsD, 'UniformOutput', 0);
+dwnSim = cellfun(@(x, y, z) simMe(x, y, z), newScoresDwn, eigV, mnsD, 'UniformOutput', 0);
+
+%% Plot original, up, and down iterative steps on single plot
+plot(dwnSim{1}, dwnSim{2}, 'r');
+hold on;
+plot(orgSim{1}, orgSim{2}, 'k--');
+plot(upSim{1}, upSim{2}, 'g');
+ttl = sprintf('Dim_%d | PC_%d | Steps_%d', chg, pc, stp);
+title(ttl);
+
+end
+
+%% ---------------------------------------------------------------------------------------------- %%
+
+function testSweep
+%% testSweep: DEBUGGING AND TESTING PCASWEEP
+% Set up function handle for ease-of-use
+upFn  = @(x,y) x + y;
+dwnFn = @(x,y) x - y;
+pcswp = @(x,y,z) pcaSweep(pcaX, pcaY, x, y, upFn, dwnFn, z);
+stps  = 1 : 5; % Number of iterative steps up and down 
+
+% Decide dimension and PC to change
+d    = 1;
+pcX  = 1 : size(pcaX.PCAscores, 2);
+pcY  = 1 : size(pcaY.PCAscores, 2);
+
+% Equalize axes limits if you want each plot to have same axes (SET 'eql' TO TRUE)
+% You can set these limits to whatever values you want
+% Format is [xMin xMax ; yMin yMax] 
+axs  = struct('julian', [-50 150  ; -150  200], ...
+    'scott',[-10 1200 ; -600 2500]);
+name = 'scott';
+eql  = false;
+
+% Create 2 sets of figures for x- and y-coordinates
+figure;
+nX  = numel(pcX);
+row = 2;
+col = ceil(nX / row);
+for k = 1 : nX
+    subplot(row, col, k);
+    arrayfun(@(x) pcswp(d,pcX(k),x), stps, 'UniformOutput', 0);
+    
+    if eql
+        xlim(axs.(name)(2,:));
+        ylim(axs.(name)(1,:));
+    end
+end
+
+figure;
+nY = numel(pcY);
+row = 2;
+col = ceil(nY / row);
+for k = 1 : nY
+    subplot(row, col, k);
+    arrayfun(@(x) pcswp(d+1,pcY(k),x), stps, 'UniformOutput', 0);
+    
+    if eql
+        xlim(axs.(name)(2,:));
+        ylim(axs.(name)(1,:));
+    end
+end
+end
+
+%% ---------------------------------------------------------------------------------------------- %%
+%% OLD CODE
+% subplot(131);
+% hold on;
+% plot(orgSim{1}, orgSim{2}, 'k--');
+% plot(dwnSim{1}, dwnSim{2}, 'r');
+% ttl = sprintf('Dim %d | PC %d | Step %d | Down', chg, pc, stp);
+% title(ttl);
+%
+% subplot(132);
+% hold on;
+% plot(orgSim{1}, orgSim{2}, 'k');
+% ttl = sprintf('Dim %d | PC %d | Step %d | Original', chg, pc, stp);
+% title(ttl);
+%
+% subplot(133);
+% hold on;
+% plot(orgSim{1}, orgSim{2}, 'k--');
+% plot(upSim{1}, upSim{2}, 'g');
+% ttl = sprintf('Dim %d | PC %d | Step %d | Up', chg, pc, stp);
+% title(ttl);
+
+%% ---------------------------------------------------------------------------------------------- %%
+%% EVEN OLDER CODE
+% %% Serial Dilution by 2 StDevs of each score vector
+% for i = 1 : size(scrD{chg}, 2)
+%     newD      = scrD{chg};
+%     itrfnc    = (2* std(scrD{chg}(:,i)));
+%     ds        = scrD{chg}(:,i) + itrfnc;
+%     newD(:,i) = ds;
+%     simD      = ((newD * eigV{chg}') + mnsD{chg});
+%     for ii = 1 : size(scrD{chg}, 1)
+%         rX = rawD{1}(ii,:);
+%         rY = rawD{2}(ii,:);
+%         sX = orgD{1}(ii,:);
+%         sY = orgD{2}(ii,:);
+%
+%         subplot(211);
+%         hold on;
+%         showContours(img{ii}, rX, rY, sX, sY, simD(ii,:));
+%         hold off;
+%
+%         subplot(212);
+%         hold on;
+%         showPredictions(rX, sX, simD(ii,:));
+%         hold off;
+%
+%         pause(0.3);
+%     end
+% end
+%
+%
+% end
+%
+% function showContours(d, rX, rY, sX, sY, dil)
+% %% showContours: show raw, originial, and diluted contour
+% %
+% %
+%
+% imagesc(d), colormap gray;
+% hold on;
+% plot(rX,  rY, 'k', 'LineWidth', 3);
+% plot(sX,  sY, 'm', 'LineWidth', 3);
+% plot(dil, sY, 'b', 'LineWidth', 3);
+% hold off;
+% end
+%
+% function showPredictions(r, s, dil)
+% %% showPredictions: plot original and diluted prediction
+% hold on;
+% plot(r, 'k');
+% plot(s, 'm');
+% plot(dil, 'b');
+% hold off;
+% end
+
+
