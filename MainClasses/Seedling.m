@@ -3,263 +3,289 @@
 
 classdef Seedling < handle
     properties (Access = public)
-    %% Seedling properties
+        %% Seedling properties
         ExperimentName
+        ExperimentPath
         GenotypeName
         SeedlingName
         Frame = zeros(1,2);
         Lifetime
         Coordinates
-        Data        
+        Data
         PData
         MyHypocotyl
     end
     
     properties (Access = private)
-    %% Private data
+        %% Private data
         Midline
         AnchorPoints
         HypIdx
         PreHypocotyl
-        
+        gray
+        bw
+        cntr
+        PDPROPERTIES
     end
     
-%% ------------------------- Primary Methods --------------------------- %%
+    %% ------------------------- Primary Methods --------------------------- %%
     
     methods (Access = public)
-    %% Constructor and main functions
+        %% Constructor and main functions
         function obj = Seedling(varargin)
-        %% Constructor for instancing a Seedling object
-            try
-                switch nargin
-                    case 0
-                        disp('nothing entered');
-
-                    case 1 
-                        obj.ExperimentName = varargin{1};
-                        Image_gray         = zeros(0,0);
-                        Image_BW           = zeros(0,0);
-                        Skeleton           = zeros(0,0);
-
-                    case 2
-                        obj.ExperimentName = varargin{1};
-                        obj.GenotypeName   = varargin{2};
-                        Image_gray         = zeros(0,0);
-                        Image_BW           = zeros(0,0);
-                        Skeleton           = zeros(0,0);
-
-                    case 3
-                        obj.ExperimentName = varargin{1};
-                        obj.GenotypeName   = varargin{2};
-                        obj.SeedlingName   = char(['Seedling_' varargin{3}]);
-                        Image_gray         = zeros(0,0);
-                        Image_BW           = zeros(0,0);
-                        Skeleton           = zeros(0,0);
-
-                    case 4   
-                        obj.SeedlingName = char(['Seedling_' varargin{1}]);
-                        Image_gray       = varargin{2};
-                        Image_BW         = varargin{3};
-                        Skeleton         = varargin{4};
-
-                    case 5
-                        obj.ExperimentName = varargin{1};
-                        obj.SeedlingName   = char(['Seedling_' varargin{2}]);
-                        Image_gray         = varargin{3};
-                        Image_BW           = varargin{4};
-                        Skeleton           = varargin{5};
-
-                    case 6
-                        obj.ExperimentName = varargin{1};
-                        obj.GenotypeName   = varargin{2};
-                        obj.SeedlingName   = char(['Seedling_' varargin{3}]);
-                        Image_gray         = varargin{4};
-                        Image_BW           = varargin{5};
-                        Skeleton           = varargin{6};
-                        
-                    otherwise
-                        fprintf(2, 'Too many arguments.');
-                        return;
+            %% Constructor method for Seedling
+            if ~isempty(varargin)
+                % Parse inputs to set properties
+                args = obj.parseConstructorInput(varargin);
+                
+                fn = fieldnames(args);
+                for k = fn'
+                    obj.(cell2mat(k)) = args.(cell2mat(k));
                 end
-            catch e
-                fprintf(2, 'Error instancing Seedling');
-                fprintf(2, e.Message);
+                
+            else
+                % Set default properties for empty object
+                obj.SeedlingName = '';
             end
             
-            obj.Data         = struct('Image_gray', Image_gray, ...
-                                      'Image_BW',   Image_BW,   ...
-                                      'Skeleton',   Skeleton);
-            obj.Lifetime     = 0;
-            obj.AnchorPoints = zeros(0, 0, 0);            
-
+            c = cell(1, numel(obj.PDPROPERTIES));
+            obj.PData = cell2struct(c', obj.PDPROPERTIES);
+            
+            obj.Data = struct('gray', obj.gray, ...
+                'bw',   obj.bw, ...
+                'cntr', obj.cntr);
+            
         end
         
-        function obj = FindHypocotyl(obj, frm, hypln, crpsz)
-        %% Find Hypocotyl with defined sizes within Seedling object
-        % This function crops the top [h x w] of a Seedling
-        % This may need to be more dynamic to account for Seedlings growing add odd angles. 
-        % I also need to set a detection algorithm to make sure Hypocotyl is in view. 
-        % Basically this should know the general 'shape' of a Hypocotyl. [how do I do this?]
+        %         function obj = Seedling(varargin)
+        %             %% Constructor for instancing a Seedling object
+        %             try
+        %                 switch nargin
+        %                     case 0
+        %                         disp('nothing entered');
         %
-        % Input:
-        %   obj  : this Seedling object 
-        %   frm  : frame in which to search for Hypocotyl
-        %   hypln: length defining the search size for a Hypocotyl 
-        %   crpsz: [2 x 1] array defining the scaled size of each Hypocotyl 
-        % 
-        % Output:
-        %   obj  : function sets AnchorPoints and PreHypocotyl 
-                        
-        % Store 4x2 matrix as this Seedling's AnchorPoints coordinates
+        %                     case 1
+        %                         obj.ExperimentName = varargin{1};
+        %                         Image_gray         = zeros(0,0);
+        %                         Image_BW           = zeros(0,0);
+        %                         Skeleton           = zeros(0,0);
+        %
+        %                     case 2
+        %                         obj.ExperimentName = varargin{1};
+        %                         obj.GenotypeName   = varargin{2};
+        %                         Image_gray         = zeros(0,0);
+        %                         Image_BW           = zeros(0,0);
+        %                         Skeleton           = zeros(0,0);
+        %
+        %                     case 3
+        %                         obj.ExperimentName = varargin{1};
+        %                         obj.GenotypeName   = varargin{2};
+        %                         obj.SeedlingName   = char(['Seedling_' varargin{3}]);
+        %                         Image_gray         = zeros(0,0);
+        %                         Image_BW           = zeros(0,0);
+        %                         Skeleton           = zeros(0,0);
+        %
+        %                     case 4
+        %                         obj.SeedlingName = char(['Seedling_' varargin{1}]);
+        %                         Image_gray       = varargin{2};
+        %                         Image_BW         = varargin{3};
+        %                         Skeleton         = varargin{4};
+        %
+        %                     case 5
+        %                         obj.ExperimentName = varargin{1};
+        %                         obj.SeedlingName   = char(['Seedling_' varargin{2}]);
+        %                         Image_gray         = varargin{3};
+        %                         Image_BW           = varargin{4};
+        %                         Skeleton           = varargin{5};
+        %
+        %                     case 6
+        %                         obj.ExperimentName = varargin{1};
+        %                         obj.GenotypeName   = varargin{2};
+        %                         obj.SeedlingName   = char(['Seedling_' varargin{3}]);
+        %                         Image_gray         = varargin{4};
+        %                         Image_BW           = varargin{5};
+        %                         Skeleton           = varargin{6};
+        %
+        %                     otherwise
+        %                         fprintf(2, 'Too many arguments.');
+        %                         return;
+        %                 end
+        %             catch e
+        %                 fprintf(2, 'Error instancing Seedling');
+        %                 fprintf(2, e.Message);
+        %             end
+        %
+        %             obj.Data         = struct('Image_gray', Image_gray, ...
+        %                 'Image_BW',   Image_BW,   ...
+        %                 'Skeleton',   Skeleton);
+        %             obj.Lifetime     = 0;
+        %             obj.AnchorPoints = zeros(0, 0, 0);
+        %
+        %         end
+        
+        function obj = FindHypocotyl(obj, frm, hypln, crpsz)
+            %% Find Hypocotyl with defined sizes within Seedling object
+            % This function crops the top [h x w] of a Seedling
+            % This may need to be more dynamic to account for Seedlings growing add odd angles.
+            % I also need to set a detection algorithm to make sure Hypocotyl is in view.
+            % Basically this should know the general 'shape' of a Hypocotyl. [how do I do this?]
+            %
+            % Input:
+            %   obj  : this Seedling object
+            %   frm  : frame in which to search for Hypocotyl
+            %   hypln: length defining the search size for a Hypocotyl
+            %   crpsz: [2 x 1] array defining the scaled size of each Hypocotyl
+            %
+            % Output:
+            %   obj  : function sets AnchorPoints and PreHypocotyl
+            
+            % Store 4x2 matrix as this Seedling's AnchorPoints coordinates
             try
                 dd     = bwconncomp(obj.getImageData(frm, 'bw'));
                 p      = 'PixelList';
                 props  = regionprops(dd, p);
                 idx    = props.PixelList;
-
+                
                 if obj.AnchorPoints == 0
                     obj.AnchorPoints = getAnchorPoints(idx, hypln);
-                else 
-                    obj.AnchorPoints(:, :, frm) = getAnchorPoints(idx, hypln);
-                end                   
-
-            % Crop out PreHypocotyl for use as training data
-                hyp = processHypocotyl(obj.getImageData(frm, 'gray'), ...
-                                       obj.getAnchorPointsAtFrame(frm), crpsz);
-
-                if isempty(obj.PreHypocotyl)
-                    obj.PreHypocotyl      = Hypocotyl(obj.ExperimentName, ...
-                                                      obj.GenotypeName,   ...
-                                                      obj.SeedlingName,   ...
-                                                      'raw', hyp, 1);
                 else
-                    obj.PreHypocotyl(frm) = Hypocotyl(obj.ExperimentName, ...
-                                                      obj.GenotypeName,   ...
-                                                      obj.SeedlingName,   ...
-                                                      'raw', hyp, frm);
+                    obj.AnchorPoints(:, :, frm) = getAnchorPoints(idx, hypln);
                 end
                 
-            catch 
+                % Crop out and resize PreHypocotyl for use as training data
+                hGray = processHypocotyl(obj.getImageData(frm, 'gray'), ...
+                    obj.getAnchorPointsAtFrame(frm), crpsz);
+                
+                hBW   = processHypocotyl(obj.getImageData(frm, 'bw'), ...
+                    obj.getAnchorPointsAtFrame(frm), crpsz);
+                
+                if isempty(obj.PreHypocotyl)
+                    obj.PreHypocotyl      = Hypocotyl(obj.ExperimentName, ...
+                        obj.GenotypeName,   ...
+                        obj.SeedlingName,   ...
+                        'raw', hGray, hBW, 1);
+                else
+                    obj.PreHypocotyl(frm) = Hypocotyl(obj.ExperimentName, ...
+                        obj.GenotypeName,   ...
+                        obj.SeedlingName,   ...
+                        'raw', hGray, hBW, frm);
+                end
+                
+            catch
                 fprintf('No image data found at %s Frame %d \n', obj.getSeedlingName, frm);
                 obj.PreHypocotyl(frm) = Hypocotyl(obj.ExperimentName, ...
-                                                  obj.GenotypeName,   ...
-                                                  obj.SeedlingName,   ...
-                                                  'raw', [], frm);
+                    obj.GenotypeName,   ...
+                    obj.SeedlingName,   ...
+                    'raw', [], [], frm);
                 return;
-            end            
+            end
         end
         
         
-        % Instance a Hypocotyl object and set images to each frame 
+        % Instance a Hypocotyl object and set images to each frame
         % NOTE: needs to check for valid Hypocotyl in each frame
         %   [hypVisible, hypFrm] = check4Hypocotyl(fim);
         %   if ~hypVisible
         %       fprintf(2, 'No Hypocotyl found in Frame %d', frm);
-        %   else 
+        %   else
         %       obj.Hypocotyl   = Hypocotyl(obj); % Instance Hypocotyl for Seedling
         %       obj.HypIdx(frm) = hypFrm;         % Start indexing frames containing valid Hypocotyl
-        %   end                              
-                
+        %   end
+        
     end
     
-%% ------------------------- Helper Methods ---------------------------- %%
+    %% ------------------------- Helper Methods ---------------------------- %%
     
     methods (Access = public)
-    %% Various methods for this class
-    
+        %% Various methods for this class
+        
         function obj = setSeedlingName(obj, sn)
-        %% Set name for Seedling
+            %% Set name for Seedling
             obj.SeedlingName = string(sn);
         end
         
         function sn = getSeedlingName(obj)
-        %% Return name for Seedling
+            %% Return name for Seedling
             sn = obj.SeedlingName;
         end
         
         function obj = setImageData(obj, frm, dt)
-        %% Set data for Seedling at desired frame
+            %% Set data for Seedling at desired frame
             obj.Data(frm) = dt;
         end
         
-        function dt_out = getImageData(varargin)
-        %% Return data for Seedling at desired frame
-        % User can specify which image from structure with 3rd parameter            
+        function dat = getImageData(varargin)
+            %% Return data for Seedling at desired frame
+            % User can specify which image from structure with 3rd parameter
             switch nargin
                 case 1
-                    fprintf(2, 'Error. Must specify frame');
-                    return;
+                    % Full structure of image data at all frames 
+                    obj = varargin{1};
+                    dat = obj.Data;
                     
-                case 2                    
-                    obj    = varargin{1};
+                case 2
+                    % All image data at frame                   
                     try
-                        frm    = varargin{2};
-                        dt_out = obj.Data(frm);
-                    catch e
+                        obj = varargin{1};
+                        frm = varargin{2};
+                        dat = obj.Data(frm);
+                    catch
                         fprintf(2, 'No image at frame %d \n', frm);
                     end
                     
                 case 3
-                    obj = varargin{1};
-                    
+                    % Specific image type at frame                                
+                    % Check if frame exists
                     try
-                        frm    = varargin{2};
-                        dt_out = obj.Data(frm);
-                    catch e
-%                         fprintf(2, 'No image at frame %d \n', frm);
+                        obj = varargin{1};
+                        frm = varargin{2};
+                        req = varargin{3};
+                        dat = obj.Data(frm);
+                    catch
+                        fprintf(2, 'No image at frame %d \n', frm);
                     end
                     
-                    req = varargin{3};
+                    % Get requested data field 
                     try
-                        dtf = obj.Data(frm);
-                        switch req
-                            case 'gray'
-                                dt_out = dtf.Image_gray;
-
-                            case 'bw'
-                                dt_out = dtf.Image_BW;
-
-                            case 'skel'
-                                dt_out = dtf.Skeleton;                           
-                        end
-                        
-                    catch e
-                        fprintf(2, 'Error requesting field, %s', e.message);
-                        dt_out = {};
-                        return;
+                        dfm = obj.Data(frm);
+                        dat = dfm.(req);                        
+                    catch 
+                        fn  = fieldnames(dfm);
+                        str = sprintf('%s, ', fn{:});
+                        fprintf(2, 'Requested field must be either: %s\n', str);
                     end
                     
                 otherwise
-                    fprintf(2, 'Error requesting data.');
+                    fprintf(2, 'Error requesting data.\n');
                     return;
             end
-                    
+            
         end
         
         function obj = setCoordinates(obj, frm, coords)
-        %% Set coordinates of a Seedling at a specific frame
-        % This method allows setting the xy-coordinates of a Seedling at given time point
-        % Coordinates come from the WeightedCentroid of the Seedling in a full image
+            %% Set coordinates of a Seedling at a specific frame
+            % This method allows setting the xy-coordinates of a Seedling at given time point
+            % Coordinates come from the WeightedCentroid of the Seedling in a full image
             if numel(obj.Coordinates) == 0
                 obj.Coordinates = coords;
             else
-                obj.Coordinates(frm, :) = coords;    
+                obj.Coordinates(frm, :) = coords;
             end
         end
         
         function coords = getCoordinates(obj, frm)
-        %% Returns coordinates at specified frame
-        % Make sure to check for nan (no coordinate found at frame
+            %% Returns coordinates at specified frame
+            % Make sure to check for nan (no coordinate found at frame
             try
                 coords = obj.Coordinates(frm, :);
-            catch e
+            catch
                 fprintf('No coordinate found at frame %d \n', frm);
                 coords = [nan nan];
             end
         end
         
         function obj = setFrame(obj, frm, bd)
-        %% Set birth or death Frame number for Seedling
+            %% Set birth or death Frame number for Seedling
             switch bd
                 case 'b'
                     obj.Frame = [frm obj.getFrame('d')];
@@ -272,7 +298,7 @@ classdef Seedling < handle
         end
         
         function frm = getFrame(obj, bd)
-        %% Return birth or death Frame number for Seedling
+            %% Return birth or death Frame number for Seedling
             switch bd
                 case 'b'
                     frm = obj.Frame(1);
@@ -285,47 +311,91 @@ classdef Seedling < handle
         end
         
         function increaseLifetime(obj, inc)
-        %% Increase Lifetime of Seedling by desired amount
+            %% Increase Lifetime of Seedling by desired amount
             obj.Lifetime = obj.Lifetime + inc;
         end
         
         function lt = getLifetime(obj)
-        %% Return Lifetime of Seedling
+            %% Return Lifetime of Seedling
             lt = obj.Lifetime;
-        end        
-            
-        function obj = setPData(obj, frm, pd)
-        %% Set extra properties data for Seedling at given frame   
-        % If first frame, then initialize struct with given fieldnames
-            if numel(obj.PData) == 0
-                obj.PData = pd;
-            else
-                obj.PData(frm) = pd;
-            end
         end
         
-        function pd = getPData(obj, frm)
-        %% Return extra properties data at given frame
-            pd = obj.PData(frm);
+        function obj = setPData(obj, frm, pd)
+            %% Set extra properties data for Seedling at given frame
+            % If first frame, then initialize struct with given fieldnames
+            try
+                
+                obj.PData(frm) = pd;
+            catch
+                fprintf(2, 'No pdata at index %d \n', frm);
+            end
+        end
+               
+        function pd = getPData(varargin)
+            %% Return extra properties data at given frame
+            % User can specify which image from structure with 3rd parameter
+            switch nargin
+                case 1
+                    % Full structure of data at all frames 
+                    obj = varargin{1};
+                    pd  = obj.PData;
+                    
+                case 2
+                    % All data at given frame                   
+                    try
+                        obj = varargin{1};
+                        frm = varargin{2};
+                        pd  = obj.PData(frm);
+                    catch
+                        fprintf(2, 'No data at frame %d \n', frm);
+                    end
+                    
+                case 3
+                    % Specific data property at given frame                                
+                    % Check if frame exists
+                    try
+                        obj = varargin{1};
+                        frm = varargin{2};
+                        req = varargin{3};
+                        pd  = obj.PData(frm);
+                    catch
+                        fprintf(2, 'No date at frame %d \n', frm);
+                    end
+                    
+                    % Get requested data field 
+                    try
+                        dfm = obj.PData(frm);
+                        pd = dfm.(req);                        
+                    catch 
+                        fn  = fieldnames(dfm);
+                        str = sprintf('%s, ', fn{:});
+                        fprintf(2, 'Requested field must be either: %s\n', str);
+                    end
+                    
+                otherwise
+                    fprintf(2, 'Error requesting data.\n');
+                    return;
+            end
+            
         end
         
         function pts = getAnchorPointsAtFrame(obj, frm)
-        %% Returns 4x2 array of 4 anchor points representing Hypocotyl
+            %% Returns 4x2 array of 4 anchor points representing Hypocotyl
             try
                 pts = obj.AnchorPoints(:, :, frm);
             catch e
                 fprintf(2, 'No AnchorPoints at index %s \n', frm);
                 fprintf(2, '%s \n', e.getReport);
             end
-        end        
+        end
         
         function hyps = getAllPreHypocotyls(obj)
-        %% Returns all PreHypocotyls
+            %% Returns all PreHypocotyls
             hyps = obj.PreHypocotyl;
         end
         
         function hyp = getPreHypocotyl(obj, frm)
-        %% Return PreHypocotyl at desired frame
+            %% Return PreHypocotyl at desired frame
             try
                 hyp = obj.PreHypocotyl(frm);
             catch e
@@ -333,16 +403,40 @@ classdef Seedling < handle
                 fprintf(2, '%s \n', e.getReport);
             end
         end
-            
+        
         
     end
     
-%% ------------------------- Private Methods --------------------------- %%
+    %% ------------------------- Private Methods --------------------------- %%
     
     methods (Access = private)
-    %% Private helper methods
-
-    
+        %% Private helper methods
+        function args = parseConstructorInput(varargin)
+            %% Parse input parameters for Constructor method
+            p = inputParser;
+            p.addRequired('SeedlingName');
+            p.addOptional('ExperimentName', '');
+            p.addOptional('ExperimentPath', '');
+            p.addOptional('GenotypeName', '');
+            p.addOptional('Frame', zeros(1,2));
+            p.addOptional('Lifetime', 0);
+            p.addOptional('Coordinates', []);
+            p.addOptional('Data', struct());
+            p.addOptional('gray', []);
+            p.addOptional('bw', []);
+            p.addOptional('cntr', []);
+            p.addOptional('PData', struct());
+            p.addOptional('PDPROPERTIES', {});
+            p.addOptional('Midline', []);
+            p.addOptional('AnchorPoints', zeros(0, 0, 0));
+            p.addOptional('HypIdx', []);
+            p.addOptional('PreHypocotyl', Hypocotyl);
+            
+            % Parse arguments and output into structure
+            p.parse(varargin{2}{:});
+            args = p.Results;
+        end
+        
     end
     
 end
