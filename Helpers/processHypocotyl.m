@@ -1,19 +1,22 @@
 function img_out = processHypocotyl(img_input, anchor_points, scale_size)
-%% processHypocotyl: one-line description
-%  Detailed Summary
+%% processHypocotyl: crop out and rescale an image using specfic anchorpoints 
+% This function is used by Seedling.FindHypocotyl to use defined anchorpoints to determine where to
+% crop out the sub-image. The image is cropped and then rescaled to size defined by scale_size. 
 %   
 %  Usage: 
 %      [output1, output2] = functionName(input1, input2)
 %   
 %  Input:
-%      input1: input1 summary
-%      input2: input2 summary
+%      img_input: original image to crop and resize
+%      anchor_points: [4 x 2] array defining the cropping anchorpoints of img_input
+%      scale_size: [1 x 2] array defining the rescale size 
 %  
 %  Output:
-%      output1: output1 summary
-%      output2: output2 summary
+%      img_out: cropped and rescaled image 
+%
 
-%%
+
+%% Wow this is so complicated 
     crp1    = [0 0 anchor_points(4,1) anchor_points(2,2)]; % Crop region containing PreHypocotyl
     cim1    = imcrop(img_input, crp1);                     % Crop image of PreHypocotyl
     img_out = imresize(cim1, scale_size);                  % Final rescaled image 
