@@ -54,7 +54,7 @@ classdef Experiment < handle
             % Output: n/a
             %   If Genotype was sucessfully created, NumberOfGenotypes is incremented by 1
             
-            % So far, only 3 methods for creating new Genotype 
+            % So far, only 3 methods for creating new Genotype
             narginchk(1, 5);
             switch nargin
                 case 1
@@ -122,29 +122,43 @@ classdef Experiment < handle
             end
         end
         
-        function S = combineSeedlings(obj)
-            %% Combine all Seedlings from all Genotypes into single object array
-            n = sum(cat(1, obj.getGenotype(':').NumberOfSeedlings));
-            S = repmat(Seedling(''), [1 n]);
-            j = 1;
-            for i = 1 : obj.NumberOfGenotypes
-                g = obj.getGenotype(i);
-                for ii = 1 : g.NumberOfSeedlings
-                    S(j) = g.getSeedling(ii);
-                    j = j + 1;
-                end
-            end
+        function G = combineGenotypes(obj)
+            %% Combine all Genotypes into single object array
+            G = obj.getGenotype(':');
         end
         
+        function S = combineSeedlings(obj)
+            %% Combine all Seedlings into single object array
+            G = obj.combineGenotypes;
+            S = arrayfun(@(x) x.getSeedling(':'), G, 'UniformOutput', 0);
+            S = cat(1, S{:});
+        end
+        
+        function H = combineHypocotyls(obj)
+            %% Combine all Hypocotyls into single object array
+            % BE SURE TO CHANGE THIS WHEN I FIX HOW HYPOCOTYL IS STORED IN SEEDLING
+            % Each Seedling will have single Hypocotyl, derived from data from the combination of
+            % good frames of each PreHypocotyl
+            S = obj.combineSeedlings;
+            H = arrayfun(@(x) x.getAllPreHypocotyls, S, 'UniformOutput', 0);
+            H = cat(2, H{:});
+        end
+        
+        function C = AllHypocotylsWithContours(obj)
+            %% Return all Hypocotyls with manually-drawn CircuitJB objects
+            H = obj.combineHypocotyls;
+            C = arrayfun(@(x) x.getContour('org'), H, 'UniformOutput', 0);
+            n = cellfun(@(x) ~isempty(x), C, 'UniformOutput', 0);
+            n = cat(1,n{:});
+            C = cat(1,C{n});
+        end
+                        
         function check_outOfFrame(obj, frm, s)
             %% Check if Seedling grows out of frame
             %
             % obj: this Experiment
             % frm: frame of time-lapse
             % s  : Seedling to check
-            
-            
-            
             
         end
         

@@ -5,18 +5,20 @@ classdef Hypocotyl < handle
     properties (Access = public)
         %% Hypocotyl properties
         ExperimentName
+        ExperimentPath
         GenotypeName
         SeedlingName
         HypocotylName
-        Frame = zeros(1, 2);
+        Frame
         Lifetime
-        Data
     end
     
     properties (Access = private)
         %% Private data stored here
+        Image
         Midline
         Coordinates
+        Contour
     end
     
     methods (Access = public)
@@ -37,46 +39,24 @@ classdef Hypocotyl < handle
                 obj.HypocotylName = '';
             end
             
-            
-            
+            obj.Image = struct('gray', [], ...
+                'bw', [], ...
+                'ctr', ContourJB);
         end
         
-        %         function obj = Hypocotyl(exp, geno, sdl, typ, im, bw, frm)
-        %             %% Constructor method for Hypocotyl
-        %             obj.ExperimentName = exp;
-        %             obj.GenotypeName   = geno;
-        %             obj.SeedlingName   = sdl;
-        %
-        %             switch typ
-        %                 case 'raw'
-        %                     % Set PreHypocotyl at frame
-        %                     n = 'PreHypocotyl';
-        %
-        %                 case 'new'
-        %                     % Set Processed Hypocotyl
-        %                     n = 'Hypocotyl';
-        %
-        %                 otherwise
-        %                     % Just default to new Hypocotyl at frame
-        %                     n = 'Hypocotyl';
-        %
-        %             end
-        %
-        %
-        %             h = sprintf('%s_%s_{%d}', n, obj.SeedlingName(end), frm);
-        %             setHypocotylName(obj, h);
-        %             obj.Data = struct('Image_gray', im,       ...
-        %                 'Image_BW',   bw, ...
-        %                 'Skeleton',   zeros(0));
-        %
-        %         end
-        %
+        function [im, bw] = FlipMe(obj)
+            %% Store a flipped version of each Hypocotyl
+            % Flipped version allows equal representation of all orientations of contours (lolz)
+            im = flip(obj.Image.gray, 2);
+            bw = flip(obj.Image.bw, 2);
+            
+            obj.Contour(2) = obj.Contour;
+        end
         
     end
     
     methods (Access = public)
-        % Various helper methods
-        
+        %% Various helper methods
         function obj = setHypocotylName(obj, n)
             %% Set name of Hypocotyl
             obj.HypocotylName = n;
@@ -87,43 +67,115 @@ classdef Hypocotyl < handle
             n = obj.HypocotylName;
         end
         
-        function dt_out = getImageData(varargin)
-            %% Return data for Hypocotyl
-            % User can specify which image from structure with 3rd parameter
-            obj = varargin{1};
+        function obj = setFrame(obj, req, frm)
+            %% Set birth or death frames
+            try
+                switch req
+                    case 'b'
+                        obj.Frame(1) = frm;
+                        
+                    case 'd'
+                        obj.Frame(2) = frm;
+                        
+                    otherwise
+                        fprintf(2, 'Request must be ''b'' or ''d''\n');
+                end
+            catch
+                fprintf(2, 'No data at frame %d\n', frm);
+            end
+            
+        end
+        
+        function frm = getFrame(obj, req)
+            %% Returns birth or death frame
+            switch req
+                case 'b'
+                    frm = obj.Frame(1);
+                    
+                case 'd'
+                    frm = obj.Frame(2);
+                    
+                otherwise
+                    fprintf(2, 'Request must be ''b'' or ''d''\n');
+                    return;
+            end
+        end
+        
+        function obj = setImage(obj, req, dat)
+            %% Store data into Hypocotyl
+            % Set data into requested field
+            try
+                if isfield(obj.Image, req)
+                    obj.Image.(req) = dat;
+                else
+                    fn  = fieldnames(obj.Image);
+                    str = sprintf('%s, ', fn{:});
+                    fprintf(2, 'Requested field must be either: %s\n', str);
+                end
+            catch
+                fprintf(2, 'Error setting %s data\n', req);
+            end
+        end
+        
+        function dat = getImage(varargin)
+            %% Return image for this Hypocotyl
+            % User can specify which image from structure with 2nd parameter
             switch nargin
-                
                 case 1
-                    dt_out = obj.Data;
+                    % Full structure of image data at all frames
+                    obj = varargin{1};
+                    dat = obj.Image;
                     
                 case 2
-                    dat = obj.Data;
-                    req = varargin{2};
-                    
+                    % Return Specific image type
+                    % Get requested data field
                     try
-                        switch req
-                            case 'gray'
-                                dt_out = dat.Image_gray;
-                                
-                            case 'bw'
-                                dt_out = dat.Image_BW;
-                                
-                            case 'skel'
-                                dt_out = dat.Skeleton;
-                        end
-                        
-                    catch e
-                        fprintf(2, 'Error requesting field, %d', e.Message);
-                        dt_out = {};
-                        return;
+                        obj = varargin{1};
+                        req = varargin{2};
+                        dfm = obj.Image;
+                        dat = dfm.(req);
+                    catch
+                        fn  = fieldnames(dfm);
+                        str = sprintf('%s, ', fn{:});
+                        fprintf(2, 'Requested field must be either: %s\n', str);
                     end
                     
                 otherwise
-                    fprintf(2, 'Error requesting data.');
-                    dt_out = {};
+                    fprintf(2, 'Error requesting data.\n');
                     return;
             end
-            
+        end
+        
+        function obj = setContour(obj, crc, req)
+            %% Set manually-drawn CircuitJB object (original or flipped)
+            switch req
+                case 'org'
+                    try
+                        obj.Contour(1) = crc;
+                    catch
+                        obj.Contour    = crc;
+                    end
+                case 'flp'
+                    obj.Contour(2) = crc;
+                otherwise
+                    fprintf(2, 'Error setting %s Contour\n', req);
+            end
+        end
+        %   sIdx: index of randomly-selected Seedlings
+        function crc = getContour(obj, req)
+            %% Return original or flipped version of CircuitJB object
+            switch req
+                case 'org'
+                    try
+                        crc = obj.Contour(1);
+                    catch
+                        crc = obj.Contour;
+                    end
+                case 'flp'
+                    crc = obj.Contour(2);
+                otherwise
+                    fprintf(2, 'Error returning %s contour\n', req);
+            end
         end
         
     end
@@ -135,13 +187,15 @@ classdef Hypocotyl < handle
             p = inputParser;
             p.addRequired('HypocotylName');
             p.addOptional('ExperimentName', '');
+            p.addOptional('ExperimentPath', '');
             p.addOptional('GenotypeName', '');
             p.addOptional('SeedlingName', '');
             p.addOptional('Frame', zeros(1,2));
             p.addOptional('Lifetime', 0);
             p.addOptional('Coordinates', []);
-            p.addOptional('Data', struct());
+            p.addOptional('Image', struct());
             p.addOptional('Midline', []);
+            p.addOptional('Contour', CircuitJB);
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});

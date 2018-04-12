@@ -13,10 +13,10 @@ classdef Genotype < handle
     
     properties (Access = private)
         %% Private data to hold
-        RawImages
+        Images
         RawSeedlings
         Seedlings
-        CONTOURSIZE  = 800           % Number of points to normalize contours
+        CONTOURSIZE  = 800           % Number of points to normalize Seedling contours
         MASKSIZE     = [3000 100000] % Cut-off area for objects in image
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
     end
@@ -41,36 +41,35 @@ classdef Genotype < handle
                 obj.GenotypeName = '';
             end
             
-            
-            
         end
         
         function obj = StackLoader(obj, varargin)
             %% Load raw images from directory
             % Load images from directory
             if nargin == 0
-                [obj.RawImages, exptName] = getImageFiles;
-                obj.GenotypeName          = getDirName(exptName);
+                [obj.Images, exptName] = getImageFiles;
+                obj.GenotypeName       = getDirName(exptName);
             else
                 fProps = varargin{1};
                 imgExt = varargin{2};
                 srtBy  = varargin{3};
                 vis    = varargin{4};
                 
-                [obj.RawImages, ~] = getImageFiles(fProps, imgExt, srtBy, vis);
+                [obj.Images, ~] = getImageFiles(fProps, imgExt, srtBy, vis);
             end
             
-            obj.TotalImages = numel(obj.RawImages);
+            obj.TotalImages = numel(obj.Images);
         end
         
-        function obj = AddSeedlingsFromRange(obj, rng)
+        function obj = AddSeedlingsFromRange(obj, rng, hypln)
             %% Function to extract Seedling objects from given set of frames
             % This function calls createMask on each image of this Genotype
-            %
+            % 
+            
             % Find raw seedlings from each frame in range
             frm = 1;      % Set first frame for first Seedling
             for i = rng
-                createMask(obj, obj.RawImages{i}, frm, obj.MASKSIZE);
+                findSeedlings(obj, obj.Images{i}, frm, obj.MASKSIZE, hypln);
                 frm = frm + 1;
             end
             
@@ -80,7 +79,7 @@ classdef Genotype < handle
             %% Align each Seedling and Filter out empty time points [obtain true lifetime]
             % Calls an assortment of helper functions that filter out empty frames
             % and align Seedling objects through frames
-            filterSeedlings(obj, obj.RawSeedlings);
+            filterSeedlings(obj, obj.RawSeedlings, size(obj.RawSeedlings,1));
             obj.NumberOfSeedlings = numel(obj.Seedlings);
         end
         
@@ -90,7 +89,6 @@ classdef Genotype < handle
     
     methods (Access = public)
         %% Various helper functions
-        
         function obj = setGenotypeName(obj, gn)
             %% Set name of Genotype
             obj.GenotypeName = gn;
@@ -101,9 +99,9 @@ classdef Genotype < handle
             gn = obj.GenotypeName;
         end
         
-        function rawImages = getAllRawImages(obj)
+        function rawImages = getAllImages(obj)
             %% Return all raw images
-            rawImages = obj.RawImages;
+            rawImages = obj.Images;
         end
         
         function rawSeedlings = getAllRawSeedlings(obj)
@@ -111,33 +109,30 @@ classdef Genotype < handle
             rawSeedlings = obj.RawSeedlings;
         end
         
-        function im = getRawImage(obj, imNum)
-            %% Return single raw image
+        function im = getImage(obj, num)
+            %% Return single raw image at index
             try
-                im = obj.RawImages{imNum};
-            catch e
-                fprintf(2, 'No RawImage at index %s \n', imNum);
-                fprintf(2, '%s \n', e.getReport);
+                im = obj.Images{num};
+            catch
+                fprintf(2, 'No image at index %s \n', num);
             end
         end
         
-        function sd = getRawSeedling(obj, sdNum)
-            %% Return single unindexed seedlings
+        function sd = getRawSeedling(obj, num)
+            %% Return single unindexed seedlings at index
             try
-                sd = obj.RawSeedlings{sdNum};
-            catch e
-                fprintf(2, 'No RawSeedling at index %s \n', sdNum);
-                fprintf(2, '%s \n', e.getReport);
+                sd = obj.RawSeedlings{num};
+            catch
+                fprintf(2, 'No RawSeedling at index %s \n', num);
             end
         end
         
-        function s = getSeedling(obj, sIdx)
+        function s = getSeedling(obj, num)
             %% Returns indexed seedling at desired index
             try
-                s = obj.Seedlings(sIdx);
-            catch e
-                fprintf(2, 'No Seedling at index %d \n', sIdx);
-                fprintf(2, '%s \n', e.getReport);
+                s = obj.Seedlings(num);
+            catch
+                fprintf(2, 'No Seedling at index %d \n', num);
             end
         end
         
@@ -155,7 +150,7 @@ classdef Genotype < handle
             p.addOptional('ExperimentPath', '');
             p.addOptional('TotalImages', 0);
             p.addOptional('NumberOfSeedlings', 0);
-            p.addOptional('RawImages', {});
+            p.addOptional('Images', {});
             p.addOptional('RawSeedlings', {});
             p.addOptional('Seedlings', Seedling);
             
@@ -164,7 +159,7 @@ classdef Genotype < handle
             args = p.Results;
         end
         
-        function obj = createMask(obj, im, frm, mskSz)
+        function obj = findSeedlings(obj, im, frm, mskSz, hypln)
             %% Segmentation and Extraction of Seedling objects from raw image
             % This function binarizes a grayscale image at the given frame and
             % extracts features of a specified minimum size. Output is in the form
@@ -174,153 +169,148 @@ classdef Genotype < handle
             % Input:
             %   obj: this Genotype object
             %   im: grayscale image containing growing seedlings
-            %   frm: time point in a stack of images
+            %   frm: time point for Seedling's lifetime (not frame in time lapse)
             %   mskSz: min-max cutoff size for objects labelled as a Seedling
+            %   hypln: length defining the distance to set lowest AnchorPoint 
             
-            %% Old Method
-            %             % Segmentation Method 2: inverted BW, filtering out small objects
-            %             msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, 'ForegroundPolarity', 'bright');
-            %             flt = bwareafilt(imcomplement(msk), mskSz);
-            %             dd  = bwconncomp(flt);
-            %
-            %             % Find objects in BW image
-            %             p   = {'Area', 'BoundingBox', 'PixelList', 'Image', 'WeightedCentroid', 'Orientation'};
-            %             prp = regionprops(dd, im, p);
-            %
-            %             % Get grayscale/binary/skeleton image and coordinates of a RawSeedling
-            %             for i = 1:length(prp)
-            %                 gray_im                  = imcrop(im, prp(i).BoundingBox);
-            %                 skel_im                  = zeros(0,0);
-            %                 obj.RawSeedlings{i, frm} = Seedling(obj.ExperimentName,   ...
-            %                     obj.GenotypeName,     ...
-            %                     sprintf('Raw_%d', i), ...
-            %                     gray_im,              ...
-            %                     double(prp(i).Image), ...
-            %                     skel_im);
-            %                 obj.RawSeedlings{i, frm}.setCoordinates(1, prp(i).WeightedCentroid);
-            %                 obj.RawSeedlings{i, frm}.setPData(1, prp(i));
-            %                 obj.RawSeedlings{i, frm}.setFrame(frm, 'b');
-            %             end
-            
-            %% New Method
             % Segmentation Method 2: inverted BW, filtering out small objects
             [dd, msk] = segmentObjectsHQ(im, mskSz);
+            prp       = regionprops(dd, im, obj.PDPROPERTIES);
             
-            % Find objects in BW image            
-            prp = regionprops(dd, im, obj.PDPROPERTIES);
+            % Crop grayscale/bw/contour image of RawSeedling
+            imgs = arrayfun(@(x) imcrop(im, x.BoundingBox), prp, 'UniformOutput', 0);
+            bws  = arrayfun(@(x) imcrop(msk, x.BoundingBox), prp, 'UniformOutput', 0);
+            ctrs = cellfun(@(x) extractContour(x, obj.CONTOURSIZE), bws, 'UniformOutput', 0);
             
-            % Crop grayscale/bw/contour image and coordinates of RawSeedling
-            grays = arrayfun(@(x) imcrop(im, x.BoundingBox), prp, 'UniformOutput', 0);
-            bws   = arrayfun(@(x) imcrop(msk, x.BoundingBox), prp, 'UniformOutput', 0);
-            cntrs = cellfun(@(x) extractContour(x, obj.CONTOURSIZE), bws, 'UniformOutput', 0);
-            
-            % Create Seedling objects using data from mask
-            for idx = 1 : numel(prp)
-                nm = sprintf('Raw_%d', idx);
-                obj.RawSeedlings{idx, frm} = Seedling(nm,   ...
+            % Create Seedling objects using data from bw mask
+            for s = 1 : numel(prp)
+                nm  = sprintf('Raw_%d', s);
+                sdl = Seedling(nm, ...
                     'ExperimentName', obj.ExperimentName, ...
                     'ExperimentPath', obj.ExperimentPath, ...
-                    'GenotypeName', obj.GenotypeName,     ...
-                    'gray', grays{idx},                     ...
-                    'bw', bws{idx},                         ...
-                    'cntr', cntrs{idx});
+                    'GenotypeName',   obj.GenotypeName,   ...
+                    'PData',          prp(s));
                 
-                %% STOPPED HERE 03/18/2018 [error setting PData]
-                obj.RawSeedlings{idx, frm}.setCoordinates(1, prp(idx).WeightedCentroid);
-                obj.RawSeedlings{idx, frm}.setPData(1, prp(idx)); ries
-                obj.RawSeedlings{idx, frm}.setFrame(frm, 'b');
+                sdl.increaseLifetime;
+                sdl.setFrame(frm, 'b');
+                sdl.setCoordinates(1, prp(s).WeightedCentroid);
+                sdl.setImage(1, 'gray', imgs{s});
+                sdl.setImage(1, 'bw', imcomplement(bws{s}));
+                sdl.setImage(1, 'ctr', ctrs{s});                                
+                sdl.setAnchorPoints(1, bwAnchorPoints(sdl.getImage(1, 'bw'), hypln));
+                obj.RawSeedlings{s,frm} = sdl;
             end
-            
         end
         
-        function obj = filterSeedlings(obj, rawSeedlings)
+        function obj = filterSeedlings(obj, rs, nSeeds)
             %% Filter out bad Seedling objects and frames
             % This function iterates through the inputted cell array to add only good Seedlings
             % Runs the algorithm for checking centroid coordinates of each Seedling to align correctly
             
-            % Create Seedling
-            for i = 1 : size(rawSeedlings, 1)
-                if numel(obj.Seedlings) == 0
-                    obj.Seedlings   = Seedling(obj.ExperimentName, ...
-                        obj.GenotypeName,   ...
-                        num2str(i));
-                else
-                    obj.Seedlings(i) = Seedling(obj.ExperimentName, ...
-                        obj.GenotypeName,   ...
-                        num2str(i));
-                end
+            % Store all coordinates in 3-dim matrix
+            rs       = empty2nan(rs, Seedling('empty', 'Coordinates', [nan nan]));
+            crdsCell = cellfun(@(x) x.getCoordinates(1), rs, 'UniformOutput', 0);
+            
+            crdsMtrx = zeros(size(crdsCell,1), 2, size(crdsCell,2));
+            for i = 1 : size(crdsCell, 2)
+                crdsMtrx(:,:,i) = cat(1, crdsCell{:,i});
             end
             
+            % Create empty Seedling array
+            mkSdl = @(x) Seedling(sprintf('Seedling_{%s}', num2str(x)), ...
+                'ExperimentName', obj.ExperimentName, ...
+                'ExperimentPath', obj.ExperimentPath, ...
+                'GenotypeName',   obj.GenotypeName);
             
-            for sdl = 1 : numel(obj.Seedlings)
-                for frm = 1 : size(rawSeedlings, 2)
-                    toCheck = rawSeedlings(:, frm);
-                    alignSeedling(obj, obj.Seedlings(sdl), toCheck, [sdl ii]);
-                end
-            end
+            sdls = arrayfun(@(x) mkSdl(x), 1:nSeeds, 'UniformOutput', 0)';
+            sdls = cat(1, sdls{:});
             
-        end
-        
-        function obj = alignSeedling(obj, fs, rs, frms)
-            %% Compare coordinates of Seedlings at frame and select closest match from previous frame
-            % Input:
-            %   fs  : current Seedling to sort
-            %   rs  : cell array of all RawSeedlings at single frame
-            %   frms: indeces for frame and raw seedling index
+            % Align Seedling coordinates by closest matching RawSeedling at each frame
+            sdlIdx = alignCoordinates(crdsMtrx, 1);
             
-            % Check for available RawSeedlings to check at this frame
-            vFrm(1:length(rs)) = true;
-            UNAVAILABLE_MSG    = 'unavailable';
-            
-            for i = 1:length(vFrm)
-                if isempty(rs{i})
-                    vFrm(i) = false;
-                    break;
-                elseif strcmp(rs{i}.SeedlingName, UNAVAILABLE_MSG)
-                    vFrm(i) = false;
-                end
-            end
-            
-            if sum(vFrm) <= 0
-                %                 fprintf(2, 'No valid Seedlings at %s [%d, %d] \n', num2str(vFrm), frms(1), frms(2));
-                return;
-            else
-                vIdx = find(vFrm == 1);
-            end
-            
-            
-            % Set Data from 1st available RawSeedling if aligning 1st frame
-            if fs.getLifetime == 0
-                fs.increaseLifetime(1);
-                fs.setCoordinates(fs.getLifetime, rs{vIdx(1)}.getCoordinates(1));
-                fs.setImageData(  fs.getLifetime, rs{vIdx(1)}.getImageData(1));
-                fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
-                fs.setFrame(rs{vIdx(1)}.getFrame('b'), 'b');
-                
-                % Mark RawSeedling as unavailable for next iterations
-                rs{vIdx(1)}.setSeedlingName(UNAVAILABLE_MSG);
-                
-                % Search coordinates of available index and find closest match
-            else
-                closer_idx = compareCoords(fs.getCoordinates(fs.getLifetime), rs(vIdx));
-                
-                fs.increaseLifetime(1);
-                
-                if ~isnan(closer_idx)
-                    fs.setCoordinates(fs.getLifetime, rs{closer_idx}.getCoordinates(1));
-                    fs.setImageData(  fs.getLifetime, rs{closer_idx}.getImageData(1));
-                    fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
-                    fs.setFrame(rs{closer_idx}.getFrame('b'), 'd');
+            for i = 1 : numel(sdls)
+                sdl = sdls(i);
+                idx = sdlIdx(i, :);
+                for ii = 1 : length(idx)
+                    t = rs{i,ii};
                     
-                    % Mark RawSeedling as unavailable for next iterations
-                    rs{closer_idx}.setSeedlingName(UNAVAILABLE_MSG);
+                    if sdl.getLifetime == 1
+                        sdl.setFrame(t.getFrame('b'), 'b');
+                    else
+                        sdl.setFrame(t.getFrame('b'), 'd');                        
+                    end
+                    
+                    sdl.increaseLifetime;
+                    sdl.setCoordinates(sdl.getLifetime, t.getCoordinates(1));
+                    sdl.setImage(sdl.getLifetime, 'all', t.getImage);
+                    sdl.setAnchorPoints(sdl.getLifetime, t.getAnchorPoints(1));
+                    sdl.setPData(sdl.getLifetime, t.getPData);
                 end
             end
             
-        end
+            obj.Seedlings = sdls;
+        end               
+        
+        %         function obj = alignSeedling(obj, fs, rs)
+        %             %% Compare coordinates of Seedlings at frame and select closest match from previous frame
+        %             % Input:
+        %             %   fs  : current Seedling to sort
+        %             %   rs  : cell array of all RawSeedlings at single frame
+        %
+        %
+        %             % Check for available RawSeedlings to check at this frame
+        %             vFrm(1:length(rs)) = true;
+        %             UNAVAILABLE_MSG    = 'unavailable';
+        %
+        %             for i = 1:length(vFrm)
+        %                 if isempty(rs{i})
+        %                     vFrm(i) = false;
+        %                     break;
+        %                 elseif strcmp(rs{i}.SeedlingName, UNAVAILABLE_MSG)
+        %                     vFrm(i) = false;
+        %                 end
+        %             end
+        %
+        %             if sum(vFrm) <= 0
+        %                 %                 fprintf(2, 'No valid Seedlings at %s [%d, %d] \n', num2str(vFrm), frms(1), frms(2));
+        %                 return;
+        %             else
+        %                 vIdx = find(vFrm == 1);
+        %             end
+        %
+        %
+        %             % Set Data from 1st available RawSeedling if aligning 1st frame
+        %             UNAVAILABLE_MSG = 'unavailable';
+        %             if fs.getLifetime == 0
+        %                 fs.increaseLifetime(1);
+        %                 fs.setCoordinates(fs.getLifetime, rs{vIdx(1)}.getCoordinates(1));
+        %                 fs.setImageData(  fs.getLifetime, rs{vIdx(1)}.getImage(1));
+        %                 fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
+        %                 fs.setFrame(rs{vIdx(1)}.getFrame('b'), 'b');
+        %
+        %                 % Mark RawSeedling as unavailable for next iterations
+        %                 rs{vIdx(1)}.setSeedlingName(UNAVAILABLE_MSG);
+        %
+        %                 % Search coordinates of available index and find closest match
+        %             else
+        %                 closer_idx = compareCoords(fs.getCoordinates(fs.getLifetime), rs(vIdx));
+        %
+        %                 fs.increaseLifetime(1);
+        %
+        %                 % Only set data if closest Seedling is found
+        %                 if ~isnan(closer_idx)
+        %                     fs.setCoordinates(fs.getLifetime, rs{closer_idx}.getCoordinates(1));
+        %                     fs.setImageData(  fs.getLifetime, rs{closer_idx}.getImage(1));
+        %                     fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
+        %                     fs.setFrame(rs{closer_idx}.getFrame('b'), 'd');
+        %
+        %                     % Mark RawSeedling as unavailable for next iterations
+        %                     rs{closer_idx}.setSeedlingName(UNAVAILABLE_MSG);
+        %                 end
+        %             end
+        %
+        %         end
     end
 end
-
-
 
 
