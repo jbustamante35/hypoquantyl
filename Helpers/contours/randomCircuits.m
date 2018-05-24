@@ -49,7 +49,7 @@ if sv
     save(nm, '-v7.3', 'CRCS');
 end
 
-%% Show 8 first images and masks, unless < 10 contours drawn
+%% Show 8 first images and masks, unless < 8 contours drawn
 if vis
     if Ncrcs < 8
         N = Ncrcs;
