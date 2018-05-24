@@ -18,7 +18,6 @@ function [PCA_custom, PCA_builtin] = pcaAnalysis(rawD, numC, sz, sv, dName, vis)
 %   PCA_custom: structure containing data using my custom pca function
 %   PCA_builtin: structure containing data using MATLAB's built-int pca function
 %
-%
 
 %% PCA using my custom pca function
 % Find and subtract off means

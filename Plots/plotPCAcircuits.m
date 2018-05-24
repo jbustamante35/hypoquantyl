@@ -1,9 +1,9 @@
-function plotPCAcircuits(X, Y, c, n, f)
+function fig = plotPCAcircuits(X, Y, c, n, f)
 %% plotPCAcircuits: plot for checking PCA results of fully normalized manual contours
-%
+% 
 %
 % Usage:
-%   plotPCAcircuits(X, Y, c, n, f)
+%   fig = plotPCAcircuits(X, Y, c, n, f)
 %
 % Input:
 %   X: output from my custom pca analysis for x-coordinates
@@ -13,15 +13,16 @@ function plotPCAcircuits(X, Y, c, n, f)
 %   f: 0 to overlay plot on current figure, 1 to create new figure
 %
 % Output:
-%
+%   fig: figure outputted by this function
 %
 
 %% Set-up new figure or replace figure, and set-up function handle for contour conversion
 if f
-    figure;
+    fig = figure;
 else
     cla;
     clf;
+    fig = gcf;
 end
 
 set(gcf, 'Color', 'w');
@@ -49,6 +50,7 @@ title(ttl);
 hold off;
 
 subplot(223);
+axis ij;
 hold on;
 
 subplot(224);
@@ -73,12 +75,15 @@ for k = szC : szC : szB
     ttl = sprintf('Input vs Synthetic:\nNormalized Contours %d', n);
     title(ttl);
     
-    % Raw converted to interpolated coordinates overlaied on grayscale image
+    % Raw converted to interpolated coordinates overlaid on grayscale image
     subplot(224);
-    R = n2i(rts(j), raw((k - (szC - 1)) : k, :));
-    I = n2i(rts(j), trc((k - (szC - 1)) : k, :));
+    inc = (k - (szC - 1)) : k;
+    R   = n2i(rts(j), raw(inc, :));
+    I   = n2i(rts(j), trc(inc, :));
+    T   = norm2interp(rts(j));
     plot(R(:,1), R(:,2), '--', 'MarkerSize', 5, 'Color', C);
     plot(I(:,1), I(:,2), '.', 'MarkerSize', 5, 'Color', C);
+%     plot(T(:,1), T(:,2), '-', 'MarkerSize', 3, 'Color', C);
     ttl = sprintf('Input vs Synthetic:\nOverlay on Image %d', n);
     title(ttl);
     
