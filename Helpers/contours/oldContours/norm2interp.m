@@ -1,21 +1,26 @@
-% function I = norm2interp(n, m, b, d)
 function I = norm2interp(varargin)
-%% Convert NormTrace to InterpTrace
+%% norm2interp: convert NormTrace to InterpTrace
 % This function converts normalized outlines used for PCA back to the interpolated
 % outlines whose coordinates align with the drawn contour. This should be used for
-% verifying the normalization method.
+% verifying the normalization method of converting raw to normalized outlines.
 %
+% Calculation: I = ((n x d) + b) + m
+%   1) Multiply normalized coordinate by mean-subtracted, zero-set destination anchorpoint
+%   2) Add back mean-subtracted beginning anchorpoint
+%   3) Add back the mean coordinate of the original curve 
+% 
 % Usage:
 %   I = norm2interp(n, m, b, d)
 %
 % Input:
-%   n: normalized trace
-%   m: mean coordinate of curve
-%   b: starting anchorpoint after mean subtraction
-%   d: ending anchorpoint after mean subtraction and setting to 0
+%   n: x-/y-coordinates of normalized trace
+%   m: mean x-/y-coordinate of curve
+%   b: starting anchorpoint after mean subtraction ('b2')
+%   d: ending anchorpoint after mean subtraction and setting to 0 ('d2')
 %
 % Output:
 %   I: coordinates of Interpolated Outline
+%
 
 %% Extract values if only single Route inputted
 if nargin == 1
