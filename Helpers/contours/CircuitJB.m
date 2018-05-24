@@ -31,7 +31,7 @@ classdef CircuitJB < handle
                 end
                 
             else
-                % Set default properties for empty object                
+                % Set default properties for empty object
             end
             
             obj.Routes = initializeRoutes(obj);
@@ -42,9 +42,10 @@ classdef CircuitJB < handle
         
         function [X, Y] = LinearizeRoutes(obj)
             %% Return all X and Y coordinates from all Routes
-            [~, rtsX, rtsY] = concatRoutes(obj);
-            X = reshape(rtsX, numel(rtsX), 1);
-            Y = reshape(rtsY, numel(rtsY), 1);
+            %             [~, rtsX, rtsY] = concatRoutes(obj);
+            %             X = reshape(rtsX, numel(rtsX), 1);
+            %             Y = reshape(rtsY, numel(rtsY), 1);
+            [~, X, Y] = concatRoutes(obj);
         end
         
         function obj = CreateRoutes(obj)
@@ -337,16 +338,16 @@ classdef CircuitJB < handle
             % n is the size of each Route object's NormalTrace
             % Output:
             %   C: x- and y-coordinates in [m x n x 2] array
-            %   X: all x-coordinates
-            %   Y: all y-coordinates            
+            %   X: all x-coordinates in [n x 1 x m] array
+            %   Y: all y-coordinates in [n x 1 x m] array
             
             getDim = @(x,y) x(:,y);
             R = obj.Routes;
             X = arrayfun(@(x) getDim(x.getTrace(1), 1), R, 'UniformOutput', 0);
             Y = arrayfun(@(x) getDim(x.getTrace(1), 2), R, 'UniformOutput', 0);
             
-            X = cat(2, X{:});
-            Y = cat(2, Y{:});
+            X = cat(3, X{:});
+            Y = cat(3, Y{:});
             C = cat(3, X, Y);
         end
         

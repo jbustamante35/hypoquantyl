@@ -396,8 +396,7 @@ classdef Seedling < handle
         
     end
     
-    %% ------------------------- Private Methods --------------------------- %%
-    
+    %% ------------------------- Private Methods --------------------------- %%    
     methods (Access = private)
         %% Private helper methods
         function args = parseConstructorInput(varargin)
