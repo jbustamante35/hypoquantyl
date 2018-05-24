@@ -10,9 +10,11 @@ classdef Route < handle
     
     properties (Access = private)
         RawTrace
+        MidPoint
         MeanPoint
         InterpTrace
         INTERPOLATIONSIZE = 300
+        Pmat
     end
     
     methods (Access = public)
@@ -29,7 +31,7 @@ classdef Route < handle
                 end
                 
             else
-                % Set default properties for empty object                
+                % Set default properties for empty object
             end
             
         end
@@ -54,21 +56,9 @@ classdef Route < handle
                 obj.InterpolateTrace;
             end
             
-            % Find mean of curve and subtract off the mean
-            I             = obj.InterpTrace;
-            mean_of_curve = mean(I);
-            obj.MeanPoint = mean_of_curve;
-            meanTrace     = I - mean_of_curve;
+            % Normalize using Midpoint Method
+            [obj.NormalTrace, obj.Pmat] = midpointNorm(obj.InterpTrace);
             
-            % Set start AnchorPoint to 0 and end AnchorPoint to 1
-            subtTrace                   = meanTrace - meanTrace(1,:);
-            normTrace                   = subtTrace ./ subtTrace(end,:);
-            normTrace(isnan(normTrace)) = 1;
-            obj.NormalTrace             = normTrace;
-            
-            % Save new start and end point to revert back to InterpTrace
-            obj.Anchors(3,:,:) = meanTrace(1,:);
-            obj.Anchors(4,:,:) = subtTrace(end,:);
         end
         
     end
@@ -139,6 +129,29 @@ classdef Route < handle
             end
         end
         
+        function mid = getMidPoint(varargin)
+            %% Return midpoint of curve at given frame
+            try
+                obj = varargin{1};
+                switch nargin
+                    case 1
+                        mid = obj.MidPoint;
+                    case 2
+                        frm = varargin{2};
+                        mid = obj.MidPoint(frm,:);
+                    otherwise
+                        fprintf(2, 'No frame specified\n');
+                end
+            catch
+                fprintf(2, 'Error returning midpoint\n');
+            end
+        end
+        
+        function Pm = getPmat(obj)
+            %% Return conversion matrix Pmat
+            Pm = obj.Pmat;
+        end
+        
         function mn = getMean(varargin)
             %% Return mean point of curve at given frame
             try
@@ -193,7 +206,7 @@ classdef Route < handle
                                 pt  = obj.Anchors(2,:,frm);
                                 
                             case 'b2'
-                                % Mean subtracted Starting Anchor 
+                                % Mean subtracted Starting Anchor
                                 pt = obj.Anchors(3,:,frm);
                                 
                             case 'd2'
@@ -226,6 +239,7 @@ classdef Route < handle
             p.addOptional('NormalTrace', []);
             p.addOptional('MeanPoint', zeros(1,2));
             p.addOptional('Anchors', zeros(4, 2, 0));
+            p.addOptional('Pmat', zeros(3,3));
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
