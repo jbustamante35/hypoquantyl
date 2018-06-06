@@ -7,6 +7,7 @@ classdef CircuitJB < handle
         AnchorPoints
         InterpOutline
         Routes
+        isTrained
     end
     
     properties (Access = private)
@@ -305,6 +306,19 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error return Route %d at frame %d\n', idx, frm);
             end
         end
+        
+        function obj = trainCircuit(obj, trained)
+            %% Set this object as 'trained' or 'untrained'
+            try
+                if islogical(trained)
+                    obj.isTrained = trained;
+                else
+                    fprintf(2, 'input should be logical\n');
+                end
+            catch
+                obj.isTrained = true;
+            end
+        end
     end
     
     methods (Access = private)
@@ -319,6 +333,7 @@ classdef CircuitJB < handle
             p.addOptional('AnchorPoints', []);
             p.addOptional('Image', []);
             p.addOptional('Routes', Route);
+            p.addOptional('isTrained', false);
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});

@@ -147,10 +147,11 @@ classdef Experiment < handle
         function C = AllHypocotylsWithContours(obj)
             %% Return all Hypocotyls with manually-drawn CircuitJB objects
             H = obj.combineHypocotyls;
-            C = arrayfun(@(x) x.getContour('org'), H, 'UniformOutput', 0);
-            n = cellfun(@(x) ~isempty(x), C, 'UniformOutput', 0);
-            n = cat(1,n{:});
-            C = cat(1,C{n});
+            org = arrayfun(@(x) x.getContour('org'), H, 'UniformOutput', 0);
+            org = cat(1, org{:});
+            flp = arrayfun(@(x) x.getContour('flp'), H, 'UniformOutput', 0);
+            flp = cat(1, flp{:});
+            C   = [org ; flp];
         end
                         
         function check_outOfFrame(obj, frm, s)
