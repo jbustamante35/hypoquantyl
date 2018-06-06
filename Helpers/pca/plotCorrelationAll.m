@@ -9,7 +9,7 @@ function figs = plotCorrelationAll(X, Y, sv)
 % Input:
 %   X: pca data of x-coordinates using optimal number of PCs
 %   Y: pca data of y-coordinates using optimal number of PCs
-%   sv: boolean to save resulting array of figures 
+%   sv: boolean to save resulting array of figures
 %
 % Output:
 %   figs: resulting object array of figure handles for each plot generated
@@ -40,5 +40,22 @@ for i = 1 : size(D,2)
         end
     end
 end
+
+end
+
+function figs = changePlotProps(prop, attr)
+%% Change properties of all plots
+p   = groot;
+f   = p.Children;
+ch1 = arrayfun(@(x) figure(x), f, 'UniformOutput', 0);
+ch2 = cellfun(@(x) x.Children, ch1, 'UniformOutput', 0)';
+ch3 = cellfun(@(x) get(x,'Children'), ch2, 'UniformOutput', 0);
+
+%% Use this format to change any property for every subplot of all figures
+chg  = @(a,b) cellfun(@(x) cellfun(@(x) set(x, a, b),...
+    x, 'UniformOutput', 0), ch3, 'UniformOutput', 0);
+prop = 'MarkerSize';
+attr = 10;
+figs = chg(prop, attr);
 
 end
