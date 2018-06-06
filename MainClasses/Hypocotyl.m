@@ -148,15 +148,17 @@ classdef Hypocotyl < handle
         
         function obj = setContour(obj, crc, req)
             %% Set manually-drawn CircuitJB object (original or flipped)
+            crc.trainCircuit(true);
             switch req
                 case 'org'
-                    try
+                    try                        
                         obj.Contour(1) = crc;
                     catch
                         obj.Contour    = crc;
                     end
                 case 'flp'
                     obj.Contour(2) = crc;
+                    
                 otherwise
                     fprintf(2, 'Error setting %s Contour\n', req);
             end
@@ -167,12 +169,26 @@ classdef Hypocotyl < handle
             switch req
                 case 'org'
                     try
-                        crc = obj.Contour(1);
+                        c = obj.Contour(1);
+                        if c.isTrained
+                            crc = c;
+                        else
+                            crc = [];
+                        end
                     catch
-                        crc = obj.Contour;
+                        crc = [];
                     end
                 case 'flp'
-                    crc = obj.Contour(2);
+                    try
+                        c = obj.Contour(2);                        
+                        if c.isTrained
+                            crc = c;
+                        else
+                            crc = [];
+                        end
+                    catch
+                        crc = [];
+                    end
                 otherwise
                     fprintf(2, 'Error returning %s contour\n', req);
             end
