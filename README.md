@@ -1,9 +1,19 @@
 # HypoQuantyl
-Image analysis tool used for tracking localized growth of hypocotyls in a high-throughput manner. This program uses a machine learning algorithm to identify the hypocotyl and quantifies the rate of elongation at many different locations along the midline.
+Image analysis tool used for tracking localized growth of hypocotyls using high-throughput cloud computing. This program uses a variety of machine learning algorithms and neural networks to identify the shape of a hypocotyl, form a midline, and quantify localized rates of elongation at many different locations along that midline. 
 
 ## Summary
 A) What is this program for? <br />
+Learning algorithms: predict contour, predict ending of midline <br />
+Image analysis: select points along seedling <br />
+Quantification: Localized measurements of midline, model growth of growing seedlings <br />
+Miscellaneous features: late-decision segmentation for error checking, ease of loading data <br />
+Output Data: models full developmental process of a growing, de-etiolating hypocotyl <br />
+
 B) How does this program work? <br />
+User stores time-lapse image stacks of a single type in individual folders <br />
+A full experiment is a set of individual image stacks in a parent folder <br />
+Multiple experiments can be loaded as well <br />
+
 C) Instructions for using HypoQuantyl can be found in [HOWTO.md](./HOWTO.md) <br />
     - Sample data can be found in [Sample Data](./SampleData) <br />
 
