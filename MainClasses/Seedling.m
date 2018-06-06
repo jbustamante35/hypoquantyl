@@ -84,7 +84,7 @@ classdef Seedling < handle
         function obj = FindHypocotyl(obj, frm, crpsz)
             %% Find Hypocotyl with defined sizes within Seedling object
             % This function crops the top [h x w] of a Seedling
-            % This may need to be more dynamic to account for Seedlings growing add odd angles.
+            % This may need to be more dynamic to account for Seedlings growing at odd angles.
             % I also need to set a detection algorithm to make sure Hypocotyl is in view.
             % Basically this should know the general 'shape' of a Hypocotyl. [how do I do this?]
             %
