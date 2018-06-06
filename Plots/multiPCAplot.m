@@ -1,4 +1,4 @@
-function fig = multiPCAplot(pcaX, pcaY, C, n, f)
+function fig = multiPCAplot(pcaX, pcaY, C, n, f, sv)
 %% multiPCAplot: reconstruct multiPCA data to check results of fully normalized contours
 %
 %
@@ -125,4 +125,9 @@ for k = szZ : szZ : szY
     title(ttl);
 end
 
+if sv
+    nm = sprintf('%s_pcaCompare_MultiPCA_optimalPCs_Contour%d',...
+        datestr(now, 'yymmdd'), n);
+    savefig(fig, nm);
+    saveas(fig, nm, 'tiffn');
 end
