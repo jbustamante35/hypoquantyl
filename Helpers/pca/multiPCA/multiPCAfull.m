@@ -5,7 +5,7 @@ function [pcaX, pcaY] = multiPCAfull(C, numC, sv, vis)
 % x-coordinates and y-coordinates.
 %
 % Usage:
-%   [pcaX, pcaY] = multiPCAfull(C, numC)
+%   [pcaX, pcaY] = multiPCAfull(C, numC, sv, vis)
 %
 % Input:
 %   C: object array of CircuitJB objects)
