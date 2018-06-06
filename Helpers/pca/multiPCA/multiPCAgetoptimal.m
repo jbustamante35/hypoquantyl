@@ -12,10 +12,5 @@ function PC = multiPCAgetoptimal(V, P)
 % Output:
 %   PC: number of Principal Components corresponding to variance explained P
 %
-szA     = size(V,1);
-szB     = size(V,2);
 [~, PC] = variance_explained(V.EigValues, P);
-% [~, PC] = arrayfun(@(x) variance_explained(x.EigValues, P), V, 'UniformOutput', 0);
-% PC      = cat(1, PC{:});
-% PC      = reshape(PC, [szB szA]);
 end
