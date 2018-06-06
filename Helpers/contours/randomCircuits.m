@@ -100,7 +100,7 @@ rFrm = frms(randi(length(frms), 1));
 if typ
     rs = rs.getPreHypocotyl(rFrm);
     im  = rs.getImage('gray');
-    org = sprintf('%s_%s_%s_Frm%d', rs.ExperimentName, rs.GenotypeName, rs.SeedlingName, ...
+    org = sprintf('%s_%s_%s_%s_Frm%d', rs.ExperimentName, rs.GenotypeName, rs.SeedlingName, ...
         rs.HypocotylName, rFrm);
 else
     im  = rs.getImage(rFrm, 'gray');
@@ -127,7 +127,7 @@ end
 % Extract manual contour from flipped image
 if flip
     flpim = rs.FlipMe;
-    org = sprintf('flip_%s_%s_%s_Frm%d', rs.ExperimentName, rs.GenotypeName, rs.SeedlingName, ...
+    org = sprintf('flip_%s_%s_%s_%s_Frm%d', rs.ExperimentName, rs.GenotypeName, rs.SeedlingName, ...
         rs.HypocotylName, rFrm);
     
     flp = CircuitJB('Origin', org);
