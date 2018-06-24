@@ -6,6 +6,7 @@ classdef CircuitJB < handle
         Origin
         AnchorPoints
         InterpOutline
+        NormalOutline
         Routes
         isTrained
     end
@@ -36,17 +37,23 @@ classdef CircuitJB < handle
             end
             
             obj.Routes = initializeRoutes(obj);
-            obj.Image  = struct('gray', [], ...
-                'bw',   []);
+            obj.Image  = struct('gray', [], 'bw', [], 'mask', []);
             
         end
         
         function [X, Y] = LinearizeRoutes(obj)
             %% Return all X and Y coordinates from all Routes
-            %             [~, rtsX, rtsY] = concatRoutes(obj);
-            %             X = reshape(rtsX, numel(rtsX), 1);
-            %             Y = reshape(rtsY, numel(rtsY), 1);
-            [~, X, Y] = concatRoutes(obj);
+            [~, X, Y] = concatTraces(obj);
+        end
+        
+        function P = ParameterRoutes(obj)
+            %% Return all theta, deltaX, deltaY parameters from all Routes
+            P = concatParameters(obj);
+        end
+        
+        function obj = NormalizeRoutes(obj)
+            %% Run MidpointNormalization method on all of this object's Routes
+            arrayfun(@(x) x.NormalizeTrace, obj.Routes, 'UniformOutput', 0);
         end
         
         function obj = CreateRoutes(obj)
@@ -76,6 +83,14 @@ classdef CircuitJB < handle
             end
         end
         
+        function generateMasks(obj, buff)
+            %% Tmp function to create mask for all objects
+            img = obj.getImage(1, 'gray');
+            crd = obj.getOutline;
+            msk = crds2mask(img, crd, buff);
+            obj.setImage(1, 'mask', msk);
+        end
+        
         function obj = DrawOutline(obj, frm)
             %% Draw RawOutline on this object's Image
             try
@@ -84,6 +99,8 @@ classdef CircuitJB < handle
                 c   = drawPoints(img, 'y', 'Outline');
                 obj.setRawOutline(frm, c.getPosition);
                 obj.setImage(frm, 'bw', c.createMask);
+                msk = crds2mask(img, c.getPosition);
+                obj.setImage(frm, 'mask', msk);
             catch
                 fprintf(2, 'Error setting outline at frame %d \n', frm);
             end
@@ -100,6 +117,12 @@ classdef CircuitJB < handle
             catch
                 fprintf(2, 'Error setting anchor points at frame %d \n', frm);
             end
+        end
+        
+        function obj = NormalizeOutline(obj)
+            %% Normalize InterpOutline to NormalOutline
+            % Set starting coordinate to (101,33) --> last row, ~1/3 of columns
+            obj.NormalOutline = shiftrotateNorm(obj.InterpOutline);
         end
         
         function obj = ConvertRawOutlines(obj)
@@ -220,7 +243,7 @@ classdef CircuitJB < handle
                     oL  = obj.RawOutline{frm};
                 end
             catch
-                fprintf(2, 'No RawOutline at frame %d \n', varargin{2});
+                fprintf(2, 'No InterpOutline at frame %d \n', varargin{2});
             end
         end
         
@@ -235,7 +258,22 @@ classdef CircuitJB < handle
                     iL = obj.InterpOutline(:,:,frm);
                 end
             catch
-                fprintf(2, 'No RawOutline at frame %d \n', varargin{2});
+                fprintf(2, 'No InterpOutline at frame %d \n', varargin{2});
+            end
+        end
+        
+        function nL = getNormalOutline(varargin)
+            %% Return Normalized Outline at specific frame
+            try
+                obj = varargin{1};
+                if nargin == 1
+                    nL = obj.NormalOutline;
+                else
+                    frm = varargin{2};
+                    nL = obj.NormalOutline(:,:,frm);
+                end
+            catch
+                fprintf(2, 'No NormalOutline at frame %d \n', varargin{2});
             end
         end
         
@@ -329,6 +367,7 @@ classdef CircuitJB < handle
             p.addOptional('Origin', '');
             p.addOptional('RawOutline', {});
             p.addOptional('InterpOutline', []);
+            p.addOptional('NormalOutline', []);
             p.addOptional('RawPoints', []);
             p.addOptional('AnchorPoints', []);
             p.addOptional('Image', []);
@@ -347,7 +386,7 @@ classdef CircuitJB < handle
             end
         end
         
-        function [C,X,Y] = concatRoutes(obj)
+        function [C,X,Y] = concatTraces(obj)
             %% Concatenate Routes into [m x n x 2] array
             % m is the number of Route objects
             % n is the size of each Route object's NormalTrace
@@ -364,6 +403,17 @@ classdef CircuitJB < handle
             X = cat(3, X{:});
             Y = cat(3, Y{:});
             C = cat(3, X, Y);
+        end
+        
+        function P = concatParameters(obj)
+            %% Concatenate parameters for each of this object's Routes into [m x p] array
+            % m is the number of Route objects
+            % p is the number of parameters
+            % Output:
+            %   P: parameters for each Route in [m x p] array
+            
+            R = arrayfun(@(x) x.getPpar, obj.Routes, 'UniformOutput', 0);
+            P = cat(1, R{:});
         end
         
     end
