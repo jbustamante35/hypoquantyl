@@ -166,31 +166,35 @@ classdef Hypocotyl < handle
         %   sIdx: index of randomly-selected Seedlings
         function crc = getContour(obj, req)
             %% Return original or flipped version of CircuitJB object
-            switch req
-                case 'org'
-                    try
-                        c = obj.Contour(1);
-                        if c.isTrained
-                            crc = c;
-                        else
+            if ~isempty(obj.Contour)
+                switch req
+                    case 'org'
+                        try
+                            c = obj.Contour(1);
+                            if c.isTrained
+                                crc = c;
+                            else
+                                crc = [];
+                            end
+                        catch
                             crc = [];
                         end
-                    catch
-                        crc = [];
-                    end
-                case 'flp'
-                    try
-                        c = obj.Contour(2);                        
-                        if c.isTrained
-                            crc = c;
-                        else
+                    case 'flp'
+                        try
+                            c = obj.Contour(2);                        
+                            if c.isTrained
+                                crc = c;
+                            else
+                                crc = [];
+                            end
+                        catch
                             crc = [];
                         end
-                    catch
-                        crc = [];
-                    end
-                otherwise
-                    fprintf(2, 'Error returning %s contour\n', req);
+                    otherwise
+                        fprintf(2, 'Error returning %s contour\n', req);
+                end
+            else
+                crc = [];
             end
         end
         

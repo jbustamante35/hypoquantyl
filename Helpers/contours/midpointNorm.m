@@ -1,4 +1,4 @@
-function [P, Pmat] = midpointNorm(X)
+function [P, Pmat, M] = midpointNorm(X)
 %% midpointNorm: normalization method for curves using midpoint between end points
 % This function implements the method of normalization to express values in X in the new reference
 % frame established at the midpoint between the starting and ending points of X.
@@ -12,6 +12,7 @@ function [P, Pmat] = midpointNorm(X)
 % Output:
 %   P: coordinates of original vector expressed in new reference frame
 %   Pmat: conversion matrix for new reference frame around midpoint
+%   M: midpoint
 %
 
 %% Find midpoint and vectors for new reference frame
