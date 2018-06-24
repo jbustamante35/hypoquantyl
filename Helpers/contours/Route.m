@@ -13,8 +13,9 @@ classdef Route < handle
         MidPoint
         MeanPoint
         InterpTrace
-        INTERPOLATIONSIZE = 300
         Pmat
+        Ppar
+        INTERPOLATIONSIZE = 300
     end
     
     methods (Access = public)
@@ -56,8 +57,9 @@ classdef Route < handle
                 obj.InterpolateTrace;
             end
             
-            % Normalize using Midpoint Method
-            [obj.NormalTrace, obj.Pmat] = midpointNorm(obj.InterpTrace);
+            % Normalize using Midpoint Method to set various parameters 
+            [obj.NormalTrace, obj.Pmat, obj.MidPoint] = midpointNorm(obj.InterpTrace);
+            obj.Ppar = [atan2(obj.Pmat(2), obj.Pmat(1)) obj.MidPoint];
             
         end
         
@@ -147,9 +149,34 @@ classdef Route < handle
             end
         end
         
+        % Pmat should only be set with NormalizeTrace method
+        %         function obj = setPmat(obj, Pm)
+        %             %% Set conversion matrix
+        %             if isequal(sum(size(obj.Pmat)), sum(size(Pm)))
+        %                 obj.Pmat = Pm;
+        %             else
+        %                 fprintf(2, 'Pmat must be size [%d %d]\n', size(obj.Pmat));
+        %             end
+        %         end
+        
         function Pm = getPmat(obj)
             %% Return conversion matrix Pmat
             Pm = obj.Pmat;
+        end
+        
+        % Ppar should only be set with NormalizeTrace method
+        %         function obj = setPpar(obj, Pp)
+        %             %% Set parameters matrix
+        %             if isequal(sum(size(obj.Ppar)), sum(size(Pp)))
+        %                 obj.Ppar = Pp;
+        %             else
+        %                 fprintf(2, 'Pmat must be size [%d %d]\n', size(obj.Ppar));
+        %             end
+        %         end
+        
+        function Pp = getPpar(obj)
+            %% Return parameters Ppar
+            Pp = obj.Ppar;
         end
         
         function mn = getMean(varargin)
@@ -240,6 +267,7 @@ classdef Route < handle
             p.addOptional('MeanPoint', zeros(1,2));
             p.addOptional('Anchors', zeros(4, 2, 0));
             p.addOptional('Pmat', zeros(3,3));
+            p.addOptional('Ppar', zeros(1,3));
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
