@@ -127,12 +127,38 @@ classdef Experiment < handle
             G = obj.getGenotype(':');
         end
         
+        function g = search4Genotype(obj, nm)
+            %% Return specific Genotype by GenotypeName
+            gts = obj.getGenotype(':')';
+            
+            for gt = gts
+                mtc = gt.GenotypeName;
+                if isequal(nm, mtc)
+                    g = gt;
+                    return;
+                end
+            end
+        end
+        
         function S = combineSeedlings(obj)
             %% Combine all Seedlings into single object array
             G = obj.combineGenotypes;
             S = arrayfun(@(x) x.getSeedling(':'), G, 'UniformOutput', 0);
             S = cat(1, S{:});
         end
+        
+%         function s = search4Seedling(obj, nm)
+%             %% Return specific Genotype by GenotypeName
+%             sds = obj.combineSeedlings;
+%             
+%             for sd = sds
+%                 mtc = sd.SeedlingName;
+%                 if isequal(nm, mtc)
+%                     s = sd;
+%                     return;
+%                 end
+%             end
+%         end
         
         function H = combineHypocotyls(obj)
             %% Combine all Hypocotyls into single object array
@@ -144,7 +170,7 @@ classdef Experiment < handle
             H = cat(2, H{:});
         end
         
-        function C = AllHypocotylsWithContours(obj)
+        function C = combineContours(obj)
             %% Return all Hypocotyls with manually-drawn CircuitJB objects
             H = obj.combineHypocotyls;
             org = arrayfun(@(x) x.getContour('org'), H, 'UniformOutput', 0);
@@ -153,7 +179,15 @@ classdef Experiment < handle
             flp = cat(1, flp{:});
             C   = [org ; flp];
         end
-                        
+        
+        function P = combineParameters(obj)
+            %% Return all Ppar (theta, dX, dY) from all Routes from CircuitJB objects
+            C = obj.combineContours;
+            P = arrayfun(@(x) x.ParameterRoutes, C, 'UniformOutput', 0);
+            P = cat(3, P{:});
+            P = permute(P, [3 2 1]);
+        end
+        
         function check_outOfFrame(obj, frm, s)
             %% Check if Seedling grows out of frame
             %
