@@ -18,16 +18,25 @@ function msk = crds2mask(img, crd, buff)
 %% Convert coordinates to integers if needed
 if ~startsWith(class(crd), 'int')
     crd           = floor(crd);
-    crd(crd == 0) = 1;    
+    crd(crd == 0) = 1;
 end
 
 %% Create mask and set coordinates to true
 % Setup / initialization.
-% msk      = zeros(size(img));
-msk      = createMask(size(img), buff);
-org      = [size(msk,1) round(size(msk,2)/3)];
-crd      = slideCoords(crd, org);
-idx      = sub2ind(size(msk), crd(:,2), crd(:,1));
+msk = createMask(size(img), buff);
+org = [round(size(msk,2)/2.5) size(msk,1)];
+crd = slideCoords(crd, org);
+
+try
+    idx = sub2ind(size(msk), crd(:,2), crd(:,1));
+catch
+    % Subtract y-coordinates by size of out-of-bounds coordinates
+    crd_max = mode(crd(crd(:,2) == max(crd(:,2)), 2) - org(2));
+    org(2)  = org(2) - crd_max;
+    crd     = slideCoords(crd, org);
+    idx     = sub2ind(size(msk), crd(:,2), crd(:,1));
+end
+
 msk(idx) = true;
 end
 
@@ -38,11 +47,11 @@ function m = createMask(sz, buff)
 %   sz: size of original image
 %   buff: number pixels to buffer by
 b = floor(sz * buff);
-m = zeros([sz(1) b(2)]);
+m = zeros(b);
 end
 
 function c = slideCoords(crd, org)
 %% Slide x-coordinates to common starting point
-d = org(2) - crd(1,1);
-c = [(crd(:,1) + d) crd(:,2)];
+d = org - crd(1,:);
+c = crd + d;
 end

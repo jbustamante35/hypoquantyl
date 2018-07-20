@@ -1,4 +1,4 @@
-%% ContourJB: my customized class for generating contours of Seedlings
+%% ContourJB: my customized class for generating contours of  [NO LONGER USED]
 % Class description
 
 classdef ContourJB < handle
