@@ -1,7 +1,7 @@
 # HypoQuantyl
 Image analysis tool used for tracking localized growth of hypocotyls using high-throughput cloud computing. This program uses a variety of machine learning algorithms and neural networks to identify the shape of a hypocotyl, form a midline, and quantify localized rates of elongation at many different locations along that midline. 
 
-## Summary
+## Summary [re-iterate above description and expand on use, novelty, and similar software]
 A) What is this program for? <br />
 Learning algorithms: predict contour, predict ending of midline <br />
 Image analysis: select points along seedling <br />
@@ -20,9 +20,8 @@ C) Instructions for using HypoQuantyl can be found in [HOWTO.md](./HOWTO.md) <br
 ## Getting Started
 ### Dependencies
 - Lowest usable MATLAB version
-- Run scripts for toolbox dependencies
-
-
+- Run scripts for toolbox dependencies (like from QuantDRaCALA)
+- Maybe something about CyVerse if necessary?
 
 
 ### Installation
@@ -31,7 +30,7 @@ C) Instructions for using HypoQuantyl can be found in [HOWTO.md](./HOWTO.md) <br
 
 ## Version Information
 02/06/2018 - HypoQuantyl Version 0.5
-
+06/24/2018 - HypoQuantyl Version 0.7
 
 ## Authors
 ### Main Author
@@ -60,6 +59,8 @@ MIT license found in [LICENSE](./LICENSE) <br />
 [ ] | Genotype    | Loads image stacks containing growing seedlings
 [ ] | Seedling    | Represents a single seedling throughout a time-lapse
 [ ] | Hypocotyl   | Represents the hypocotyl portion of a single seedlings
+[ ] | CircuitJB   | Main contour of a hypocotyl, segmented by anchor points
+[ ] | Route       | Individual segments around a hypocotyl's contour
 
 ### Algorithms
 [ ] | Algorithm | Description
