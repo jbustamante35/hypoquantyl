@@ -86,7 +86,7 @@ classdef CircuitJB < handle
         function generateMasks(obj, buff)
             %% Tmp function to create mask for all objects
             img = obj.getImage(1, 'gray');
-            crd = obj.getOutline;
+            crd = obj.getNormalOutline;
             msk = crds2mask(img, crd, buff);
             obj.setImage(1, 'mask', msk);
         end
@@ -121,8 +121,8 @@ classdef CircuitJB < handle
         
         function obj = NormalizeOutline(obj)
             %% Normalize InterpOutline to NormalOutline
-            % Set starting coordinate to (101,33) --> last row, ~1/3 of columns
-            obj.NormalOutline = shiftrotateNorm(obj.InterpOutline);
+            % Rescale outlines by base width to set common start and end point
+            obj.NormalOutline = rescaleNormMethod(obj.InterpOutline, 15);
         end
         
         function obj = ConvertRawOutlines(obj)
