@@ -23,41 +23,8 @@ F = findFrame(s,e);
 Z = -F * M';
 
 %% Compute conversion with P matrix
-Pmat = [F , Z ; 0 0 1];
+Pmat = [F , Z ; 0 0 1]; % MidPoint in new reference frame
+% Pmat = [F , M' ; 0 0 1];  % MidPoint in original reference frame
 Pcnv = Pmat * [X, ones(length(X), 1)]';
 P    = Pcnv(1:2,:)';
 end
-
-function M = findMidpoint(S, E)
-%% getMidpoint: find midpoint coordinate between points S and E
-% Input:
-%   S: coordinate at start of curve
-%   E: coordinate at end of curve
-%
-% Output:
-%   M: coordinate between start and ending curve
-
-M = S + 0.5 * (E - S);
-end
-
-function F = findFrame(S, E)
-%% findFrame: vector representing the rotation needed to change between reference frames
-% Input:
-%   S: coordinate at start of curve
-%   E: coordinate at end of curve
-%
-% Output:
-%   F: [2 x 2] matrix representing rotated basis vectors
-
-%% Rotation Matrix
-Rmat = @(t) [[cos(t) ; -sin(t)], ...
-    [sin(t) ; cos(t)]];
-R = Rmat(deg2rad(90));
-
-%% New reference frame
-Z = E - S;
-D = Z * norm(Z)^-1;
-N = (R * D')';
-F = [D ; N];
-end
-

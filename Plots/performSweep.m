@@ -71,7 +71,7 @@ for d = dim
         end
     end
     
-    if sv        
+    if sv
         num = numel(pcA{d});
         fnm = sprintf('%s_PCSweepFull_%s_%dPCs', datestr(now,'yymmdd'), typ{d}, num);
         savefig(fig, fnm);

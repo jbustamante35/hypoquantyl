@@ -57,10 +57,9 @@ classdef Route < handle
                 obj.InterpolateTrace;
             end
             
-            % Normalize using Midpoint Method to set various parameters 
+            % Normalize using Midpoint Method to set various parameters
             [obj.NormalTrace, obj.Pmat, obj.MidPoint] = midpointNorm(obj.InterpTrace);
-            obj.Ppar = [atan2(obj.Pmat(2), obj.Pmat(1)) obj.MidPoint];
-            
+            obj.Ppar = [computePpar(obj.Pmat(2), obj.Pmat(1)) obj.MidPoint];
         end
         
     end
