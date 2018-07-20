@@ -11,12 +11,15 @@ function I = norm2interp(varargin)
 % 
 % Usage:
 %   I = norm2interp(n, m, b, d)
+%       or
+%   I = norm2interp(c)
 %
 % Input:
 %   n: x-/y-coordinates of normalized trace
 %   m: mean x-/y-coordinate of curve
 %   b: starting anchorpoint after mean subtraction ('b2')
 %   d: ending anchorpoint after mean subtraction and setting to 0 ('d2')
+%   c: input can simply be the Route object of a single contour
 %
 % Output:
 %   I: coordinates of Interpolated Outline
