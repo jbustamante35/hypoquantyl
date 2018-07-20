@@ -14,6 +14,11 @@ function X = reverseMidpointNorm(P, Pmat)
 %
 
 %% Get the dot product of the inverse of the conversion matrix with normalized coordinates
+if numel(size(P)) ~= 3
+    P(:,3) = 0;
+    P      = P';
+end
+
 X = (Pmat^-1 * P);
 X = X(1:2,:);
 
