@@ -47,8 +47,8 @@ if sv
     savefig(fig, nm);
     saveas(fig, nm, 'tiffn');
     
-    %% Save CircuitJB objects
-    nm = sprintf('%s_randomCircuitsUpdate_%dcircuits%s', datestr(now,'yymmdd'), numel(C), fc);
-    save(nm, '-v7.3', 'C');
+    %% Save probability image
+    nm = sprintf('%s_probabilityMatrix_%dcircuits%s', datestr(now,'yymmdd'), numel(C), fc);
+    save(nm, '-v7.3', 'P');
 end
 end
