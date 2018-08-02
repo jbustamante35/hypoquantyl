@@ -20,6 +20,6 @@ if numel(size(P)) ~= 3
 end
 
 X = (Pmat^-1 * P);
-X = X(1:2,:);
+X = X(1:2,:)';
 
 end
