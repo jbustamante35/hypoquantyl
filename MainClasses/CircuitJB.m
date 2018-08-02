@@ -4,9 +4,10 @@
 classdef CircuitJB < handle
     properties (Access = public)
         Origin
-        AnchorPoints
-        InterpOutline
+        AnchorPoints        
+        FullOutline
         NormalOutline
+        Curves
         Routes
         isTrained
     end
@@ -15,6 +16,7 @@ classdef CircuitJB < handle
         RawPoints
         RawOutline
         Image
+        InterpOutline
         INTERPOLATIONSIZE = 800
         NUMBEROFANCHORS   = 7
     end
@@ -37,8 +39,8 @@ classdef CircuitJB < handle
             end
             
             obj.Routes = initializeRoutes(obj);
-            obj.Image  = struct('gray', [], 'bw', [], 'mask', []);
-            
+            obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
+                        
         end
         
         function [X, Y] = LinearizeRoutes(obj)
@@ -46,7 +48,7 @@ classdef CircuitJB < handle
             [~, X, Y] = concatTraces(obj);
         end
         
-        function P = ParameterRoutes(obj)
+        function P = getRouteParameters(obj)
             %% Return all theta, deltaX, deltaY parameters from all Routes
             P = concatParameters(obj);
         end
@@ -54,6 +56,13 @@ classdef CircuitJB < handle
         function obj = NormalizeRoutes(obj)
             %% Run MidpointNormalization method on all of this object's Routes
             arrayfun(@(x) x.NormalizeTrace, obj.Routes, 'UniformOutput', 0);
+        end
+        
+        function obj = CreateCurves(obj)
+            %% Use Full Outline to generate Curve objects around CircuitJB object
+            obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
+            obj.Curves.SegmentOutline;
+            obj.Curves.NormalizeSegments;
         end
         
         function obj = CreateRoutes(obj)
@@ -83,10 +92,22 @@ classdef CircuitJB < handle
             end
         end
         
+        function obj = LabelAllPixels(obj, labelname)
+            %% Labels all pixels inside contour as 'Hypocotyl'
+            % This is to test out a method of deep learning for semantic segmentation
+            % See ref (Long, Shelhammer, Darrell, CVF 2015, 2015) book and MATLAB tutorial at
+            % https://www.mathworks.com/help/vision/examples/semantic-segmentation-using-deep-learning.html
+            lbl = repmat("", size(obj.Image.bw));
+            lbl(obj.Image.bw == 1) = labelname;
+            lbl(obj.Image.bw ~= 1) = 'bg';
+            obj.Image.labels = lbl;
+        end
+        
         function generateMasks(obj, buff)
             %% Tmp function to create mask for all objects
             img = obj.getImage(1, 'gray');
             crd = obj.getNormalOutline;
+            %             crd = obj.FullOutline;
             msk = crds2mask(img, crd, buff);
             obj.setImage(1, 'mask', msk);
         end
@@ -146,12 +167,21 @@ classdef CircuitJB < handle
             
             iL   = obj.InterpOutline;
             pts  = obj.RawPoints;
-            npts = zeros(size(pts));
+            nPts = zeros(size(pts));
             for i = 1 : size(pts,3)
-                npts(:,:,i) = snap2curve(pts(:,:,i), iL(:,:,i));
+                nPts(:,:,i) = snap2curve(pts(:,:,i), iL(:,:,i));
             end
             
-            obj.AnchorPoints = npts;
+            obj.AnchorPoints = nPts;
+        end
+        
+        function obj = ReconfigInterpOutline(obj)
+            %% Reconfigure interpolated outline to the interpolated traces of each Route
+            % This will change the coordinates from this object's InterpOutline to the InterpTrace
+            % of each of this object's Routes. This ensures that there is a segment defining the
+            % base segment.
+            trc = arrayfun(@(x) x.getInterpTrace, obj.Routes, 'UniformOutput', 0);
+            obj.FullOutline = cat(1, trc{:});
         end
     end
     
@@ -356,7 +386,8 @@ classdef CircuitJB < handle
             catch
                 obj.isTrained = true;
             end
-        end
+        end        
+            
     end
     
     methods (Access = private)
@@ -367,10 +398,12 @@ classdef CircuitJB < handle
             p.addOptional('Origin', '');
             p.addOptional('RawOutline', {});
             p.addOptional('InterpOutline', []);
+            p.addOptional('FullOutline', []);
             p.addOptional('NormalOutline', []);
             p.addOptional('RawPoints', []);
             p.addOptional('AnchorPoints', []);
             p.addOptional('Image', []);
+            p.addOptional('Curves', Curve);
             p.addOptional('Routes', Route);
             p.addOptional('isTrained', false);
             
@@ -381,6 +414,7 @@ classdef CircuitJB < handle
         
         function R = initializeRoutes(obj)
             %% Initialize Route objects for Constructor
+            R = repmat(Route, 1, obj.NUMBEROFANCHORS);
             for i = 1 : obj.NUMBEROFANCHORS
                 R(i) = Route('Origin', obj.Origin);
             end

@@ -1,9 +1,13 @@
 function [D, scale_size] = rescaleNormMethod(X, off)
 %% rescaleNormMethod: normalization method for curves using midpoint between end points
-% This function implements the method of normalization
+% This function implements the method of normalization ultimately used for a probability matrix,
+% where contours are rescaled and shifted such that the anchor points at the base of a contour are
+% set to the same coordinates. The offset (off) parameter defines how far to shift the base anchor
+% points from its original [0 0] point. This is meant to ensure the entire contour has no points in
+% negative coordinates. 
 %
 % Usage:
-%   [D, rescale_factor] = rescaleNormMethod(X)
+%   [D, scale_size] = rescaleNormMethod(X, off)
 %
 % Input:
 %   X: coordinates of original coordinates
