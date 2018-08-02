@@ -1,4 +1,4 @@
-function RTS = generateRandomRoute(I, V, minR, maxR, maxD, maxA)
+function RTS = generateRandomRoute(I, D, minR, maxR, maxD, maxA)
 %% generateRandomeRoute: select random midpoint and radius to generate synthetic Route
 % This function uses a probability matrix and selects and adequate coordinate to serve as a
 % synthetic midpoint for a Route (segment of a CircuitJB contour). The length of the Route is
@@ -14,11 +14,11 @@ function RTS = generateRandomRoute(I, V, minR, maxR, maxD, maxA)
 % eigenvector from principal components analysis data.
 %
 % Usage:
-%   RTS = generateRandomRoute(I, V, minR, maxR, maxD, maxA)
+%   RTS = generateRandomRoute(I, D, minR, maxR, maxD, maxA)
 %
 % Input:
 %   I: [n x n] probability matrix
-%   V: [N x m] eigenvector containing m PCs for all N training data
+%   D: [r x 2] structure array of PCA data for x-/y-coordinates of r segments
 %   minR: minimum radius size to define distance from midpoint to each anchorpoint
 %   maxR: maximum radius size to define distance from midpoint to each anchorpoint
 %   maxD: maximum decrementer to decrease radius size if too large for image
@@ -29,13 +29,9 @@ function RTS = generateRandomRoute(I, V, minR, maxR, maxD, maxA)
 %
 
 %% Function Handles
-plt  = @(x,y,z) plot(x(:,1), x(:,2), y, 'MarkerSize', z);
 m    = @(x) randi([1 length(x)], 1);
-Rmat = @(t) [[cos(t) ; -sin(t)], ...
-    [sin(t) ; cos(t)]];
 Rrot = @(r,p,m) bsxfun(@(x,y) (r * x), [p(1) .'-m(1); p(2) .'-m(2)], false(1, length(p(1))));
 
-disp(V);
 fprintf('Att|Dec|Rad|Tmp|Crds\n');
 
 %% Select random coordinate and random radius size
@@ -97,10 +93,10 @@ while pointChk
     G = T(~sum(T > length(I),2),:);
     
     % Choose random valid starting coordinate
-    S   = G(m(G),:);
+    S = G(m(G),:);
     
     % Check if diagonal coordinate is valid
-    E   = M - (S - M);
+    E = M - (S - M);
     
     % Plot S->M->E
     S2M = [S ; M];
@@ -109,9 +105,28 @@ while pointChk
     pointChk = false;
 end
 
+%% Generate contour from start to end anchorpoints
+% This subfunction will choose a random segment and draw random principal component scores from the
+% distribution of scores from the training data of that segment (see drawFromScores)
+r = m(D);
+S = arrayfun(@(x) x.PCAscores, D, 'UniformOutput', 0);
+V = arrayfun(@(x) x.EigVectors, D, 'UniformOutput', 0);
+M = arrayfun(@(x) x.MeanVals, D, 'UniformOutput', 0);
+
+% Generate random contour segment
+scrX = drawFromScores(S{r, 1});
+nrmX = pca2norm(scrX, V{r, 1}, M{r, 1})';
+
+scrY = drawFromScores(S{r, 2});
+nrmY = pca2norm(scrY, V{r, 2}, M{r, 2})';
+
+% Shift segment to match start point (S) and end point (E)
+simSeg = [nrmX nrmY] + rCrd;
+rotSeg = (simSeg * Rmat(rot)) + MM;
+
 %% Output final structure and plot data onto image
 plt(rCrd, 'ro', 8);
 m2e = line(M2E(:,1), M2E(:,2), 'Color', 'm');
 s2m = line(S2M(:,1), S2M(:,2), 'Color', 'g');
-RTS = v2struct(rRad, rCrd, M, E, S, M2E, m2e, S2M, s2m);
+RTS = v2struct(rSeg, rRad, rCrd, M, E, S, M2E, m2e, S2M, s2m);
 end
