@@ -29,7 +29,6 @@ end
 
 %% Function Handles: general plotting function, get random from set, convert contours
 m        = @(x) randi([1 length(x)], 1);
-pca2norm = @(x, y, z) ((x * y') + z);
 norm2raw = @(o, m, x, t) reverseMidpointNorm([o{x, 1} ; o{x, 2}]', m(:, :, x))' + t(:, 2:3, x);
 
 %% Extract P-matrix and P-parameters from all Routes of CircuitJB array
@@ -64,7 +63,7 @@ CTR   = v2struct(FUNCS, C, D, Pm, Pp, S, V, U, M, O, R);
 if sv
     nm = sprintf('%s_meanContourRepresentation_%dContours_%s-Facing', ...
         datestr(now, 'yymmdd'), numel(C), fc);
-    save(nm, '-v7.3', 'CTR', 'fig');
+    save(nm, '-v7.3', 'CTR');
     savefig(fig, nm);
     saveas(fig, nm, 'tiffn');
 end
