@@ -4,7 +4,7 @@ function msk = crds2mask(img, crd, buff)
 % containing a contour are set to true.
 %
 % Usage:
-%   msk = crds2mask(img, crd)
+%   msk = crds2mask(img, crd, buff)
 %
 % Input:
 %   img: inputted image
