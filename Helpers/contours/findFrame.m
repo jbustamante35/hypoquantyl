@@ -14,9 +14,7 @@ function F = findFrame(S, E)
 % Output:
 %   F: [2 x 2] matrix representing rotated basis vectors
 
-%% Rotation Matrix
-Rmat = @(t) [[cos(t) ; -sin(t)], ...
-    [sin(t) ; cos(t)]];
+%% Rotation Matrix for orthogonal vector
 R = Rmat(deg2rad(90));
 
 %% New reference frame

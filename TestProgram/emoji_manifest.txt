@@ -1,0 +1,10 @@
+% Manifest of emoji for getEmoji function
+% If setEmoji is called, user can submit their own emoji. Emoji can not yet be overwritten.
+
+Request Emoji
+idunno  '\\_("/)_/'
+
+
+
+
+
