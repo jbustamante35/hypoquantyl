@@ -4,7 +4,7 @@
 classdef CircuitJB < handle
     properties (Access = public)
         Origin
-        AnchorPoints        
+        AnchorPoints
         FullOutline
         NormalOutline
         Curves
@@ -40,7 +40,7 @@ classdef CircuitJB < handle
             
             obj.Routes = initializeRoutes(obj);
             obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
-                        
+            
         end
         
         function [X, Y] = LinearizeRoutes(obj)
@@ -104,9 +104,13 @@ classdef CircuitJB < handle
         end
         
         function generateMasks(obj, buff)
-            %% Tmp function to create mask for all objects
+            %% Creates a binary mask from manually-drawn outline for probability matrix
+            % This function generates a binary mask where the manually-drawn outline is set to 1 and
+            % the rest of the image is 0. The output size of the image is defined by the buff
+            % parameter, because the probability matrix must fit all orientations of hypocotyls in
+            % the dataset (think of hypocotyls in the extreme left or right locations). 
             img = obj.getImage(1, 'gray');
-            crd = obj.getNormalOutline;
+            crd = obj.getNormalOutline; % Use normalized coordinates
             %             crd = obj.FullOutline;
             msk = crds2mask(img, crd, buff);
             obj.setImage(1, 'mask', msk);
@@ -375,6 +379,29 @@ classdef CircuitJB < handle
             end
         end
         
+        function rt = getCurve(varargin)
+            %% Return a Route from desired frame
+            try
+                obj = varargin{1};
+                switch nargin
+                    case 2
+                        rt = obj.Curves;
+                        
+                    case 3
+                        idx = varargin{2};
+                        req = varargin{3};
+                        typ = sprintf('%sSegments', req);
+                        crv = obj.Curves.(typ);
+                        rt  = crv(:,:,idx);
+                        
+                    otherwise
+                        fprintf(2, 'No Curve specified\n');
+                end
+            catch
+                fprintf(2, 'Error return Curve %d \n', idx);
+            end
+        end
+        
         function obj = trainCircuit(obj, trained)
             %% Set this object as 'trained' or 'untrained'
             try
@@ -386,8 +413,8 @@ classdef CircuitJB < handle
             catch
                 obj.isTrained = true;
             end
-        end        
-            
+        end
+        
     end
     
     methods (Access = private)
