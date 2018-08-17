@@ -88,24 +88,57 @@ classdef Curve < handle
             end
             
             obj.NormalSegments = zeros(size(obj.RawSegments));
-            for c = 1 : size(obj.RawSegments,4)
-                for s = 1 : size(obj.RawSegments,3)
-                    [obj.NormalSegments(:,:,s,c), obj.Pmats(:,:,s,c), obj.MidPoints(:,:,s,c)] = ...
-                        midpointNorm(obj.RawSegments(:,:,s,c));
-                end
+            for s = 1 : size(obj.RawSegments,3)
+                [obj.NormalSegments(:,:,s), obj.Pmats(:,:,s), obj.MidPoints(:,:,s)] = ...
+                    midpointNorm(obj.RawSegments(:,:,s));
             end
             
         end
         
-        function obj = Normal2Envelope(obj, idx)
+        function obj = Normal2Envelope(obj)
             %% Convert NormalSegments to coordinates within envelope (see envelopeMethod())
-            obj = augmentEnvelope(obj, obj.NormalSegments, obj.ENVELOPESIZE);
+            % Augment segment to get left and right envelope
+            [obj.LeftEnvelope, obj.RightEnvelope] = ...
+                augmentEnvelope(obj, obj.NormalSegments, obj.ENVELOPESIZE);
             
-            %             obj.EnvelopeSegments = arrayfun(@(x) envelopeMethod(x, obj.ENVELOPESIZE), ...
-            %                 obj.NormalSegments, 'UniformOutput', 0);
+            % Convert normalized coordinates to envelope coordinates
+            env = arrayfun(@(x) envelopeMethod(obj.NormalSegments(:,:,x), obj.NormalSegments(:,:,x), ...
+                obj.ENVELOPESIZE), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+            obj.EnvelopeSegments = cat(3, env{:});
             
         end
         
+        function nrm = Envelope2Normal(obj)
+            %% Convert EnvelopeSegments to midpoint-normalized coordinates
+            nrm = reverseEnvelopeMethod(obj.EnvelopeSegments, obj.ENVELOPESIZE);
+            
+        end
+        
+        function raw = Envelope2Raw(obj)
+            %% Convert segment in envelope coordinates to raw coordinates
+            % This needs to be changed in the future to use the predicted envelope segments
+            env = obj.EnvelopeSegments;
+            crv = obj.NormalSegments;
+            sz  = obj.ENVELOPESIZE;
+            pm  = obj.Pmats;
+            mid = obj.MidPoints;
+            
+            % Iterate through all envelope segments and convert to raw image segments
+            env2raw = @(n) envelope2coords(env(:,:,n), crv(:,:,n), sz, pm(:,:,n), mid(:,:,n));
+            raw = arrayfun(@(n) env2raw(n), ...
+                1 : obj.NumberOfSegments, 'UniformOutput', 0);
+            raw = cat(3, raw{:});
+            
+        end
+        
+        function obj = GenerateImagePatch(obj)
+            %% Generates ImagePatches property from envelope coordinates
+            % Must run all normalizations from raw to norm to envelope
+            
+            
+            
+            
+        end
     end
     
     methods (Access = public)
@@ -250,17 +283,12 @@ classdef Curve < handle
             
         end
         
-        function obj = augmentEnvelope(obj, seg, sz)
+        function [lft, rgt] = augmentEnvelope(obj, S, sz)
             %% Set left and right sides of envelope around each Normal Segment
             % This function sets the extremes of the envelope for each segment
-            %             offset_function   = @(s,e,o) o * (s - e) / norm(s - e); % start, end, offset distance
-            %             offset_distance   = arrayfun(@(x) offset_function(seg(1,:,x), seg(end,:,x), sz), 1:size(seg,3), 'UniformOutput', 0);
-            %             offset_distance   = cat(3,  offset_distance{:});
-            %             obj.LeftEnvelope  = [seg(:,1), (seg(:,2) - offset_distance)];
-            %             obj.RightEnvelope = [seg(:,1), (seg(:,2) + offset_distance)];
             
-            obj.LeftEnvelope  = [seg(:,1), (seg(:,2) - sz)];
-            obj.RightEnvelope = [seg(:,1), (seg(:,2) + sz)];
+            lft = [S(:,1,:), (S(:,2,:) + sz)];
+            rgt = [S(:,1,:), (S(:,2,:) - sz)];
         end
     end
     

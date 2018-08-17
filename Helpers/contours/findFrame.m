@@ -15,7 +15,8 @@ function F = findFrame(S, E)
 %   F: [2 x 2] matrix representing rotated basis vectors
 
 %% Rotation Matrix for orthogonal vector
-R = Rmat(deg2rad(90));
+% R = Rmat(deg2rad(90));
+R = Rmat(90);
 
 %% New reference frame
 Z = E - S;
