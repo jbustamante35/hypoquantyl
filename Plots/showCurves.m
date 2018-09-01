@@ -71,12 +71,8 @@ plt(R(:,:,numC), 'g.');
 
 % Plot spline of envelope
 stp = 30;
-for k = round(1 : (length(L) - 1) / stp : length(L))
-    lnL = [crv.NormalSegments(k,:,numC) ; L(k,:,numC)];
-    lnR = [crv.NormalSegments(k,:,numC) ; R(k,:,numC)];
-    line(lnL(:,1), lnL(:,2), 'Color', 'm');
-    line(lnR(:,1), lnR(:,2), 'Color', 'b');
-end
+lineInts(crv.NormalSegments(:,:,numC), L(:,:,numC), stp, 'm');
+lineInts(crv.NormalSegments(:,:,numC), R(:,:,numC), stp, 'b');
 
 % Pick locations above and below Segment
 ptL = [nrm(numE,1), (nrm(numE,2) + dL)];
