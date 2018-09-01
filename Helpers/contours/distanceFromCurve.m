@@ -21,7 +21,7 @@ function dst = distanceFromCurve(envelope_coordinate, curve, maxD)
 %   maxD: maximum distance from the main segment to the extent of the envelope
 %
 
-N2E_Y = @(a,b,c) (a - ( b - ( c - a ))) / a;
+N2E_Y = @(a,b,c) (a - ( b - ( c - a ))) ./ a;
 dst   = N2E_Y(maxD, getDim(envelope_coordinate, 2), findIndex(curve, envelope_coordinate));
 
 end

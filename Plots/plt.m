@@ -19,15 +19,23 @@ switch nargin
     case 1
         D = varargin{1};
         p = plot(D(:,1), D(:,2));
+        
     case 2
         D   = varargin{1};
-        typ = varargin{2};
+        typ = varargin{2};                        
         p = plot(D(:,1), D(:,2), typ);
+        
     case 3
         D   = varargin{1};
         typ = varargin{2};
         sz  = varargin{3};
-        p = plot(D(:,1), D(:,2), typ, 'MarkerSize', sz);
+        
+        if contains(typ, '-')
+            p = plot(D(:,1), D(:,2), typ, 'LineWidth', sz);    
+        else            
+            p = plot(D(:,1), D(:,2), typ, 'MarkerSize', sz);
+        end
+        
     otherwise
         fprintf(2, 'Incorrect number of input\n');
         return;
