@@ -21,6 +21,7 @@ classdef CircuitJB < handle
         NUMBEROFANCHORS   = 7
     end
     
+    %%
     methods (Access = public)
         %% Constructor and primary methods
         function obj = CircuitJB(varargin)
@@ -43,16 +44,6 @@ classdef CircuitJB < handle
             
         end
         
-        function [X, Y] = LinearizeRoutes(obj)
-            %% Return all X and Y coordinates from all Routes
-            [~, X, Y] = concatTraces(obj);
-        end
-        
-        function P = getRouteParameters(obj)
-            %% Return all theta, deltaX, deltaY parameters from all Routes
-            P = concatParameters(obj);
-        end
-        
         function obj = NormalizeRoutes(obj)
             %% Run MidpointNormalization method on all of this object's Routes
             arrayfun(@(x) x.NormalizeTrace, obj.Routes, 'UniformOutput', 0);
@@ -63,6 +54,7 @@ classdef CircuitJB < handle
             obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
             obj.Curves.SegmentOutline;
             obj.Curves.NormalizeSegments;
+            obj.Curves.Normal2Envelope;
         end
         
         function obj = CreateRoutes(obj)
@@ -103,12 +95,12 @@ classdef CircuitJB < handle
             obj.Image.labels = lbl;
         end
         
-        function generateMasks(obj, buff)
+        function obj = generateMasks(obj, buff)
             %% Creates a binary mask from manually-drawn outline for probability matrix
             % This function generates a binary mask where the manually-drawn outline is set to 1 and
             % the rest of the image is 0. The output size of the image is defined by the buff
             % parameter, because the probability matrix must fit all orientations of hypocotyls in
-            % the dataset (think of hypocotyls in the extreme left or right locations). 
+            % the dataset (think of hypocotyls in the extreme left or right locations).
             img = obj.getImage(1, 'gray');
             crd = obj.getNormalOutline; % Use normalized coordinates
             %             crd = obj.FullOutline;
@@ -187,8 +179,23 @@ classdef CircuitJB < handle
             trc = arrayfun(@(x) x.getInterpTrace, obj.Routes, 'UniformOutput', 0);
             obj.FullOutline = cat(1, trc{:});
         end
+        
+        function obj = trainCircuit(obj, trained)
+            %% Set this object as 'trained' or 'untrained'
+            try
+                if islogical(trained)
+                    obj.isTrained = trained;
+                else
+                    fprintf(2, 'input should be logical\n');
+                end
+            catch
+                obj.isTrained = true;
+            end
+        end
+        
     end
     
+    %%
     methods (Access = public)
         %% Various helper methods
         function obj = setOrigin(obj, org)
@@ -402,21 +409,26 @@ classdef CircuitJB < handle
             end
         end
         
-        function obj = trainCircuit(obj, trained)
-            %% Set this object as 'trained' or 'untrained'
-            try
-                if islogical(trained)
-                    obj.isTrained = trained;
-                else
-                    fprintf(2, 'input should be logical\n');
-                end
-            catch
-                obj.isTrained = true;
-            end
+        function [X, Y] = rasterizeCurves(obj, req)
+            %% Rasterize all segments of requested type
+            % This method is used to prepare for Principal Components Analysis
+            [X, Y] = obj.Curves.rasterizeSegments(req);
+            
+        end
+        
+        function [X, Y] = LinearizeRoutes(obj)
+            %% Return all X and Y coordinates from all Routes
+            [~, X, Y] = concatTraces(obj);
+        end
+        
+        function P = getRouteParameters(obj)
+            %% Return all theta, deltaX, deltaY parameters from all Routes
+            P = concatParameters(obj);
         end
         
     end
     
+    %%
     methods (Access = private)
         %% Private helper methods
         function args = parseConstructorInput(varargin)
