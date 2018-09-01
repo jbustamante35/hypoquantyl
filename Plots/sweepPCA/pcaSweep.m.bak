@@ -40,9 +40,6 @@ mnsD = {pcaX.MeanVals;   pcaY.MeanVals};
 eigV = {pcaX.EigVectors; pcaY.EigVectors};
 scrD = {pcaX.PCAscores;  pcaY.PCAscores};
 
-%% Function handle to generate simulated data
-simMe = @(x, y, z) ((x * y') + z);
-
 %% Mean and StDev of all PCs in x and y coords
 meanScores = cellfun(@(x) mean(x), scrD, 'UniformOutput', 0);
 sdvScores  = cellfun(@(x) std(x), scrD, 'UniformOutput', 0);
@@ -69,10 +66,10 @@ else
     newScoresDwn = {meanScores{hld} ; dwnScores};
 end
 
-% Create new synthetic images with updated PC scores
-orgSim = cellfun(@(x, y, z) simMe(x, y, z), meanScores, eigV, mnsD, 'UniformOutput', 0);
-upSim  = cellfun(@(x, y, z) simMe(x, y, z), newScoresUp, eigV, mnsD, 'UniformOutput', 0);
-dwnSim = cellfun(@(x, y, z) simMe(x, y, z), newScoresDwn, eigV, mnsD, 'UniformOutput', 0);
+%% Create new synthetic images with updated PC scores
+orgSim = cellfun(@(x, y, z) input2sim(x, y, z), meanScores, eigV, mnsD, 'UniformOutput', 0);
+upSim  = cellfun(@(x, y, z) input2sim(x, y, z), newScoresUp, eigV, mnsD, 'UniformOutput', 0);
+dwnSim = cellfun(@(x, y, z) input2sim(x, y, z), newScoresDwn, eigV, mnsD, 'UniformOutput', 0);
 
 %% Plot original, up, and down iterative steps on single plot
 plot(dwnSim{2}, dwnSim{1}, 'r');
@@ -82,7 +79,7 @@ plot(upSim{2}, upSim{1}, 'g');
 ttl = sprintf('Dim_%d|PC_%d|Steps_%d', chg, pc, stpSz);
 title(ttl);
 axis ij; 
-% pause(0.2);
+
 end
 
 %% ---------------------------------------------------------------------------------------------- %%
