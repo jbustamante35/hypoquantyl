@@ -5,7 +5,7 @@ function [Rx, Ry] = rasterizeImagesHQ(D)
 % for Principal Components Analysis. 
 % 
 % Usage: 
-%   [Rx, Ry] = rasterizeImages(im)
+%   [Rx, Ry] = rasterizeImages(D)
 % 
 % Input:
 %   imgs: cell array of size N representing stack of [n x d] data
