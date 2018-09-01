@@ -5,7 +5,7 @@ function performSweep(pcaX, pcaY, nsteps, sv, name, eqlax)
 % 'upFn'/'dwnFn', and as of now they just iteratively add/subtract StDev of the given PC.
 %
 % The user can set the number of steps with 'nsteps', which defines both the number of steps up
-% and down from the mean PC score.
+% and down from the mean PC score (1 step = 1 standard deviation from the mean).
 %
 % Output is in the form of 2 separate figures, representing iterative steps of each principal
 % component from both inputted PCA structures. Structures don't need to have an equal number PCs.
@@ -28,11 +28,11 @@ function performSweep(pcaX, pcaY, nsteps, sv, name, eqlax)
 %
 % Example:
 %   performSweep(pcaX, pcaY, 5, 'scott', 1)
-%   pcaX has 2 PCs, pcaY has 5 PCs --> figure(1) will 2 subplots, figure(2) will have 5 subplots,
+%   pcaX has 2 PCs, pcaY has 5 PCs --> figure(1) will have 2 subplots, figure(2) will have 5 subplots,
 %   and both figures will have equal axes limits
 %
 
-% Set up function handle for iterative functions and easy use of pcaSweep
+%% Set up function handle for iterative functions and easy use of pcaSweep
 upFn  = @(x,y) x + y;
 dwnFn = @(x,y) x - y;
 pcSwp = @(x,y,z) pcaSweep(pcaX, pcaY, x, y, upFn, dwnFn, z);
@@ -44,13 +44,13 @@ pcX = 1 : size(pcaX.PCAscores, 2);
 pcY = 1 : size(pcaY.PCAscores, 2);
 pcA = {pcX pcY};
 
-% Equalize axes limits if you want each plot to have same axes (SET 'eqlax' TO TRUE)
+%% Equalize axes limits if you want each plot to have same axes (SET 'eqlax' TO TRUE)
 % You can set these limits to whatever values you want
 % Format is [xMin xMax ; yMin yMax]
 axs  = struct('julian', [-150 0; -150 150], ...
     'scott',[-10 1200 ; -600 2500]);
 
-% Create 2 sets of figures for x- and y-coordinates
+%% Create 2 sets of figures for x- and y-coordinates
 for d = dim
     fig = figure;
     set(gcf,'color','w');
