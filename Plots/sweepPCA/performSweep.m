@@ -44,9 +44,9 @@ for fn = fieldnames(args)'
 end
 
 %% Set up function handle for iterative functions and easy use of pcaSweep
-upFn  = @(x,y) x + y;
-dwnFn = @(x,y) x - y;
-pcSwp = @(x,y,z) pcaSweep(pcaX, pcaY, x, y, upFn, dwnFn, z);
+% upFn  = @(x,y) x + y;
+% dwnFn = @(x,y) x - y;
+pcSwp = @(x,y,z) sweep2('pcaX', pcaX, 'pcaY', pcaY, 'dim2chg', x, 'pc2chg', y, 'stp', z, 'f', 1);
 stps  = 1 : nsteps; % Number of iterative steps up and down
 
 % Dimensions and PCs to iterate through
@@ -58,8 +58,8 @@ pcA = {pcX pcY};
 %% Equalize axes limits if you want each plot to have same axes (SET 'eqlax' TO TRUE)
 % You can set these limits to whatever values you want
 % Format is [xMin xMax ; yMin yMax]
-axs  = struct('j', [-150 0; -150 150], ...
-    's',[-10 1200 ; -600 2500]);
+% axs  = struct('j', [-150 0; -150 150], ...
+%     's',[-10 1200 ; -600 2500]);
 
 %% Create 2 sets of figures for x- and y-coordinates
 for d = dim
@@ -70,16 +70,20 @@ for d = dim
     col = ceil(tot / row);
     for k = 1 : tot
         subplot(row, col, k);
-        arrayfun(@(x) pcSwp(d, pcA{d}(k), x), stps, 'UniformOutput', 0);
+        [scoresAll{d,k}, simsAll{d,k}] = arrayfun(@(x) pcSwp(d, pcA{d}(k), x), stps, 'UniformOutput', 0);
         
         % Equalize axes limits if set to TRUE
-        if isfield(axs, usr) && eqlax
-            xlim(axs.(usr)(2,:));
-            ylim(axs.(usr)(1,:));
-            typ = {'pcaXeql' 'pcaYeql'};
-        else
-            typ = {'pcaX' 'pcaY'};
-        end
+%         if isfield(axs, usr) && eqlax
+%             xlim(axs.(usr)(2,:));
+%             ylim(axs.(usr)(1,:));
+%             typ = {'pcaXeql' 'pcaYeql'};
+%         else
+%             typ = {'pcaX' 'pcaY'};
+%         end
+        % Equalize axes limits
+%         xlim([-2000 0]);
+%         ylim([-1000 1000]);
+        typ = {'pcaX' 'pcaY'};
     end
     
     if sv
@@ -101,18 +105,11 @@ function args = parseInputs(varargin)
 p = inputParser;
 p.addOptional('pcaX', struct());
 p.addOptional('pcaY', struct());
-p.addOptional('meansX', []);
-p.addOptional('eigsX', []);
-p.addOptional('scoresX', []);
-p.addOptional('meansY', []);
-p.addOptional('eigsY', []);
-p.addOptional('scoresY', []);
-p.addOptional('dim2chg', 1);
-p.addOptional('pc2chg', 1);
+p.addOptional('nsteps', 1);
 p.addOptional('upFn', @(x,y) x+y);
 p.addOptional('dwnFn', @(x,y) x-y);
-p.addOptional('stp', 1);
 p.addOptional('f', 0);
+p.addOptional('sv', 0);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});
