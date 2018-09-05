@@ -15,7 +15,7 @@ function [scoresStruct, simsStruct] = sweep2(varargin)
 % iterative steps. [or read help performSweep]
 %
 % Usage:
-%   [newScoresUp, meanScores, newScoresDwn] = pcaSweep(pcaX, pcaY, chg, pc, upFn, dwnFn, stpSz)
+%   [scoresStruct, simsStruct] = sweep2(pcaX, pcaY, dim2chg, pc2chg, upFn, dwnFn, stp, f)
 %
 % Input:
 %   pcaX: structure containing x-coordinate output from custom pcaAnalysis
@@ -25,6 +25,7 @@ function [scoresStruct, simsStruct] = sweep2(varargin)
 %   upFn: function handle to positively sweep PCs
 %   dwnFn: function handle to negatively sweep PCs
 %   stp: size of step for iterative function
+%   f: boolean to overwrite on old figure (0) or create new figure (1)
 %
 % Output:
 %   scoresStruct: structure containing PC values after iterative step [see below for contents]
@@ -65,7 +66,7 @@ pSweep = @(m, e, s, p) pcaSweep(m, e, s, p, upFn, dwnFn, stp, 0);
 
 if dim2chg == 1
     [scrsX, simsX] = pSweep(mnsD{1}, eigV{1}, scrD{1}, pc2chg);
-    [scrsY, simsY] = pSweep(mnsD{1}, eigV{1}, scrD{1}, 0);
+    [scrsY, simsY] = pSweep(mnsD{2}, eigV{2}, scrD{2}, 0);
     
 else
     [scrsX, simsX] = pSweep(mnsD{1}, eigV{1}, scrD{1}, 0);
@@ -73,9 +74,9 @@ else
 end
 
 %% Create output structures
-scoresStruct = struct('up', [scrsX.up ; scrsY.up], ...
-    'mean', [scrsX.mean ; scrsY.mean], ...
-    'down', [scrsX.down ; scrsY.down]);
+scoresStruct = struct('up', {scrsX.up , scrsY.up}, ...
+    'mean', {scrsX.mean , scrsY.mean}, ...
+    'down', {scrsX.down , scrsY.down});
 
 simsStruct = struct('up', [simsX.up , simsY.up], ...
     'mean', [simsX.mean , simsY.mean], ...
@@ -99,7 +100,7 @@ end
 function args = parseInputs(varargin)
 %% Parse input parameters for Constructor method
 % Need descriptions for all these parameters
-% pcaX, pcaY, chg, mns, eigs, scrs, pc, upFn, dwnFn, stp, f
+% pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 
 p = inputParser;
 p.addOptional('pcaX', struct());
