@@ -12,6 +12,7 @@ classdef ContourJB < handle
     
     properties (Access = private)
         AnchorPoint
+        AnchorIndex
         Origin
         Image
         gray
@@ -43,10 +44,15 @@ classdef ContourJB < handle
         
         function obj = ReindexCoordinates(obj)
             %% Reindex coordinates to normalize start points
-            [obj.AnchorPoint, pIdx] = findAnchorPoint(obj, obj.InterpOutline);
-            obj.NormalizedOutline   = repositionPoints(obj, obj.InterpOutline, pIdx);
+            [obj.AnchorPoint, obj.AnchorIndex] = findAnchorPoint(obj, obj.InterpOutline);
+            obj.NormalizedOutline   = repositionPoints(obj, obj.InterpOutline, obj.AnchorIndex);
         end
         
+        function crds = Normal2Raw(obj)
+            %% Convert NormalizedOutline to un-indexed InterpOutline
+            crds = norm2raw(obj.NormalizedOutline, obj.AnchorPoint, obj.AnchorIndex);
+            
+        end
     end
     
     methods (Access = public)
@@ -123,6 +129,11 @@ classdef ContourJB < handle
             apt = obj.AnchorPoint;
         end
         
+        function idx = getAnchorIndex(obj)
+            %% Return Anchor Point index
+            idx = obj.AnchorIndex;
+        end
+        
     end
     
     methods (Access = private)
@@ -155,12 +166,12 @@ classdef ContourJB < handle
             rng = round(crds(crds(:,1) == low, :), 4);
             
             % Get median of column range
-            if mod(length(rng), 2)
-                mtc = median(rng);
+            if mod(size(rng,1), 2)
+                mtc = median(rng, 1);                
             else
                 % Remove last row if even number of values
                 nrng = rng(1:end-1, :);
-                mtc  = median(nrng);
+                mtc  = median(nrng, 1);
             end
             
             % Get index of Anchor Point
@@ -170,10 +181,11 @@ classdef ContourJB < handle
                 idx = max(idx);
             elseif isnan(mtc)
                 % Check if no index found, if range is only a single value
-                idx = find(crds == rng);
+                %idx = find(crds == rng);
+                idx = find(ismember(round(crds), round(rng), 'rows'));
             end
             
-            apt = crds(idx,:);
+            apt = crds(idx, :);
         end
         
         function shft = repositionPoints(obj, crds, idx)

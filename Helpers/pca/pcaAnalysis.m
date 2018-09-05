@@ -30,13 +30,13 @@ if sv
 end
 
 %% Show output from custom and builtin PCA analysis
-if vis    
-    [figC, ttlC] = showMyPCA(PCA_custom, analysis_name);    
+if vis
+    [figC, ttlC] = showMyPCA(PCA_custom, analysis_name);
     [figB, ttlB] = showBuiltinPCA(PCA_builtin, analysis_name, sz);
     
     %% Save figures as .fig and .tiff
     figA = [figC figB];
-    ttlA = [ttlC ttlB];    
+    ttlA = [ttlC ttlB];
     if sv
         savename = sprintf('%s_PCA', datestr(now, 'yymmdd'));
         for i = 1 : length(figA)
