@@ -1,4 +1,4 @@
-function [newScoresUp, meanScores, newScoresDwn] = pcaSweep(pcaX, pcaY, chg, pc, upFn, dwnFn, stpSz)
+function pcaSweep_proto(pcaX, pcaY, chg, pc, upFn, dwnFn, stpSz)
 %% pcaSweep: sweep through mean principal component scores
 % NOTE: This function only works for my custom PCA for now, but I'll work on generalizing it to be
 % more flexible in the future. Run the testSweep function for testing and debugging.
@@ -15,7 +15,7 @@ function [newScoresUp, meanScores, newScoresDwn] = pcaSweep(pcaX, pcaY, chg, pc,
 %  components for multiple iterative steps. [or read help performSweep]
 %
 % Usage:
-%   [newScoresUp, meanScores, newScoresDwn] = pcaSweep(pcaX, pcaY, chg, pc, upFn, dwnFn, stpSz)
+%   pcaSweep(pcaX, pcaY, chg, pc, upFn, dwnFn, stpSz)
 %
 % Input:
 %   pcaX: structure containing x-coordinate output from custom pcaAnalysis
@@ -26,11 +26,7 @@ function [newScoresUp, meanScores, newScoresDwn] = pcaSweep(pcaX, pcaY, chg, pc,
 %   dwnFn: function handle to negatively sweep PCs
 %   stpSz: size of step for iterative function
 %
-% Output:
-%   newScoresUp:
-%   meanScores:
-%   newScoresDwn:
-%
+% Output: n/a
 %   This function outputs a single plot of the original synthetic contour (dotted black line) and a
 %   single step up (solid green line) or down (solid red line) defined by inputted function handles.
 %
@@ -39,6 +35,9 @@ function [newScoresUp, meanScores, newScoresDwn] = pcaSweep(pcaX, pcaY, chg, pc,
 mnsD = {pcaX.MeanVals;   pcaY.MeanVals};
 eigV = {pcaX.EigVectors; pcaY.EigVectors};
 scrD = {pcaX.PCAscores;  pcaY.PCAscores};
+
+%% Function handle to generate simulated data
+simMe = @(x, y, z) ((x * y') + z);
 
 %% Mean and StDev of all PCs in x and y coords
 meanScores = cellfun(@(x) mean(x), scrD, 'UniformOutput', 0);
@@ -66,19 +65,18 @@ else
     newScoresDwn = {meanScores{hld} ; dwnScores};
 end
 
-%% Create new synthetic images with updated PC scores
-orgSim = cellfun(@(x, y, z) input2sim(x, y, z), meanScores, eigV, mnsD, 'UniformOutput', 0);
-upSim  = cellfun(@(x, y, z) input2sim(x, y, z), newScoresUp, eigV, mnsD, 'UniformOutput', 0);
-dwnSim = cellfun(@(x, y, z) input2sim(x, y, z), newScoresDwn, eigV, mnsD, 'UniformOutput', 0);
+% Create new synthetic images with updated PC scores
+orgSim = cellfun(@(x, y, z) simMe(x, y, z), meanScores, eigV, mnsD, 'UniformOutput', 0);
+upSim  = cellfun(@(x, y, z) simMe(x, y, z), newScoresUp, eigV, mnsD, 'UniformOutput', 0);
+dwnSim = cellfun(@(x, y, z) simMe(x, y, z), newScoresDwn, eigV, mnsD, 'UniformOutput', 0);
 
 %% Plot original, up, and down iterative steps on single plot
-plot(dwnSim{2}, dwnSim{1}, 'r');
+plot(dwnSim{1}, dwnSim{2}, 'r');
 hold on;
-plot(orgSim{2}, orgSim{1}, 'k--', 'MarkerSize', 12);
-plot(upSim{2}, upSim{1}, 'g');
+plot(orgSim{1}, orgSim{2}, 'k--');
+plot(upSim{1}, upSim{2}, 'g');
 ttl = sprintf('Dim_%d|PC_%d|Steps_%d', chg, pc, stpSz);
 title(ttl);
-axis ij; 
 
 end
 
