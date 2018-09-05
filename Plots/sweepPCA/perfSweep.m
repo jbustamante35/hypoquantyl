@@ -1,4 +1,4 @@
-function performSweep(pcaX, pcaY, nsteps, sv, name, eqlax)
+function perfSweep(pcaX, pcaY, nsteps, sv, name, eqlax)
 %% performSweep: run pcaSweep through all principal components n times
 % This function performs a sweep through each principal component of 2 sets of PCA structures. The
 % function used to make iterative steps of each PC is defined at the top of this file as
@@ -35,7 +35,7 @@ function performSweep(pcaX, pcaY, nsteps, sv, name, eqlax)
 %% Set up function handle for iterative functions and easy use of pcaSweep
 upFn  = @(x,y) x + y;
 dwnFn = @(x,y) x - y;
-pcSwp = @(x,y,z) pcaSweep(pcaX, pcaY, x, y, upFn, dwnFn, z);
+pcSwp = @(x,y,z) pSweep(pcaX, pcaY, x, y, upFn, dwnFn, z);
 stps  = 1 : nsteps; % Number of iterative steps up and down
 
 % Dimensions and PCs to iterate through
