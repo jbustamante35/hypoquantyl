@@ -1,4 +1,4 @@
-function [scoresAll, simsAll] = performSweep(varargin)
+function [scoresAll, simsAll, figs] = performSweep(varargin)
 %% performSweep: run pcaSweep through all principal components n times
 % This function performs a sweep through each principal component of 2 sets of PCA structures. The
 % function used to make iterative steps of each PC is defined at the top of this file as
@@ -44,8 +44,6 @@ for fn = fieldnames(args)'
 end
 
 %% Set up function handle for iterative functions and easy use of pcaSweep
-% upFn  = @(x,y) x + y;
-% dwnFn = @(x,y) x - y;
 pcSwp = @(x,y,z) sweep2('pcaX', pcaX, 'pcaY', pcaY, 'dim2chg', x, 'pc2chg', y, 'stp', z, 'f', 1);
 stps  = 1 : nsteps; % Number of iterative steps up and down
 
@@ -62,8 +60,9 @@ pcA = {pcX pcY};
 %     's',[-10 1200 ; -600 2500]);
 
 %% Create 2 sets of figures for x- and y-coordinates
+figs = [1 2];
 for d = dim
-    fig = figure;
+    figs(d) = figure;
     set(gcf,'color','w');
     tot = numel(pcA{d});
     row = 2;
@@ -89,8 +88,8 @@ for d = dim
     if sv
         num = numel(pcA{d});
         fnm = sprintf('%s_PCSweepFull_%s_%dPCs', tdate, typ{d}, num);
-        savefig(fig, fnm);
-        saveas(fig, fnm, 'tiffn');
+        savefig(figs(d), fnm);
+        saveas(figs(d), fnm, 'tiffn');
     end
 end
 
