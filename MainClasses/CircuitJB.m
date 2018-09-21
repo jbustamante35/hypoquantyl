@@ -52,9 +52,9 @@ classdef CircuitJB < handle
         function obj = CreateCurves(obj)
             %% Use Full Outline to generate Curve objects around CircuitJB object
             obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
-            obj.Curves.SegmentOutline;
-            obj.Curves.NormalizeSegments;
-            obj.Curves.Normal2Envelope;
+            obj.Curves.RunFullPipeline('smooth');
+            obj.Curves.Normal2Envelope('main');
+
         end
         
         function obj = CreateRoutes(obj)
