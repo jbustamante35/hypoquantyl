@@ -21,13 +21,15 @@ function PATCHES = assessImagePatches(c, itr, scl, gaus, figs, fnms, sv)
 %   itr: number of intermediate curves between main segment and inner/outer envelopes
 %   scl: magnitude to scale maximum envelope distance
 %   gaus: sigma value for gaussian filtering to smooth image patch
-%   figs: array of figure indices [pretty much just enter (1:4)]
-%   fnms: cell string array of figure names [see section 2 of this file]
+%   figs: array of figure indices [enter 0 to autogenerate figures]
+%   fnms: cell string array of figure names [enter 0 to autogenerate names]
 %   sv: boolean to save figure (1)
 %
 % Output:
 %   PATCHES: image patch of a single curve's envelope structure
 %
+% Example:
+%   PATCHES = assessImagePatches(cl, 50, 4, 4, 0, 0, 1)
 
 %% Set-up Figures and random function handle
 m  = @(x) randi([1 length(x)], 1);
@@ -213,7 +215,7 @@ title(ttl);
 drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Store data into Curve object
-
+% TODO
 
 
 
