@@ -21,9 +21,10 @@ classdef Curve < handle
         SEGMENTSIZE  = 300; % Number of coordinates per segment
         SEGMENTSTEPS = 30;  % Size of step to next segment
         ENVELOPESIZE = 20;  % Hard-coded max distance from original segment to envelope [deprecated]
-        SMOOTHSPAN   = 30;  % Moving average span for smoothing segment coordinates
-        GAUSSSIGMA   = 4;   % Sigma parameter for gaussian smoothing of ImagePatches
-        ENV_ITRS     = 50;  % Number of intermediate curves between segment and envelope
+        SMOOTHSPAN   = 0.25;  % Moving average span for smoothing segment coordinates
+        SMOOTHMETHOD = 'lowess' % Smoothing method
+        GAUSSSIGMA   = 3;   % Sigma parameter for gaussian smoothing of ImagePatches
+        ENV_ITRS     = 25;  % Number of intermediate curves between segment and envelope
         ENV_SCALE    = 4;   % Size to scale unit length vector to define max envelope distance
         Pmats
         Ppars
@@ -54,6 +55,20 @@ classdef Curve < handle
             else
                 % Set default properties for empty object
             end
+            
+        end
+        
+        function obj = RunFullPipeline(obj, ver)
+            %% Runs full pipeline from full Trace from Parent to generating ImagePatch
+                        
+            t = tic;
+            tic; obj.SegmentOutline; fprintf('\nSplitting full outline: %.02f sec\n', toc);            
+            tic; obj.NormalizeSegments; fprintf('Midpoint Normalization conversion: %.02f sec\n', toc);
+            tic; obj.SmoothSegments; fprintf('Smoothing Segments: %.02f sec\n', toc);
+            tic; obj.CreateEnvelopeStructure(ver); fprintf('Creating Envelope Structure: %.02f sec\n', toc);
+            tic; obj.Normal2Envelope(ver); fprintf('Converting to Envelope coordinates: %.02f sec\n', toc);
+            tic; obj.GenerateImagePatch(ver); fprintf('Generating Image Patch: %.02f sec\n', toc);
+            fprintf('%.02f sec to complete a single contour\n\n', toc(t));
             
         end
         
@@ -108,21 +123,24 @@ classdef Curve < handle
                     midpointNorm(obj.RawSegments(:,:,s));
             end
             
-            % Define Outer and Inner Envelope structures            
-            defCrv = @(x) defineCurveEnvelope(obj.NormalSegments(:,:,x), obj.ENV_SCALE);
-            [obj.OuterEnvelopeMax, obj.InnerEnvelopeMax, obj.OuterDists, obj.InnerDists] = ...
-                arrayfun(@(x) defCrv(x), 1:obj.NumberOfSegments, 'UniformOutput', 0);
-            
-            obj.updateEnvelopeStructure;
         end
         
-        function obj = Normal2Envelope(obj)
+        function obj = Normal2Envelope(obj, ver)
             %% Convert NormalSegments to coordinates within envelope (see envelopeMethod())
-            %             % Augment segment to get left and right envelope [OLD METHOD]
-            %             [obj.OuterEnvelope, obj.InnerEnvelope] = ...
-            %                 augmentEnvelope(obj, obj.NormalSegments, obj.ENVELOPESIZE);                                                            
-            if isempty(obj.EnvelopeSegments)
-                obj.CreateEnvelopeStructure;
+            switch ver
+                case 'main'
+                    typ = 'Segments';
+                    
+                case 'smooth'
+                    typ = 'Smooth';
+                    
+                otherwise
+                    typ = 'Segments';
+            end
+            seg = sprintf('Envelope%s', typ);
+            
+            if isempty(obj.(seg))
+                obj.CreateEnvelopeStructure(ver);
             end
             
             % Get distance to envelope.
@@ -131,91 +149,56 @@ classdef Curve < handle
             I    = obj.getEnvelopeStruct('I');
             dOut = O(1).Dists(1,:);
             dInn = I(1).Dists(1,:);
-            maxD = pdist([dOut ; dInn]) / 2; 
+            maxD = pdist([dOut ; dInn]) / 2;
             
             % Convert normalized coordinates to envelope coordinates
             env = arrayfun(@(x) envelopeMethod(obj.NormalSegments(:,:,x), ...
                 obj.NormalSegments(:,:,x), maxD), 1:obj.NumberOfSegments, 'UniformOutput', 0);
-            obj.EnvelopeSegments = cat(3, env{:});
+            obj.(seg) = cat(3, env{:});
             
         end
         
-        function obj = CreateEnvelopeStructure(obj)
+        function obj = CreateEnvelopeStructure(obj, ver)
             %% Method 2: mathematical version of augmentEnvelope [see assessImagePatches function]
             % Define maximum distance to envelope and create all intermediate curves between main
             % segment and envelope segment
-            %
-            % Input:
-            %   S: curve segment to generate envelope from
-            %   dst: unit length vectors defining distance from curve to envelope
-            %   itrs: number of intermediate curves between envelope and main segment
-            %
-            % Output:
-            %   envOut: [n x i] intermediate segments between outer segment and main curve
-            %   envInn: [n x i] intermediate segments between inner segment and main curve
-            %
             
-            genFull = @(s,d) generateFullEnvelope(s, d, obj.ENV_ITRS);
-            obj.OuterEnvelope = arrayfun(@(x) genFull(obj.NormalSegments(:,:,x), ...
-                obj.OuterDists{x}), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+            % Outer and Inner Envelope boundaries and Intermediate segments between boundaries
+            obj.generateEnvelopeBounds(ver);
+            obj.generateEnvelopeIntermediates(ver);
             
-            obj.InnerEnvelope = arrayfun(@(x) genFull(obj.NormalSegments(:,:,x), ...
-                obj.InnerDists{x}), 1:obj.NumberOfSegments, 'UniformOutput', 0);
-            
-            obj.updateEnvelopeStructure;
         end
         
         function obj = SmoothSegments(obj)
             %% Smooth RawTrace then go through full normalization pipeline
-            % Smooth RawSegments
-            smthFun       = @(x) segSmooth(obj.RawSegments(:,:,x), obj.SMOOTHSPAN);
-            R             = arrayfun(@(x) smthFun(x), 1 : obj.NumberOfSegments, 'UniformOutput', 0);
-            obj.RawSmooth = cat(3, R{:});
-            
-            % Midpoint-normalization on smoothed segments
-            obj.NormalSmooth = zeros(size(obj.RawSmooth));
-            for s = 1 : size(obj.RawSmooth, 3)
-                [obj.NormalSmooth(:,:,s), obj.Pmats(:,:,s), obj.MidPoints(:,:,s)] = ...
-                    midpointNorm(obj.RawSmooth(:,:,s));
+            % Check if segments have been normalized
+            if isempty(obj.NormalSegments)
+                obj.NormalizeSegments;
             end
             
-            % Define Outer and Inner Envelope structures
-            defCrv = @(x) defineCurveEnvelope(obj.NormalSmooth(:,:,x), obj.ENV_SCALE);
-            [obj.OuterEnvelopeMax, obj.InnerEnvelopeMax, obj.OuterDists, obj.InnerDists] = ...
-                arrayfun(@(x) defCrv(x), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+            smthFun          = @(x) segSmooth(obj.NormalSegments(:,:,x), obj.SMOOTHSPAN, obj.SMOOTHMETHOD);
+            R                = arrayfun(@(x) smthFun(x), 1 : obj.NumberOfSegments, 'UniformOutput', 0);
+            obj.NormalSmooth = cat(3, R{:});
             
-            obj.updateEnvelopeStructure;
+            % Reverse Midpoint-normalization on smoothed segments
+            obj.RawSmooth = zeros(size(obj.RawSmooth));
+            for s = 1 : size(obj.NormalSmooth, 3)
+                obj.RawSmooth(:,:,s) = reverseMidpointNorm(...
+                    obj.NormalSmooth(:,:,s), obj.Pmats(:,:,s)) + obj.MidPoints(:,:,s);
+            end
             
-            % Generate new Envelope with smoothed curves
-            genFull = @(s,d) generateFullEnvelope(s, d, obj.ENV_ITRS);
-            obj.OuterEnvelope = arrayfun(@(x) genFull(obj.NormalSmooth(:,:,x), ...
-                obj.OuterDists{x}), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+            % Create Envelope structure with smoothed segments
+            obj.generateEnvelopeBounds('smooth');
+            obj.generateEnvelopeIntermediates('smooth');
             
-            obj.InnerEnvelope = arrayfun(@(x) genFull(obj.NormalSmooth(:,:,x), ...
-                obj.InnerDists{x}), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+             % Convert normalized coordinates to envelope coordinates
+             obj.Normal2Envelope('smooth');                       
             
-            obj.updateEnvelopeStructure;
-                        
-            % Envelope-normalization on smoothed segments
-            % Get distance to envelope.
-            % Each coordinate should be same distance all around
-            O    = obj.getEnvelopeStruct('O');
-            I    = obj.getEnvelopeStruct('I');
-            dOut = O(1).Dists(1,:);
-            dInn = I(1).Dists(1,:);
-            maxD = pdist([dOut ; dInn]) / 2; 
-            
-            % Convert normalized coordinates to envelope coordinates
-            env = arrayfun(@(x) envelopeMethod(obj.NormalSmooth(:,:,x), ...
-                obj.NormalSmooth(:,:,x), maxD), 1:obj.NumberOfSegments, 'UniformOutput', 0);
-            obj.EnvelopeSmooth = cat(3, env{:});
-            
-        end        
+        end
         
         function obj = GenerateImagePatch(obj, ver)
             %% Generates ImagePatches property from envelope coordinates
             % Image patch can be created with main or smoothed segments, defined by ver parameter.
-            %% TODO
             
             switch ver
                 case 'main'
@@ -225,15 +208,15 @@ classdef Curve < handle
                     typ = 'Smooth';
                     
                 otherwise
-                    typ = 'Segments';            
+                    typ = 'Segments';
             end
             
             % Map main curve first
             seg = sprintf('Normal%s', typ); % Should be envelope segments when I get this right
-%             seg = sprintf('Envelope%s', typ);          
-
+%             seg = sprintf('Envelope%s', typ);
+            
             obj.ImagePatches = arrayfun(@(x) obj.setImagePatch(obj.(seg)(:,:,x), x), ...
-                1:obj.NumberOfSegments, 'UniformOutput', 0);   
+                1:obj.NumberOfSegments, 'UniformOutput', 0);
             
         end
     end
@@ -368,7 +351,7 @@ classdef Curve < handle
                 1 : obj.NumberOfSegments, 'UniformOutput', 0);
             raw = cat(3, raw{:});
             
-        end                
+        end
         
         function obj = updateEnvelopeStructure(obj)
             %% Update Inner/Outer envelope structure
@@ -385,27 +368,29 @@ classdef Curve < handle
             %% Generate an image patch at desired frame
             % Map original curve segment
             [img, Pm, mid] = getMapParams(obj, segIdx);
-            [pxCrv, ~] = mapCurve2Image(seg, img, Pm, mid);
+            [pxCrv, ~]     = mapCurve2Image(seg, img, Pm, mid);
             
             % Map full envelope structure
-            envOut = obj.getEnvelopeStruct('O');
-            envInn = obj.getEnvelopeStruct('I');
+            envOut     = obj.getEnvelopeStruct('O');
+            envInn     = obj.getEnvelopeStruct('I');
             [pxOut, ~] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
                 envOut(segIdx).Full, 'UniformOutput', 0);
             [pxInn, ~] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
-                envInn(segIdx).Full, 'UniformOutput', 0);            
+                envInn(segIdx).Full, 'UniformOutput', 0);
             
             % Create ImagePatch
-            allOut   = cat(2, pxOut{:});
-            allInn   = fliplr(cat(2, pxInn{:})); % Flip inner envelope to align with others
-            fullpx   = [allInn pxCrv allOut];
+            allOut   = fliplr(cat(2, pxOut{:}));
+            allInn   = cat(2, pxInn{:}); % Flip inner envelope to align with others
+            fullpx   = [allOut pxCrv allInn];
             imgPatch = imgaussfilt(fullpx, obj.GAUSSSIGMA);
             
         end
         
         function [crvsX, crvsY] = rasterizeSegments(obj, req)
             %% Rasterize all segments of requested type
-            % This method is used to prepare for Principal Components Analysis
+            % This method is used to prepare for Principal Components Analysis. The req parameter is
+            % the requested segment type to rasterize (should be RawSegments, NormalSegments, or
+            % EnvelopeSegments).
             try
                 segtype = getSegmentType(obj, req);
                 X       = obj.(segtype)(:,1,:);
@@ -457,8 +442,8 @@ classdef Curve < handle
         
         function obj = loadRawSegmentData(obj, trace, segment_length, step_size)
             %% Set data for RawSegments, EndPoints, and NumberOfSegments
-            obj.RawSegments = split2Segments(trace, segment_length, step_size);
-            obj.EndPoints   = [obj.RawSegments(1,:,:) ; obj.RawSegments(end,:,:)];
+            obj.RawSegments      = split2Segments(trace, segment_length, step_size);
+            obj.EndPoints        = [obj.RawSegments(1,:,:) ; obj.RawSegments(end,:,:)];
             obj.NumberOfSegments = size(obj.RawSegments,3);
             
         end
@@ -467,10 +452,76 @@ classdef Curve < handle
             %% Extract parameters needed for mapping curve to image for setImagePatch
             img      = obj.Parent.getImage(1, 'gray');
             Pmat     = obj.getParameter('Pmats', segIdx);
-            midpoint = obj.getMidPoint(segIdx);            
-  
+            midpoint = obj.getMidPoint(segIdx);
+            
         end
         
+        function obj = generateEnvelopeBounds(obj, ver)
+            %% Define Outer and Inner Envelope structures
+            % Input:
+            %   S: curve segment index to generate envelope boundary from
+            %   ENV_SCALE: magnitude to scale distance from curve to envelope boundary
+            %
+            % Output:
+            %   OuterEnvelopeMax: segment coordinates defining main curve to outer envelope
+            %   OuterDists: unit length vector of distances from outer envelope to main curve
+            %   InnerEnvelopeMax: segment coordinates defining main curve to inner envelope
+            %   InnerDists: unit length vector of distances from inner envelope to main curve
+            
+            switch ver
+                case 'main'
+                    typ = 'Segments';
+                    
+                case 'smooth'
+                    typ = 'Smooth';
+                    
+                otherwise
+                    typ = 'Segments';
+            end
+            seg = sprintf('Normal%s', typ);
+            
+            defCrv = @(S) defineCurveEnvelope(obj.(seg)(:,:,S), obj.ENV_SCALE);
+            [obj.OuterEnvelopeMax, obj.InnerEnvelopeMax, obj.OuterDists, obj.InnerDists] = ...
+                arrayfun(@(x) defCrv(x), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+            
+            obj.updateEnvelopeStructure;
+            
+        end
+        
+        function obj = generateEnvelopeIntermediates(obj, ver)
+            %% Generate Intermediate Envelope segments
+            % Input:
+            %   S: curve segment to generate envelope from
+            %   dst: unit length vectors defining distance from curve to envelope
+            %   ENV_ITRS: number of intermediate curves between envelope and main segment
+            %
+            % Output:
+            %   OuterEnvelope: intermediate segments between outer segment and main curve
+            %   InnerEnvelope: intermediate segments between inner segment and main curve
+            %
+            
+            switch ver
+                case 'main'
+                    typ = 'Segments';
+                    
+                case 'smooth'
+                    typ = 'Smooth';
+                    
+                otherwise
+                    typ = 'Segments';
+            end
+            seg = sprintf('Normal%s', typ);
+            
+            genFull = @(S,dst) generateFullEnvelope(S, dst, obj.ENV_ITRS);
+            
+            obj.OuterEnvelope = arrayfun(@(x) genFull(obj.(seg)(:,:,x), ...
+                obj.OuterDists{x}), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+            obj.InnerEnvelope = arrayfun(@(x) genFull(obj.(seg)(:,:,x), ...
+                obj.InnerDists{x}), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+            
+            obj.updateEnvelopeStructure;
+            
+        end
     end
     
 end
