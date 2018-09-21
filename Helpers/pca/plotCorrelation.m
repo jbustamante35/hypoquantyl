@@ -31,8 +31,8 @@ function fig = plotCorrelation(NA, CA, RA, PA, NB, CB, RB, PB, sv)
 % end
 
 %% Function handle for plotting
-plt = @(a,b,c,d,e,f) plot(a(b).PCAscores(:,c), d(e).PCAscores(:,f), '.');
-fig = plt(CA,RA,PA,CB,RB,PB);
+pltC = @(a,b,c,d,e,f) plot(a(b).PCAscores(:,c), d(e).PCAscores(:,f), '.');
+fig = pltC(CA,RA,PA,CB,RB,PB);
 set(gcf, 'Color', 'w');
 set(gca, 'FontSize', 7);
 xlabel(sprintf('%s | R%d | PC%d', NA, RA, PA), 'FontSize', 10);
