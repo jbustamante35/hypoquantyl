@@ -4,6 +4,7 @@
 classdef CircuitJB < handle
     properties (Access = public)
         Origin
+        Parent
         AnchorPoints
         FullOutline
         NormalOutline
@@ -17,7 +18,7 @@ classdef CircuitJB < handle
         RawOutline
         Image
         InterpOutline
-        INTERPOLATIONSIZE = 800
+        INTERPOLATIONSIZE = 2100
         NUMBEROFANCHORS   = 7
     end
     
@@ -435,6 +436,7 @@ classdef CircuitJB < handle
             %% Parse input parameters for Constructor method
             p = inputParser;
             p.addOptional('Origin', '');
+            p.addOptional('Parent', Hypocotyl);
             p.addOptional('RawOutline', {});
             p.addOptional('InterpOutline', []);
             p.addOptional('FullOutline', []);
