@@ -4,6 +4,7 @@
 classdef Hypocotyl < handle
     properties (Access = public)
         %% Hypocotyl properties
+        Parent
         ExperimentName
         ExperimentPath
         GenotypeName
@@ -206,6 +207,7 @@ classdef Hypocotyl < handle
             %% Parse input parameters for Constructor method
             p = inputParser;
             p.addRequired('HypocotylName');
+            p.addOptional('Parent', Seedling);
             p.addOptional('ExperimentName', '');
             p.addOptional('ExperimentPath', '');
             p.addOptional('GenotypeName', '');
