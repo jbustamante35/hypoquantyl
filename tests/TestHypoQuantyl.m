@@ -14,6 +14,13 @@ function e = TestHypoQuantyl(r, a, z, l, c, v)
 %   e: full Experiment after analysis
 %
 
+%% Set-up [comment out before running]
+d = dir;
+d(1:2) = [];
+r = numel(d);
+a = 1;
+z = 70;
+
 %% Create Experiment in current directory
 e      = Experiment(pwd);
 [d, ~] = sortDirectory(pwd);
