@@ -18,11 +18,11 @@ classdef Curve < handle
     end
     
     properties (Access = protected)
-        SEGMENTSIZE  = 300; % Number of coordinates per segment
-        SEGMENTSTEPS = 30;  % Size of step to next segment
+        SEGMENTSIZE  = 200; % Number of coordinates per segment
+        SEGMENTSTEPS = 50;  % Size of step to next segment
         ENVELOPESIZE = 20;  % Hard-coded max distance from original segment to envelope [deprecated]
-        SMOOTHSPAN   = 0.25;  % Moving average span for smoothing segment coordinates
-        SMOOTHMETHOD = 'lowess' % Smoothing method
+        SMOOTHSPAN   = 0.7;  % Moving average span for smoothing segment coordinates
+        SMOOTHMETHOD = 'sgolay' % Smoothing method
         GAUSSSIGMA   = 3;   % Sigma parameter for gaussian smoothing of ImagePatches
         ENV_ITRS     = 25;  % Number of intermediate curves between segment and envelope
         ENV_SCALE    = 4;   % Size to scale unit length vector to define max envelope distance
