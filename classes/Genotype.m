@@ -4,6 +4,7 @@
 classdef Genotype < handle
     properties (Access = public)
         %% What data should this have?
+        Parent
         ExperimentName
         ExperimentPath
         GenotypeName
@@ -146,6 +147,7 @@ classdef Genotype < handle
             %% Parse input parameters for Constructor method
             p = inputParser;
             p.addRequired('GenotypeName');
+            p.addOptional('Parent', Experiment);
             p.addOptional('ExperimentName', '');
             p.addOptional('ExperimentPath', '');
             p.addOptional('TotalImages', 0);
