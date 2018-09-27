@@ -4,6 +4,7 @@
 classdef Seedling < handle
     properties (Access = public)
         %% Seedling properties
+        Parent
         ExperimentName
         ExperimentPath
         GenotypeName
@@ -25,6 +26,7 @@ classdef Seedling < handle
         Contour
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
         CONTOURSIZE = 500 % number of points to normalize Hypocotyl contours
+        IMAGEBUFFER = 50 % number of pixels to extend image for creating Hypocotyl child object
         TESTS2RUN = [1 1 1 1 0 0]; % manifest to determine which quality checks to run
     end
     
@@ -403,6 +405,7 @@ classdef Seedling < handle
             %% Parse input parameters for Constructor method
             p = inputParser;
             p.addRequired('SeedlingName');
+            p.addOptional('Parent', Genotype);
             p.addOptional('ExperimentName', '');
             p.addOptional('ExperimentPath', '');
             p.addOptional('GenotypeName', '');
