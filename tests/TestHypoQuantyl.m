@@ -14,12 +14,14 @@ function e = TestHypoQuantyl(r, a, z, l, c, v)
 %   e: full Experiment after analysis
 %
 
-%% Set-up [comment out before running]
-d = dir;
-d(1:2) = [];
-r = numel(d);
-a = 1;
-z = 70;
+%% Commands for some set-up parameters [comment out before running]
+% d = dir;
+% d(1:2) = [];
+% r = numel(d);
+% a = 1;
+% z = 70;
+% c = [101 101];
+% v = 1;
 
 %% Create Experiment in current directory
 e      = Experiment(pwd);

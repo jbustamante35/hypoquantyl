@@ -5,8 +5,8 @@ classdef Genotype < handle
     properties (Access = public)
         %% What data should this have?
         Parent
-        ExperimentName
-        ExperimentPath
+        ParentName
+        ParentPath
         GenotypeName
         TotalImages
         NumberOfSeedlings
@@ -15,6 +15,7 @@ classdef Genotype < handle
     properties (Access = private)
         %% Private data to hold
         Images
+        ImageStore
         RawSeedlings
         Seedlings
         CONTOURSIZE  = 800           % Number of points to normalize Seedling contours
@@ -39,7 +40,7 @@ classdef Genotype < handle
                 
             else
                 % Set default properties for empty object
-                obj.GenotypeName = '';
+                obj = Genotype(getDirName(pwd));
             end
             
         end
@@ -95,6 +96,11 @@ classdef Genotype < handle
             obj.GenotypeName = gn;
         end
         
+        function obj = storeImages(obj, I)
+            %% Set ImageDataStore object containing paths to images
+            obj.ImageStore = I;
+        end
+        
         function gn = getGenotypeName(obj)
             %% Return name of Genotype
             gn = obj.GenotypeName;
@@ -148,8 +154,8 @@ classdef Genotype < handle
             p = inputParser;
             p.addRequired('GenotypeName');
             p.addOptional('Parent', Experiment);
-            p.addOptional('ExperimentName', '');
-            p.addOptional('ExperimentPath', '');
+            p.addOptional('ParentName', '');
+            p.addOptional('ParentPath', '');
             p.addOptional('TotalImages', 0);
             p.addOptional('NumberOfSeedlings', 0);
             p.addOptional('Images', {});
@@ -188,8 +194,8 @@ classdef Genotype < handle
             for s = 1 : numel(prp)
                 nm  = sprintf('Raw_%d', s);
                 sdl = Seedling(nm, ...
-                    'ExperimentName', obj.ExperimentName, ...
-                    'ExperimentPath', obj.ExperimentPath, ...
+                    'ParentName', obj.ParentName, ...
+                    'ParentPath', obj.ParentPath, ...
                     'GenotypeName',   obj.GenotypeName,   ...
                     'PData',          prp(s));
                 
@@ -220,8 +226,8 @@ classdef Genotype < handle
             
             % Create empty Seedling array
             mkSdl = @(x) Seedling(sprintf('Seedling_{%s}', num2str(x)), ...
-                'ExperimentName', obj.ExperimentName, ...
-                'ExperimentPath', obj.ExperimentPath, ...
+                'ParentName', obj.ParentName, ...
+                'ParentPath', obj.ParentPath, ...
                 'GenotypeName',   obj.GenotypeName);
             
             sdls = arrayfun(@(x) mkSdl(x), 1:nSeeds, 'UniformOutput', 0)';
