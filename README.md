@@ -1,5 +1,5 @@
 # HypoQuantyl
-Image analysis tool used for tracking localized growth of hypocotyls using high-throughput cloud computing. This program uses a variety of machine learning algorithms and neural networks to identify the shape of a hypocotyl, form a midline, and quantify localized rates of elongation at many different locations along that midline. 
+Image analysis tool used for tracking localized growth of hypocotyls using high-throughput cloud computing. This program uses a variety of machine learning algorithms and neural networks to identify the shape of a hypocotyl, form a midline, and quantify localized rates of elongation at many different locations along that midline.
 
 ## Summary [re-iterate above description and expand on use, novelty, and similar software]
 A) What is this program for? <br />
@@ -73,6 +73,6 @@ MIT license found in [LICENSE](./LICENSE) <br />
 ### Implementing to Cyber Infrastructure
 [ ] | Infrastructure | Description
 --- | --- | ---
-[ ] | Create accounts     | Univeristy Network, CyVerse, HTCondor
+[ ] | Create accounts     | University Network, CyVerse, HTCondor
 [ ] | Set up submit files | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
 [ ] | Run Test Data       | Run HypoQuantyl on Sample data on cloud computing environment
