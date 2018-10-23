@@ -53,7 +53,7 @@ if tests(num)
 end
 num = num + 1;
 
-%% 3) Check for empty gray and bw image and ContourJB data
+%% 3) Check for empty image and ContourJB data
 if tests(num)
     dat    = sdl.getImage(':');
     datChk = struct2logical(dat);
@@ -71,6 +71,24 @@ if tests(num)
 end
 num = num + 1;
 
+% %% 3) Check for empty gray and bw image and ContourJB data
+% if tests(num)
+%     dat    = sdl.getImage(':');
+%     datChk = struct2logical(dat);
+%     datIdx = structfun(@(x) find(x == 1), datChk, 'UniformOutput', 0);
+%     
+%     fn     = fieldnames(datIdx);
+%     datMtc = zeros(numel(fn), sdl.getLifetime);
+%     for d = 1 : numel(fn)
+%         fld = fn{d}(~isspace(fn{d}));
+%         datMtc(d, datIdx.(fld)) = 1;
+%     end
+%     
+%     datFinal                  = sum(datMtc,1) == numel(fn);
+%     goodFrmIdx(num, datFinal) = 1;
+% end
+% num = num + 1;
+
 %% 4) Check for empty AnchorPoints
 if tests(num)
     pts    = sdl.getAnchorPoints(':');
@@ -83,13 +101,13 @@ num = num + 1;
 
 %% 5) Check valid AnchorPoints for out of frame growth
 if tests(num)
-    
+    % AnchorPoint is out of frame if it's touching the edge
 end
 num = num + 1;
 
 %% 6) Check contours for collisions
 if tests(num)
-    
+    % Collision is true if 
 end
 
 num = 1;
