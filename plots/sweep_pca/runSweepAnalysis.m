@@ -86,23 +86,25 @@ sz        = [size(CNTR{1}.NormalizedOutline,1) 1];
 figs(4:5) = fg;
 
 %% Set x-/y-limits equal [figure out how to set this dynamically]
-xl = [-900 200];
-yl = [-150 150];
+% xl = [-900 200];
+% yl = [-150 150];
+xl = getMax(pcaX);
+yl = getMax(pcaY);
 
 % x-coordinates
 set(0, 'CurrentFigure', figs(4));
 for s = 1 : numX
     subplot(2, 2, s);
-    xlim(xl);
-    ylim(yl);
+%     xlim(xl);
+%     ylim(yl);
 end
 
 % y-coordinates
 set(0, 'CurrentFigure', figs(5));
 for s = 1 : numY
     subplot(2, 1, s);
-    xlim(xl);
-    ylim(yl);
+%     xlim(xl);
+%     ylim(yl);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
