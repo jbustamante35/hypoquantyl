@@ -3,9 +3,10 @@
 
 classdef ContourJB < handle
     properties (Access = public)
+        Origin
+        Host
+        Parent
         Outline
-        Dists
-        Sums
         InterpOutline
         NormalizedOutline
     end
@@ -13,7 +14,8 @@ classdef ContourJB < handle
     properties (Access = private)
         AnchorPoint
         AnchorIndex
-        Origin
+        Dists
+        Sums
         Image
         gray
         bw
@@ -26,15 +28,13 @@ classdef ContourJB < handle
             if ~isempty(varargin)
                 % Parse inputs to set properties
                 args = obj.parseConstructorInput(varargin);
-                
-                fn = fieldnames(args);
+                fn   = fieldnames(args);
                 for k = fn'
                     obj.(cell2mat(k)) = args.(cell2mat(k));
                 end
                 
             else
                 % Set default properties for empty object
-                
             end
             
             obj.Image = struct('gray', obj.gray, ...
@@ -45,7 +45,8 @@ classdef ContourJB < handle
         function obj = ReindexCoordinates(obj)
             %% Reindex coordinates to normalize start points
             [obj.AnchorPoint, obj.AnchorIndex] = findAnchorPoint(obj, obj.InterpOutline);
-            obj.NormalizedOutline   = repositionPoints(obj, obj.InterpOutline, obj.AnchorIndex);
+            obj.NormalizedOutline              = ...
+                repositionPoints(obj, obj.InterpOutline, obj.AnchorIndex);
         end
         
         function crds = Normal2Raw(obj)
@@ -56,14 +57,14 @@ classdef ContourJB < handle
     end
     
     methods (Access = public)
-        %% Accessible helper methods                
+        %% Accessible helper methods
         function obj = setImage(obj, frm, req, im)
             %% Set grayscale or bw image at given frame
             try
                 obj.Image(frm).(req) = im;
             catch
                 fprintf(2, 'Error setting %s image at frame %d\n', req, frm);
-            end                            
+            end
         end
         
         function dat = getImage(varargin)
@@ -114,14 +115,16 @@ classdef ContourJB < handle
             
         end
         
-        function obj = setOrigin(obj, org)
+        function obj = setParent(obj, p)
             %% Designate origin of contour
-            obj.Origin = org;
+            obj.Parent = p;
+            obj.Host   = p.Parent;
+            obj.Origin = p.Parent.Parent;
         end
         
-        function org = getOrigin(obj)
+        function org = getParent(obj)
             %% Returns origin of contour
-            org = obj.Origin;
+            org = obj.Parent;
         end
         
         function apt = getAnchorPoint(obj)
@@ -140,17 +143,22 @@ classdef ContourJB < handle
         %% Private helper methods
         function args = parseConstructorInput(varargin)
             %% Parse input parameters for Constructor method
-            p = inputParser;
+            % Parent is Seedling object
+            % Host is Genotype object
+            % Origin is Experiment object
+            p = inputParser;                     
             p.addOptional('Outline', []);
             p.addOptional('Dists', []);
             p.addOptional('Sums', []);
             p.addOptional('InterpOutline', []);
             p.addOptional('NormalizedOutline', []);
             p.addOptional('AnchorPoint', []);
-            p.addOptional('Origin', '');
             p.addOptional('Image', []);
             p.addOptional('gray', []);
             p.addOptional('bw', []);
+            p.addOptional('Parent', []);
+            p.addOptional('Origin', []);
+            p.addOptional('Host', []);   
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
@@ -167,7 +175,7 @@ classdef ContourJB < handle
             
             % Get median of column range
             if mod(size(rng,1), 2)
-                mtc = median(rng, 1);                
+                mtc = median(rng, 1);
             else
                 % Remove last row if even number of values
                 nrng = rng(1:end-1, :);
