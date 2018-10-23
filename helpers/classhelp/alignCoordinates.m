@@ -1,14 +1,21 @@
 function I = alignCoordinates(X, dim)
 %% alignCoordinates: return array of matching coordinate index
-% This function takes [n x m x t] matrix X, where each row represents a set of coordinates of a
-% given point through a stack of size t (coordinates through time-lapse). This function iterates
-% through each t and finds the closest matching coordinate between slices of t. It then returns a
-% vector of indices for each n. Dimension to sort along is defined by dim.
+% This function takes an [n x m x t] matrix X, where each [n x m] row represents a set of coordinates 
+% through a stack of size t (e.g. an array of x-/y-coordinates through a time-lapse). This function 
+% iterates through each slice t and finds the closest matching coordinates in the subsequent slice. 
+% 
+% An [n x 1] vector of indices at each slice t is then returned, which corresponds to the 
+% coordinates that match for each n. Dimension to sort along is defined by the dim parameter.
+%
+% NOTE:
+%   Indexing in for loop starts at 2 so that the previous frame is frame 1. The alternative would be
+%   to start the loop at 1 and have it end at size(X,3) - 1, which would be comparing current and
+%   next, rather than previous and current. Slight differences but same outcome. 
 %
 % Usage:
 %   I = alignCoordinates(X, dim)
 %
-% Input:
+% Input: 
 %   X: [n x m x t] matrix of coordinates
 %   dim: m dimension to sort along
 %
