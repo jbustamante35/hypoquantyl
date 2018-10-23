@@ -17,8 +17,10 @@ function [obs, msk] = segmentObjectsHQ(im, sz)
 %
 % This version is for HypoQuantyl
 
-msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, 'ForegroundPolarity', 'bright');
+% msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, 'ForegroundPolarity', 'bright');
+% flt = bwareafilt(imcomplement(msk), sz);
+msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.4, 'ForegroundPolarity', 'dark');
 flt = bwareafilt(imcomplement(msk), sz);
 obs = bwconncomp(flt);
-
+% msk = imcomplement(msk);
 end

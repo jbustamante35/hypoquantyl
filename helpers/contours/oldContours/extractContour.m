@@ -26,4 +26,5 @@ intrps = interpolateOutline(bnds, max_size);
 %% Output final structure
 cntr = ContourJB('Outline', bnds, 'InterpOutline', intrps);
 cntr.ReindexCoordinates;
+
 end
