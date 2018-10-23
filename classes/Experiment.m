@@ -30,9 +30,7 @@ classdef Experiment < handle
                 
             else
                 % Set default properties for empty object
-                obj.ExperimentPath    = pwd;
-                obj.ExperimentDate    = tdate('l');
-                obj.NumberOfGenotypes = 0;
+                obj.ExperimentPath = pwd;
             end
             
             [obj.ExperimentName, ~] = getDirName(obj.ExperimentPath);
@@ -40,87 +38,23 @@ classdef Experiment < handle
         end
         
         function obj = AddGenotypes(obj)
-            try
-                % Get all directories (exclude . and ..)
-                fld                                      = dir(obj.ExperimentPath);
-                fld                                      = fld(3:end);
-                fldrs                                    = fld(cat(1, fld.isdir));
-                obj.Genotypes(obj.NumberOfGenotypes + 1) = ...
-                    initializeGenotype(fldrs(1).name, 'Parent', obj);
-                obj.NumberOfGenotypes = obj.NumberOfGenotypes + 1;
-            catch
-                fprintf(2, 'Error adding Genotype %d\n', obj.NumberOfGenotypes);
+            %% Get all directories (exclude . and ..)
+            fld   = dir(obj.ExperimentPath);
+            fld   = fld(3:end);
+            fldrs = fld(cat(1, fld.isdir));
+            
+            for f = fldrs'
+                try
+                    obj.Genotypes(obj.NumberOfGenotypes + 1) = ...
+                        initializeGenotype(f.name, 'Parent', obj);
+                    obj.NumberOfGenotypes = obj.NumberOfGenotypes + 1;
+                catch e
+                    fprintf(2, e.getReport);
+                    fprintf(2, '\nError adding Genotype %d\n', obj.NumberOfGenotypes);
+                end
             end
-        end
-        
-        %         function obj = AddGenotypes(varargin)
-        %             %% Load image stacks and store as Genotype objects
-        %             % Add Genotype to this Experiment. Input is flexible to either
-        %             % automatically add genotypes from current directory, or manually select
-        %             % the folder containing desired image stacks.
-        %             %
-        %             % Input:
-        %             %   fProps: directory and file properties for creating Genotype
-        %             %   imgExt: extension of image files
-        %             %   srtBy: table property to sort images by
-        %             %   vis: visualize images loaded in Genotype
-        %             %   num: current Genotype to create
-        %             %
-        %             % Output: n/a
-        %             %   If Genotype was sucessfully created, NumberOfGenotypes is incremented by 1
-        %
-        %             % So far, only 3 methods for creating new Genotype
-        %             narginchk(1, 5);
-        %             switch nargin
-        %                 case 1
-        %                     % Manually select Genotype directory and file extension,
-        %                     % Automatically appends images to next available Genotype
-        %                     obj                = varargin{1};
-        %                     num                = obj.NumberOfGenotypes + 1;
-        %                     obj.Genotypes(num) = Genotype('', 'ExperimentName', obj.ExperimentName, ...
-        %                         'ExperimentPath', obj.ExperimentPath);
-        %
-        %                 case 2
-        %                     % Manually select Genotype directory and file extension, but
-        %                     % Manually add Genotype to desired index.
-        %                     obj = varargin{1};
-        %                     num = varargin{2};
-        %
-        %                     if num <= obj.NumberOfGenotypes + 1
-        %                         obj.Genotypes(num) = Genotype('', 'ExperimentName', obj.ExperimentName, ...
-        %                             'ExperimentPath', obj.ExperimentPath);
-        %                     else
-        %                         fprintf(2, 'No Genotype at index %d \n', num);
-        %                         return;
-        %                     end
-        %
-        %                 case 5
-        %                     % Automatically select Genotype directory from current directory,
-        %                     % Automatically append images to next available Genotype.
-        %
-        %                     % Set parameters for creating Genotype
-        %                     obj    = varargin{1};
-        %                     fProps = varargin{2};
-        %                     imgExt = varargin{3};
-        %                     srtBy  = varargin{4};
-        %                     vis    = varargin{5};
-        %                     num    = obj.NumberOfGenotypes + 1;
-        %
-        %                     % Create new Genotype and directly load images in that directory
-        %                     obj.Genotypes(num) = Genotype(fProps.name, ...
-        %                         'ExperimentName', obj.ExperimentName, ...
-        %                         'ExperimentPath', obj.ExperimentPath);
-        %
-        %                     obj.getGenotype(num).StackLoader(fProps, imgExt, srtBy, vis);
-        %
-        %                 otherwise
-        %                     fprintf(2, 'Input error for adding genotypes\n');
-        %                     return;
-        %             end
-        %
-        %             obj.NumberOfGenotypes = obj.NumberOfGenotypes + 1;
-        %
-        %         end
+            
+        end        
         
     end
     
