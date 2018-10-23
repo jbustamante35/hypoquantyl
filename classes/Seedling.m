@@ -4,15 +4,16 @@
 classdef Seedling < handle
     properties (Access = public)
         %% Seedling properties
-        Parent
+        SeedlingName
+        GenotypeName
         ExperimentName
         ExperimentPath
-        GenotypeName
-        SeedlingName
-        Frame = zeros(1,2);
+        Parent
+        Host
+        Frame
         Lifetime
         Coordinates
-        MyHypocotyl        
+        MyHypocotyl
     end
     
     properties (Access = private)
@@ -26,7 +27,7 @@ classdef Seedling < handle
         Contour
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
         CONTOURSIZE = 500 % number of points to normalize Hypocotyl contours
-        IMAGEBUFFER = 50 % number of pixels to extend image for creating Hypocotyl child object
+        IMAGEBUFFER = 40 % percentage of image size to extend image for creating Hypocotyl objects
         TESTS2RUN = [1 1 1 1 0 0]; % manifest to determine which quality checks to run
     end
     
@@ -47,7 +48,6 @@ classdef Seedling < handle
                 
             else
                 % Set default properties for empty object
-                obj.SeedlingName = '';
             end
             
             if ~isfield(obj.PData, obj.PDPROPERTIES{1})
@@ -86,9 +86,13 @@ classdef Seedling < handle
         function obj = FindHypocotyl(obj, frm, crpsz)
             %% Find Hypocotyl with defined sizes within Seedling object
             % This function crops the top [h x w] of a Seedling
+            % TODO:
             % This may need to be more dynamic to account for Seedlings growing at odd angles.
             % I also need to set a detection algorithm to make sure Hypocotyl is in view.
             % Basically this should know the general 'shape' of a Hypocotyl. [how do I do this?]
+            % 
+            % (update 9/29/18) I have no clue what I meant by the above note
+            % (update 10/23/18) I still have no clue what this means
             %
             % Input:
             %   obj  : this Seedling object
@@ -97,6 +101,7 @@ classdef Seedling < handle
             %
             % Output:
             %   obj  : function sets AnchorPoints and PreHypocotyl
+            %
             
             try
                 % Use this Seedling's AnchorPoints coordinates
@@ -104,22 +109,25 @@ classdef Seedling < handle
                 
                 % Crop out and resize PreHypocotyl for use as training data
                 % Store grayscale, bw, and contour in Hypocotyl object
-                gry = cropFromAnchorPoints(obj.getImage(frm, 'gray'), ap, crpsz);
-                msk = cropFromAnchorPoints(obj.getImage(frm, 'bw'),   ap, crpsz);
-                ctr = extractContour(msk, obj.CONTOURSIZE);
+                [msk, bbox] = cropFromAnchorPoints(obj.getImage(frm, 'bw'),   ap, crpsz);
+                ctr         = extractContour(msk, obj.CONTOURSIZE);
                 
                 % Instance new Hypocotyl at frame
-                sn = obj.getSeedlingName;
-                aa = strfind(sn, '{');
-                bb = strfind(sn, '}');
-                nm = sprintf('PreHypocotyl_{%s}^{%d}', sn(aa+1:bb-1), frm);
-                hyp = makeNewHypocotyl(obj, nm, frm, gry, msk, ctr);
+                sn  = obj.getSeedlingName;
+                aa  = strfind(sn, '{');
+                bb  = strfind(sn, '}');
+                nm  = sprintf('PreHypocotyl_Sdl{%s}_Frm{%d}', sn(aa+1:bb-1), frm);
+                hyp = makeNewHypocotyl(obj, nm, frm, ctr, bbox);
                 
                 % Set this Seedlings AnchorPoints and PreHypocotyl
-                obj.PreHypocotyl(frm) = hyp;
+                if isempty(obj.PreHypocotyl)
+                    obj.PreHypocotyl      = hyp;
+                else
+                    obj.PreHypocotyl(frm) = hyp;
+                end
                 
-            catch
-                fprintf('No data %s Frame %d \n', obj.getSeedlingName, frm);
+            catch e
+                fprintf('No data %s Frame %d \n%s\n', obj.getSeedlingName, frm, e.getReport);
             end
         end
         
@@ -137,6 +145,16 @@ classdef Seedling < handle
         function sn = getSeedlingName(obj)
             %% Return name for Seedling
             sn = obj.SeedlingName;
+        end
+        
+        function obj = setParent(obj, p)
+            %% Set Genotype parent and Experiment host
+            obj.Parent       = p;
+            obj.GenotypeName = p.GenotypeName;
+            
+            obj.Host           = p.Parent;
+            obj.ExperimentName = obj.Host.ExperimentName;
+            obj.ExperimentPath = obj.Host.ExperimentPath;
         end
         
         function obj = setImage(obj, frm, req, dat)
@@ -160,49 +178,67 @@ classdef Seedling < handle
         end
         
         function dat = getImage(varargin)
-            %% Return data for Seedling at desired frame
+            %% Return image data for Seedling at desired frame
             % User can specify which image from structure with 3rd parameter
+            obj = varargin{1};
+            rng = obj.getFrame('b') : obj.getFrame('d');
+            
             switch nargin
                 case 1
-                    % Full structure of image data at all frames
-                    obj = varargin{1};
-                    dat = obj.Image;
+                    % All grayscale images at all frames
+                    try
+                        img = obj.Parent.getImage(rng);
+                        bnd = obj.getPData(1, 'BoundingBox');
+                        dat = imcrop(img, bnd);
+                    catch
+                        fprintf(2, 'Error returning Image\n');
+                        dat = [];
+                    end
                     
                 case 2
-                    % All image data at frame
+                    % Grayscale image(s) at specific frame or range of frames
+                    % Convert requested index to index in this object's lifetime
                     try
-                        obj = varargin{1};
                         frm = varargin{2};
-                        dat = obj.Image(frm);
+                        if numel(rng) > 1
+                            idx = rng(frm);
+                        else
+                            idx = rng;
+                        end
+                        
+                        img = obj.Parent.getImage(idx);
+                        
+                        if ~iscell(img)
+                            bnd = obj.getPData(frm, 'BoundingBox');
+                            dat = imcrop(img, bnd);
+                        else
+                            bnd = arrayfun(@(x) obj.getPData(x, 'BoundingBox'), idx, 'UniformOutput', 0);
+                            dat = cellfun(@(i,b) imcrop(i,b), img, bnd, 'UniformOutput', 0);
+                        end
+                        
                     catch
-                        fprintf(2, 'No image at frame %d \n', frm);
+                        fprintf(2, 'No image at frame %d indexed at %d \n', frm, idx);
+                        dat = [];
                     end
                     
                 case 3
-                    % Specific image type at frame
-                    % Check if frame exists
+                    % Grayscale or bw image(s) at specific frame or range of frames
                     try
-                        obj = varargin{1};
                         frm = varargin{2};
+                        if numel(rng) > 1
+                            idx = rng(frm);
+                        else
+                            idx = obj.getFrame('b');
+                        end
+                        
                         req = varargin{3};
-                        dat = obj.Image(frm);
+                        img = obj.Parent.getImage(idx, req);
+                        bnd = obj.getPData(frm, 'BoundingBox');
+                        dat = imcrop(img, bnd);
                     catch
-                        fprintf(2, 'No image at frame %d \n', frm);
+                        fprintf(2, 'No %s image at frame %d indexed at %d \n', req, frm, idx);
+                        dat = [];
                     end
-                    
-                    % Get requested data field
-                    try
-                        dfm = obj.Image(frm);
-                        dat = dfm.(req);
-                    catch
-                        fn  = fieldnames(dfm);
-                        str = sprintf('%s, ', fn{:});
-                        fprintf(2, 'Requested field must be either: %s\n', str);
-                    end
-                    
-                otherwise
-                    fprintf(2, 'Error requesting data.\n');
-                    return;
             end
             
         end
@@ -296,16 +332,15 @@ classdef Seedling < handle
         function pd = getPData(varargin)
             %% Return extra properties data at given frame
             % User can specify which image from structure with 3rd parameter
+            obj = varargin{1};
             switch nargin
                 case 1
                     % Full structure of data at all frames
-                    obj = varargin{1};
                     pd  = obj.PData;
                     
                 case 2
                     % All data at given frame
                     try
-                        obj = varargin{1};
                         frm = varargin{2};
                         pd  = obj.PData(frm);
                     catch e
@@ -317,7 +352,6 @@ classdef Seedling < handle
                     % Specific data property at given frame
                     % Check if frame exists
                     try
-                        obj = varargin{1};
                         frm = varargin{2};
                         req = varargin{3};
                         pd  = obj.PData(frm);
@@ -329,7 +363,7 @@ classdef Seedling < handle
                     % Get requested data field
                     try
                         dfm = obj.PData(frm);
-                        pd = dfm.(req);
+                        pd  = cat(1, obj.PData(frm).(req));
                     catch
                         fn  = fieldnames(dfm);
                         str = sprintf('%s, ', fn{:});
@@ -395,20 +429,22 @@ classdef Seedling < handle
             end
         end
         
-        
     end
     
-    %% ------------------------- Private Methods --------------------------- %%    
+    %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
         %% Private helper methods
         function args = parseConstructorInput(varargin)
             %% Parse input parameters for Constructor method
+            % Parent is Genotype object
+            % Host is Experiment object
             p = inputParser;
             p.addRequired('SeedlingName');
-            p.addOptional('Parent', Genotype);
+            p.addOptional('Parent', []);
+            p.addOptional('GenotypeName', '');
+            p.addOptional('Host', []);
             p.addOptional('ExperimentName', '');
             p.addOptional('ExperimentPath', '');
-            p.addOptional('GenotypeName', '');
             p.addOptional('Frame', zeros(1,2));
             p.addOptional('Lifetime', 0);
             p.addOptional('Coordinates', []);
@@ -417,35 +453,29 @@ classdef Seedling < handle
             p.addOptional('Midline', []);
             p.addOptional('AnchorPoints', zeros(4,2,1));
             p.addOptional('GoodFrames', []);
-            p.addOptional('PreHypocotyl', Hypocotyl);
-            p.addOptional('Contour', CircuitJB);
+            p.addOptional('PreHypocotyl', []);
+            p.addOptional('Contour', ContourJB);
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
             args = p.Results;
         end
         
-        function h = makeNewHypocotyl(obj, nm, frm, img, msk, ctr)
+        function h = makeNewHypocotyl(obj, nm, frm, ctr, bbox)
             %% Set data into new Hypocotyl
             % Input:
             %   nm: name for new Hypocotyl
             %   frm: birth frame to set
-            %   img: grayscale image
-            %   msk: bw image
             %   ctr: ContourJB object
+            %   bbox: coordinates for bounding box to crop from parent image
             %
             % Output:
             %   h: new Hypocotyl object set with inputted data
-            h = Hypocotyl(nm, ...
-                'ExperimentName', obj.ExperimentName, ...
-                'ExperimentPath', obj.ExperimentPath, ...
-                'GenotypeName',   obj.GenotypeName, ...
-                'SeedlingName',   obj.SeedlingName);
-            
+            h = Hypocotyl(nm);
+            h.setParent(obj);
             h.setFrame('b', frm);
-            h.setImage('gray', img);
-            h.setImage('bw', msk);
             h.setImage('ctr', ctr);
+            h.setCropBox(bbox);
         end
         
     end
