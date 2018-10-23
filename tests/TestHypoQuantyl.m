@@ -45,7 +45,7 @@ for i = 1 : length(d)
     end
     
     fprintf('Loaded %d images. Aligning Seedlings through each frame...', g.TotalImages);
-    g.SortSeedlings;    
+    g.SortSeedlings;
     
     format shortg;
     fprintf('%.02f sec to analyze %d frames from %d Seedlings \n', ...
@@ -58,7 +58,7 @@ for i = 1 : e.NumberOfGenotypes
     g = e.getGenotype(i);
     fprintf('Finding Hypocotyl from %s=>', g.getGenotypeName);
     for ii = 1 : g.NumberOfSeedlings
-        s = g.getSeedling(ii);        
+        s = g.getSeedling(ii);
         for iii = 1 : s.getLifetime
             s.FindHypocotyl(iii, c);
             s.RemoveBadFrames;
