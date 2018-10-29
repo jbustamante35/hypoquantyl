@@ -18,11 +18,11 @@ classdef Hypocotyl < handle
     
     properties (Access = private)
         %% Private data stored here
-        Image
+        Contour
+        Circuit
         CropBox
         Midline
         Coordinates
-        Contour
     end
     
     methods (Access = public)
@@ -42,9 +42,6 @@ classdef Hypocotyl < handle
                 % Set default properties for empty object
             end
             
-            obj.Image = struct('gray', [], ...
-                'bw', [], ...
-                'ctr', ContourJB);
         end
         
         function [im, bw] = FlipMe(obj)
@@ -53,7 +50,7 @@ classdef Hypocotyl < handle
             im = flip(obj.Image.gray, 2);
             bw = flip(obj.Image.bw, 2);
             
-            obj.Contour(2) = obj.Contour;
+            obj.Circuit(2) = obj.Circuit;
         end
         
     end
@@ -122,22 +119,26 @@ classdef Hypocotyl < handle
         
         function dat = getImage(varargin)
             %% Return image for this Hypocotyl
-            % User can specify which image from structure with 2nd parameter
-            obj = varargin{1};                        
+            % Image is obtained from the Parent Seedling, cropped, and resized
+            % to this object's RESCALE property
+            obj   = varargin{1};                        
+            sclsz = obj.Parent.getScaleSize;
             
             switch nargin
                 case 1
                     % Return grayscale images at all time points
                     frm = obj.getFrame('b') : obj.getFrame('d');                    
                     img = obj.Parent.getImage(frm);
-                    dat = imcrop(img, obj.CropBox);
+                    crp = imcrop(img, obj.CropBox);
+                    dat = imresize(crp, sclsz);
                     
                 case 2
                     % Return grayscale image at specific time point
                     try
                         frm = obj.getFrame('b');
                         img = obj.Parent.getImage(frm);
-                        dat = imcrop(img, obj.CropBox);
+                        crp = imcrop(img, obj.CropBox);
+                        dat = imresize(crp, sclsz);
                     catch
                         fprintf(2, 'Requested field must be either: %s\n', str);
                     end
@@ -149,7 +150,8 @@ classdef Hypocotyl < handle
                         frm = varargin{2};
                         req = varargin{3};                                           
                         img = obj.Parent.getImage(frm, req);                        
-                        dat = imcrop(img, obj.CropBox);              
+                        crp = imcrop(img, obj.CropBox);              
+                        dat = imresize(crp, sclsz);
                     catch
                         fprintf(2, 'Requested field must be either: gray | bw\n');
                         dat = [];
@@ -219,31 +221,57 @@ classdef Hypocotyl < handle
             bbox = obj.CropBox;
         end
         
-        function obj = setContour(obj, crc, req)
+        function obj = setContour(obj, frm, ctr)
+            %% Store ContourJB at frame
+            if isempty(obj.Contour)
+                obj.Contour = ctr;
+            else
+                obj.Contour(frm) = ctr;
+            end
+    	end
+
+        function crc = getContour(varargin)
+            %% Return all ContourJB objects or ContourJB at frame
+            obj = varargin{1};
+            switch nargin
+            case 1
+                crc = obj.Contour;
+            case 2
+                frm = varargin{2};
+            	crc = obj.Contour(frm);
+            otherwise
+                fprintf(2, 'Error returning ContourJB\n');
+                crc = [];
+            end
+
+        end
+
+        function obj = setCircuit(obj, crc, req)
             %% Set manually-drawn CircuitJB object (original or flipped)
             crc.trainCircuit(true);
             switch req
                 case 'org'
                     try
-                        obj.Contour(1) = crc;
+                        obj.Circuit(1) = crc;
                     catch
-                        obj.Contour    = crc;
+                        obj.Circuit    = crc;
                     end
                 case 'flp'
-                    obj.Contour(2) = crc;
+                    obj.Circuit(2) = crc;
                     
                 otherwise
-                    fprintf(2, 'Error setting %s Contour\n', req);
+                    fprintf(2, 'Error setting %s Circuit\n', req);
             end
         end
         %   sIdx: index of randomly-selected Seedlings
-        function crc = getContour(obj, req)
+
+        function crc = getCircuit(obj, req)
             %% Return original or flipped version of CircuitJB object
-            if ~isempty(obj.Contour)
+            if ~isempty(obj.Circuit)
                 switch req
                     case 'org'
                         try
-                            c = obj.Contour(1);
+                            c = obj.Circuit(1);
                             if c.isTrained
                                 crc = c;
                             else
@@ -254,7 +282,7 @@ classdef Hypocotyl < handle
                         end
                     case 'flp'
                         try
-                            c = obj.Contour(2);
+                            c = obj.Circuit(2);
                             if c.isTrained
                                 crc = c;
                             else
@@ -264,7 +292,7 @@ classdef Hypocotyl < handle
                             crc = [];
                         end
                     otherwise
-                        fprintf(2, 'Error returning %s contour\n', req);
+                        fprintf(2, 'Error returning %s circuit\n', req);
                 end
             else
                 crc = [];
@@ -292,10 +320,10 @@ classdef Hypocotyl < handle
             p.addOptional('Frame', zeros(1,2));
             p.addOptional('Lifetime', 0);
             p.addOptional('Coordinates', []);
-            p.addOptional('Image', struct());
             p.addOptional('CropBox', zeros(1,4));
             p.addOptional('Midline', []);
-            p.addOptional('Contour', CircuitJB);
+            p.addOptional('Contour', ContourJB);
+            p.addOptional('Circuit', CircuitJB);
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});

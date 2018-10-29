@@ -25,6 +25,7 @@ classdef Seedling < handle
         Image
         PData
         Contour
+        SCALESIZE = [101 101]
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
         CONTOURSIZE = 500 % number of points to normalize Hypocotyl contours
         IMAGEBUFFER = 40 % percentage of image size to extend image for creating Hypocotyl objects
@@ -83,21 +84,21 @@ classdef Seedling < handle
             obj.setFrame(max(obj.GoodFrames), 'd');
         end
         
-        function obj = FindHypocotyl(obj, frm, crpsz)
+        function obj = FindHypocotyl(obj, frm)
             %% Find Hypocotyl with defined sizes within Seedling object
             % This function crops the top [h x w] of a Seedling
             % TODO:
             % This may need to be more dynamic to account for Seedlings growing at odd angles.
             % I also need to set a detection algorithm to make sure Hypocotyl is in view.
             % Basically this should know the general 'shape' of a Hypocotyl. [how do I do this?]
-            % 
+            %
             % (update 9/29/18) I have no clue what I meant by the above note
             % (update 10/23/18) I still have no clue what this means
             %
             % Input:
             %   obj  : this Seedling object
             %   frm  : frame in which to search for Hypocotyl
-            %   crpsz: [2 x 1] array defining the scaled size of each Hypocotyl
+            %   sclsz: [2 x 1] array defining the scaled size of each Hypocotyl
             %
             % Output:
             %   obj  : function sets AnchorPoints and PreHypocotyl
@@ -109,19 +110,22 @@ classdef Seedling < handle
                 
                 % Crop out and resize PreHypocotyl for use as training data
                 % Store grayscale, bw, and contour in Hypocotyl object
-                [msk, bbox] = cropFromAnchorPoints(obj.getImage(frm, 'bw'),   ap, crpsz);
-                ctr         = extractContour(msk, obj.CONTOURSIZE);
+                [msk, bbox] = cropFromAnchorPoints(obj.getImage(frm, 'bw'),...
+                	ap, obj.SCALESIZE);
+                ctr         = extractContour(imcomplement(msk), ...
+                	obj.CONTOURSIZE);
                 
                 % Instance new Hypocotyl at frame
                 sn  = obj.getSeedlingName;
                 aa  = strfind(sn, '{');
                 bb  = strfind(sn, '}');
-                nm  = sprintf('PreHypocotyl_Sdl{%s}_Frm{%d}', sn(aa+1:bb-1), frm);
+                nm  = sprintf('PreHypocotyl_Sdl{%s}_Frm{%d}', ...
+                	sn(aa+1:bb-1), frm);
                 hyp = makeNewHypocotyl(obj, nm, frm, ctr, bbox);
                 
                 % Set this Seedlings AnchorPoints and PreHypocotyl
                 if isempty(obj.PreHypocotyl)
-                    obj.PreHypocotyl      = hyp;
+                    obj.PreHypocotyl = hyp;
                 else
                     obj.PreHypocotyl(frm) = hyp;
                 end
@@ -425,10 +429,14 @@ classdef Seedling < handle
             try
                 hyp = obj.PreHypocotyl(frm);
             catch
-                fprintf(2, 'No PreHypocotyl at index %s \n', frm);
+                fprintf(2, 'No PreHypocotyl at index %d \n', frm);
             end
         end
         
+        function sclsz = getScaleSize(obj)
+            sclsz = obj.SCALESIZE;
+        end
+
     end
     
     %% ------------------------- Private Methods --------------------------- %%
@@ -474,7 +482,7 @@ classdef Seedling < handle
             h = Hypocotyl(nm);
             h.setParent(obj);
             h.setFrame('b', frm);
-            h.setImage('ctr', ctr);
+            h.setContour(frm, ctr);
             h.setCropBox(bbox);
         end
         

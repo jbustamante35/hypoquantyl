@@ -96,19 +96,6 @@ classdef Experiment < handle
             S = cat(1, S{:});
         end
         
-        %         function s = search4Seedling(obj, nm)
-        %             %% Return specific Genotype by GenotypeName
-        %             sds = obj.combineSeedlings;
-        %
-        %             for sd = sds
-        %                 mtc = sd.SeedlingName;
-        %                 if isequal(nm, mtc)
-        %                     s = sd;
-        %                     return;
-        %                 end
-        %             end
-        %         end
-        
         function H = combineHypocotyls(obj)
             %% Combine all Hypocotyls into single object array
             % BE SURE TO CHANGE THIS WHEN I FIX HOW HYPOCOTYL IS STORED IN SEEDLING
@@ -121,7 +108,7 @@ classdef Experiment < handle
         
         function C = combineContours(obj)
             %% Return all Hypocotyls with manually-drawn CircuitJB objects
-            H = obj.combineHypocotyls;
+            H   = obj.combineHypocotyls;
             org = arrayfun(@(x) x.getContour('org'), H, 'UniformOutput', 0);
             org = cat(1, org{:});
             flp = arrayfun(@(x) x.getContour('flp'), H, 'UniformOutput', 0);
