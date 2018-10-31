@@ -46,7 +46,8 @@ classdef Hypocotyl < handle
         
         function [im, bw] = FlipMe(obj)
             %% Store a flipped version of each Hypocotyl
-            % Flipped version allows equal representation of all orientations of contours (lolz)
+            % Flipped version allows equal representation of all 
+            % orientations of contours (lolz)
             im = flip(obj.Image.gray, 2);
             bw = flip(obj.Image.bw, 2);
             
@@ -153,7 +154,8 @@ classdef Hypocotyl < handle
                         crp = imcrop(img, obj.CropBox);              
                         dat = imresize(crp, sclsz);
                     catch
-                        fprintf(2, 'Requested field must be either: gray | bw\n');
+                        fprintf(2, ...
+                        	'Requested field must be either: gray | bw\n');
                         dat = [];
                     end
                     
@@ -163,37 +165,8 @@ classdef Hypocotyl < handle
             end
         end
         
-        %         function dat = getImage(varargin)
-        %             %% Return image for this Hypocotyl
-        %             % User can specify which image from structure with 2nd parameter
-        %             switch nargin
-        %                 case 1
-        %                     % Full structure of image data at all frames
-        %                     obj = varargin{1};
-        %                     dat = obj.Image;
-        %
-        %                 case 2
-        %                     % Return Specific image type
-        %                     % Get requested data field
-        %                     try
-        %                         obj = varargin{1};
-        %                         req = varargin{2};
-        %                         dfm = obj.Image;
-        %                         dat = dfm.(req);
-        %                     catch
-        %                         fn  = fieldnames(dfm);
-        %                         str = sprintf('%s, ', fn{:});
-        %                         fprintf(2, 'Requested field must be either: %s\n', str);
-        %                     end
-        %
-        %                 otherwise
-        %                     fprintf(2, 'Error requesting data.\n');
-        %                     return;
-        %             end
-        %         end
-        
         function obj = setParent(obj, p)
-            %% Set Seedling parent, Genotype host, Experiment origin for this object
+            %% Set Seedling parent | Genotype host| Experiment origin 
             obj.Parent       = p;
             obj.SeedlingName = p.SeedlingName;
             
@@ -217,7 +190,8 @@ classdef Hypocotyl < handle
         end
         
         function bbox = getCropBox(obj)
-            %% Return CropBox parameter defining bounding box to crop from Parent Seedling
+            %% Return CropBox parameter, or the [4 x 1] vector that defines the 
+            % bounding box to crop from Parent Seedling
             bbox = obj.CropBox;
         end
         
@@ -290,7 +264,7 @@ classdef Hypocotyl < handle
                             end
                         catch
                             crc = [];
-                        end
+                        end 
                     otherwise
                         fprintf(2, 'Error returning %s circuit\n', req);
                 end
