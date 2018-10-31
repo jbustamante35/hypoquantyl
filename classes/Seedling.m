@@ -25,11 +25,11 @@ classdef Seedling < handle
         Image
         PData
         Contour
-        SCALESIZE = [101 101]
+        SCALESIZE    = [101 101]
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
-        CONTOURSIZE = 500 % number of points to normalize Hypocotyl contours
-        IMAGEBUFFER = 40 % percentage of image size to extend image for creating Hypocotyl objects
-        TESTS2RUN = [1 1 1 1 0 0]; % manifest to determine which quality checks to run
+        CONTOURSIZE  = 500		% number of points to normalize Hypocotyl contours
+        IMAGEBUFFER  = 40		% percentage of image size to extend image for creating Hypocotyl objects
+        TESTS2RUN    = [1 1 1 1 0 0];	% manifest to determine which quality checks to run
     end
     
     %% ------------------------- Primary Methods --------------------------- %%
@@ -84,13 +84,53 @@ classdef Seedling < handle
             obj.setFrame(max(obj.GoodFrames), 'd');
         end
         
-        function obj = FindHypocotyl(obj, frm)
-            %% Find Hypocotyl with defined sizes within Seedling object
+        function obj = FindHypocotylAllFrames(obj)
+	    %% Extract Hypocotyl at all frames using the extractHypocotyl
+            % method for this Seedling's total Lifetime
+
+            try
+            	rng = 1 : obj.Lifetime;
+            	arrayfun(@(x) obj.extractHypocotyl(x), ...
+                	rng, 'UniformOutput', 0);
+            catch e
+            	fprintf(2, 'Error extracting Hypocotyl from %s\n%s', ...
+                	obj.SeedlingName, e.getReport);
+            end
+        end
+        
+    end
+    
+    %% ------------------------- Helper Methods ---------------------------- %%
+    
+    methods (Access = public) %% Various methods for this class
+        function obj = setSeedlingName(obj, sn)
+            %% Set name for Seedling
+            obj.SeedlingName = string(sn);
+        end
+        
+        function sn = getSeedlingName(obj)
+            %% Return name for Seedling
+            sn = obj.SeedlingName;
+        end
+        
+        function obj = setParent(obj, p)
+            %% Set Genotype parent and Experiment host
+            obj.Parent       = p;
+            obj.GenotypeName = p.GenotypeName;
+            
+            obj.Host           = p.Parent;
+            obj.ExperimentName = obj.Host.ExperimentName;
+            obj.ExperimentPath = obj.Host.ExperimentPath;
+        end
+        
+        function obj = extractHypocotyl(obj, frm)
+            %% Extract Hypocotyl with defined sizes within Seedling object
             % This function crops the top [h x w] of a Seedling
             % TODO:
-            % This may need to be more dynamic to account for Seedlings growing at odd angles.
-            % I also need to set a detection algorithm to make sure Hypocotyl is in view.
-            % Basically this should know the general 'shape' of a Hypocotyl. [how do I do this?]
+            % This may need to be more dynamic to account for Seedlings growing
+            % at odd angles. I also need to set a detection algorithm to make 
+            % sure Hypocotyl is in view. Basically this should know the general
+            % 'shape' of a Hypocotyl. [how do I do this?]
             %
             % (update 9/29/18) I have no clue what I meant by the above note
             % (update 10/23/18) I still have no clue what this means
@@ -131,36 +171,10 @@ classdef Seedling < handle
                 end
                 
             catch e
-                fprintf('No data %s Frame %d \n%s\n', obj.getSeedlingName, frm, e.getReport);
+                fprintf('No data %s Frame %d \n%s\n', ...
+                	obj.getSeedlingName, frm, e.getReport);
             end
         end
-        
-    end
-    
-    %% ------------------------- Helper Methods ---------------------------- %%
-    
-    methods (Access = public)
-        %% Various methods for this class
-        function obj = setSeedlingName(obj, sn)
-            %% Set name for Seedling
-            obj.SeedlingName = string(sn);
-        end
-        
-        function sn = getSeedlingName(obj)
-            %% Return name for Seedling
-            sn = obj.SeedlingName;
-        end
-        
-        function obj = setParent(obj, p)
-            %% Set Genotype parent and Experiment host
-            obj.Parent       = p;
-            obj.GenotypeName = p.GenotypeName;
-            
-            obj.Host           = p.Parent;
-            obj.ExperimentName = obj.Host.ExperimentName;
-            obj.ExperimentPath = obj.Host.ExperimentPath;
-        end
-        
         function obj = setImage(obj, frm, req, dat)
             %% Set type of data for Seedling at desired frame
             % Set data into requested field at specified frame
@@ -174,7 +188,8 @@ classdef Seedling < handle
                 else
                     fn  = fieldnames(obj.Image);
                     str = sprintf('%s, ', fn{:});
-                    fprintf(2, 'Field must be: %s \nFrame must be <= %d\n', str, obj.getLifetime);
+                    fprintf(2, 'Field must be: %s \nFrame must be <= %d\n', ...
+                    	str, obj.getLifetime);
                 end
             catch
                 fprintf(2, 'Error setting %s data at frame %d\n', req, frm);
@@ -216,17 +231,20 @@ classdef Seedling < handle
                             bnd = obj.getPData(frm, 'BoundingBox');
                             dat = imcrop(img, bnd);
                         else
-                            bnd = arrayfun(@(x) obj.getPData(x, 'BoundingBox'), idx, 'UniformOutput', 0);
-                            dat = cellfun(@(i,b) imcrop(i,b), img, bnd, 'UniformOutput', 0);
+                            bnd = arrayfun(@(x) obj.getPData(x, ...
+                            	'BoundingBox'), idx, 'UniformOutput', 0);
+                            dat = cellfun(@(i,b) imcrop(i,b), ...
+                            	img, bnd, 'UniformOutput', 0);
                         end
                         
                     catch
-                        fprintf(2, 'No image at frame %d indexed at %d \n', frm, idx);
+                        fprintf(2, 'No image at frame %d indexed at %d \n', ...
+                        	frm, idx);
                         dat = [];
                     end
                     
                 case 3
-                    % Grayscale or bw image(s) at specific frame or range of frames
+                    % Grayscale or bw image(s) at single or range of frames 
                     try
                         frm = varargin{2};
                         if numel(rng) > 1
@@ -240,7 +258,9 @@ classdef Seedling < handle
                         bnd = obj.getPData(frm, 'BoundingBox');
                         dat = imcrop(img, bnd);
                     catch
-                        fprintf(2, 'No %s image at frame %d indexed at %d \n', req, frm, idx);
+                        fprintf(2, ...
+                        	'No %s image at frame %d indexed at %d \n', ...
+                                req, frm, idx);
                         dat = [];
                     end
             end
@@ -249,8 +269,9 @@ classdef Seedling < handle
         
         function obj = setCoordinates(obj, frm, coords)
             %% Set coordinates of a Seedling at a specific frame
-            % This method allows setting the xy-coordinates of a Seedling at given time point
-            % Coordinates come from the WeightedCentroid of the Seedling in a full image
+            % This method allows setting the xy-coordinates of a Seedling at 
+            % the given time point. Coordinates come from the WeightedCentroid 
+            % of the Seedling in a full image.
             try
                 obj.Coordinates(frm, :) = coords;
             catch
@@ -371,7 +392,7 @@ classdef Seedling < handle
                     catch
                         fn  = fieldnames(dfm);
                         str = sprintf('%s, ', fn{:});
-                        fprintf(2, 'Requested field must be either: %s\n', str);
+                        fprintf(2, 'Requested field must be: %s\n', str);
                     end
                     
                 otherwise
@@ -404,7 +425,7 @@ classdef Seedling < handle
             if ~isempty(obj.GoodFrames)
                 frms = obj.GoodFrames;
             else
-                fprintf('GoodFrames index is empty. Run RemoveBadFrames to find index.\n');
+                fprintf('GoodFrames index is empty. Run RemoveBadFrames.\n');
             end
             
         end
