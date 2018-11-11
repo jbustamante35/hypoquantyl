@@ -44,7 +44,8 @@ for i = 1 : length(d)
         g.AddSeedlingsFromRange(a:g.TotalImages, l);
     end
     
-    fprintf('Loaded %d images. Aligning Seedlings through each frame...', g.TotalImages);
+    fprintf('Loaded %d images. Aligning Seedlings through each frame...', ...
+        g.TotalImages);
     g.SortSeedlings;
     
     format shortg;
