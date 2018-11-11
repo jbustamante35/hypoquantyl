@@ -50,12 +50,26 @@ classdef Experiment < handle
                     obj.NumberOfGenotypes = obj.NumberOfGenotypes + 1;
                 catch e
                     fprintf(2, e.getReport);
-                    fprintf(2, '\nError adding Genotype %d\n', obj.NumberOfGenotypes);
+                    fprintf(2, '\nError adding Genotype %d\n', ...
+                    	obj.NumberOfGenotypes);
                 end
             end
             
         end        
         
+        function obj = FindHypocotylAllGenotypes(obj)
+            %% Extract Hypocotyl from every frame of each Seedling from 
+            % all Genotypes from this Experiment object
+
+            try
+                gens  = obj.Genotypes;
+                arrayfun(@(x) x.FindHypocotylAllSeedlings, ...
+                	gens, 'UniformOutput', 0);
+            catch e
+                fprintf(2, 'Error extracting Hypocotyls from %s\n%s', ...
+                	obj.ExperimentName, e.getReport);
+            end
+        end
     end
     
     methods (Access = public)
@@ -98,9 +112,9 @@ classdef Experiment < handle
         
         function H = combineHypocotyls(obj)
             %% Combine all Hypocotyls into single object array
-            % BE SURE TO CHANGE THIS WHEN I FIX HOW HYPOCOTYL IS STORED IN SEEDLING
-            % Each Seedling will have single Hypocotyl, derived from data from the combination of
-            % good frames of each PreHypocotyl
+            % CHANGE THIS WHEN I FIX HOW HYPOCOTYLS ARE STORED IN SEEDLINGS
+            % Each Seedling will have a single Hypocotyl, derived from data 
+            % from the combination of good frames of each PreHypocotyl. 
             S = obj.combineSeedlings;
             H = arrayfun(@(x) x.getAllPreHypocotyls, S, 'UniformOutput', 0);
             H = cat(2, H{:});
@@ -117,7 +131,7 @@ classdef Experiment < handle
         end
         
         function P = combineParameters(obj)
-            %% Return all Ppar (theta, dX, dY) from all Routes from CircuitJB objects
+            %% Return all Ppar (theta, dX, dY) from CircuitJB Routes 
             C = obj.combineContours;
             P = arrayfun(@(x) x.ParameterRoutes, C, 'UniformOutput', 0);
             P = cat(3, P{:});

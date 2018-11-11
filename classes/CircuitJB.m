@@ -51,7 +51,7 @@ classdef CircuitJB < handle
         end
         
         function obj = CreateCurves(obj)
-            %% Use Full Outline to generate Curve objects around CircuitJB object
+            %% Full Outline generates Curve objects around CircuitJB object
             obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
             obj.Curves.RunFullPipeline('smooth');
             obj.Curves.Normal2Envelope('main');
@@ -59,7 +59,7 @@ classdef CircuitJB < handle
         end
         
         function obj = CreateRoutes(obj)
-            %% Use Interpolated Outline and Anchor Points to create Route objects
+            %% Interpolated Outline and Anchor Points create Route objects
             rts = obj.Routes;
             pts = obj.AnchorPoints;
             oL  = obj.getOutline;
@@ -67,28 +67,35 @@ classdef CircuitJB < handle
             
             % Get indices of Outline matching each Anchor Point
             fidx = @(x,y) find(sum(ismember(x,y), 2) == 2);
-            mtch = arrayfun(@(x) fidx(oL(:,:,x),pts(:,:,x)), 1:size(oL,3), 'UniformOutput', 0);
+            mtch = arrayfun(@(x) fidx(oL(:,:,x),pts(:,:,x)), ...
+            	1:size(oL,3), 'UniformOutput', 0);
             mtch = cat(2, mtch{:});
             
             % Split Outline into separate Trace between each AnchorPoints
             shp    = @(x) reshape(nonzeros(x), [nnz(x)/2 2]);
             frms   = size(oL,3);
-            traces = arrayfun(@(x) split2trace(oL(:,:,x), mtch(:,x), n), 1:frms, 'UniformOutput', 0);
+            traces = arrayfun(@(x) split2trace(oL(:,:,x), mtch(:,x), n), ...
+            	1:frms, 'UniformOutput', 0);
             
             % Set data for all Routes at each frame
             for i = 1 : numel(traces)
                 trc = traces{i};
-                newpts = [pts(:,:,i) ; pts(1,:,i)]; % Copy first anchor point to last index
-                arrayfun(@(x) rts(x).setRawTrace(i, shp(trc(:,:,x))), 1:n, 'UniformOutput', 0);
-                arrayfun(@(x) rts(x).setAnchors(i, newpts(x,:), newpts(x+1,:)), 1:n, 'UniformOutput', 0);
+
+		% Copy first anchor point to last index
+                newpts = [pts(:,:,i) ; pts(1,:,i)]; 
+                arrayfun(@(x) rts(x).setRawTrace(i, shp(trc(:,:,x))), ...
+                	1:n, 'UniformOutput', 0);
+                arrayfun(@(x) rts(x).setAnchors(i, newpts(x,:), ...
+                	newpts(x+1,:)), 1:n, 'UniformOutput', 0);
                 arrayfun(@(x) rts(x).NormalizeTrace, 1:n, 'UniformOutput', 0);
             end
         end
         
         function obj = LabelAllPixels(obj, labelname)
             %% Labels all pixels inside contour as 'Hypocotyl'
-            % This is to test out a method of deep learning for semantic segmentation
-            % See ref (Long, Shelhammer, Darrell, CVF 2015, 2015) book and MATLAB tutorial at
+            % This is to test out a method of deep learning for semantic 
+            % segmentation See ref (Long, Shelhammer, Darrell, CVF 2015, 2015) 
+            % book and MATLAB tutorial at 
             % https://www.mathworks.com/help/vision/examples/semantic-segmentation-using-deep-learning.html
             lbl = repmat("", size(obj.Image.bw));
             lbl(obj.Image.bw == 1) = labelname;
@@ -97,11 +104,27 @@ classdef CircuitJB < handle
         end
         
         function obj = generateMasks(obj, buff)
-            %% Creates a binary mask from manually-drawn outline for probability matrix
-            % This function generates a binary mask where the manually-drawn outline is set to 1 and
-            % the rest of the image is 0. The output size of the image is defined by the buff
-            % parameter, because the probability matrix must fit all orientations of hypocotyls in
-            % the dataset (think of hypocotyls in the extreme left or right locations).
+            %% Create probability matrix from manually-drawn outline
+            % This function generates a binary mask where the coordinates of 
+            % the manually-drawn outline are set to 1 and the rest of the image 
+            % is set to 0. 
+            %
+            % The output size of the image is defined by the buff parameter, 
+            % because the probability matrix must fit all orientations of 
+            % hypocotyls in the dataset (think of hypocotyls in the extreme 
+            % left or right locations).
+            %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % NOTE [ 10/31/2018 ]:
+            % I created the cropWithBuffer.m function, which gives each cropped
+            % Hypocotyl a buffered region around the object. I haven't tested 
+            % it yet, but I could probably generate probability image masks 
+            % without having to create the large buffered region that this 
+            % function creates. 
+            % 
+            % tl;dr: I might be able to remove the buff parameter from here
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
             img = obj.getImage(1, 'gray');
             crd = obj.getNormalOutline; % Use normalized coordinates
             %             crd = obj.FullOutline;
@@ -157,7 +180,8 @@ classdef CircuitJB < handle
         end
         
         function obj = ConvertRawPoints(obj)
-            %% Convert anchor points from RawPoints to snapped AnchorPoints along outline
+            %% Convert anchor points from floating RawPoints to snapped 
+            % AnchorPoints along the manually-drawn outline
             if isempty(obj.InterpOutline)
                 obj.ConvertRawOutlines;
             end
@@ -173,11 +197,12 @@ classdef CircuitJB < handle
         end
         
         function obj = ReconfigInterpOutline(obj)
-            %% Reconfigure interpolated outline to the interpolated traces of each Route
-            % This will change the coordinates from this object's InterpOutline to the InterpTrace
-            % of each of this object's Routes. This ensures that there is a segment defining the
-            % base segment.
-            trc = arrayfun(@(x) x.getInterpTrace, obj.Routes, 'UniformOutput', 0);
+            %% Convert interpolated outline to Route's interpolated traces
+            % This will change the coordinates from this object's InterpOutline 
+            % property to the InterpTrace of each of this object's Route array. 
+            % This ensures that there is a segment defining the base segment.
+            trc = arrayfun(@(x) x.getInterpTrace, ...
+            	obj.Routes, 'UniformOutput', 0);
             obj.FullOutline = cat(1, trc{:});
         end
         
@@ -256,7 +281,7 @@ classdef CircuitJB < handle
                     catch
                         fn  = fieldnames(dfm);
                         str = sprintf('%s, ', fn{:});
-                        fprintf(2, 'Requested field must be either: %s\n', str);
+                        fprintf(2, 'Requested fields must be: %s\n', str);
                     end
                     
                 otherwise
@@ -264,6 +289,53 @@ classdef CircuitJB < handle
                     return;
             end
         end
+
+        %function dat = getImage(varargin)
+        %    %% Return image data for ContourJB at desired frame [frm, req]
+        %    % User can specify which image from structure with 3rd parameter
+        %    switch nargin
+        %        case 1
+        %            % Full structure of image data at all frames
+        %            obj = varargin{1};
+        %            dat = obj.Image;
+        %            
+        %        case 2
+        %            % All image data at frame
+        %            try
+        %                obj = varargin{1};
+        %                frm = varargin{2};
+        %                dat = obj.Image(frm);
+        %            catch
+        %                fprintf(2, 'No image at frame %d \n', frm);
+        %            end
+        %            
+        %        case 3
+        %            % Specific image type at frame
+        %            % Check if frame exists
+        %            try
+        %                obj = varargin{1};
+        %                frm = varargin{2};
+        %                req = varargin{3};
+        %                dat = obj.Image(frm);
+        %            catch
+        %                fprintf(2, 'No image at frame %d \n', frm);
+        %            end
+        %            
+        %            % Get requested data field
+        %            try
+        %                dfm = obj.Image(frm);
+        %                dat = dfm.(req);
+        %            catch
+        %                fn  = fieldnames(dfm);
+        %                str = sprintf('%s, ', fn{:});
+        %                fprintf(2, 'Requested field must be either: %s\n', str);
+        %            end
+        %            
+        %        otherwise
+        %            fprintf(2, 'Error requesting data.\n');
+        %            return;
+        %    end
+        %end
         
         function obj = setRawOutline(obj, frm, oL)
             %% Set coordinates for RawOutline at specific frame
@@ -436,7 +508,7 @@ classdef CircuitJB < handle
             %% Parse input parameters for Constructor method
             p = inputParser;
             p.addOptional('Origin', '');
-            p.addOptional('Parent', Hypocotyl);
+            p.addOptional('Parent', []);
             p.addOptional('RawOutline', {});
             p.addOptional('InterpOutline', []);
             p.addOptional('FullOutline', []);
@@ -444,8 +516,8 @@ classdef CircuitJB < handle
             p.addOptional('RawPoints', []);
             p.addOptional('AnchorPoints', []);
             p.addOptional('Image', []);
-            p.addOptional('Curves', Curve);
-            p.addOptional('Routes', Route);
+            p.addOptional('Curves', []);
+            p.addOptional('Routes', []);
             p.addOptional('isTrained', false);
             
             % Parse arguments and output into structure
@@ -481,7 +553,7 @@ classdef CircuitJB < handle
         end
         
         function P = concatParameters(obj)
-            %% Concatenate parameters for each of this object's Routes into [m x p] array
+            %% Concatenate parameters for Routes into [m x p] array
             % m is the number of Route objects
             % p is the number of parameters
             % Output:
