@@ -64,22 +64,39 @@ classdef Genotype < handle
         
         function obj = FindSeedlings(obj, rng, hypln)
             %% Function to extract Seedling objects from a range of frames
-            % This function searches the large image for what is expected to be Seedling objects.
-            % The threshold size of the Seedling is set by the MASKSIZE property.
+            % This function searches the large grayscale image for what is 
+            % expected to be Seedling objects. The threshold size of the 
+            % Seedling is set by the MASKSIZE property.
             
             % Find raw seedlings from each frame in range
             frm = 1;      % Set first frame for first Seedling
             for r = rng
-                extractSeedlings(obj, obj.getImage(r), frm, obj.MASKSIZE, hypln);
+                extractSeedlings(obj, obj.getImage(r), ...
+                	frm, obj.MASKSIZE, hypln);
                 frm = frm + 1;
             end
             
         end
         
+        function obj = FindHypocotylAllSeedlings(obj)
+            %% Extract Hypocotyl from all Seedlings from this Genotype
+
+            try
+                sdls = obj.Seedlings;
+            	arrayfun(@(x) x.FindHypocotylAllFrames, ...
+                	sdls, 'UniformOutput', 0);
+            catch e
+                fprintf(2, 'Error extracting Hypocotyl from %s\n%s\n', ...
+                	obj.GenotypeName, e.getReport);
+            end
+
+        end
+
         function obj = SortSeedlings(obj)
-            %% Align each Seedling and Filter out empty time points [obtain true lifetime]
-            % Calls an assortment of helper functions that filter out empty frames and align
-            % Seedling objects through frames
+            %% Align each Seedling by their centroid coordinate and then Filter 
+            % out empty time points [to obtain true lifetime]. This function 
+            % calls an assortment of helper functions that filters out empty 
+            % frames and aligns Seedling objects through subsequent frames.
             filterSeedlings(obj, obj.RawSeedlings, size(obj.RawSeedlings, 1));
             obj.NumberOfSeedlings = numel(obj.Seedlings);
         end
@@ -114,7 +131,13 @@ classdef Genotype < handle
         
         function im = getImage(varargin)
             %% Return requested image at index
-            % This function takes the path to the image from the ImageStore object
+            % This function draws from the ImageStore property that contains an
+            % ImageDataStore to read an image into memory from it's path name. 
+            % 
+            % This gives a significant improvement over my original method of
+            % reading from the path name and writing the data to memory. This
+            % made the image processing pipeline very slow, and created 
+            % very large objects and data output [ .mat ] files.
             obj = varargin{1};
             
             switch nargin
@@ -145,10 +168,12 @@ classdef Genotype < handle
                                 
                             case 'bw'
                                 if iscell(imgs)
-                                    [~, im] = cellfun(@(x) segmentObjectsHQ(x, obj.MASKSIZE),...
+                                    [~, im] = cellfun(@(x) ...
+                                    	segmentObjectsHQ(x, obj.MASKSIZE),...
                                         imgs, 'UniformOutput', 0);
                                 else
-                                    [~, im] = segmentObjectsHQ(imgs, obj.MASKSIZE);
+                                    [~, im] = ...
+                                    	segmentObjectsHQ(imgs, obj.MASKSIZE);
                                 end
                                 
                             otherwise
@@ -220,24 +245,27 @@ classdef Genotype < handle
         function obj = extractSeedlings(obj, im, frm, mskSz, hypln)
             %% Segmentation and Extraction of Seedling objects from raw image
             % This function binarizes a grayscale image at the given frame and
-            % extracts features of a specified minimum size. Output is in the form
-            % of a [m x n] cell array containing RawSeedling objects that represent
-            % the total number of objects (m) for total frames (n).
+            % extracts features of a specified minimum size. Output is in the 
+            % form of a [m x n] cell array containing RawSeedling objects that 
+            % represent the total number of objects (m) for total frames (n).
             %
             % Input:
             %   obj: this Genotype object
             %   im: grayscale image containing growing seedlings
-            %   frm: time point for Seedling's lifetime (not frame in time lapse)
+            %   frm: time point for Seedling's lifetime (NOT frame)
             %   mskSz: min-max cutoff size for objects labelled as a Seedling
-            %   hypln: distance at bottom of Seedling to set cutoff for Hypocotyl
+            %   hypln: distance at bottom of image to set cutoff for Hypocotyl
             
-            % Segmentation with Otsu method, inverted BW, filter out small objects
+            % Segmentation with Otsu method and the inverted BW image, then
+            % filter out small objects [ defined by mskSz parameter ].
             [dd, msk] = segmentObjectsHQ(im, mskSz);
             prp       = regionprops(dd, im, obj.PDPROPERTIES);
             
             % Crop grayscale/bw/contour image of RawSeedling
-            bws  = arrayfun(@(x) imcrop(msk, x.BoundingBox), prp, 'UniformOutput', 0);
-            ctrs = cellfun(@(x) extractContour(x, obj.CONTOURSIZE), bws, 'UniformOutput', 0);
+            bws  = arrayfun(@(x) imcrop(msk, x.BoundingBox), ...
+            	prp, 'UniformOutput', 0);
+            ctrs = cellfun(@(x) extractContour(x, obj.CONTOURSIZE), ...
+            	bws, 'UniformOutput', 0);
             
             % Create Seedling objects using data from bw mask and contour
             for s = 1 : numel(prp)
@@ -248,19 +276,27 @@ classdef Genotype < handle
                 sdl.increaseLifetime;
                 sdl.setFrame(frm, 'b');
                 sdl.setCoordinates(1, prp(s).WeightedCentroid);
-                sdl.setAnchorPoints(1, bwAnchorPoints(sdl.getImage(1, 'bw'), hypln));
+                sdl.setAnchorPoints(1, ...
+                	bwAnchorPoints(sdl.getImage(1, 'bw'), hypln));
                 obj.RawSeedlings{s,frm} = sdl;
             end
         end
         
         function obj = filterSeedlings(obj, rs, nSeeds)
             %% Filter out bad Seedling objects and frames
-            % This function iterates through the inputted cell array to add only good Seedlings
-            % Runs the algorithm for checking centroid coordinates of each Seedling to align correctly
+            % This function iterates through the inputted cell array of 
+            % RawSeedlings to add only good Seedling objects into this 
+            % Genotype's Seedlings property.
+            %
+            % Specifically, it runs the algorithm for checking centroid 
+            % coordinates of each Seedling to align each Seedling correctly, 
+            % based on matching centroid coordinates. 
             
             % Store all coordinates in 3-dim matrix
-            rs       = empty2nan(rs, Seedling('empty', 'Coordinates', [nan nan]));
-            crdsCell = cellfun(@(x) x.getCoordinates(1), rs, 'UniformOutput', 0);
+            rs       = empty2nan(rs, ...
+            	Seedling('empty', 'Coordinates', [nan nan]));
+            crdsCell = cellfun(@(x) x.getCoordinates(1), ...
+            	rs, 'UniformOutput', 0);
             
             crdsMtrx = zeros(size(crdsCell, 1), 2, size(crdsCell, 2));
             for i = 1 : size(crdsCell, 2)
@@ -272,7 +308,8 @@ classdef Genotype < handle
             sdls  = arrayfun(@(x) mkSdl(x), 1:nSeeds, 'UniformOutput', 0)';
             sdls  = cat(1, sdls{:});
             
-            %% Align Seedling coordinates by closest matching RawSeedling at each frame
+            %% Align Seedling coordinates by closest matching RawSeedling at 
+            % each frame. 
             % TODO: implement collision detection --> combine collided objects
             %   1) colliding objects both should combine coordinates
             %   2) last indexed object is cut because colliding objects problem
