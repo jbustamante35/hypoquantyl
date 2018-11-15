@@ -53,6 +53,20 @@ classdef Hypocotyl < handle
             
             obj.Circuit(2) = obj.Circuit;
         end
+
+        function obj = PruneSeedlings(obj)
+            %% Remove RawSeedlings to decrease data
+            obj.RawSeedlings = [];
+
+        end
+
+        function obj = DerefParents(obj)
+            %% Remove reference to Parent property
+            obj.Parent = [];
+            obj.Host   = [];
+            obj.Origin = [];
+
+        end
         
     end
     
@@ -188,7 +202,7 @@ classdef Hypocotyl < handle
                 fprintf(2, 'CropBox should be size %s\n', num2str(box_size));
             end
         end
-        
+
         function bbox = getCropBox(obj)
             %% Return CropBox parameter, or the [4 x 1] vector that defines the 
             % bounding box to crop from Parent Seedling
@@ -272,7 +286,17 @@ classdef Hypocotyl < handle
                 crc = [];
             end
         end
-        
+
+        function prp = getProperty(obj, req)
+            %% Returns a property of this Hypocotyl object
+            	try
+                    prp = obj.(req);
+                catch e
+                    fprintf(2, 'Property %s does not exist\n%s', ...
+                    	req, e.message);
+                end
+        end
+
     end
     
     methods (Access = private)
