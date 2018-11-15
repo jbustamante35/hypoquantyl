@@ -28,8 +28,8 @@ end
 %% Initialize with parent Experiment object
 exp      = Parent;
 genotype = Genotype(gName, 'Parent', exp);
-genotype.ParentName = exp.ExperimentName;
-genotype.ParentPath = exp.ExperimentPath;
+genotype.ExperimentName = exp.ExperimentName;
+genotype.ExperimentPath = exp.ExperimentPath;
 
 %% Create image data store from path to images
 Imgs = imageDatastore([exp.ExperimentPath , '/',  gName], 'FileExtensions', image_extension);
