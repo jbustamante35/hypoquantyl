@@ -5,8 +5,8 @@ classdef Genotype < handle
     properties (Access = public)
         %% What data should this have?
         Parent
-        ParentName
-        ParentPath
+        ExperimentName
+        ExperimentPath
         GenotypeName
         TotalImages
         NumberOfSeedlings
@@ -62,11 +62,15 @@ classdef Genotype < handle
         %             obj.TotalImages = numel(obj.Images);
         %         end
         
-        function obj = FindSeedlings(obj, rng, hypln)
+        function obj = FindSeedlings(obj, rng, hypln, v)
             %% Function to extract Seedling objects from a range of frames
             % This function searches the large grayscale image for what is 
             % expected to be Seedling objects. The threshold size of the 
             % Seedling is set by the MASKSIZE property.
+
+            if v
+                fprintf('Extracting Seedlings from %s\n', obj.GenotypeName);
+            end
             
             % Find raw seedlings from each frame in range
             frm = 1;      % Set first frame for first Seedling
@@ -74,20 +78,42 @@ classdef Genotype < handle
                 extractSeedlings(obj, obj.getImage(r), ...
                 	frm, obj.MASKSIZE, hypln);
                 frm = frm + 1;
+
+                if v
+                    fprintf('(%s) Extracted %d Seedlings from %d frames\n', ...
+                    	obj.GenotypeName, numel(obj.RawSeedlings), r);
+                end
             end
             
         end
         
-        function obj = FindHypocotylAllSeedlings(obj)
+        function obj = FindHypocotylAllSeedlings(obj, v)
             %% Extract Hypocotyl from all Seedlings from this Genotype
 
+            
             try
+            	if v
+            	    fprintf('Extracting Hypocotyls from %s\n', ...
+                    	obj.GenotypeName);
+            	    tic;
+            	end
+
                 sdls = obj.Seedlings;
-            	arrayfun(@(x) x.FindHypocotylAllFrames, ...
+            	arrayfun(@(x) x.FindHypocotylAllFrames(v), ...
                 	sdls, 'UniformOutput', 0);
+
+            	if v
+            	    fprintf('[%.02f sec] Extracted Hypocotyls from %s\n', ...
+                    	toc, obj.GenotypeName);
+            	end
+
             catch e
                 fprintf(2, 'Error extracting Hypocotyl from %s\n%s\n', ...
                 	obj.GenotypeName, e.getReport);
+
+            	if v
+            	    fprintf('[%.02f sec] %s\n', toc);
+            	end
             end
 
         end
@@ -210,11 +236,12 @@ classdef Genotype < handle
         end
         
         function prp = getProperty(obj, req)
-            %% Returns and property of this Genotype object
+            %% Returns a property of this Genotype object
             try
                 prp = obj.(req);
-            catch
-                fprintf(2, 'Property %s does not exist\n', req);
+            catch e
+                fprintf(2, 'Property %s does not exist\n%s\n', ...
+                    req, e.message);
             end
         end
         
@@ -229,8 +256,8 @@ classdef Genotype < handle
             p = inputParser;
             p.addRequired('GenotypeName');
             p.addOptional('Parent', []);
-            p.addOptional('ParentName', '');
-            p.addOptional('ParentPath', '');
+            p.addOptional('ExperimentName', '');
+            p.addOptional('ExperimentPath', '');
             p.addOptional('TotalImages', 0);
             p.addOptional('NumberOfSeedlings', 0);
             p.addOptional('Images', {});
@@ -246,7 +273,7 @@ classdef Genotype < handle
             %% Segmentation and Extraction of Seedling objects from raw image
             % This function binarizes a grayscale image at the given frame and
             % extracts features of a specified minimum size. Output is in the 
-            % form of a [m x n] cell array containing RawSeedling objects that 
+            % form of an [m x n] cell array containing RawSeedling objects that 
             % represent the total number of objects (m) for total frames (n).
             %
             % Input:
