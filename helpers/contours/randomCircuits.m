@@ -14,7 +14,7 @@ function CRCS = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
 %   vis: boolean to plot figures or not
 %
 % Output:
-%   CRCS: CircuitJB array of manually-drawn contours from inputted Experiment Ein
+%   CRCS: CircuitJB array of manually-drawn contours from Experiment Ein
 %
 
 %% Initialize object array of Seedlings/Hypocotyl to draw contours for
@@ -81,8 +81,8 @@ end
 
 function c = makeCircuits(n)
 %% makeCircuits: subfunction to create n number of individual CircuitJB objects
-% The repmat creates multiple copies of the same handle to an individual object, instead of creating
-% multiple handles to individual objects.
+% The repmat creates multiple copies of the same handle to an individual object, 
+%instead of creating multiple handles to individual objects.
 c = repmat(CircuitJB, 1, n);
 for i = 1 : n
     c(i) = CircuitJB;
@@ -90,7 +90,7 @@ end
 end
 
 function [crc, flp] = getCircuit(rs, typ, flip)
-%% getCircuit: subfunction to manually-draw contour on random frame of inputted Seedling
+%% getCircuit: subfunction to manually-draw contour on random frame of Seedling
 
 % Get a random good frame from Seedling's lifetime
 frms = rs.getGoodFrames;
@@ -100,11 +100,12 @@ rFrm = frms(randi(length(frms), 1));
 if typ
     rs = rs.getPreHypocotyl(rFrm);
     im  = rs.getImage('gray');
-    org = sprintf('%s_%s_%s_%s_Frm{%d}', rs.ExperimentName, rs.GenotypeName, rs.SeedlingName, ...
-        rs.HypocotylName, rFrm);
+    org = sprintf('%s_%s_%s_%s_Frm{%d}', rs.ExperimentName, ...
+        rs.GenotypeName, rs.SeedlingName, rs.HypocotylName, rFrm);
 else
     im  = rs.getImage(rFrm, 'gray');
-    org = sprintf('%s_%s_%s_Frm{%d}', rs.ExperimentName, rs.GenotypeName, rs.SeedlingName, rFrm);
+    org = sprintf('%s_%s_%s_Frm{%d}', rs.ExperimentName, rs.GenotypeName, ...
+        rs.SeedlingName, rFrm);
 end
 
 % Set image and origin data for CircuitJB
@@ -127,8 +128,8 @@ end
 % Extract manual contour from flipped image
 if flip
     flpim = rs.FlipMe;
-    org = sprintf('flip_%s_%s_%s_%s_Frm{%d}', rs.ExperimentName, rs.GenotypeName, rs.SeedlingName, ...
-        rs.HypocotylName, rFrm);
+    org = sprintf('flip_%s_%s_%s_%s_Frm{%d}', rs.ExperimentName, ...
+        rs.GenotypeName, rs.SeedlingName, rs.HypocotylName, rFrm);
     
     flp = CircuitJB('Origin', org);
     flp.setImage(1, 'gray', flpim);
