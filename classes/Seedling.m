@@ -4,12 +4,12 @@
 classdef Seedling < handle
     properties (Access = public)
         %% Seedling properties
-        SeedlingName
-        GenotypeName
-        ExperimentName
-        ExperimentPath
         Parent
         Host
+        ExperimentName
+        ExperimentPath
+        GenotypeName
+        SeedlingName
         Frame
         Lifetime
         Coordinates
@@ -72,10 +72,7 @@ classdef Seedling < handle
             %   3) Empty image and contour data
             %   4) Empty AnchorPoints
             %   5) Out of frame growth
-            %   6) Collisions
-            
-            %% REMOVE THIS AFTER FINISHING METHOD
-            obj.TESTS2RUN = [1 1 1 1 0 0];
+            %   6) Collisions            
             
             %% Get index of good frames, then remove bad frames
             obj.GoodFrames = runQualityChecks(obj, obj.TESTS2RUN);
@@ -84,20 +81,49 @@ classdef Seedling < handle
             obj.setFrame(max(obj.GoodFrames), 'd');
         end
         
-        function obj = FindHypocotylAllFrames(obj)
+        function obj = FindHypocotylAllFrames(obj, v)
 	    %% Extract Hypocotyl at all frames using the extractHypocotyl
             % method for this Seedling's total Lifetime
 
             try
+            	if v
+            	    fprintf('Extracting Hypocotyls from %s\n', ...
+                    	obj.SeedlingName);
+            	    tic;
+            	end
+            
             	rng = 1 : obj.Lifetime;
-            	arrayfun(@(x) obj.extractHypocotyl(x), ...
+            	arrayfun(@(x) obj.extractHypocotyl(x, v), ...
                 	rng, 'UniformOutput', 0);
+
+            	if v
+            	    fprintf('[%.02f sec] Extracted Hypocotyl from %s\n', ...
+                    	toc, obj.SeedlingName);
+            	end
+
             catch e
             	fprintf(2, 'Error extracting Hypocotyl from %s\n%s', ...
                 	obj.SeedlingName, e.getReport);
+
+            	if v
+            	    fprintf('[%.02f sec]\n', toc);
+            	end
             end
         end
         
+    function obj = DerefParents(obj)
+        %% Remove reference to Parent property
+        obj.Parent = [];
+        obj.Host   = [];
+
+    end
+
+    function obj = RefChild(obj)
+        %% Set reference back to Children [ after use of DerefParents ]
+        arrayfun(@(x) x.setParent(obj), obj.Hypocotyls, 'UniformOutput', 0);
+
+    end
+
     end
     
     %% ------------------------- Helper Methods ---------------------------- %%
@@ -123,7 +149,7 @@ classdef Seedling < handle
             obj.ExperimentPath = obj.Host.ExperimentPath;
         end
         
-        function obj = extractHypocotyl(obj, frm)
+        function obj = extractHypocotyl(obj, frm, verb)
             %% Extract Hypocotyl with defined sizes within Seedling object
             % This function crops the top [h x w] of a Seedling
             % TODO:
@@ -139,6 +165,7 @@ classdef Seedling < handle
             %   obj  : this Seedling object
             %   frm  : frame in which to search for Hypocotyl
             %   sclsz: [2 x 1] array defining the scaled size of each Hypocotyl
+            %	verb: verbosity 
             %
             % Output:
             %   obj  : function sets AnchorPoints and PreHypocotyl
@@ -169,12 +196,18 @@ classdef Seedling < handle
                 else
                     obj.PreHypocotyl(frm) = hyp;
                 end
+
+                if verb
+                    fprintf('Extracted hypocotyl from %s frame %d\n', ...
+                    	obj.SeedlingName, frm);
+                end
                 
             catch e
                 fprintf('No data %s Frame %d \n%s\n', ...
                 	obj.getSeedlingName, frm, e.getReport);
             end
         end
+
         function obj = setImage(obj, frm, req, dat)
             %% Set type of data for Seedling at desired frame
             % Set data into requested field at specified frame
@@ -457,6 +490,16 @@ classdef Seedling < handle
         function sclsz = getScaleSize(obj)
             sclsz = obj.SCALESIZE;
         end
+
+        function prp = getProperty(obj, req)
+            %% Returns a property of this Seedling object
+            try
+                prp = obj.(req);
+            catch e
+                fprintf(2, 'Property %s does not exist\n%s\n', ...
+                	req, e.message);
+            end
+	end
 
     end
     
