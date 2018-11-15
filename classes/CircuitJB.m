@@ -131,7 +131,7 @@ classdef CircuitJB < handle
             msk = crds2mask(img, crd, buff);
             obj.setImage(1, 'mask', msk);
         end
-        
+
         function obj = DrawOutline(obj, frm)
             %% Draw RawOutline on this object's Image
             try

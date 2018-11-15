@@ -13,6 +13,7 @@ classdef Experiment < handle
     properties (Access = private)
         %% Private data properties
         Genotypes
+        HYPOCOTYLLENGTH = 250 % Distance to set cutoff for hypocotyl
     end
     
     methods (Access = public)
@@ -57,20 +58,66 @@ classdef Experiment < handle
             
         end        
         
-        function obj = FindHypocotylAllGenotypes(obj)
+        function obj = FindHypocotylAllGenotypes(obj, v)
             %% Extract Hypocotyl from every frame of each Seedling from 
             % all Genotypes from this Experiment object
-
             try
+
+            	if v
+            	    fprintf('Extracting Hypocotyls from %s\n', ...
+            	    	obj.ExperimentName);
+            	    tic;
+            	end
+            
                 gens  = obj.Genotypes;
-                arrayfun(@(x) x.FindHypocotylAllSeedlings, ...
+                arrayfun(@(x) x.FindHypocotylAllSeedlings(v), ...
                 	gens, 'UniformOutput', 0);
+
+            	if v
+            	    fprintf('[%.02f sec] Extracting Hypocotyls from %s\n', ...
+            	    	toc, obj.ExperimentName);
+            	end
+
             catch e
                 fprintf(2, 'Error extracting Hypocotyls from %s\n%s', ...
                 	obj.ExperimentName, e.getReport);
+
+            	if v
+            	    fprintf('[%.02f sec]\n', toc);
+            	end
             end
         end
-    end
+
+        function obj = FindSeedlingAllGenotypes(obj, v)
+            %% Extract Seedling from every frame of each Genotype
+
+            try 
+                if v
+                    fprintf('Extracting Seedlings from Experiment %s\n', ...
+                    	obj.ExperimentName);
+                end
+
+                gens = obj.Genotypes;
+                arrayfun(@(x) x.FindSeedlings(1:x.TotalImages, ...
+                	obj.HYPOCOTYLLENGTH, v), gens, 'UniformOutput', 0);
+                arrayfun(@(x) x.SortSeedlings, gens, 'UniformOutput', 0);
+
+                if v
+                    fprintf('[%.02f sec] Extracting Hypocotyls from %s\n', ...
+                        toc, obj.ExperimentName);
+                end
+
+            catch e
+                fprintf(2, 'Error extracting Seedlings from %s\n%s', ...
+                	obj.ExperimentName, e.getReport);
+
+            	if v
+            	    fprintf('[%.02f sec]\n', toc);
+            	end
+            end
+
+        end
+end
     
     methods (Access = public)
         %% Various helper methods for other classes to use
