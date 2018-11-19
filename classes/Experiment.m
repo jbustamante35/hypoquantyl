@@ -117,7 +117,41 @@ classdef Experiment < handle
             end
 
         end
-end
+
+      function obj = SaveExperiment(obj)
+         %% Prune superfluous data, dereference parents, then save 
+         % Remove RawSeedlings and PreHypocotyls
+             g = obj.combineGenotypes;
+             arrayfun(@(x) x.PruneSeedlings, g, 'UniformOutput', 0);
+
+             s = obj.combineSeedlings;
+             arrayfun(@(x) x.PruneHypocotyls, s, 'UniformOutput', 0);
+
+         % Dereference parent objects
+             h = obj.combineHypocotyls;
+
+             X     = {g, s, h};
+             deref = @(c) arrayfun(@(x) x.DerefParents, c, 'UniformOutput', 0);
+             cellfun(@(x) deref(x), X, 'UniformOutput', 0);
+
+         % Save full Experiment object
+
+     end
+
+     function obj = LoadExperiment(obj)
+         %% Recursively set references back to Child objects
+         g = obj.combineGenotypes;
+         arrayfun(@(x) x.setParent(obj), g, 'UniformOutput', 0);
+
+         s = obj.combineSeedlings;
+         h = obj.combineHypocotyls;
+         
+         X = {g, s, h};
+         ref = @(c) arrayfun(@(x) x.RefChild, c, 'UniformOutput', 0);
+         cellfun(@(x) ref(x), X, 'UniformOutput', 0);
+     end
+
+    end
     
     methods (Access = public)
         %% Various helper methods for other classes to use
