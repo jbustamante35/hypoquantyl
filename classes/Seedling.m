@@ -110,6 +110,35 @@ classdef Seedling < handle
             	end
             end
         end
+
+    function obj = PruneHypocotyls(obj)
+        %% Remove PreHypocotyls to decrease data
+        obj.PreHypocotyls = [];
+
+    end
+
+    function obj = SortPreHypocotyls(obj)
+        %% Compile PreHypocotyls into single Hypocotyl based on frame number
+        % My original algorithm instances individual Hypocotyl objects for each
+        % frame for each Seedling for each Genotype. This means creating 
+        % thousands of objects. 
+        % 
+        % I don't understand why I did it this way initially, but it's about
+        % time I fixed it. Saving >1000 objects is incredibly wasteful and
+        % is part of the reason my save files are enormous. 
+
+        % Initialize new Hypocotyl object
+        pre = obj.getAllPreHypocotyls;
+        rng = [pre(1).getFrame('b') pre(end).getFrame('b')];
+        hyp = Hypocotyl('Frame', rng);
+        hyp.setParent(obj);
+
+        % Compile data into new object
+        hyp = compileHypocotyl(obj, hyp, pre);
+
+        % Set this object's Hypocotyl property
+        obj.MyHypocotyl = hyp;
+    end
         
     function obj = DerefParents(obj)
         %% Remove reference to Parent property
@@ -120,7 +149,8 @@ classdef Seedling < handle
 
     function obj = RefChild(obj)
         %% Set reference back to Children [ after use of DerefParents ]
-        arrayfun(@(x) x.setParent(obj), obj.Hypocotyls, 'UniformOutput', 0);
+        arrayfun(@(x) x.setParent(obj), obj.PreHypocotyl, 'UniformOutput', 0);
+        %arrayfun(@(x) x.setParent(obj), obj.Hypocotyls, 'UniformOutput', 0);
 
     end
 
@@ -548,6 +578,35 @@ classdef Seedling < handle
             h.setFrame('b', frm);
             h.setContour(frm, ctr);
             h.setCropBox(bbox);
+        end
+
+        function hyp = compileHypocotyl(obj, hyp, pre)
+            %% Compile data from multiple PreHypocotyl objects 
+            % Properties to store as multi-dimensional data:
+            % - Contour
+            % - Circuit
+            % - CropBox
+            % * Midline [ might not be needed ]
+            % * Coordinates [ might not be needed ]
+            %
+            % Input:
+            %     obj: this Seedling object
+            %     hyp: compiled Hypocotyl object before compiling data
+            %     pre: multiple PreHypocotyl objects to draw data from
+            %
+            % Ouput:
+            %     hyp: compiled Hypocotyl object after compiling data
+
+            %% [TODO] Change Hypocotyl methods to include Frame number
+            for r = 1 : hyp.Lifetime
+                hyp.setCropBox    (r, pre(r).getCropBox);
+                %hyp.setMidline    (r, pre(r).getMidline);
+                %hyp.setCoordinates(r, pre(r).getCoordinates);
+                hyp.setContour    (r, pre(r).getContour);
+                hyp.setCircuit    (r, pre(r).getCircuit('org'), 'org');
+                hyp.setCircuit    (r, pre(r).getCircuit('org'), 'org');
+            end
+
         end
         
     end
