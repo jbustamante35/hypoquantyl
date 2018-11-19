@@ -80,8 +80,9 @@ classdef Genotype < handle
                 frm = frm + 1;
 
                 if v
-                    fprintf('(%s) Extracted %d Seedlings from %d frames\n', ...
-                    	obj.GenotypeName, numel(obj.RawSeedlings), r);
+                    fprintf('(%s) Extracted %d Seedlings from %d frames [+%d]\n', ...
+                    	obj.GenotypeName, numel(obj.RawSeedlings), ...
+                            r, size(obj.RawSeedlings(r, 1)));
                 end
             end
             
@@ -126,8 +127,25 @@ classdef Genotype < handle
             filterSeedlings(obj, obj.RawSeedlings, size(obj.RawSeedlings, 1));
             obj.NumberOfSeedlings = numel(obj.Seedlings);
         end
+
+        function obj = PruneSeedlings(obj)
+            %% Remove RawSeedlings to decrease data
+            obj.RawSeedlings = [];
+        end
+
+        function DerefParents(obj)
+            %% Remove reference to Parent property
+            obj.Parent = [];
+        end
+    
+        function obj = RefChild(obj)
+            %% Set reference back to Children [ after use of DerefParents ]
+            arrayfun(@(x) x.setParent(obj), obj.Seedlings, 'UniformOutput', 0); 
+    
+        end
         
     end
+
     
     %% ------------------------- Helper Methods ---------------------------- %%
     
@@ -217,6 +235,13 @@ classdef Genotype < handle
             
         end
         
+        function obj = setParent(obj, p)
+            %% Set Experiment parent 
+            obj.Parent = p;
+            obj.ExperimentName = p.ExperimentName;
+            obj.ExperimentPath = p.ExperimentPath;
+        end
+
         function sd = getRawSeedling(obj, num)
             %% Return single unindexed seedlings at index
             try
