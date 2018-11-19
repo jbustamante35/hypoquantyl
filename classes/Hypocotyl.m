@@ -67,6 +67,12 @@ classdef Hypocotyl < handle
             obj.Origin = [];
 
         end
+
+        function obj = RefChild(obj)
+            %% Set reference back to Children [ after use of DerefParents ]
+            %arrayfun(@(x) x.setParent(obj), obj.CircuitJB, 'UniformOutput', 0);
+
+        end
         
     end
     

@@ -32,8 +32,7 @@ genotype.ExperimentName = exp.ExperimentName;
 genotype.ExperimentPath = exp.ExperimentPath;
 
 %% Create image data store from path to images
-Imgs = imageDatastore([exp.ExperimentPath , '/',  gName], ...
-    'FileExtensions', image_extension);
+Imgs = imageDatastore([exp.ExperimentPath , '/',  gName], j'FileExtensions', image_extension);
 genotype.storeImages(Imgs);
 
 end
