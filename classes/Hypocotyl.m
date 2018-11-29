@@ -15,7 +15,7 @@ classdef Hypocotyl < handle
         Frame
         Lifetime
     end
-    
+
     properties (Access = private)
         %% Private data stored here
         Contour
@@ -24,7 +24,7 @@ classdef Hypocotyl < handle
         Midline
         Coordinates
     end
-    
+
     methods (Access = public)
         %% Constructor and main methods
         function obj = Hypocotyl(varargin)
@@ -32,96 +32,95 @@ classdef Hypocotyl < handle
             if ~isempty(varargin)
                 % Parse inputs to set properties
                 args = obj.parseConstructorInput(varargin);
-                
+
                 fn = fieldnames(args);
                 for k = fn'
                     obj.(cell2mat(k)) = args.(cell2mat(k));
                 end
-                
+
             else
                 % Set default properties for empty object
             end
-            
+
         end
-        
-        function [im, bw] = FlipMe(obj)
+
+        function [im, bw] = FlipMe(obj, frm)
             %% Store a flipped version of each Hypocotyl
             % Flipped version allows equal representation of all
             % orientations of contours (lolz)
-            im = flip(obj.Image.gray, 2);
-            bw = flip(obj.Image.bw, 2);
-            
-            obj.Circuit(2) = obj.Circuit;
+            im = flip(obj.getImage(frm, 'gray'), 2);
+            bw = flip(obj.getImage(frm, 'bw'), 2);
+
         end
-        
+
         function obj = PruneSeedlings(obj)
             %% Remove RawSeedlings to decrease data
             obj.RawSeedlings = [];
-            
+
         end
-        
+
         function obj = DerefParents(obj)
             %% Remove reference to Parent property
             obj.Parent = [];
             obj.Host   = [];
             obj.Origin = [];
-            
+
         end
-        
+
         function obj = RefChild(obj)
             %% Set reference back to Children [ after use of DerefParents ]
             %arrayfun(@(x) x.setParent(obj), obj.CircuitJB, 'UniformOutput', 0);
-            
+
         end
-        
+
     end
-    
+
     methods (Access = public)
         %% Various helper methods
         function obj = setHypocotylName(obj, n)
             %% Set name of Hypocotyl
             obj.HypocotylName = n;
         end
-        
+
         function n = getHypocotylName(obj)
             %% Return name of Hypocotyl
             n = obj.HypocotylName;
         end
-        
+
         function obj = setFrame(obj, req, frm)
             %% Set birth or death frames
             try
                 switch req
                     case 'b'
                         obj.Frame(1) = frm;
-                        
+
                     case 'd'
                         obj.Frame(2) = frm;
-                        
+
                     otherwise
                         fprintf(2, 'Request must be ''b'' or ''d''\n');
                 end
             catch
                 fprintf(2, 'No data at frame %d\n', frm);
             end
-            
+
         end
-        
+
         function frm = getFrame(obj, req)
             %% Returns birth or death frame
             switch req
                 case 'b'
                     frm = obj.Frame(1);
-                    
+
                 case 'd'
                     frm = obj.Frame(2);
-                    
+
                 otherwise
                     fprintf(2, 'Request must be ''b'' or ''d''\n');
                     return;
             end
         end
-        
+
         function obj = setImage(obj, req, dat)
             %% Store data into Hypocotyl
             % Set data into requested field
@@ -137,14 +136,14 @@ classdef Hypocotyl < handle
                 fprintf(2, 'Error setting %s data\n', req);
             end
         end
-        
+
         function dat = getImage(varargin)
             %% Return image for this Hypocotyl
             % Image is obtained from the Parent Seedling, cropped, and resized
             % to this object's RESCALE property
             obj   = varargin{1};
             sclsz = obj.Parent.getScaleSize;
-            
+
             switch nargin
                 case 1
                     % Return grayscale images at all time points
@@ -154,7 +153,7 @@ classdef Hypocotyl < handle
                     %crp = imcrop(img, obj.getCropBox(frm));
                     %dat = imresize(crp, sclsz);
                     dat = [];
-                    
+
                 case 2
                     % Return grayscale image at specific time point
                     try
@@ -165,7 +164,7 @@ classdef Hypocotyl < handle
                     catch
                         fprintf(2, 'Requested field must be either: %s\n', str);
                     end
-                    
+
                 case 3
                     % Return Specific image type
                     % Get requested data field
@@ -180,27 +179,27 @@ classdef Hypocotyl < handle
                             'Requested field must be either: gray | bw\n');
                         dat = [];
                     end
-                    
+
                 otherwise
                     fprintf(2, 'Error requesting data.\n');
                     return;
             end
         end
-        
+
         function obj = setParent(obj, p)
             %% Set Seedling parent | Genotype host| Experiment origin
             obj.Parent       = p;
             obj.SeedlingName = p.SeedlingName;
-            
+
             obj.Host         = p.Parent;
             obj.GenotypeName = obj.Host.GenotypeName;
-            
+
             obj.Origin         = obj.Host.Parent;
             obj.ExperimentName = obj.Origin.ExperimentName;
             obj.ExperimentPath = obj.Origin.ExperimentPath;
-            
+
         end
-        
+
         function obj = setCropBox(obj, frm, bbox)
             %% Set vector for bounding box
             box_size = [1 4];
@@ -214,13 +213,13 @@ classdef Hypocotyl < handle
                 fprintf(2, 'CropBox should be size %s\n', num2str(box_size));
             end
         end
-        
+
         function bbox = getCropBox(obj, frm)
             %% Return CropBox parameter, or the [4 x 1] vector that defines the
             % bounding box to crop from Parent Seedling
             bbox = obj.CropBox(frm, :);
         end
-        
+
         function obj = setContour(obj, frm, ctr)
             %% Store ContourJB at frame
             if isempty(obj.Contour)
@@ -229,11 +228,11 @@ classdef Hypocotyl < handle
                 obj.Contour(frm) = ctr;
             end
         end
-        
+
         function crc = getContour(varargin)
             %% Return all ContourJB objects or ContourJB at frame
             obj = varargin{1};
-            
+
             switch nargin
                 case 1
                     crc = obj.Contour;
@@ -244,32 +243,32 @@ classdef Hypocotyl < handle
                     fprintf(2, 'Error returning ContourJB\n');
                     crc = [];
             end
-            
+
         end
-        
+
         function obj = setCircuit(obj, frm, crc, req)
             %% Set manually-drawn CircuitJB object (original or flipped)
             crc.trainCircuit(true);
             switch req
                 case 'org'
                     try
-                        obj.Circuit(1,1) = crc;
+                        obj.Circuit(frm,1) = crc;
                     catch
                         obj.Circuit(frm,1) = crc;
                     end
                 case 'flp'
                     try
-                        obj.Circuit(1,2) = crc;
+                        obj.Circuit(frm,2) = crc;
                     catch
                         obj.Circuit(frm,2) = crc;
                     end
-                    
+
                 otherwise
                     fprintf(2, 'Error setting %s Circuit\n', req);
             end
         end
         %   sIdx: index of randomly-selected Seedlings
-        
+
         function crc = getCircuit(obj, frm, req)
             %% Return original or flipped version of CircuitJB object
             if ~isempty(obj.Circuit)
@@ -287,7 +286,7 @@ classdef Hypocotyl < handle
                         end
                     case 'flp'
                         try
-                            c = obj.Circuit(2);
+                            c = obj.Circuit(frm, 2);
                             if c.isTrained
                                 crc = c;
                             else
@@ -303,7 +302,7 @@ classdef Hypocotyl < handle
                 crc = [];
             end
         end
-        
+
         function prp = getProperty(obj, req)
             %% Returns a property of this Hypocotyl object
             try
@@ -313,9 +312,9 @@ classdef Hypocotyl < handle
                     req, e.message);
             end
         end
-        
+
     end
-    
+
     methods (Access = private)
         % Private helper methods
         function args = parseConstructorInput(varargin)
@@ -339,11 +338,11 @@ classdef Hypocotyl < handle
             p.addOptional('Midline', []);
             p.addOptional('Contour', ContourJB);
             p.addOptional('Circuit', CircuitJB);
-            
+
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
             args = p.Results;
         end
     end
-    
+
 end
