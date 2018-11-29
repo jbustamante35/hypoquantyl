@@ -103,7 +103,7 @@ classdef Experiment < handle
                 arrayfun(@(x) x.SortSeedlings, gens, 'UniformOutput', 0);
 
                 if v
-                    fprintf('[%.02f sec] Extracting Hypocotyls from %s\n', ...
+                    fprintf('[%.02f sec] Extracted Seedlings from %s\n', ...
                         toc, obj.ExperimentName);
                 end
 
@@ -127,12 +127,12 @@ classdef Experiment < handle
              s = obj.combineSeedlings;
              arrayfun(@(x) x.PruneHypocotyls, s, 'UniformOutput', 0);
 
-         % Dereference parent objects
-             h = obj.combineHypocotyls;
+         % Dereference parent objects [ DEPRECATED ]
+             %h = obj.combineHypocotyls;
 
-             X     = {g, s, h};
-             deref = @(c) arrayfun(@(x) x.DerefParents, c, 'UniformOutput', 0);
-             cellfun(@(x) deref(x), X, 'UniformOutput', 0);
+             %X     = {g, s, h};
+             %deref = @(c) arrayfun(@(x) x.DerefParents, c, 'UniformOutput', 0);
+             %cellfun(@(x) deref(x), X, 'UniformOutput', 0);
 
          % Save full Experiment object
 
@@ -191,14 +191,30 @@ classdef Experiment < handle
             S = cat(1, S{:});
         end
         
-        function H = combineHypocotyls(obj)
+        function H = combineHypocotyls(obj, req)
             %% Combine all Hypocotyls into single object array
             % CHANGE THIS WHEN I FIX HOW HYPOCOTYLS ARE STORED IN SEEDLINGS
             % Each Seedling will have a single Hypocotyl, derived from data 
             % from the combination of good frames of each PreHypocotyl. 
             S = obj.combineSeedlings;
-            H = arrayfun(@(x) x.getAllPreHypocotyls, S, 'UniformOutput', 0);
-            H = cat(2, H{:});
+
+            try
+                switch req
+                    case 'pre'
+                        H = arrayfun(@(x) x.getAllPreHypocotyls, S, 'UniformOutput', 0);
+                        H = cat(2, H{:});
+                    case 'post'
+                        H = arrayfun(@(x) x.MyHypocotyl, S, 'UniformOutput', 0);
+                        H = cat(2, H{:});
+                    otherwise
+                        H = arrayfun(@(x) x.MyHypocotyl, S, 'UniformOutput', 0);
+                        H = cat(2, H{:});
+                end
+            catch
+                H = arrayfun(@(x) x.MyHypocotyl, S, 'UniformOutput', 0);
+                H = cat(2, H{:});
+            end
+
         end
         
         function C = combineContours(obj)
