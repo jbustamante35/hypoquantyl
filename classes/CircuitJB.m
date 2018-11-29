@@ -134,16 +134,23 @@ classdef CircuitJB < handle
 
         function obj = DrawOutline(obj, frm)
             %% Draw RawOutline on this object's Image
+            % The function crds2mask was changed (see generateMasks method for
+            % this class) to include a buffering size parameter. When creating
+            % the initial CircuitJB contour, just set this to 0 until I 
+            % understand it better.
+            buff = 0;
             try
                 % Trace outline and store as RawOutline
                 img = obj.getImage(frm, 'gray');
                 c   = drawPoints(img, 'y', 'Outline');
-                obj.setRawOutline(frm, c.getPosition);
+                crd = c.Position;
+                obj.setRawOutline(frm, crd);
                 obj.setImage(frm, 'bw', c.createMask);
-                msk = crds2mask(img, c.getPosition);
+                msk = crds2mask(img, crd, buff);
                 obj.setImage(frm, 'mask', msk);
-            catch
-                fprintf(2, 'Error setting outline at frame %d \n', frm);
+            catch e
+                fprintf(2, 'Error setting outline at frame %d \n%s\n', ...
+                    frm, e.getReport);
             end
         end
         
@@ -155,8 +162,9 @@ classdef CircuitJB < handle
                 str = sprintf('%d AnchorPoints', obj.NUMBEROFANCHORS);
                 p   = drawPoints(img, 'y', str);
                 obj.setRawPoints(frm, p.getPosition);
-            catch
-                fprintf(2, 'Error setting anchor points at frame %d \n', frm);
+            catch e
+                fprintf(2, 'Error setting anchor points at frame %d\n%s', ...
+                    frm, e.getReport);
             end
         end
         
