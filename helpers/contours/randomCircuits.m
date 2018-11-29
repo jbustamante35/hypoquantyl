@@ -1,6 +1,20 @@
 function CRCS = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
-% This function blah
+% This function takes in a fully-generated Experiment object as input and
+% extracts random frames from random Hypocotyl objects to use as training data
+% for the machine learning segmentation algorithm. The user is prompted to trace
+% a manually-drawn contour around a hypocotyl, which will be stored as a
+% CircuitJB object. The full array of CircuitJB objects is returned as well.
+%
+% In order to use this function, a number of conditions must be met:
+%   - The Experiment object must contain nested Genotype objects
+%       * Run AddGenotypes method
+%   - Each Genotype must have a nested array of sorted Seedling objects
+%       * Run FindSeedlings and SortSeedlings methods
+%   - Each Seedling must have a child Hypocotyl object
+%       * Run FindHypocotyl and SortPreHypocotyls methods
+%   - Each Seedlin objects must also have bad frames removed
+%       * Run RemoveBadFrames method
 %
 % Usage:
 %   CRCS = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
@@ -8,13 +22,24 @@ function CRCS = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
 % Input:
 %   Ein: Experiment object to draw from to generate contour data
 %   Ncrcs: number of random Seedlings to analyze
-%   typ: 0 to get contours of Seedlings, 1 to get contours of PreHypocotyl
-%   flip: inflate dataset with flipped versions of each Hypocotyl
+%   typ: 0 to get contours of Seedlings, 1 to get contours of Hypocotyls
+%   flip: boolean to inflate dataset with flipped versions of each Hypocotyl
 %   sv: save figures as .fig and .tiff files
 %   vis: boolean to plot figures or not
 %
 % Output:
 %   CRCS: CircuitJB array of manually-drawn contours from Experiment Ein
+%
+% NOTE: [11/28/2018]
+%   I completely changed the methods used for extracting images from a class,
+%   as well as the way Hypocotyl objects are stored in a Seedling object:
+%       - Images are stored as filepath names, rather than raw image matrices
+%       - Hypocotyls are stored as a single object with multiple frames, rather
+%         than each frame being an individual Hypocotyl object
+%
+%   Because of this drastic change, I needed to change this function to extract
+%   frames from Hypocotyl objects, rather than PreHypocotyl objects, as it was
+%   before the change.
 %
 
 %% Initialize object array of Seedlings/Hypocotyl to draw contours for
@@ -81,8 +106,8 @@ end
 
 function c = makeCircuits(n)
 %% makeCircuits: subfunction to create n number of individual CircuitJB objects
-% The repmat creates multiple copies of the same handle to an individual object, 
-%instead of creating multiple handles to individual objects.
+% The repmat creates multiple copies of the same handle to an individual object,
+% instead of creating multiple handles to individual objects.
 c = repmat(CircuitJB, 1, n);
 for i = 1 : n
     c(i) = CircuitJB;
@@ -98,8 +123,8 @@ rFrm = frms(randi(length(frms), 1));
 
 % Get image from either Seedling or Hypocotyl
 if typ
-    rs = rs.getPreHypocotyl(rFrm);
-    im  = rs.getImage('gray');
+    rs  = rs.MyHypocotyl;
+    im  = rs.getImage(rFrm, 'gray');
     org = sprintf('%s_%s_%s_%s_Frm{%d}', rs.ExperimentName, ...
         rs.GenotypeName, rs.SeedlingName, rs.HypocotylName, rFrm);
 else
@@ -109,7 +134,7 @@ else
 end
 
 % Set image and origin data for CircuitJB
-crc = CircuitJB('Origin', org);
+crc = CircuitJB('Origin', org, 'Parent', rs);
 crc.setImage(1, 'gray', im);
 
 % Draw Outline and AnchorPoints and normalize coordinates
@@ -120,7 +145,7 @@ crc.CreateRoutes;
 
 % Set Contour for this object
 if typ
-    rs.setContour(crc, 'org');
+    rs.setCircuit(rFrm, crc, 'org');
 else
     rs.setContour(rFrm, crc)
 end
