@@ -1,7 +1,7 @@
 function msk = crds2mask(img, crd, buff)
 %% crds2mask: create logical mask with input coordinates set to true
-% This function sets up a probability distribution matrix by creating a logical mask where pixels
-% containing a contour are set to true.
+% This function sets up a probability distribution matrix by creating a logical
+% mask where pixels containing a contour are set to true.
 %
 % Usage:
 %   msk = crds2mask(img, crd, buff)
@@ -12,7 +12,7 @@ function msk = crds2mask(img, crd, buff)
 %   buff: range to extend mask image
 %
 % Output:
-%   msk: logical mask of size matching inputted image, with coordinates set to true
+%   msk: logical mask the size of inputted image, with coordinates set to true
 %
 
 %% Convert coordinates to integers if needed
@@ -23,6 +23,7 @@ end
 
 %% Create mask and set coordinates to true
 % Setup / initialization.
+% WHAT IS ORG?! WHY DIVIDE BY 2.5?! eff my life [me in 11/28/2018]
 msk = createMask(size(img), buff);
 org = [round(size(msk,2)/2.5) size(msk,1)];
 crd = slideCoords(crd, org);
@@ -31,6 +32,7 @@ try
     idx = sub2ind(size(msk), crd(:,2), crd(:,1));
 catch
     % Subtract y-coordinates by size of out-of-bounds coordinates
+    % Should this subtract both x-/y-coordinates?
     crd_max = mode(crd(crd(:,2) == max(crd(:,2)), 2) - org(2));
     org(2)  = org(2) - crd_max;
     crd     = slideCoords(crd, org);
@@ -41,13 +43,18 @@ msk(idx) = true;
 end
 
 function m = createMask(sz, buff)
-%% createMask: subfunction to create mask of different size than original image (experimental)
+%% createMask: subfunction to create mask of different size than original image
 % This tests what happens if you give the mask a buffer of specified pixels
 % Input:
 %   sz: size of original image
 %   buff: number pixels to buffer by
-b = floor(sz * buff);
-m = zeros(b);
+if buff > 0
+    b = floor(sz * buff);
+    m = zeros(b);
+else
+    b = floor(sz);
+    m = zeros(b);
+end
 end
 
 function c = slideCoords(crd, org)
