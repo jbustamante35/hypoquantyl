@@ -2,153 +2,160 @@
 % Class description
 
 classdef Seedling < handle
-    properties (Access = public)
-        %% Seedling properties
-        Parent
-        Host
-        ExperimentName
-        ExperimentPath
-        GenotypeName
-        SeedlingName
-        Frame
-        Lifetime
-        Coordinates
-        MyHypocotyl
+properties (Access = public)
+%% Seedling properties
+Parent
+Host
+ExperimentName
+ExperimentPath
+GenotypeName
+SeedlingName
+Frame
+Lifetime
+Coordinates
+MyHypocotyl
     end
-    
+
     properties (Access = private)
-        %% Private data
-        Midline
-        AnchorPoints
-        GoodFrames
-        PreHypocotyl
-        Image
-        PData
-        Contour
-        SCALESIZE    = [101 101]
-        PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
-        CONTOURSIZE  = 500		% number of points to normalize Hypocotyl contours
-        IMAGEBUFFER  = 40		% percentage of image size to extend image for creating Hypocotyl objects
-        TESTS2RUN    = [1 1 1 1 0 0];	% manifest to determine which quality checks to run
-    end
-    
-    %% ------------------------- Primary Methods --------------------------- %%
-    
-    methods (Access = public)
-        %% Constructor and main functions
-        function obj = Seedling(varargin)
-            %% Constructor method for Seedling
-            if ~isempty(varargin)
+    %% Private data
+    Midline
+    AnchorPoints
+    GoodFrames
+    PreHypocotyl
+    Image
+    PData
+    Contour
+    SCALESIZE    = [101 101]
+    PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
+    CONTOURSIZE  = 500		% number of points to normalize Hypocotyl contours
+    IMAGEBUFFER  = 40		% percentage of image size to extend image for creating Hypocotyl objects
+    TESTS2RUN    = [1 1 1 1 0 0];	% manifest to determine which quality checks to run
+end
+
+%% ------------------------- Primary Methods --------------------------- %%
+
+methods (Access = public)
+%% Constructor and main functions
+function obj = Seedling(varargin)
+%% Constructor method for Seedling
+if ~isempty(varargin)
                 % Parse inputs to set properties
                 args = obj.parseConstructorInput(varargin);
-                
+
                 fn = fieldnames(args);
                 for k = fn'
                     obj.(cell2mat(k)) = args.(cell2mat(k));
                 end
-                
+
             else
                 % Set default properties for empty object
             end
-            
+
             if ~isfield(obj.PData, obj.PDPROPERTIES{1})
                 c = cell(1, numel(obj.PDPROPERTIES));
                 obj.PData = cell2struct(c', obj.PDPROPERTIES);
             end
-            
+
             obj.Image = struct('gray', [], ...
-                'bw',   [], ...
-                'ctr', ContourJB);
-            
+            'bw',   [], ...
+            'ctr', ContourJB);
+
         end
-        
+
         function obj = RemoveBadFrames(obj)
-            %% Remove frames with empty data and maintain index of good frames
-            % Run through multiple tests to determine good indices
-            % This function removes poor frames and stores good frames in gdIdx
-            % Current tests:
-            %   1) Empty coordinates
-            %   2) Empty PData
-            %   3) Empty image and contour data
-            %   4) Empty AnchorPoints
-            %   5) Out of frame growth
-            %   6) Collisions            
-            
-            %% Get index of good frames, then remove bad frames
-            obj.GoodFrames = runQualityChecks(obj, obj.TESTS2RUN);
-            obj.Lifetime   = numel(obj.GoodFrames);
-            obj.setFrame(min(obj.GoodFrames), 'b');
-            obj.setFrame(max(obj.GoodFrames), 'd');
-        end
-        
-        function obj = FindHypocotylAllFrames(obj, v)
-	    %% Extract Hypocotyl at all frames using the extractHypocotyl
-            % method for this Seedling's total Lifetime
+        %% Remove frames with empty data and maintain index of good frames
+        % Run through multiple tests to determine good indices
+        % This function removes poor frames and stores good frames in gdIdx
+        % Current tests:
+        %   1) Empty coordinates
+        %   2) Empty PData
+        %   3) Empty image and contour data
+        %   4) Empty AnchorPoints
+        %   5) Out of frame growth
+        %   6) Collisions            
 
-            try
-            	if v
-            	    fprintf('Extracting Hypocotyls from %s\n', ...
-                    	obj.SeedlingName);
-            	    tic;
-            	end
-            
-            	rng = 1 : obj.Lifetime;
-            	arrayfun(@(x) obj.extractHypocotyl(x, v), ...
-                	rng, 'UniformOutput', 0);
+        %% Get index of good frames, then remove bad frames
+        obj.GoodFrames = runQualityChecks(obj, obj.TESTS2RUN);
+        obj.Lifetime   = numel(obj.GoodFrames);
+        obj.setFrame(min(obj.GoodFrames), 'b');
+        obj.setFrame(max(obj.GoodFrames), 'd');
+    end
 
-            	if v
-            	    fprintf('[%.02f sec] Extracted Hypocotyl from %s\n', ...
-                    	toc, obj.SeedlingName);
-            	end
+    function obj = FindHypocotylAllFrames(obj, v)
+    %% Extract Hypocotyl at all frames using the extractHypocotyl
+    % method for this Seedling's total Lifetime
+
+    try
+                if v
+                    fprintf('Extracting Hypocotyls from %s\n', ...
+                    obj.SeedlingName);
+                    tic;
+                end
+
+                rng = 1 : obj.Lifetime;
+                arrayfun(@(x) obj.extractHypocotyl(x, v), ...
+                rng, 'UniformOutput', 0);
+
+                if v
+                    fprintf('[%.02f sec] Extracted Hypocotyl from %s\n', ...
+                    toc, obj.SeedlingName);
+                end
 
             catch e
-            	fprintf(2, 'Error extracting Hypocotyl from %s\n%s', ...
-                	obj.SeedlingName, e.getReport);
+                fprintf(2, 'Error extracting Hypocotyl from %s\n%s', ...
+                obj.SeedlingName, e.getReport);
 
-            	if v
-            	    fprintf('[%.02f sec]\n', toc);
-            	end
+                if v
+                    fprintf('[%.02f sec]\n', toc);
+                end
             end
         end
 
-    function obj = PruneHypocotyls(obj)
+        function obj = PruneHypocotyls(obj)
         %% Remove PreHypocotyls to decrease data
-        obj.PreHypocotyls = [];
+        obj.PreHypocotyl = [];
+        %h = obj.getProperty('PreHypocotyl');
+        %h = [];
 
     end
 
     function obj = SortPreHypocotyls(obj)
-        %% Compile PreHypocotyls into single Hypocotyl based on frame number
-        % My original algorithm instances individual Hypocotyl objects for each
-        % frame for each Seedling for each Genotype. This means creating 
-        % thousands of objects. 
-        % 
-        % I don't understand why I did it this way initially, but it's about
-        % time I fixed it. Saving >1000 objects is incredibly wasteful and
-        % is part of the reason my save files are enormous. 
+    %% Compile PreHypocotyls into single Hypocotyl based on frame number
+    % My original algorithm instances individual Hypocotyl objects for each
+    % frame for each Seedling for each Genotype. This means creating 
+    % thousands of objects. 
+    % 
+    % I don't understand why I did it this way initially, but it's about
+    % time I fixed it. Saving >1000 objects is incredibly wasteful and
+    % is part of the reason my save files are enormous. 
 
-        % Initialize new Hypocotyl object
-        pre = obj.getAllPreHypocotyls;
-        rng = [pre(1).getFrame('b') pre(end).getFrame('b')];
-        hyp = Hypocotyl('Frame', rng);
-        hyp.setParent(obj);
+    % Initialize new Hypocotyl object
+    pre = obj.getAllPreHypocotyls;
+    rng = [pre(1).getFrame('b') pre(end).getFrame('b')];
+    sn  = obj.getSeedlingName;
+    aa  = strfind(sn, '{');
+    bb  = strfind(sn, '}');
+    nm  = sprintf('Hypocotyl_{%s}', sn(aa + 1 : bb - 1));
+    hyp = Hypocotyl(nm, 'Frame', rng);
+    hyp.setParent(obj);
+    hyp.Lifetime = max(rng);
 
-        % Compile data into new object
-        hyp = compileHypocotyl(obj, hyp, pre);
+    % Compile data into new object
+    hyp = compileHypocotyl(obj, hyp, pre);
 
-        % Set this object's Hypocotyl property
-        obj.MyHypocotyl = hyp;
-    end
-        
-    function obj = DerefParents(obj)
-        %% Remove reference to Parent property
-        obj.Parent = [];
-        obj.Host   = [];
+    % Set this object's Hypocotyl property
+    obj.MyHypocotyl = hyp;
+end
+
+function obj = DerefParents(obj)
+%% Remove reference to Parent property
+obj.Parent = [];
+obj.Host   = [];
 
     end
 
     function obj = RefChild(obj)
-        %% Set reference back to Children [ after use of DerefParents ]
+    %% Set reference back to Children [ after use of DerefParents ]
         arrayfun(@(x) x.setParent(obj), obj.PreHypocotyl, 'UniformOutput', 0);
         %arrayfun(@(x) x.setParent(obj), obj.Hypocotyls, 'UniformOutput', 0);
 
@@ -217,7 +224,7 @@ classdef Seedling < handle
                 aa  = strfind(sn, '{');
                 bb  = strfind(sn, '}');
                 nm  = sprintf('PreHypocotyl_Sdl{%s}_Frm{%d}', ...
-                	sn(aa+1:bb-1), frm);
+                	sn(aa + 1 : bb - 1), frm);
                 hyp = makeNewHypocotyl(obj, nm, frm, ctr, bbox);
                 
                 % Set this Seedlings AnchorPoints and PreHypocotyl
@@ -502,7 +509,7 @@ classdef Seedling < handle
             %% Return CircuitJB object at given frame
             crc = obj.Contour(frm);
         end
-        
+
         function hyps = getAllPreHypocotyls(obj)
             %% Returns all PreHypocotyls
             hyps = obj.PreHypocotyl;
@@ -576,8 +583,8 @@ classdef Seedling < handle
             h = Hypocotyl(nm);
             h.setParent(obj);
             h.setFrame('b', frm);
-            h.setContour(frm, ctr);
-            h.setCropBox(bbox);
+            h.setContour(1, ctr);
+            h.setCropBox(1, bbox);
         end
 
         function hyp = compileHypocotyl(obj, hyp, pre)
@@ -598,13 +605,13 @@ classdef Seedling < handle
             %     hyp: compiled Hypocotyl object after compiling data
 
             %% [TODO] Change Hypocotyl methods to include Frame number
-            for r = 1 : hyp.Lifetime
-                hyp.setCropBox    (r, pre(r).getCropBox);
-                %hyp.setMidline    (r, pre(r).getMidline);
-                %hyp.setCoordinates(r, pre(r).getCoordinates);
-                hyp.setContour    (r, pre(r).getContour);
-                hyp.setCircuit    (r, pre(r).getCircuit('org'), 'org');
-                hyp.setCircuit    (r, pre(r).getCircuit('org'), 'org');
+            for frm = 1 : numel(pre)
+                hyp.setCropBox(frm, pre(frm).getCropBox(frm));
+                hyp.setContour(frm, pre(frm).getContour(frm));
+%                 hyp.setCircuit(frm, pre(frm).getCircuit(1, 'org'), 'org');
+%                 hyp.setCircuit(frm, pre(frm).getCircuit(1, 'flp'), 'flp');
+%                 hyp.setMidline(frm, pre(frm).getMidline);
+%                 hyp.setCoordinates(frm, pre(frm).getCoordinates);
             end
 
         end
