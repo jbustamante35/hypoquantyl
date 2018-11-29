@@ -69,6 +69,7 @@ classdef Genotype < handle
             % Seedling is set by the MASKSIZE property.
 
             if v
+                tic;
                 fprintf('Extracting Seedlings from %s\n', obj.GenotypeName);
             end
             
@@ -80,9 +81,9 @@ classdef Genotype < handle
                 frm = frm + 1;
 
                 if v
-                    fprintf('(%s) Extracted %d Seedlings from %d frames [+%d]\n', ...
-                    	obj.GenotypeName, numel(obj.RawSeedlings), ...
-                            r, size(obj.RawSeedlings(r, 1)));
+                    n = obj.getAllRawSeedlings;
+                    fprintf('[%.02f sec] (%s) Extracted %d Seedlings from %d frames [+ %d]\n', ...
+                    	toc, obj.GenotypeName, numel(n), r, size(n,1));
                 end
             end
             
@@ -126,6 +127,7 @@ classdef Genotype < handle
             % frames and aligns Seedling objects through subsequent frames.
             filterSeedlings(obj, obj.RawSeedlings, size(obj.RawSeedlings, 1));
             obj.NumberOfSeedlings = numel(obj.Seedlings);
+            arrayfun(@(x) x.RemoveBadFrames, obj.Seedlings, 'UniformOutput', 0);
         end
 
         function obj = PruneSeedlings(obj)
@@ -347,6 +349,7 @@ classdef Genotype < handle
             % Store all coordinates in 3-dim matrix
             rs       = empty2nan(rs, ...
             	Seedling('empty', 'Coordinates', [nan nan]));
+
             crdsCell = cellfun(@(x) x.getCoordinates(1), ...
             	rs, 'UniformOutput', 0);
             
@@ -385,6 +388,7 @@ classdef Genotype < handle
                     sdl.increaseLifetime;
                     sdl.setCoordinates(sdl.getLifetime, t.getCoordinates(1));
                     sdl.setAnchorPoints(sdl.getLifetime, t.getAnchorPoints(1));
+                    sdl.setContour(sdl.getLifetime, t.getContour(1));
                     sdl.setPData(sdl.getLifetime, t.getPData);
                     sdl.setParent(obj);
                 end
