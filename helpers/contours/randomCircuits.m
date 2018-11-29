@@ -193,7 +193,7 @@ end
 
 function saveFigure(im, N, fig)
 %% Save figure as .fig and .tiff files
-nm = sprintf('%s_%drandomCircuits_%s', datestr(now, 'yymmdd'), N, im);
+nm = sprintf('%s_%drandomCircuits_%s', tdate('s'), N, im);
 set(fig,'Color','w');
 savefig(fig, nm);
 saveas(fig, nm, 'tiffn');
