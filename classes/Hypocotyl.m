@@ -46,32 +46,32 @@ classdef Hypocotyl < handle
         
         function [im, bw] = FlipMe(obj)
             %% Store a flipped version of each Hypocotyl
-            % Flipped version allows equal representation of all 
+            % Flipped version allows equal representation of all
             % orientations of contours (lolz)
             im = flip(obj.Image.gray, 2);
             bw = flip(obj.Image.bw, 2);
             
             obj.Circuit(2) = obj.Circuit;
         end
-
+        
         function obj = PruneSeedlings(obj)
             %% Remove RawSeedlings to decrease data
             obj.RawSeedlings = [];
-
+            
         end
-
+        
         function obj = DerefParents(obj)
             %% Remove reference to Parent property
             obj.Parent = [];
             obj.Host   = [];
             obj.Origin = [];
-
+            
         end
-
+        
         function obj = RefChild(obj)
             %% Set reference back to Children [ after use of DerefParents ]
             %arrayfun(@(x) x.setParent(obj), obj.CircuitJB, 'UniformOutput', 0);
-
+            
         end
         
     end
@@ -142,14 +142,14 @@ classdef Hypocotyl < handle
             %% Return image for this Hypocotyl
             % Image is obtained from the Parent Seedling, cropped, and resized
             % to this object's RESCALE property
-            obj   = varargin{1};                        
+            obj   = varargin{1};
             sclsz = obj.Parent.getScaleSize;
             
             switch nargin
                 case 1
                     % Return grayscale images at all time points
                     % DON'T USE THIS YET
-                    %frm = obj.getFrame('b') : obj.getFrame('d');                    
+                    %frm = obj.getFrame('b') : obj.getFrame('d');
                     %img = obj.Parent.getImage(frm);
                     %crp = imcrop(img, obj.getCropBox(frm));
                     %dat = imresize(crp, sclsz);
@@ -171,13 +171,13 @@ classdef Hypocotyl < handle
                     % Get requested data field
                     try
                         frm = varargin{2};
-                        req = varargin{3};                                           
-                        img = obj.Parent.getImage(frm, req);                        
-                        crp = imcrop(img, obj.getCropBox(frm));              
+                        req = varargin{3};
+                        img = obj.Parent.getImage(frm, req);
+                        crp = imcrop(img, obj.getCropBox(frm));
                         dat = imresize(crp, sclsz);
                     catch
                         fprintf(2, ...
-                        	'Requested field must be either: gray | bw\n');
+                            'Requested field must be either: gray | bw\n');
                         dat = [];
                     end
                     
@@ -188,7 +188,7 @@ classdef Hypocotyl < handle
         end
         
         function obj = setParent(obj, p)
-            %% Set Seedling parent | Genotype host| Experiment origin 
+            %% Set Seedling parent | Genotype host| Experiment origin
             obj.Parent       = p;
             obj.SeedlingName = p.SeedlingName;
             
@@ -214,9 +214,9 @@ classdef Hypocotyl < handle
                 fprintf(2, 'CropBox should be size %s\n', num2str(box_size));
             end
         end
-
+        
         function bbox = getCropBox(obj, frm)
-            %% Return CropBox parameter, or the [4 x 1] vector that defines the 
+            %% Return CropBox parameter, or the [4 x 1] vector that defines the
             % bounding box to crop from Parent Seedling
             bbox = obj.CropBox(frm, :);
         end
@@ -228,12 +228,12 @@ classdef Hypocotyl < handle
             else
                 obj.Contour(frm) = ctr;
             end
-    	end
-
+        end
+        
         function crc = getContour(varargin)
             %% Return all ContourJB objects or ContourJB at frame
             obj = varargin{1};
-
+            
             switch nargin
                 case 1
                     crc = obj.Contour;
@@ -244,9 +244,9 @@ classdef Hypocotyl < handle
                     fprintf(2, 'Error returning ContourJB\n');
                     crc = [];
             end
-
+            
         end
-
+        
         function obj = setCircuit(obj, frm, crc, req)
             %% Set manually-drawn CircuitJB object (original or flipped)
             crc.trainCircuit(true);
@@ -255,7 +255,7 @@ classdef Hypocotyl < handle
                     try
                         obj.Circuit(1,1) = crc;
                     catch
-                        obj.Circuit(frm,1)    = crc;
+                        obj.Circuit(frm,1) = crc;
                     end
                 case 'flp'
                     try
@@ -269,7 +269,7 @@ classdef Hypocotyl < handle
             end
         end
         %   sIdx: index of randomly-selected Seedlings
-
+        
         function crc = getCircuit(obj, frm, req)
             %% Return original or flipped version of CircuitJB object
             if ~isempty(obj.Circuit)
@@ -295,7 +295,7 @@ classdef Hypocotyl < handle
                             end
                         catch
                             crc = [];
-                        end 
+                        end
                     otherwise
                         fprintf(2, 'Error returning %s circuit\n', req);
                 end
@@ -303,17 +303,17 @@ classdef Hypocotyl < handle
                 crc = [];
             end
         end
-
+        
         function prp = getProperty(obj, req)
             %% Returns a property of this Hypocotyl object
-            	try
-                    prp = obj.(req);
-                catch e
-                    fprintf(2, 'Property %s does not exist\n%s', ...
-                    	req, e.message);
-                end
+            try
+                prp = obj.(req);
+            catch e
+                fprintf(2, 'Property %s does not exist\n%s', ...
+                    req, e.message);
+            end
         end
-
+        
     end
     
     methods (Access = private)
