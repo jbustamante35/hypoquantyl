@@ -146,8 +146,9 @@ classdef CircuitJB < handle
                 crd = c.Position;
                 obj.setRawOutline(frm, crd);
                 obj.setImage(frm, 'bw', c.createMask);
-                msk = crds2mask(img, crd, buff);
-                obj.setImage(frm, 'mask', msk);
+                % Exclude this as it isn't used until creating probability masks
+%                 msk = crds2mask(img, crd, buff);
+%                 obj.setImage(frm, 'mask', msk);
             catch e
                 fprintf(2, 'Error setting outline at frame %d \n%s\n', ...
                     frm, e.getReport);
@@ -160,8 +161,8 @@ classdef CircuitJB < handle
                 % Plot anchor points and store as RawPoints
                 img = obj.getImage(frm, 'gray');
                 str = sprintf('%d AnchorPoints', obj.NUMBEROFANCHORS);
-                p   = drawPoints(img, 'y', str);
-                obj.setRawPoints(frm, p.getPosition);
+                p   = drawPoints(img, 'b', str);
+                obj.setRawPoints(frm, p.Position);
             catch e
                 fprintf(2, 'Error setting anchor points at frame %d\n%s', ...
                     frm, e.getReport);
