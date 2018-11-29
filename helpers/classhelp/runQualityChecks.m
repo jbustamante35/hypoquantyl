@@ -55,19 +55,21 @@ num = num + 1;
 
 %% 3) Check for empty image and ContourJB data
 if tests(num)
-    dat    = sdl.getImage(':');
-    datChk = struct2logical(dat);
-    datIdx = structfun(@(x) find(x == 1), datChk, 'UniformOutput', 0);
-    
-    fn     = fieldnames(datIdx);
-    datMtc = zeros(numel(fn), sdl.getLifetime);
-    for d = 1 : numel(fn)
-        fld = fn{d}(~isspace(fn{d}));
-        datMtc(d, datIdx.(fld)) = 1;
-    end
-    
-    datFinal                  = sum(datMtc,1) == numel(fn);
+    dat      = sdl.getImage(':');
+    datFinal = cellfun(@isempty, dat) == false;
     goodFrmIdx(num, datFinal) = 1;
+%     datChk = struct2logical(dat);
+%     datIdx = structfun(@(x) find(x == 1), datChk, 'UniformOutput', 0);
+%     
+%     fn     = fieldnames(datIdx);
+%     datMtc = zeros(numel(fn), sdl.getLifetime);
+%     for d = 1 : numel(fn)
+%         fld = fn{d}(~isspace(fn{d}));
+%         datMtc(d, datIdx.(fld)) = 1;
+%     end
+%     
+%     datFinal                  = sum(datMtc,1) == numel(fn);
+%     goodFrmIdx(num, datFinal) = 1;
 end
 num = num + 1;
 
