@@ -215,11 +215,11 @@ classdef CircuitJB < handle
             obj.FullOutline = cat(1, trc{:});
         end
         
-        function obj = trainCircuit(obj, trained)
+        function obj = trainCircuit(obj, trainStatus)
             %% Set this object as 'trained' or 'untrained'
             try
-                if islogical(trained)
-                    obj.isTrained = trained;
+                if islogical(trainStatus)
+                    obj.isTrained = trainStatus;
                 else
                     fprintf(2, 'input should be logical\n');
                 end
