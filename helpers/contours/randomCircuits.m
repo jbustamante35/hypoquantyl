@@ -152,11 +152,11 @@ end
 
 % Extract manual contour from flipped image
 if flip
-    flpim = rs.FlipMe;
+    flpim = rs.FlipMe(rFrm);
     org = sprintf('flip_%s_%s_%s_%s_Frm{%d}', rs.ExperimentName, ...
         rs.GenotypeName, rs.SeedlingName, rs.HypocotylName, rFrm);
     
-    flp = CircuitJB('Origin', org);
+    flp = CircuitJB('Origin', org, 'Parent', rs);
     flp.setImage(1, 'gray', flpim);
     
     flp.DrawOutline(1);
@@ -165,7 +165,7 @@ if flip
     flp.CreateRoutes;
     
     if typ
-        rs.setContour(flp, 'flp');
+        rs.setCircuit(rFrm, flp, 'flp');
     else
         rs.setContour(rFrm, flp)
     end
