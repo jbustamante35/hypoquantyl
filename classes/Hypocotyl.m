@@ -148,17 +148,19 @@ classdef Hypocotyl < handle
             switch nargin
                 case 1
                     % Return grayscale images at all time points
-                    frm = obj.getFrame('b') : obj.getFrame('d');                    
-                    img = obj.Parent.getImage(frm);
-                    crp = imcrop(img, obj.CropBox);
-                    dat = imresize(crp, sclsz);
+                    % DON'T USE THIS YET
+                    %frm = obj.getFrame('b') : obj.getFrame('d');                    
+                    %img = obj.Parent.getImage(frm);
+                    %crp = imcrop(img, obj.getCropBox(frm));
+                    %dat = imresize(crp, sclsz);
+                    dat = [];
                     
                 case 2
                     % Return grayscale image at specific time point
                     try
-                        frm = obj.getFrame('b');
+                        frm = varargin{2};
                         img = obj.Parent.getImage(frm);
-                        crp = imcrop(img, obj.CropBox);
+                        crp = imcrop(img, obj.getCropBox(frm));
                         dat = imresize(crp, sclsz);
                     catch
                         fprintf(2, 'Requested field must be either: %s\n', str);
@@ -171,7 +173,7 @@ classdef Hypocotyl < handle
                         frm = varargin{2};
                         req = varargin{3};                                           
                         img = obj.Parent.getImage(frm, req);                        
-                        crp = imcrop(img, obj.CropBox);              
+                        crp = imcrop(img, obj.getCropBox(frm));              
                         dat = imresize(crp, sclsz);
                     catch
                         fprintf(2, ...
@@ -199,20 +201,24 @@ classdef Hypocotyl < handle
             
         end
         
-        function obj = setCropBox(obj, bbox)
+        function obj = setCropBox(obj, frm, bbox)
             %% Set vector for bounding box
             box_size = [1 4];
             if isequal(size(bbox), box_size)
-                obj.CropBox = bbox;
+                if isempty(obj.CropBox)
+                    obj.CropBox(1, :) = bbox;
+                else
+                    obj.CropBox(frm, :) = bbox;
+                end
             else
                 fprintf(2, 'CropBox should be size %s\n', num2str(box_size));
             end
         end
 
-        function bbox = getCropBox(obj)
+        function bbox = getCropBox(obj, frm)
             %% Return CropBox parameter, or the [4 x 1] vector that defines the 
             % bounding box to crop from Parent Seedling
-            bbox = obj.CropBox;
+            bbox = obj.CropBox(frm, :);
         end
         
         function obj = setContour(obj, frm, ctr)
@@ -227,31 +233,36 @@ classdef Hypocotyl < handle
         function crc = getContour(varargin)
             %% Return all ContourJB objects or ContourJB at frame
             obj = varargin{1};
+
             switch nargin
-            case 1
-                crc = obj.Contour;
-            case 2
-                frm = varargin{2};
-            	crc = obj.Contour(frm);
-            otherwise
-                fprintf(2, 'Error returning ContourJB\n');
-                crc = [];
+                case 1
+                    crc = obj.Contour;
+                case 2
+                    frm = varargin{2};
+                    crc = obj.Contour(frm);
+                otherwise
+                    fprintf(2, 'Error returning ContourJB\n');
+                    crc = [];
             end
 
         end
 
-        function obj = setCircuit(obj, crc, req)
+        function obj = setCircuit(obj, frm, crc, req)
             %% Set manually-drawn CircuitJB object (original or flipped)
             crc.trainCircuit(true);
             switch req
                 case 'org'
                     try
-                        obj.Circuit(1) = crc;
+                        obj.Circuit(1,1) = crc;
                     catch
-                        obj.Circuit    = crc;
+                        obj.Circuit(frm,1)    = crc;
                     end
                 case 'flp'
-                    obj.Circuit(2) = crc;
+                    try
+                        obj.Circuit(1,2) = crc;
+                    catch
+                        obj.Circuit(frm,2) = crc;
+                    end
                     
                 otherwise
                     fprintf(2, 'Error setting %s Circuit\n', req);
@@ -259,13 +270,13 @@ classdef Hypocotyl < handle
         end
         %   sIdx: index of randomly-selected Seedlings
 
-        function crc = getCircuit(obj, req)
+        function crc = getCircuit(obj, frm, req)
             %% Return original or flipped version of CircuitJB object
             if ~isempty(obj.Circuit)
                 switch req
                     case 'org'
                         try
-                            c = obj.Circuit(1);
+                            c = obj.Circuit(frm, 1);
                             if c.isTrained
                                 crc = c;
                             else
