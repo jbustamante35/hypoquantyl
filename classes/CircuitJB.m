@@ -5,6 +5,9 @@ classdef CircuitJB < handle
     properties (Access = public)
         Origin
         Parent
+        HypocotylName
+        ExperimentName
+        GenotypeName
         AnchorPoints
         FullOutline
         NormalOutline
@@ -55,7 +58,7 @@ classdef CircuitJB < handle
             obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
             obj.Curves.RunFullPipeline('smooth');
             obj.Curves.Normal2Envelope('main');
-
+            
         end
         
         function obj = CreateRoutes(obj)
@@ -68,34 +71,34 @@ classdef CircuitJB < handle
             % Get indices of Outline matching each Anchor Point
             fidx = @(x,y) find(sum(ismember(x,y), 2) == 2);
             mtch = arrayfun(@(x) fidx(oL(:,:,x),pts(:,:,x)), ...
-            	1:size(oL,3), 'UniformOutput', 0);
+                1:size(oL,3), 'UniformOutput', 0);
             mtch = cat(2, mtch{:});
             
             % Split Outline into separate Trace between each AnchorPoints
             shp    = @(x) reshape(nonzeros(x), [nnz(x)/2 2]);
             frms   = size(oL,3);
             traces = arrayfun(@(x) split2trace(oL(:,:,x), mtch(:,x), n), ...
-            	1:frms, 'UniformOutput', 0);
+                1:frms, 'UniformOutput', 0);
             
             % Set data for all Routes at each frame
             for i = 1 : numel(traces)
                 trc = traces{i};
-
-		% Copy first anchor point to last index
-                newpts = [pts(:,:,i) ; pts(1,:,i)]; 
+                
+                % Copy first anchor point to last index
+                newpts = [pts(:,:,i) ; pts(1,:,i)];
                 arrayfun(@(x) rts(x).setRawTrace(i, shp(trc(:,:,x))), ...
-                	1:n, 'UniformOutput', 0);
+                    1:n, 'UniformOutput', 0);
                 arrayfun(@(x) rts(x).setAnchors(i, newpts(x,:), ...
-                	newpts(x+1,:)), 1:n, 'UniformOutput', 0);
+                    newpts(x+1,:)), 1:n, 'UniformOutput', 0);
                 arrayfun(@(x) rts(x).NormalizeTrace, 1:n, 'UniformOutput', 0);
             end
         end
         
         function obj = LabelAllPixels(obj, labelname)
             %% Labels all pixels inside contour as 'Hypocotyl'
-            % This is to test out a method of deep learning for semantic 
-            % segmentation See ref (Long, Shelhammer, Darrell, CVF 2015, 2015) 
-            % book and MATLAB tutorial at 
+            % This is to test out a method of deep learning for semantic
+            % segmentation See ref (Long, Shelhammer, Darrell, CVF 2015, 2015)
+            % book and MATLAB tutorial at
             % https://www.mathworks.com/help/vision/examples/semantic-segmentation-using-deep-learning.html
             lbl = repmat("", size(obj.Image.bw));
             lbl(obj.Image.bw == 1) = labelname;
@@ -105,40 +108,39 @@ classdef CircuitJB < handle
         
         function obj = generateMasks(obj, buff)
             %% Create probability matrix from manually-drawn outline
-            % This function generates a binary mask where the coordinates of 
-            % the manually-drawn outline are set to 1 and the rest of the image 
-            % is set to 0. 
+            % This function generates a binary mask where the coordinates of
+            % the manually-drawn outline are set to 1 and the rest of the image
+            % is set to 0.
             %
-            % The output size of the image is defined by the buff parameter, 
-            % because the probability matrix must fit all orientations of 
-            % hypocotyls in the dataset (think of hypocotyls in the extreme 
+            % The output size of the image is defined by the buff parameter,
+            % because the probability matrix must fit all orientations of
+            % hypocotyls in the dataset (think of hypocotyls in the extreme
             % left or right locations).
             %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % NOTE [ 10/31/2018 ]:
             % I created the cropWithBuffer.m function, which gives each cropped
-            % Hypocotyl a buffered region around the object. I haven't tested 
-            % it yet, but I could probably generate probability image masks 
-            % without having to create the large buffered region that this 
-            % function creates. 
-            % 
+            % Hypocotyl a buffered region around the object. I haven't tested
+            % it yet, but I could probably generate probability image masks
+            % without having to create the large buffered region that this
+            % function creates.
+            %
             % tl;dr: I might be able to remove the buff parameter from here
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+            
             img = obj.getImage(1, 'gray');
             crd = obj.getNormalOutline; % Use normalized coordinates
             %             crd = obj.FullOutline;
             msk = crds2mask(img, crd, buff);
             obj.setImage(1, 'mask', msk);
         end
-
+        
         function obj = DrawOutline(obj, frm)
             %% Draw RawOutline on this object's Image
             % The function crds2mask was changed (see generateMasks method for
             % this class) to include a buffering size parameter. When creating
-            % the initial CircuitJB contour, just set this to 0 until I 
+            % the initial CircuitJB contour, just set this to 0 until I
             % understand it better.
-            buff = 0;
             try
                 % Trace outline and store as RawOutline
                 img = obj.getImage(frm, 'gray');
@@ -147,8 +149,8 @@ classdef CircuitJB < handle
                 obj.setRawOutline(frm, crd);
                 obj.setImage(frm, 'bw', c.createMask);
                 % Exclude this as it isn't used until creating probability masks
-%                 msk = crds2mask(img, crd, buff);
-%                 obj.setImage(frm, 'mask', msk);
+                %                 msk = crds2mask(img, crd, buff);
+                %                 obj.setImage(frm, 'mask', msk);
             catch e
                 fprintf(2, 'Error setting outline at frame %d \n%s\n', ...
                     frm, e.getReport);
@@ -167,6 +169,28 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error setting anchor points at frame %d\n%s', ...
                     frm, e.getReport);
             end
+        end
+        
+        function obj = DerefParents(obj)
+            %% Remove reference to Parent property
+            obj.Parent = [];
+        end
+        
+        function obj = ResetReference(obj, exp)
+            %% Searches inputted Experiment object to find parent Hypocotyl
+            % Iteratively parse though Genotype -> Seedling -> Hypocotyl
+            idxA = regexpi(obj.Origin, '{');
+            idxB = regexpi(obj.Origin, '}');
+            sIdx = obj.Origin(idxA(1) + 1 : idxB(1) - 1);
+            %             hIdx = obj.Origin(idxA(2) + 1 : idxB(2) - 1);
+            %             frm  = obj.Origin(idxA(3) + 1 : idxB(3) - 1);
+            
+            gen = exp.search4Genotype(obj.GenotypeName);
+            sdl = gen.getSeedling(str2double(sIdx));
+            hyp = sdl.MyHypocotyl;
+            
+            obj.setParent(hyp);
+            
         end
         
         function obj = NormalizeOutline(obj)
@@ -189,7 +213,7 @@ classdef CircuitJB < handle
         end
         
         function obj = ConvertRawPoints(obj)
-            %% Convert anchor points from floating RawPoints to snapped 
+            %% Convert anchor points from floating RawPoints to snapped
             % AnchorPoints along the manually-drawn outline
             if isempty(obj.InterpOutline)
                 obj.ConvertRawOutlines;
@@ -207,11 +231,11 @@ classdef CircuitJB < handle
         
         function obj = ReconfigInterpOutline(obj)
             %% Convert interpolated outline to Route's interpolated traces
-            % This will change the coordinates from this object's InterpOutline 
-            % property to the InterpTrace of each of this object's Route array. 
+            % This will change the coordinates from this object's InterpOutline
+            % property to the InterpTrace of each of this object's Route array.
             % This ensures that there is a segment defining the base segment.
             trc = arrayfun(@(x) x.getInterpTrace, ...
-            	obj.Routes, 'UniformOutput', 0);
+                obj.Routes, 'UniformOutput', 0);
             obj.FullOutline = cat(1, trc{:});
         end
         
@@ -241,6 +265,15 @@ classdef CircuitJB < handle
         function org = getOrigin(obj)
             %% Return parent of this CircuitJB
             org = obj.Origin;
+        end
+        
+        function obj = setParent(obj, p)
+            %% Set this object's parent Hypocotyl object
+            obj.Parent = p;
+            obj.HypocotylName  = p.HypocotylName;
+            obj.GenotypeName   = p.GenotypeName;
+            obj.ExperimentName = p.ExperimentName;
+            
         end
         
         function obj = setImage(obj, frm, req, im)
@@ -298,53 +331,6 @@ classdef CircuitJB < handle
                     return;
             end
         end
-
-        %function dat = getImage(varargin)
-        %    %% Return image data for ContourJB at desired frame [frm, req]
-        %    % User can specify which image from structure with 3rd parameter
-        %    switch nargin
-        %        case 1
-        %            % Full structure of image data at all frames
-        %            obj = varargin{1};
-        %            dat = obj.Image;
-        %            
-        %        case 2
-        %            % All image data at frame
-        %            try
-        %                obj = varargin{1};
-        %                frm = varargin{2};
-        %                dat = obj.Image(frm);
-        %            catch
-        %                fprintf(2, 'No image at frame %d \n', frm);
-        %            end
-        %            
-        %        case 3
-        %            % Specific image type at frame
-        %            % Check if frame exists
-        %            try
-        %                obj = varargin{1};
-        %                frm = varargin{2};
-        %                req = varargin{3};
-        %                dat = obj.Image(frm);
-        %            catch
-        %                fprintf(2, 'No image at frame %d \n', frm);
-        %            end
-        %            
-        %            % Get requested data field
-        %            try
-        %                dfm = obj.Image(frm);
-        %                dat = dfm.(req);
-        %            catch
-        %                fn  = fieldnames(dfm);
-        %                str = sprintf('%s, ', fn{:});
-        %                fprintf(2, 'Requested field must be either: %s\n', str);
-        %            end
-        %            
-        %        otherwise
-        %            fprintf(2, 'Error requesting data.\n');
-        %            return;
-        %    end
-        %end
         
         function obj = setRawOutline(obj, frm, oL)
             %% Set coordinates for RawOutline at specific frame
