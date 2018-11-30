@@ -332,53 +332,6 @@ classdef CircuitJB < handle
             end
         end
         
-        %function dat = getImage(varargin)
-        %    %% Return image data for ContourJB at desired frame [frm, req]
-        %    % User can specify which image from structure with 3rd parameter
-        %    switch nargin
-        %        case 1
-        %            % Full structure of image data at all frames
-        %            obj = varargin{1};
-        %            dat = obj.Image;
-        %
-        %        case 2
-        %            % All image data at frame
-        %            try
-        %                obj = varargin{1};
-        %                frm = varargin{2};
-        %                dat = obj.Image(frm);
-        %            catch
-        %                fprintf(2, 'No image at frame %d \n', frm);
-        %            end
-        %
-        %        case 3
-        %            % Specific image type at frame
-        %            % Check if frame exists
-        %            try
-        %                obj = varargin{1};
-        %                frm = varargin{2};
-        %                req = varargin{3};
-        %                dat = obj.Image(frm);
-        %            catch
-        %                fprintf(2, 'No image at frame %d \n', frm);
-        %            end
-        %
-        %            % Get requested data field
-        %            try
-        %                dfm = obj.Image(frm);
-        %                dat = dfm.(req);
-        %            catch
-        %                fn  = fieldnames(dfm);
-        %                str = sprintf('%s, ', fn{:});
-        %                fprintf(2, 'Requested field must be either: %s\n', str);
-        %            end
-        %
-        %        otherwise
-        %            fprintf(2, 'Error requesting data.\n');
-        %            return;
-        %    end
-        %end
-        
         function obj = setRawOutline(obj, frm, oL)
             %% Set coordinates for RawOutline at specific frame
             try
