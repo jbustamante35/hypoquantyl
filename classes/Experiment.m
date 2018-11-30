@@ -219,6 +219,8 @@ classdef Experiment < handle
 
         function C = combineContours(obj)
             %% Return all Hypocotyls with manually-drawn CircuitJB objects
+            % Returns both original and flipped versions of each. I'm not sure
+            % if it would work if some don't have flipped versions. 
             H   = obj.combineHypocotyls;
 
             org = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'org'),  ...
@@ -231,10 +233,6 @@ classdef Experiment < handle
             flp = cat(2, flp{:});
             flp = cat(1, flp{:});
 
-            %org = arrayfun(@(x) x.getCircuit(':', 'org'), H, 'UniformOutput', 0);
-            %org = cat(1, org{:});
-            %flp = arrayfun(@(x) x.getCircuit(':', 'flp'), H, 'UniformOutput', 0);
-            %flp = cat(1, flp{:});
             C   = [org ; flp];
         end
 
