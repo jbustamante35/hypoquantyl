@@ -220,10 +220,21 @@ classdef Experiment < handle
         function C = combineContours(obj)
             %% Return all Hypocotyls with manually-drawn CircuitJB objects
             H   = obj.combineHypocotyls;
-            org = arrayfun(@(x) x.getContour('org'), H, 'UniformOutput', 0);
+
+            org = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'org'),  ...
+                1:x.Lifetime, 'UniformOutput', 0), H, 'UniformOutput', 0);
+            org = cat(2, org{:});
             org = cat(1, org{:});
-            flp = arrayfun(@(x) x.getContour('flp'), H, 'UniformOutput', 0);
+
+            flp = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'org'),  ...
+                1:x.Lifetime, 'UniformOutput', 0), H, 'UniformOutput', 0);
+            flp = cat(2, flp{:});
             flp = cat(1, flp{:});
+
+            %org = arrayfun(@(x) x.getCircuit(':', 'org'), H, 'UniformOutput', 0);
+            %org = cat(1, org{:});
+            %flp = arrayfun(@(x) x.getCircuit(':', 'flp'), H, 'UniformOutput', 0);
+            %flp = cat(1, flp{:});
             C   = [org ; flp];
         end
 
