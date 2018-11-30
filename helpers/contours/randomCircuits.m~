@@ -13,7 +13,7 @@ function CRCS = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
 %       * Run FindSeedlings and SortSeedlings methods
 %   - Each Seedling must have a child Hypocotyl object
 %       * Run FindHypocotyl and SortPreHypocotyls methods
-%   - Each Seedling object must also have bad frames removed
+%   - Each Seedlin objects must also have bad frames removed
 %       * Run RemoveBadFrames method
 %
 % Usage:
@@ -52,8 +52,6 @@ else
 end
 
 %% Draw contours at random frame from random Seedling/Hypocotyl
-% If flp parameter set to true, then CircuitJB array is stored in n x 2, where
-% the flipped version is stored in dimension 2 of a Hypocotyl object
 cIdx = 1;
 for k = sIdx
     rs = S(k);
@@ -73,9 +71,9 @@ end
 
 if sv
     arrayfun(@(x) x.DerefParents, CRCS, 'UniformOutput', 0);
-    nm = sprintf('%s_%drandomCircuits_circuits', tdate('s'), Ncrcs);
+    nm = sprintf('%s_%drandomCircuits_circuits', datestr(now, 'yymmdd'), Ncrcs);
     save(nm, '-v7.3', 'CRCS');
-    arrayfun(@(x) x.ResetReference(Ein), CRCS, 'UniformOutput', 0);
+    arrayfun(@(x) x.ResetReference(Ein), CRCS;
 end
 
 %% Show 8 first images and masks, unless < 8 contours drawn
@@ -139,7 +137,6 @@ end
 
 % Set image and origin data for CircuitJB
 crc = CircuitJB('Origin', org, 'Parent', rs);
-crc.setParent(rs);
 crc.setImage(1, 'gray', im);
 
 % Draw Outline and AnchorPoints and normalize coordinates
@@ -162,7 +159,6 @@ if flip
         rs.GenotypeName, rs.SeedlingName, rs.HypocotylName, rFrm);
     
     flp = CircuitJB('Origin', org, 'Parent', rs);
-    flp.setParent(rs);
     flp.setImage(1, 'gray', flpim);
     
     flp.DrawOutline(1);
