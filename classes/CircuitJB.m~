@@ -294,16 +294,16 @@ classdef CircuitJB < handle
         function dat = getImage(varargin)
             %% Return image data for ContourJB at desired frame [frm, req]
             % User can specify which image from structure with 3rd parameter
-            obj = varargin{1};
-            
             switch nargin
                 case 1
-                    % Full structure of image data              
+                    % Full structure of image data at all frames
+                    obj = varargin{1};
                     dat = obj.Image;
                     
                 case 2
-                    % Returns requrested image type
+                    % All image data at frame
                     try
+                        obj = varargin{1};
                         req = varargin{2};
 
                         nm  = obj.Origin;
@@ -317,27 +317,80 @@ classdef CircuitJB < handle
                     end
                     
                 case 3
-                    % Returns buffered image
-                    % Arguments 2-3 are not necessary
+                    % Specific image type at frame
+                    % Check if frame exists
                     try
-                        req = varargin{2};
-                        buf = varargin{3};
-
-                        nm  = obj.Origin;
-                        aa  = strfind(nm, '{');
-                        bb  = strfind(nm, '}');
-                        frm = str2double(nm(aa(end) + 1 : bb(end) - 1));
-                        dat = obj.Parent.getImage(frm, req, buf);
+                        obj = varargin{1};
+                        frm = varargin{2};
+                        req = varargin{3};
+                        dat = obj.Image(frm).(req);
 
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);
+                    end
+                    
+                    % Get requested data field
+                    try
+                        dfm = obj.Image(frm);
+                        dat = dfm.(req);
+                    catch
+                        fn  = fieldnames(dfm);
+                        str = sprintf('%s, ', fn{:});
+                        fprintf(2, 'Requested fields must be: %s\n', str);
                     end
                     
                 otherwise
                     fprintf(2, 'Error requesting data.\n');
                     return;
             end
-        end        
+        end
+        
+        %         function dat = getImage(varargin)
+        %             %% Return image data for ContourJB at desired frame [frm, req]
+        %             % User can specify which image from structure with 3rd parameter
+        %             switch nargin
+        %                 case 1
+        %                     % Full structure of image data at all frames
+        %                     obj = varargin{1};
+        %                     dat = obj.Image;
+        %
+        %                 case 2
+        %                     % All image data at frame
+        %                     try
+        %                         obj = varargin{1};
+        %                         frm = varargin{2};
+        %                         dat = obj.Image(frm);
+        %                     catch
+        %                         fprintf(2, 'No image at frame %d \n', frm);
+        %                     end
+        %
+        %                 case 3
+        %                     % Specific image type at frame
+        %                     % Check if frame exists
+        %                     try
+        %                         obj = varargin{1};
+        %                         frm = varargin{2};
+        %                         req = varargin{3};
+        %                         dat = obj.Image(frm);
+        %                     catch
+        %                         fprintf(2, 'No image at frame %d \n', frm);
+        %                     end
+        %
+        %                     % Get requested data field
+        %                     try
+        %                         dfm = obj.Image(frm);
+        %                         dat = dfm.(req);
+        %                     catch
+        %                         fn  = fieldnames(dfm);
+        %                         str = sprintf('%s, ', fn{:});
+        %                         fprintf(2, 'Requested fields must be: %s\n', str);
+        %                     end
+        %
+        %                 otherwise
+        %                     fprintf(2, 'Error requesting data.\n');
+        %                     return;
+        %             end
+        %         end
         
         function obj = setRawOutline(obj, frm, oL)
             %% Set coordinates for RawOutline at specific frame
