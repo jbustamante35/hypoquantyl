@@ -1,8 +1,9 @@
 function segs = split2Segments(trc, len, step)
-%% split2Segments: split a contour into pieces of len size around the entire segment
-% This function takes a set of coordinates (typically defining a full contour) and splits it into
-% many segments of len size. These segments iteratively slide around the contour, with the step
-% size to skip between lengths defined by the step parameter.
+%% split2Segments: split contour into pieces of len size around the segment
+% This function takes a set of coordinates (typically defining a full contour)
+% and splits it into many segments of len size. These segments iteratively slide
+% around the contour, with the step size to skip between lengths defined by the
+% step parameter.
 %
 % Usage:
 %   segs = split2Segments(trc, len, step)
@@ -17,12 +18,12 @@ function segs = split2Segments(trc, len, step)
 %
 
 % Determine number of iterations needed to slide around contour
-t = 1;
+t       = 1;
 stepper = 1 : step : (length(trc) - len - 1);
 segs    = zeros(len, 2, size(stepper, 2));
 for s = stepper
     segs(:, :, t) = trc((s : (s + len - 1)), :);
-    t = t  + 1;
+    t = t + 1;
 end
 
 % Interpolate last segment if step size exceeds total length of contour
