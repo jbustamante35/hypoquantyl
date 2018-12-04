@@ -1,8 +1,9 @@
 function fig = showCurves(c, idx, numC, numE, dL, dR, f, sv)
 %% showCurves: display segment and envelope data
-% This function creates a simple figure to display the image of the hypocotyl from the CircuitJB
-% object, it's individual Curve objects, midpoints, and endpoints (top), and an individual Curve in
-% normalized coordinates with it's enveloped spline with coordinates above and below the mean Curve.
+% This function creates a simple figure to display the image of the hypocotyl 
+% from the CircuitJB object, it's individual Curve objects, midpoints, and 
+% endpoints (top), and an individual Curve in normalized coordinates with it's 
+% enveloped spline with coordinates above and below the mean Curve.
 %
 % Usage:
 %   fig = showCurves(c, numC, numE, dL, dR, f, sv)
@@ -31,7 +32,7 @@ end
 
 set(gcf, 'Color', 'w');
 
-%% Subplot 1: contour with segments, midpoints, endpoints, and Curve's raw coordinates
+%% Subplot 1: contour with segments, midpoints, endpoints, and raw coordinates
 subplot(211);
 imagesc(c.getImage(1, 'gray'));
 colormap gray;
@@ -51,7 +52,8 @@ plc = '[PlaceHolder Contour Name]';
 ttl = sprintf('%s(%d) \n Segments %d | StepSize %d', plc, idx, seg, env);
 title(ttl);
 
-%% Subplot 2: normalized curve, left and right envelopes, spline, and points above and below curve
+%% Subplot 2: normalized curve, left and right envelopes, spline, and points 
+% above and below curve
 subplot(211);
 raw = crv.RawSegments(:,:,numC);
 nrm = crv.NormalSegments(:,:,numC);
@@ -64,15 +66,15 @@ plt([0 0], 'rx', 4);
 plt(nrm, 'k.', 3);
 
 % Plot Left and Right Envelopes
-L = crv.getEnvelopeSide('L');
-R = crv.getEnvelopeSide('R');
-plt(L(:,:,numC), 'r.');
-plt(R(:,:,numC), 'g.');
+O = crv.getEnvelopeStruct('O');
+I = crv.getEnvelopeStruct('I');
+plt(O(numC).Max, 'r.');
+plt(I(numC).Max, 'g.');
 
 % Plot spline of envelope
 stp = 30;
-lineInts(crv.NormalSegments(:,:,numC), L(:,:,numC), stp, 'm');
-lineInts(crv.NormalSegments(:,:,numC), R(:,:,numC), stp, 'b');
+lineInts(crv.NormalSegments(:,:,numC), O(numC).Max, stp, 'm');
+lineInts(crv.NormalSegments(:,:,numC), I(numC).Max, stp, 'b');
 
 % Pick locations above and below Segment
 ptL = [nrm(numE,1), (nrm(numE,2) + dL)];
@@ -82,11 +84,14 @@ plt(ptL, 'ro', 10);
 plt(ptR, 'bo', 10);
 
 % Put point distances on plot
-text(ptL(1)-0.5, ptL(2), num2str(-dL), 'Color', 'k', 'FontSize', 7, 'FontWeight', 'b');
-text(ptR(1)-0.5, ptR(2), num2str(dR), 'Color', 'k', 'FontSize', 7, 'FontWeight', 'b');
+text(ptL(1)-0.5, ptL(2), num2str(-dL), ...
+    'Color', 'k', 'FontSize', 7, 'FontWeight', 'b');
+text(ptR(1)-0.5, ptR(2), num2str(dR), ...
+    'Color', 'k', 'FontSize', 7, 'FontWeight', 'b');
 
-ttl = sprintf('Curve %d | SegmentLength %d \n EnvelopeWidth %d | SplineInterval %d', ...
-    numC, size(L,1), 20, stp);
+ttl = sprintf( ...
+    'Curve %d | SegmentLength %d \n EnvelopeWidth %d | SplineInterval %d', ...
+    numC, size(O,1), 20, stp);
 title(ttl);
 
 %% Save figure as .fig and .tiffn files
