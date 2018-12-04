@@ -1,4 +1,4 @@
-%% Cuve: class for holding sections of contours of specified length for a CircuitJB object
+%% Cuve: class for sections of contours for a CircuitJB object
 % Descriptions
 
 classdef Curve < handle
@@ -18,14 +18,14 @@ classdef Curve < handle
     end
     
     properties (Access = protected)
-        SEGMENTSIZE  = 200; % Number of coordinates per segment
-        SEGMENTSTEPS = 50;  % Size of step to next segment
-        ENVELOPESIZE = 20;  % Hard-coded max distance from original segment to envelope [deprecated]
-        SMOOTHSPAN   = 0.7;  % Moving average span for smoothing segment coordinates
+        SEGMENTSIZE  = 200;     % Number of coordinates per segment
+        SEGMENTSTEPS = 50;      % Size of step to next segment
+        ENVELOPESIZE = 20;      % Hard-coded max distance from original segment to envelope [deprecated]
+        SMOOTHSPAN   = 0.7;     % Moving average span for smoothing segment coordinates
         SMOOTHMETHOD = 'sgolay' % Smoothing method
-        GAUSSSIGMA   = 3;   % Sigma parameter for gaussian smoothing of ImagePatches
-        ENV_ITRS     = 25;  % Number of intermediate curves between segment and envelope
-        ENV_SCALE    = 4;   % Size to scale unit length vector to define max envelope distance
+        GAUSSSIGMA   = 3;       % Sigma parameter for gaussian smoothing of ImagePatches
+        ENV_ITRS     = 25;      % Number of intermediate curves between segment and envelope
+        ENV_SCALE    = 4;       % Size to scale unit length vector to define max envelope distance
         Pmats
         Ppars
         OuterStruct
@@ -73,10 +73,11 @@ classdef Curve < handle
         end
         
         function obj = SegmentOutline(varargin)
-            %% Split CircuitJB outline into number of segments defined by SEGMENTSIZE parameter
-            % This function will generate all individual curves around the contour. Output will be
-            % N curves of length SEGMENTSIZE, where N is the number of possible curves around an
-            % outline of the CircuitJB object's InterpOutline.
+            %% Split CircuitJB outline into defined number of segments 
+            % This function will generate all individual curves around the 
+            % contour to the total defined by the SEGMENTSIZE parameter. Output 
+            % will be N curves of length SEGMENTSIZE, where N is the number of 
+            % curves around an outline of the CircuitJB object's InterpOutline.
             
             try
                 obj = varargin{1};
@@ -93,8 +94,10 @@ classdef Curve < handle
                     otherwise
                         len = obj.SEGMENTSIZE;
                         stp = obj.SEGMENTSTEPS;
-                        msg = sprintf(['Input must be (segment_size, steps_per_segment)\n', ...
-                            'Segmenting with default parameters (%d, %d)\n'], len, stp);
+                        msg = sprintf(...
+                            ['Input must be (segment_size, steps_per_segment)\n', ...
+                            'Segmenting with default parameters (%d, %d)\n'], ...
+                            len, stp);
                         fprintf(2, msg);
                         
                 end
@@ -108,7 +111,10 @@ classdef Curve < handle
         end
         
         function obj = NormalizeSegments(obj)
-            %% Convert RawSegments using Midpoint Normalization Method (see midpointNorm())
+            %% Convert RawSegments using Midpoint Normalization Method 
+            % Uses the midpoint-normalization method to convert coordinates in
+            % the raw image coordinate frame into the normalized coordinate
+            % frame (see midpointNorm())
             if isempty(obj.RawSegments)
                 obj.SegmentOutline;
             elseif isempty(obj.Trace)
@@ -119,14 +125,17 @@ classdef Curve < handle
             % Run midpoint-normalization on all raw segments
             obj.NormalSegments = zeros(size(obj.RawSegments));
             for s = 1 : size(obj.RawSegments,3)
-                [obj.NormalSegments(:,:,s), obj.Pmats(:,:,s), obj.MidPoints(:,:,s)] = ...
+                [obj.NormalSegments(:,:,s), obj.Pmats(:,:,s), ...
+                    obj.MidPoints(:,:,s)] = ...
                     midpointNorm(obj.RawSegments(:,:,s));
             end
             
         end
         
         function obj = Normal2Envelope(obj, ver)
-            %% Convert NormalSegments to coordinates within envelope (see envelopeMethod())
+            %% Convert NormalSegments to coordinates within envelope 
+            % Uses the envelope method to convert normalized coordinates to
+            % coordinates within an envelope structure (see envelopeMethod()).
             switch ver
                 case 'main'
                     typ = 'Segments';
@@ -153,17 +162,20 @@ classdef Curve < handle
             
             % Convert normalized coordinates to envelope coordinates
             env = arrayfun(@(x) envelopeMethod(obj.NormalSegments(:,:,x), ...
-                obj.NormalSegments(:,:,x), maxD), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+                obj.NormalSegments(:,:,x), maxD), ...
+                    1:obj.NumberOfSegments, 'UniformOutput', 0);
             obj.(seg) = cat(3, env{:});
             
         end
         
         function obj = CreateEnvelopeStructure(obj, ver)
-            %% Method 2: mathematical version of augmentEnvelope [see assessImagePatches function]
-            % Define maximum distance to envelope and create all intermediate curves between main
-            % segment and envelope segment
+            %% Method 2: mathematical version of augmentEnvelope 
+            % Define maximum distance to envelope and create all intermediate 
+            % curves between main segment and envelope segment. For more detail
+            % see assessImagePatches function.
             
-            % Outer and Inner Envelope boundaries and Intermediate segments between boundaries
+            % Generate Outer and Inner Envelope boundaries and Intermediate 
+            % segments between boundaries
             obj.generateEnvelopeBounds(ver);
             obj.generateEnvelopeIntermediates(ver);
             
@@ -176,15 +188,18 @@ classdef Curve < handle
                 obj.NormalizeSegments;
             end
             
-            smthFun          = @(x) segSmooth(obj.NormalSegments(:,:,x), obj.SMOOTHSPAN, obj.SMOOTHMETHOD);
-            R                = arrayfun(@(x) smthFun(x), 1 : obj.NumberOfSegments, 'UniformOutput', 0);
+            smthFun          = @(x) segSmooth(obj.NormalSegments(:,:,x), ...
+                obj.SMOOTHSPAN, obj.SMOOTHMETHOD);
+            R                = arrayfun(@(x) smthFun(x), ...
+                1 : obj.NumberOfSegments, 'UniformOutput', 0);
             obj.NormalSmooth = cat(3, R{:});
             
             % Reverse Midpoint-normalization on smoothed segments
             obj.RawSmooth = zeros(size(obj.RawSmooth));
             for s = 1 : size(obj.NormalSmooth, 3)
-                obj.RawSmooth(:,:,s) = reverseMidpointNorm(...
-                    obj.NormalSmooth(:,:,s), obj.Pmats(:,:,s)) + obj.MidPoints(:,:,s);
+                obj.RawSmooth(:,:,s) = reverseMidpointNorm( ...
+                    obj.NormalSmooth(:,:,s), ...
+                    obj.Pmats(:,:,s)) + obj.MidPoints(:,:,s);
             end
             
             % Create Envelope structure with smoothed segments
@@ -198,7 +213,8 @@ classdef Curve < handle
         
         function obj = GenerateImagePatch(obj, ver)
             %% Generates ImagePatches property from envelope coordinates
-            % Image patch can be created with main or smoothed segments, defined by ver parameter.
+            % Image patch can be created with main or smoothed segments, 
+            % defined by ver parameter.
             
             switch ver
                 case 'main'
@@ -215,7 +231,8 @@ classdef Curve < handle
             seg = sprintf('Normal%s', typ); % Should be envelope segments when I get this right
 %             seg = sprintf('Envelope%s', typ);
             
-            obj.ImagePatches = arrayfun(@(x) obj.setImagePatch(obj.(seg)(:,:,x), x), ...
+            obj.ImagePatches = ...
+                arrayfun(@(x) obj.setImagePatch(obj.(seg)(:,:,x), x), ...
                 1:obj.NumberOfSegments, 'UniformOutput', 0);
             
         end
@@ -269,7 +286,8 @@ classdef Curve < handle
                     end
                     
                 case 3
-                    % Arguments are Curve object, segment index, and start (0) or endpoint (1)
+                    % Arguments are Curve object, segment index, and 
+                    % start (0) or endpoint (1)
                     obj = varargin{1};
                     req = varargin{2};
                     pnt = varargin{3};
@@ -278,7 +296,8 @@ classdef Curve < handle
                     else
                         p = num2str(pnt);
                         r = num2str(req);
-                        fprintf(2, 'Error requesting EndPoints (pnt%s,seg%s)\n', p, r);
+                        fprintf(2, ...
+                            'Error requesting EndPoints (pnt%s,seg%s)\n', p, r);
                     end
                     
                 otherwise
@@ -331,22 +350,26 @@ classdef Curve < handle
         end
         
         function nrm = Envelope2Normal(obj)
-            %% Convert EnvelopeSegments to midpoint-normalized coordinates (see reverseEnvelopeMethod)
+            %% Convert EnvelopeSegments to midpoint-normalized coordinates 
+            % This uses the inverse of the envelope method to revert envelope
+            % segments back to normalized segments (see reverseEnvelopeMethod).
             nrm = reverseEnvelopeMethod(obj.EnvelopeSegments, obj.ENVELOPESIZE);
             
         end
         
         function raw = Envelope2Raw(obj)
             %% Convert segment in envelope coordinates to raw coordinates
-            % This needs to be changed in the future to use the predicted envelope segments
+            % [TODO] This needs to be changed in the future to be able to use 
+            % the predicted envelope segments.
             env = obj.EnvelopeSegments;
             crv = obj.NormalSegments;
             sz  = obj.ENVELOPESIZE;
             pm  = obj.Pmats;
             mid = obj.MidPoints;
             
-            % Iterate through all envelope segments and convert to raw image segments
-            env2raw = @(n) envelope2coords(env(:,:,n), crv(:,:,n), sz, pm(:,:,n), mid(:,:,n));
+            % Iterate through envelope segments and convert to image segments
+            env2raw = @(n) envelope2coords(env(:,:,n), crv(:,:,n), ...
+                sz, pm(:,:,n), mid(:,:,n));
             raw = arrayfun(@(n) env2raw(n), ...
                 1 : obj.NumberOfSegments, 'UniformOutput', 0);
             raw = cat(3, raw{:});
@@ -380,7 +403,7 @@ classdef Curve < handle
             
             % Create ImagePatch
             allOut   = fliplr(cat(2, pxOut{:}));
-            allInn   = cat(2, pxInn{:}); % Flip inner envelope to align with others
+            allInn   = cat(2, pxInn{:}); % Align by flipping inner envelope 
             fullpx   = [allOut pxCrv allInn];
             imgPatch = imgaussfilt(fullpx, obj.GAUSSSIGMA);
             
@@ -388,9 +411,9 @@ classdef Curve < handle
         
         function [crvsX, crvsY] = rasterizeSegments(obj, req)
             %% Rasterize all segments of requested type
-            % This method is used to prepare for Principal Components Analysis. The req parameter is
-            % the requested segment type to rasterize (should be RawSegments, NormalSegments, or
-            % EnvelopeSegments).
+            % This method is used to prepare for Principal Components Analysis.
+            % The req parameter is the requested segment type to rasterize and
+            % should be RawSegments, NormalSegments, or EnvelopeSegments.
             try
                 segtype = getSegmentType(obj, req);
                 X       = obj.(segtype)(:,1,:);
@@ -402,6 +425,16 @@ classdef Curve < handle
                 [crvsX, crvsY] = deal([]);
             end
             
+        end
+        
+        function prp = getProperty(obj, prp)
+            %% Return property of this object
+            try
+                prp = obj.(prp);
+            catch e
+                fprintf(2, 'Property %s does not exist\n%s\n', ...
+                    prp, e.getReport);
+            end
         end
         
     end
@@ -442,14 +475,16 @@ classdef Curve < handle
         
         function obj = loadRawSegmentData(obj, trace, segment_length, step_size)
             %% Set data for RawSegments, EndPoints, and NumberOfSegments
-            obj.RawSegments      = split2Segments(trace, segment_length, step_size);
-            obj.EndPoints        = [obj.RawSegments(1,:,:) ; obj.RawSegments(end,:,:)];
+            obj.RawSegments      = ...
+                split2Segments(trace, segment_length, step_size);
+            obj.EndPoints        = ...
+                [obj.RawSegments(1,:,:) ; obj.RawSegments(end,:,:)];
             obj.NumberOfSegments = size(obj.RawSegments,3);
             
         end
         
         function [img, Pmat, midpoint] = getMapParams(obj, segIdx)
-            %% Extract parameters needed for mapping curve to image for setImagePatch
+            %% Returns parameters for mapping curve to image for setImagePatch
             img      = obj.Parent.getImage(1, 'gray');
             Pmat     = obj.getParameter('Pmats', segIdx);
             midpoint = obj.getMidPoint(segIdx);
@@ -460,13 +495,13 @@ classdef Curve < handle
             %% Define Outer and Inner Envelope structures
             % Input:
             %   S: curve segment index to generate envelope boundary from
-            %   ENV_SCALE: magnitude to scale distance from curve to envelope boundary
+            %   ENV_SCALE: scaled distance from curve to envelope boundary
             %
             % Output:
-            %   OuterEnvelopeMax: segment coordinates defining main curve to outer envelope
-            %   OuterDists: unit length vector of distances from outer envelope to main curve
-            %   InnerEnvelopeMax: segment coordinates defining main curve to inner envelope
-            %   InnerDists: unit length vector of distances from inner envelope to main curve
+            %   OuterEnvelopeMax: segment defining main curve to outer envelope
+            %   OuterDists: unit length vectors, outer envelope to main curve
+            %   InnerEnvelopeMax: segment defining main curve to inner envelope
+            %   InnerDists: unit length vector, inner envelope to main curve
             
             switch ver
                 case 'main'
@@ -481,8 +516,9 @@ classdef Curve < handle
             seg = sprintf('Normal%s', typ);
             
             defCrv = @(S) defineCurveEnvelope(obj.(seg)(:,:,S), obj.ENV_SCALE);
-            [obj.OuterEnvelopeMax, obj.InnerEnvelopeMax, obj.OuterDists, obj.InnerDists] = ...
-                arrayfun(@(x) defCrv(x), 1:obj.NumberOfSegments, 'UniformOutput', 0);
+            [obj.OuterEnvelopeMax, obj.InnerEnvelopeMax, ...
+                obj.OuterDists, obj.InnerDists] = arrayfun(@(x) defCrv(x), ...
+                1:obj.NumberOfSegments, 'UniformOutput', 0);
             
             obj.updateEnvelopeStructure;
             
@@ -492,12 +528,12 @@ classdef Curve < handle
             %% Generate Intermediate Envelope segments
             % Input:
             %   S: curve segment to generate envelope from
-            %   dst: unit length vectors defining distance from curve to envelope
-            %   ENV_ITRS: number of intermediate curves between envelope and main segment
+            %   dst: unit length vectors defining curve-envelope distance
+            %   ENV_ITRS: number of curves between envelope and main segment
             %
             % Output:
-            %   OuterEnvelope: intermediate segments between outer segment and main curve
-            %   InnerEnvelope: intermediate segments between inner segment and main curve
+            %   OuterEnvelope: segments between outer segment and main curve
+            %   InnerEnvelope: segments between inner segment and main curve
             %
             
             switch ver
@@ -523,5 +559,5 @@ classdef Curve < handle
             
         end
     end
-    
 end
+
