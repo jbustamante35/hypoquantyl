@@ -277,7 +277,7 @@ classdef Seedling < handle
                     % All grayscale images at all frames
                     try
                         img = obj.Parent.getImage(rng);
-                        bnd = obj.getPData(1, 'BoundingBox');
+                        bnd = obj.getPData(rng, 'BoundingBox');
                         dat = imcrop(img, bnd);
                     catch
                         fprintf(2, 'Error returning Image\n');
