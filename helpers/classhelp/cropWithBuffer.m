@@ -1,14 +1,19 @@
 function [crpb, crpi] = cropWithBuffer(img, bounding_box, buff_pct, buff_val)
 %% cropWithBuffer: cropping function that allows buffer space around cropped object
-% This function is a modification of MATLAB's built-in imcrop function that simply extends the
-% bounding box by a set value to buffer the final cropped image.
+% This function is a modification of MATLAB's built-in imcrop function that  
+% extends the bounding box by some value to buffer the final cropped image. 
+%
+% The main purpose is to buffer an image with the median pixel intensity of the 
+% background to deal with algorithms that analyze an object at the ver edge of 
+% the image. This means there should be no 0 or NaN values as well as negative
+% coordinate values to deal with.
 %
 % Usage:
-%   crp = cropWithBuffer(img, bounding_box, buff_pct, buff_val)
+%   [crpb, crpi] = cropWithBuffer(img, bounding_box, buff_pct, buff_val)
 %
 % Input:
 %   img: full-sized inputted image to crop
-%   bounding_box: [1 x 4] vector defining the x-/y-coordinate and row/column distance of an object
+%   bounding_box: [1 x 4] crop vector of x-/y-coordinate and row/column distance
 %   buff_pct: percentage to extend the range of the bounding_box parameter
 %   buff_val: pixel intensity value to fill buffered region
 %
