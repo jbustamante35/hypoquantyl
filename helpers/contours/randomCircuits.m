@@ -1,4 +1,4 @@
-function CRCS = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
+function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
 % This function takes in a fully-generated Experiment object as input and
 % extracts random frames from random Hypocotyl objects to use as training data
@@ -29,6 +29,7 @@ function CRCS = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
 %
 % Output:
 %   CRCS: CircuitJB array of manually-drawn contours from Experiment Ein
+%   figs: handles to figures if vis is set to true
 %
 % NOTE: [11/28/2018]
 %   I completely changed the methods used for extracting images from a class,
@@ -81,7 +82,7 @@ end
 %% Show 8 first images and masks, unless < 8 contours drawn
 if vis
     if Ncrcs < 8
-        N = Ncrcs;
+        N = numel(CRCS);
     else
         N = 8;
     end
@@ -105,6 +106,10 @@ if vis
         saveFigure('gray', N, fig1);
         saveFigure('bw',   N, fig2);
     end
+    
+    figs = [fig1 fig2];
+else
+    figs = [];
 end
 end
 
@@ -126,6 +131,7 @@ frms = rs.getGoodFrames;
 rFrm = frms(randi(length(frms), 1));
 
 % Get image from either Seedling or Hypocotyl
+% [TODO]: should this default to setting CircuitJB with cropWithBuffer?
 if typ
     rs  = rs.MyHypocotyl;
     im  = rs.getImage(rFrm, 'gray');
@@ -152,7 +158,7 @@ crc.CreateRoutes;
 if typ
     rs.setCircuit(rFrm, crc, 'org');
 else
-    rs.setContour(rFrm, crc)
+    rs.setContour(rFrm, crc);
 end
 
 % Extract manual contour from flipped image
@@ -173,7 +179,7 @@ if flip
     if typ
         rs.setCircuit(rFrm, flp, 'flp');
     else
-        rs.setContour(rFrm, flp)
+        rs.setContour(rFrm, flp);
     end
 end
 end
