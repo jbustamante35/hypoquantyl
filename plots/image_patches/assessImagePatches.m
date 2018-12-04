@@ -1,9 +1,9 @@
 function PATCHES = assessImagePatches(c, itr, scl, gaus, figs, fnms, sv)
 %% assessImagePatches: run pipeline to generate and analyze image patches
-% This function runs a neat little pipeline to generate an image patch of a randomly chosen segment
-% from a randomly chosen contour from the dataset in section 1 of this file. If the sv parameter is
-% set to true, the figures will be saved in an individual folder of the name of the contour and
-% segment chosen.
+% This function runs a neat little pipeline to generate an image patch of a 
+% randomly chosen segment from a randomly chosen contour from the dataset in 
+% section 1 of this file. The sv parameter will save figures in an individual 
+% folder of the name of the contour and segment chosen.
 %
 % Use the following set of commands to run through this pipeline N times:
 %   Ps = cell(1, N)';
@@ -18,7 +18,7 @@ function PATCHES = assessImagePatches(c, itr, scl, gaus, figs, fnms, sv)
 %
 % Input:
 %   c: CircuitJB object array of contours to extract image patches
-%   itr: number of intermediate curves between main segment and inner/outer envelopes
+%   itr: number of curves between main segment and inner/outer envelopes
 %   scl: magnitude to scale maximum envelope distance
 %   gaus: sigma value for gaussian filtering to smooth image patch
 %   figs: array of figure indices [enter 0 to autogenerate figures]
@@ -49,14 +49,15 @@ end
 
 if ~fnms
     fnms = cell(1,4);
-    fnms{1} = sprintf('%s_TraceDecomposedCurve', datestr(now, 'yymmdd'));
-    fnms{2} = sprintf('%s_DecomposedCurveOnImage', datestr(now, 'yymmdd'));
-    fnms{3} = sprintf('%s_CurvePixelIntensities', datestr(now, 'yymmdd'));
-    fnms{4} = sprintf('%s_CurveAndEnvelopeOnFullContour', datestr(now, 'yymmdd'));
+    fnms{1} = sprintf('%s_TraceDecomposedCurve', tdate('s'));
+    fnms{2} = sprintf('%s_DecomposedCurveOnImage', tdate('s'));
+    fnms{3} = sprintf('%s_CurvePixelIntensities', tdate('s'));
+    fnms{4} = sprintf('%s_CurveAndEnvelopeOnFullContour', tdate('s'));
 end
 
 %% Get random curve segment from random contour
-% Take derivative of segment and get tangent line at each coordinate then get unit vector distances
+% Take derivative of segment and get tangent line at each coordinate, then get 
+% the unit vector distances for each segment
 [ctrIdx, ctr, crv, numSegs, segIdx] = randomContourAndSegment(c, m);
 segNrm                              = crv.NormalSegments(:, :, segIdx);
 
@@ -74,7 +75,8 @@ plt(envOut, 'r.-', 1);
 plt(envInn, 'b.-', 1);
 
 axis ij;
-ttl = sprintf('Midpoint-Normalized Curve with Out/Inn Envelope \n Contour %d | Segment %d', ...
+ttl = sprintf( ...
+    'Midpoint-Normalized Curve with Out/Inn Envelope \n Contour %d | Segment %d', ...
     ctrIdx, segIdx);
 title(ttl);
 
@@ -96,7 +98,7 @@ ttl = sprintf('Full Envelope Structure \n Contour %d | Segments %d', ...
 title(ttl);
 
 drawnow;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Convert to image axis coordinates
 set(0, 'CurrentFigure', figs(nxt));
 nxt = nxt + 1;
@@ -121,7 +123,8 @@ plt(envInnm, 'bo-', 1);
 colormap gray;
 axis ij;
 axis tight;
-ttl = sprintf('Original Reference Frame Coordinates \n Segment and Envelope only  \n Contour %d | Segment %d', ...
+ttl = sprintf( ...
+    'Original Reference Frame Coordinates \n Segment and Envelope only  \n Contour %d | Segment %d', ...
     ctrIdx, segIdx);
 title(ttl);
 
@@ -129,8 +132,10 @@ title(ttl);
 subplot(212);
 hold on;
 
-[fullOuti, fullOutm] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ptsOut, 'UniformOutput', 0);
-[fullInni, fullInnm] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ptsInn, 'UniformOutput', 0);
+[fullOuti, fullOutm] = ...
+    cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ptsOut, 'UniformOutput', 0);
+[fullInni, fullInnm] = ...
+    cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ptsInn, 'UniformOutput', 0);
 
 imagesc(img);
 plt(segRawm, 'yo-', 1);
@@ -142,12 +147,13 @@ cellfun(@(x) plt(x, 'b.-', 1), fullInnm, 'UniformOutput', 0);
 colormap gray;
 axis ij;
 axis tight;
-ttl = sprintf('Original Reference Frame Coordinates \n Full envelope structure \n Contour %d | Segment %d', ...
+ttl = sprintf( ...
+    'Original Reference Frame Coordinates \n Full envelope structure \n Contour %d | Segment %d', ...
     ctrIdx, segIdx);
 title(ttl);
 
 drawnow;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Plot pixel intensities along curve and envelopes
 set(0, 'CurrentFigure', figs(nxt));
 nxt = nxt + 1;
@@ -162,7 +168,9 @@ imagesc(px);
 colormap summer;
 axis ij;
 axis tight;
-ttl = sprintf('Pixel intensities (extremes) \n Contour %d | Segment %d \n Inner | Center | Outer', ctrIdx, segIdx);
+ttl = sprintf( ...
+    'Pixel intensities (extremes) \n Contour %d | Segment %d \n Inner | Center | Outer', ...
+    ctrIdx, segIdx);
 title(ttl);
 
 % Convert full envelope to image axis coordinates and chek pixel intensities
@@ -176,11 +184,13 @@ imagesc(imPtch);
 colormap summer;
 axis ij;
 axis tight;
-ttl = sprintf('Pixel intensities (full envelope) \n Contour %d | Segment %d \n Inner | Center | Outer', ctrIdx, segIdx);
+ttl = sprintf( ...
+    'Pixel intensities (full envelope) \n Contour %d | Segment %d \n Inner | Center | Outer', ...
+    ctrIdx, segIdx);
 title(ttl);
 
 drawnow;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Construct entire contour using this function
 set(0, 'CurrentFigure', figs(nxt));
 nxt = nxt + 1;
@@ -208,12 +218,13 @@ end
 
 colormap gray;
 axis ij;
-ttl = sprintf('Converted Segment and Envelope on Full Contour \n Contour %d | Segment %d', ...
+ttl = sprintf( ...
+    'Converted Segment and Envelope on Full Contour \n Contour %d | Segment %d', ...
     ctrIdx, segIdx);
 title(ttl);
 
 drawnow;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Store data into Curve object
 % TODO
 

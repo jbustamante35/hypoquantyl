@@ -54,6 +54,12 @@ classdef Hypocotyl < handle
             
         end
         
+        function obj = PruneSeedlings(obj)
+            %% Remove RawSeedlings to decrease data
+            obj.RawSeedlings = [];
+            
+        end
+        
         function obj = DerefParents(obj)
             %% Remove reference to Parent property
             obj.Parent = [];
@@ -176,25 +182,31 @@ classdef Hypocotyl < handle
                     end
                     
                 case 4
-                    % Return frame with cropped and buffered region around image
+                    % Return Specific image type
+                    % Get requested data field
+                    % Crop with buffered region around image
                     try
                         frm = varargin{2};
+                        req = varargin{3}; % Not applicable here
+                        buf = varargin{4}; % Not applicable here
                         
-                        img = obj.Parent.getImage(frm, 'gray');                        
+                        img = obj.Parent.getImage(frm, 'gray');
                         msk = obj.Parent.getImage(frm, 'bw');
-                        bnd = obj.getCropBox(frm); 
+                        bnd = obj.getCropBox(frm);
                         
-                        crp = imcrop(img, bnd);
-                        scl = imresize(crp, sclsz);
+                        %                         bgFunction = @(img,bg,val) median(img(bg == val));
+                        %                         medBg      = bgFunction(img, bg, 0);
+                        %
+                        %                         pxls = obj.Parent.getPData(frm, 'PixelList');
+                        %                         crds = pxls - min(pxls);
                         
-                        medBg     = median(img(msk == 1));
-%                         [crpb, ~] = cropWithBuffer(scl, bnd, ...
-%                             obj.BUFF_PCT, medBg);
-%                         dat       = imresize(crpb, sclsz);
-
-                        [dat, ~] = cropWithBuffer(scl, bnd, ...
+                        medBg = median(img(msk == 1));
+                        [crpb, ~] = cropWithBuffer(img, bnd, ...
                             obj.BUFF_PCT, medBg);
+                        dat = imresize(crpb, sclsz);
                         
+                        % crp = imcrop(img, obj.getCropBox(frm));
+                        % dat = imresize(crp, sclsz);
                     catch
                         fprintf(2, ...
                             'Requested field must be either: gray | bw\n');
