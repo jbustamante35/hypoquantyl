@@ -20,7 +20,5 @@ plt = subplot(1, 1, 1);
 imagesc(im, 'Parent', plt);
 colormap gray, axis image;
 title(sprintf('Draw %s', ttl));
-% h = impoly(plt);
-% h.setColor(clr);
 h = drawpolygon(plt, 'Color', clr);
 end
