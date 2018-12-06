@@ -59,16 +59,16 @@ classdef Curve < handle
         end
         
         function obj = RunFullPipeline(obj, ver)
-            %% Runs full pipeline from full Trace from Parent to generating ImagePatch
-                        
-            t = tic;
+            %% Runs full pipeline from Parent's Trace to generating ImagePatch
+
+            tRun = cputime;
             tic; obj.SegmentOutline; fprintf('\nSplitting full outline: %.02f sec\n', toc);            
             tic; obj.NormalizeSegments; fprintf('Midpoint Normalization conversion: %.02f sec\n', toc);
             tic; obj.SmoothSegments; fprintf('Smoothing Segments: %.02f sec\n', toc);
             tic; obj.CreateEnvelopeStructure(ver); fprintf('Creating Envelope Structure: %.02f sec\n', toc);
             tic; obj.Normal2Envelope(ver); fprintf('Converting to Envelope coordinates: %.02f sec\n', toc);
             tic; obj.GenerateImagePatch(ver); fprintf('Generating Image Patch: %.02f sec\n', toc);
-            fprintf('%.02f sec to complete a single contour\n\n', toc(t));
+            fprintf('%.02f sec to complete a single contour\n\n', cputime-tRun);
             
         end
         
