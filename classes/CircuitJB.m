@@ -141,19 +141,25 @@ classdef CircuitJB < handle
             obj.setImage(1, 'mask', msk);
         end
         
-        function obj = DrawOutline(obj, frm)
+        function obj = DrawOutline(obj, frm, buf, flp)
             %% Draw RawOutline on this object's Image
             % The function crds2mask was changed (see generateMasks method for
             % this class) to include a buffering size parameter. When creating
             % the initial CircuitJB contour, just set this to 0 until I
             % understand it better.
+            %
+            % If the buf parameter is set to true, then the image returned from
+            % the parent Hypocotyl contains a buffered region around the image.
+            %
+            % If the flp parameter is set to true, then the FlipMe method is
+            % called before prompting user to draw contour.            
             try
                 % Trace outline and store as RawOutline
-                img = obj.getImage(frm, 'gray');
+                img = obj.getImage(frm, 'gray', buf);
                 c   = drawPoints(img, 'y', 'Outline');
                 crd = c.Position;
                 obj.setRawOutline(frm, crd);
-                obj.setImage(frm, 'bw', c.createMask);
+%                 obj.setImage(frm, 'bw', c.createMask);
                 % Exclude this as it isn't used until creating probability masks
                 %                 msk = crds2mask(img, crd, buff);
                 %                 obj.setImage(frm, 'mask', msk);
@@ -317,17 +323,17 @@ classdef CircuitJB < handle
                     end
                     
                 case 3
-                    % Returns buffered image
-                    % Arguments 2-3 are not necessary
+                    % Returns buffered image with the option to use the flipped
+                    % version of the image
                     try
-                        req = varargin{2};
-                        buf = varargin{3};
+                        buf = varargin{2};
+                        flp = varargin{3};
 
                         nm  = obj.Origin;
                         aa  = strfind(nm, '{');
                         bb  = strfind(nm, '}');
                         frm = str2double(nm(aa(end) + 1 : bb(end) - 1));
-                        dat = obj.Parent.getImage(frm, req, buf);
+                        dat = obj.Parent.getImage(frm, buf, flp);
 
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);
