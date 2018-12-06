@@ -45,12 +45,24 @@ classdef Hypocotyl < handle
             
         end
         
-        function [im, bw] = FlipMe(obj, frm)
+        function [im, bw] = FlipMe(obj, frm, buf)
             %% Store a flipped version of each Hypocotyl
-            % Flipped version allows equal representation of all
-            % orientations of contours (lolz)
-            im = flip(obj.getImage(frm, 'gray'), 2);
-            bw = flip(obj.getImage(frm, 'bw'), 2);
+            % Flipped version allows equal representation of all orientations of
+            % contours because equality (lolz). If buf is set to true, use the
+            % version with a buffered region around the image
+            % 
+            % Input:
+            %   obj: this Hypocotyl object
+            %   frm: time point to extract image from
+            %   buf: boolean to return buffered region around image
+            
+            if buf
+                im = flip(obj.getImage(frm, 'gray', buf), 2);
+                bw = flip(obj.getImage(frm, 'bw', buf), 2);
+            else
+                im = flip(obj.getImage(frm, 'gray'), 2);
+                bw = flip(obj.getImage(frm, 'bw'), 2);
+            end
             
         end
         
@@ -177,23 +189,33 @@ classdef Hypocotyl < handle
                     
                 case 4
                     % Return frame with cropped and buffered region around image
-                    try
+                    % Set flp to true to use flipped version of image
+                    try                        
                         frm = varargin{2};
+                        buf = varargin{3};
+                        flp = varargin{4};
                         
-                        img = obj.Parent.getImage(frm, 'gray');                        
-                        msk = obj.Parent.getImage(frm, 'bw');
-                        bnd = obj.getCropBox(frm); 
+                        if flp
+                            % Extract image from parent Seedling
+                            [img, msk] = obj.FlipMe(frm, 0);
+                        else
+                            img = obj.Parent.getImage(frm, 'gray');
+                            msk = obj.Parent.getImage(frm, 'bw');
+                        end
                         
+                        % Initial crop and scale to normalized size
+                        bnd = obj.getCropBox(frm);
                         crp = imcrop(img, bnd);
                         scl = imresize(crp, sclsz);
                         
-                        medBg     = median(img(msk == 1));
-%                         [crpb, ~] = cropWithBuffer(scl, bnd, ...
-%                             obj.BUFF_PCT, medBg);
-%                         dat       = imresize(crpb, sclsz);
-
-                        [dat, ~] = cropWithBuffer(scl, bnd, ...
-                            obj.BUFF_PCT, medBg);
+                        if buf
+                            % Compute median background intensity for buffer
+                            medBg    = median(img(msk == 1));
+                            [dat, ~] = cropWithBuffer(scl, bnd, ...
+                                obj.BUFF_PCT, medBg);
+                        else
+                            dat = scl;
+                        end
                         
                     catch
                         fprintf(2, ...
