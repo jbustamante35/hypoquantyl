@@ -1,4 +1,4 @@
-function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
+function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flipme, sv, vis)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
 % This function takes in a fully-generated Experiment object as input and
 % extracts random frames from random Hypocotyl objects to use as training data
@@ -17,13 +17,13 @@ function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
 %       * Run RemoveBadFrames method
 %
 % Usage:
-%   CRCS = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
+%   CRCS = randomCircuits(Ein, Ncrcs, typ, flipme, sv, vis)
 %
 % Input:
 %   Ein: Experiment object to draw from to generate contour data
 %   Ncrcs: number of random Seedlings to analyze
 %   typ: 0 to get contours of Seedlings, 1 to get contours of Hypocotyls
-%   flip: boolean to inflate dataset with flipped versions of each Hypocotyl
+%   flipme: boolean to inflate dataset with flipped versions of each Hypocotyl
 %   sv: save figures as .fig and .tiff files
 %   vis: boolean to plot figures or not
 %
@@ -42,31 +42,47 @@ function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flip, sv, vis)
 %   frames from Hypocotyl objects, rather than PreHypocotyl objects, as it was
 %   before the change.
 %
+% TODO: [12/06/2018]
+%   There will be a need to generate datasets of hypocotyls of specific shapes
+%   or specific time points, so I need to make this more flexible to allow a
+%   matrix input to draw contours around a desired hypocotyl. 
+%
+%   I'm imagining this as a [N x 3] input, where N is the desired number of
+%   contours to draw, each with 3 integers designating a specific Genotype,
+%   Seedling, and frame to show. 
+%   
+%   As of now, let's just focus on getting a solid algorithm established. 
+%
 
 %% Initialize object array of Seedlings/Hypocotyl to draw contours for
-S = Ein.combineSeedlings;
+if typ
+    S = Ein.combineHypocotyls;
+else
+    S = Ein.combineSeedlings;
+end
+
 sIdx = randi(numel(S), 1, Ncrcs);
-if flip
+if flipme
     CRCS = makeCircuits(Ncrcs * 2);
 else
     CRCS = makeCircuits(Ncrcs);
 end
 
 %% Draw contours at random frame from random Seedling/Hypocotyl
-% If flp parameter set to true, then CircuitJB array is stored in n x 2, where
-% the flipped version is stored in dimension 2 of a Hypocotyl object
+% If flipme parameter set to true, then CircuitJB array is stored in n x 2, 
+% where the flipped version is stored in dimension 2 of a Hypocotyl object
 cIdx = 1;
 for k = sIdx
     rs = S(k);
     
-    if flip
-        [org, flp] = getCircuit(rs, typ, flip);
+    if flipme
+        [org, flp] = getCircuit(rs, typ, flipme);
         CRCS(cIdx) = org;
         cIdx       = cIdx + 1;
         CRCS(cIdx) = flp;
         cIdx       = cIdx + 1;
     else
-        CRCS(cIdx) = getCircuit(rs, typ, flip);
+        CRCS(cIdx) = getCircuit(rs, typ, flipme);
         cIdx = cIdx + 1;
     end
     cla;clf;
@@ -123,30 +139,28 @@ for i = 1 : n
 end
 end
 
-function [crc, flp] = getCircuit(rs, typ, flip)
+function [crc, flp] = getCircuit(rndS, typ, flipme)
 %% getCircuit: subfunction to manually-draw contour on random frame of Seedling
 
-% Get a random good frame from Seedling's lifetime
-frms = rs.getGoodFrames;
-rFrm = frms(randi(length(frms), 1));
-
-% Get image from either Seedling or Hypocotyl
-% [TODO]: should this default to setting CircuitJB with cropWithBuffer?
+% Get a random good frame and image from Seedling's lifetime
 if typ
-    rs  = rs.MyHypocotyl;
-    im  = rs.getImage(rFrm, 'gray');
-    org = sprintf('%s_%s_%s_%s_Frm{%d}', rs.ExperimentName, ...
-        rs.GenotypeName, rs.SeedlingName, rs.HypocotylName, rFrm);
-else
-    im  = rs.getImage(rFrm, 'gray');
-    org = sprintf('%s_%s_%s_Frm{%d}', rs.ExperimentName, rs.GenotypeName, ...
-        rs.SeedlingName, rFrm);
-end
+    frms = rndS.Parent.getGoodFrames;
+    rFrm = frms(randi(length(frms), 1));
+    org  = sprintf('%s_%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
+        rndS.GenotypeName, rndS.SeedlingName, rndS.HypocotylName, rFrm);
+%     im  = rndS.getImage(rFrm, 'gray', 1);
+else    
+    frms = rndS.getGoodFrames;
+    rFrm = frms(randi(length(frms), 1));
+    org  = sprintf('%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
+        rndS.GenotypeName, rndS.SeedlingName, rFrm);
+%     im  = rndS.getImage(rFrm, 'gray');
+end   
 
 % Set image and origin data for CircuitJB
-crc = CircuitJB('Origin', org, 'Parent', rs);
-crc.setParent(rs);
-crc.setImage(1, 'gray', im);
+crc = CircuitJB('Origin', org, 'Parent', rndS);
+crc.setParent(rndS);
+% crc.setImage(1, 'gray', im); % Writes image into memory
 
 % Draw Outline and AnchorPoints and normalize coordinates
 crc.DrawOutline(1);
@@ -156,20 +170,20 @@ crc.CreateRoutes;
 
 % Set Contour for this object
 if typ
-    rs.setCircuit(rFrm, crc, 'org');
+    rndS.setCircuit(rFrm, crc, 'org');
 else
-    rs.setContour(rFrm, crc);
+    rndS.setContour(rFrm, crc);
 end
 
 % Extract manual contour from flipped image
-if flip
-    flpim = rs.FlipMe(rFrm);
-    org = sprintf('flip_%s_%s_%s_%s_Frm{%d}', rs.ExperimentName, ...
-        rs.GenotypeName, rs.SeedlingName, rs.HypocotylName, rFrm);
+if flipme
+    flpim = rndS.FlipMe(rFrm, 1);
+    org = sprintf('flip_%s_%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
+        rndS.GenotypeName, rndS.SeedlingName, rndS.HypocotylName, rFrm);
     
-    flp = CircuitJB('Origin', org, 'Parent', rs);
-    flp.setParent(rs);
-    flp.setImage(1, 'gray', flpim);
+    flp = CircuitJB('Origin', org, 'Parent', rndS);
+    flp.setParent(rndS);
+%     flp.setImage(1, 'gray', flpim);
     
     flp.DrawOutline(1);
     flp.DrawAnchors(1);
@@ -177,11 +191,33 @@ if flip
     flp.CreateRoutes;
     
     if typ
-        rs.setCircuit(rFrm, flp, 'flp');
+        rndS.setCircuit(rFrm, flp, 'flp');
     else
-        rs.setContour(rFrm, flp);
+        rndS.setContour(rFrm, flp);
     end
 end
+end
+
+function crc = createCircuit(rndS, org, typ)
+%% Create CircuitJB and prompt user to draw contour
+% Set image and origin data for CircuitJB
+crc = CircuitJB('Origin', org, 'Parent', rndS);
+crc.setParent(rndS);
+% crc.setImage(1, 'gray', im); % Writes image into memory
+
+% Draw Outline and AnchorPoints and normalize coordinates
+crc.DrawOutline(1);
+crc.DrawAnchors(1);
+crc.ConvertRawPoints;
+crc.CreateRoutes;
+
+% Set Contour for this object
+if typ
+    rndS.setCircuit(rFrm, crc, 'org');
+else
+    rndS.setContour(rFrm, crc);
+end
+
 end
 
 function showImage(num, fig, im)
