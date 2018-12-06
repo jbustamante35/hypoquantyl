@@ -23,7 +23,7 @@ classdef Hypocotyl < handle
         CropBox
         Midline
         Coordinates
-        BUFF_PCT = 40
+        BUFF_PCT = 20
     end
     
     methods (Access = public)
@@ -180,20 +180,16 @@ classdef Hypocotyl < handle
                     try
                         frm = varargin{2};
                         
+                        % Prep cropped and rescaled image
                         img = obj.Parent.getImage(frm, 'gray');                        
                         msk = obj.Parent.getImage(frm, 'bw');
-                        bnd = obj.getCropBox(frm); 
-                        
+                        bnd = obj.getCropBox(frm);                         
                         crp = imcrop(img, bnd);
                         scl = imresize(crp, sclsz);
                         
-                        medBg     = median(img(msk == 1));
-%                         [crpb, ~] = cropWithBuffer(scl, bnd, ...
-%                             obj.BUFF_PCT, medBg);
-%                         dat       = imresize(crpb, sclsz);
-
-                        [dat, ~] = cropWithBuffer(scl, bnd, ...
-                            obj.BUFF_PCT, medBg);
+                        % Set median background value to buffered region 
+                        medBg = median(img(msk == 1));
+                        dat   = cropWithBuffer(scl, bnd, obj.BUFF_PCT, medBg);
                         
                     catch
                         fprintf(2, ...
