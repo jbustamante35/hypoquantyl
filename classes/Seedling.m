@@ -317,13 +317,13 @@ classdef Seedling < handle
                     % Grayscale or bw image(s) at single or range of frames
                     try
                         frm = varargin{2};
+                        req = varargin{3};
                         if numel(rng) > 1
                             idx = rng(frm);
                         else
                             idx = obj.getFrame('b');
                         end
-                        
-                        req = varargin{3};
+                                                
                         img = obj.Parent.getImage(idx, req);
                         bnd = obj.getPData(frm, 'BoundingBox');
                         dat = imcrop(img, bnd);
