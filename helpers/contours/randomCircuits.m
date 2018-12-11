@@ -45,13 +45,13 @@ function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flipme, sv, vis)
 % TODO: [12/06/2018]
 %   There will be a need to generate datasets of hypocotyls of specific shapes
 %   or specific time points, so I need to make this more flexible to allow a
-%   matrix input to draw contours around a desired hypocotyl. 
+%   matrix input to draw contours around a desired hypocotyl.
 %
 %   I'm imagining this as a [N x 3] input, where N is the desired number of
 %   contours to draw, each with 3 integers designating a specific Genotype,
-%   Seedling, and frame to show. 
-%   
-%   As of now, let's just focus on getting a solid algorithm established. 
+%   Seedling, and frame to show.
+%
+%   As of now, let's just focus on getting a solid algorithm established.
 %
 
 %% Initialize object array of Seedlings/Hypocotyl to draw contours for
@@ -69,7 +69,7 @@ else
 end
 
 %% Draw contours at random frame from random Seedling/Hypocotyl
-% If flipme parameter set to true, then CircuitJB array is stored in n x 2, 
+% If flipme parameter set to true, then CircuitJB array is stored in n x 2,
 % where the flipped version is stored in dimension 2 of a Hypocotyl object
 cIdx = 1;
 for k = sIdx
@@ -106,21 +106,23 @@ if vis
     fig1 = figure;
     fig2 = figure;
     for i = 1 : N
-        % Show grayscale image
-        showImage(i, fig1, CRCS(i).getImage(1, 'gray'));
-        hold on;
+        
+        rts = CRCS(i).getRoute;
         
         % Draw Routes on grayscale image
-        rts = CRCS(i).getRoute;
-        arrayfun(@(x) drawRoutesAndMeans(x), rts, 'UniformOutput', 0);
+        showImage(i, fig1, CRCS(i).getImage('gray'));
+        hold on;        
+        arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
+
+        % Draw Routes bw image
+        showImage(i, fig2, CRCS(i).getImage('bw'));
+        hold on;
+        arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
         
-        % Show masked image
-        showImage(i, fig2, CRCS(i).getImage(1, 'bw'));
     end
     
     if sv
         saveFigure('gray', N, fig1);
-        saveFigure('bw',   N, fig2);
     end
     
     figs = [fig1 fig2];
@@ -148,47 +150,27 @@ if typ
     rFrm = frms(randi(length(frms), 1));
     org  = sprintf('%s_%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
         rndS.GenotypeName, rndS.SeedlingName, rndS.HypocotylName, rFrm);
-%     im  = rndS.getImage(rFrm, 'gray', 1);
-else    
+    
+else
     frms = rndS.getGoodFrames;
     rFrm = frms(randi(length(frms), 1));
     org  = sprintf('%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
         rndS.GenotypeName, rndS.SeedlingName, rFrm);
-%     im  = rndS.getImage(rFrm, 'gray');
-end   
+    
+end
 
-% Set image and origin data for CircuitJB
-crc = CircuitJB('Origin', org, 'Parent', rndS);
-crc.setParent(rndS);
-% crc.setImage(1, 'gray', im); % Writes image into memory
-
-% Draw Outline and AnchorPoints and normalize coordinates
-crc.DrawOutline(1);
-crc.DrawAnchors(1);
-crc.ConvertRawPoints;
-crc.CreateRoutes;
-
-% Set Contour for this object
+% Set original orientation of Circuit or Contour for this object
+crc = drawCircuit(rndS, org, 0);
 if typ
     rndS.setCircuit(rFrm, crc, 'org');
 else
     rndS.setContour(rFrm, crc);
 end
 
-% Extract manual contour from flipped image
+% Set flipped orientation of Circuit or Contour for this object
 if flipme
-    flpim = rndS.FlipMe(rFrm, 1);
-    org = sprintf('flip_%s_%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
-        rndS.GenotypeName, rndS.SeedlingName, rndS.HypocotylName, rFrm);
-    
-    flp = CircuitJB('Origin', org, 'Parent', rndS);
-    flp.setParent(rndS);
-%     flp.setImage(1, 'gray', flpim);
-    
-    flp.DrawOutline(1);
-    flp.DrawAnchors(1);
-    flp.ConvertRawPoints;
-    flp.CreateRoutes;
+    forg = sprintf('flip_%s', org);
+    flp  = drawCircuit(rndS, forg, flipme);
     
     if typ
         rndS.setCircuit(rFrm, flp, 'flp');
@@ -198,25 +180,20 @@ if flipme
 end
 end
 
-function crc = createCircuit(rndS, org, typ)
+function crc = drawCircuit(rndS, org, flipme)
 %% Create CircuitJB and prompt user to draw contour
 % Set image and origin data for CircuitJB
 crc = CircuitJB('Origin', org, 'Parent', rndS);
 crc.setParent(rndS);
-% crc.setImage(1, 'gray', im); % Writes image into memory
+crc.checkFlipped;
 
 % Draw Outline and AnchorPoints and normalize coordinates
-crc.DrawOutline(1);
-crc.DrawAnchors(1);
+% NOTE: At this point, I decided don't want to buffer images anymore. Instead,
+% I will just set out-of-frame coordinates as the median background intensity.
+crc.DrawOutline(0, flipme);
+crc.DrawAnchors(0, flipme);
 crc.ConvertRawPoints;
 crc.CreateRoutes;
-
-% Set Contour for this object
-if typ
-    rndS.setCircuit(rFrm, crc, 'org');
-else
-    rndS.setContour(rFrm, crc);
-end
 
 end
 
@@ -227,24 +204,27 @@ subplot(4,2,num);
 imagesc(im);
 colormap gray, axis image;
 hold on;
+
 end
 
-function drawRoutesAndMeans(r)
+function drawRoutesAndMidPoints(r)
 %% Plot single Route onto figure
-plt = r.getInterpTrace(1);
-mn  = r.getMean(1);
+crd = r.getInterpTrace;
+mid = r.getMidPoint;
 
-plot(plt(:,1), plt(:,2), 'LineWidth', 2);
-plot(mn(1),    mn(2),    'o', 'MarkerSize', 7);
+plt([crd(:,1) , crd(:,2)], '-', 2);
+plt([mid(1)   , mid(2)],   'o', 7);
 hold on;
+
 end
 
 function saveFigure(im, N, fig)
 %% Save figure as .fig and .tiff files
 nm = sprintf('%s_%drandomCircuits_%s', tdate('s'), N, im);
-set(fig,'Color','w');
+set(fig, 'Color', 'w');
 savefig(fig, nm);
 saveas(fig, nm, 'tiffn');
+
 end
 
 

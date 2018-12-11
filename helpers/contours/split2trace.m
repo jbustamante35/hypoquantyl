@@ -1,11 +1,11 @@
 function trc = split2trace(oLine, aPts, num_anchors)
-%% split2trace: split full contour into separate traces defined by anchor points
-% This function takes coordinates defining an outline and coordinates defining anchor points along
-% that outline, and returns an array of sub-outlines, where the start and end point of each of those
-% sub-outlines are 2 anchorpoints.
+%% split2trace: split contour into separate traces defined by anchor points
+% This function takes coordinates defining an outline and coordinates defining 
+% anchor points along that outline, and returns an array of sub-outlines, where
+% the start and end point of each of those sub-outlines are 2 anchorpoints.
 %
 % Usage:
-%   trc = split2trace(oLine, aPts)
+%   trc = split2trace(oLine, aPts, num_anchors)
 %
 % Input:
 %   oLine: [n x 2] array of coordinates definining an outline
@@ -13,7 +13,7 @@ function trc = split2trace(oLine, aPts, num_anchors)
 %   num_anchors: total number of anchor points
 %
 % Output:
-%   trc: [p x 2 x m] array of coordinates defining a trace between all m anchor points
+%   trc: [p x 2 x m] array of coordinates defining traces between anchor points
 %
 
 %% Set size of output matrix
@@ -30,7 +30,7 @@ for i = 1 : num_anchors
         trc(:,:,i) = padarray(crds, (sz - length(crds)), 'post');
     else
     % Set coordinate at last index to top of array to get to first index 
-        shft       = circshift(oLine,-aPts(end)+1);
+        shft       = circshift(oLine, -aPts(end)+1);
         newPos     = aPts(1) + (length(oLine) - aPts(end)) + 1;
         crds       = shft(1 : newPos, :);
         trc(:,:,i) = padarray(crds, (sz - length(crds)), 'post');
