@@ -108,7 +108,7 @@ cla;clf;
 subplot(211);
 hold on;
 
-img                = ctr.getImage(1, 'gray');
+img                = ctr.getImage('gray');
 Pm                 = crv.getParameter('Pmats', segIdx);
 mid                = crv.getMidPoint(segIdx);
 [segRawi, segRawm] = mapCurve2Image(segNrm, img, Pm, mid);
