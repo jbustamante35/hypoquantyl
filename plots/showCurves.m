@@ -34,7 +34,7 @@ set(gcf, 'Color', 'w');
 
 %% Subplot 1: contour with segments, midpoints, endpoints, and raw coordinates
 subplot(211);
-imagesc(c.getImage(1, 'gray'));
+imagesc(c.getImage('gray'));
 colormap gray;
 axis image;
 hold on;
@@ -48,7 +48,7 @@ arrayfun(@(x) plt(crv.getEndPoint(x, 1), 'o', 3), 1 : seg, 'UniformOutput', 0);
 arrayfun(@(x) plt(crv.getEndPoint(x, 2), '+', 3), 1 : seg, 'UniformOutput', 0);
 
 env = 20;
-plc = '[PlaceHolder Contour Name]';
+plc = fixtitle(c.Origin);
 ttl = sprintf('%s(%d) \n Segments %d | StepSize %d', plc, idx, seg, env);
 title(ttl);
 
