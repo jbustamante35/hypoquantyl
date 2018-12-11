@@ -40,12 +40,8 @@ classdef Route < handle
         function obj = InterpolateTrace(obj)
             %% Convert RawTrace to InterpTrace
             rT = obj.RawTrace;
-            sz = obj.INTERPOLATIONSIZE;
-            iT = zeros(sz, 2, numel(rT));
-            
-            for i = 1 : numel(rT)
-                iT(:,:,i) = interpolateOutline(rT{i}, sz);
-            end
+            sz = obj.INTERPOLATIONSIZE;            
+            iT = interpolateOutline(rT, sz);
             
             obj.InterpTrace = iT;
         end
@@ -76,27 +72,76 @@ classdef Route < handle
             org = obj.Origin;
         end
         
-        function obj = setRawTrace(obj, frm, trc)
-            %% Set coordinates for RawOutline at specific frame
+        function obj = setAnchors(obj, bgin, dest)
+            %% Set beginning and ending AnchorPoints for this Route
             try
-                obj.RawTrace{frm} = trc;
-            catch
-                fprintf(2, 'Error setting RawTrace at frame %d \n', frm);
+                obj.Anchors(1,:) = bgin;
+                obj.Anchors(2,:) = dest;
+            catch e
+                fprintf(2, 'Error setting AnchorPoints\n%s\n', e.getReport);
             end
         end
         
-        function trc = getRawTrace(varargin)
-            %% Return RawOutline at specific frame
+        function apt = getAnchors(obj, req)
+            %% Return one or both Anchors for this Route
             try
-                obj = varargin{1};
-                if nargin == 1
-                    trc = cat(1, obj.RawTrace{:});
+                if isempty(req)
+                        % Both Anchors
+                        apt = obj.Anchors;
+                        
+                elseif isnumeric(req)
+                        % Request specifically indexed AnchorPoint
+                        apt  = obj.Anchors(req,:);
+                        
+                elseif ischar(req)
+                        % Request raw or mean-subtracted Birth or Death Anchor
+                        switch req
+                            case 'b'
+                                % Starting Anchor
+                                apt  = obj.Anchors(1,:);
+                            case 'd'
+                                % Ending Anchor
+                                apt  = obj.Anchors(2,:);
+                                
+                            case 'b2'
+                                % Mean subtracted Starting Anchor
+                                apt = obj.Anchors(3,:);
+                                
+                            case 'd2'
+                                % Mean subtracted, Zero-set Ending Anchor
+                                apt = obj.Anchors(4,:);
+                                
+                            otherwise
+                                fprintf(2, 'No Anchor specified \n');
+                                apt = [];
+                        end
+                        
                 else
-                    frm = varargin{2};
-                    trc = obj.RawTrace{frm};
+                    % Both Anchors
+                        apt = obj.Anchors;
                 end
             catch
-                fprintf(2, 'Error retrieving RawTrace at frame %d \n', varargin{2});
+                fprintf(2, 'Error returning Anchors.\n');
+                apt = [];
+            end
+            
+        end
+        
+        function obj = setRawTrace(obj, trc)
+            %% Set coordinates for RawOutline at specific frame
+            try
+                obj.RawTrace = trc;
+            catch e
+                fprintf(2, 'Error setting RawTrace\n%s\n', e.getReport);
+            end
+        end
+        
+        function trc = getRawTrace(obj)
+            %% Return RawOutline at specific frame
+            try
+                trc = cat(1, obj.RawTrace);
+            catch e
+                fprintf(2, 'Error retrieving RawTrace\n%s\n', e.getReport);
             end
         end
         
@@ -194,63 +239,7 @@ classdef Route < handle
             catch
                 fprintf(2, 'Error returning mean coordinate\n');
             end
-        end
-        
-        function obj = setAnchors(obj, frm, bgin, dest)
-            %% Set beginning and ending AnchorPoints for this Route
-            try
-                obj.Anchors(1,:,frm) = bgin;
-                obj.Anchors(2,:,frm) = dest;
-            catch
-                fprintf(2, 'No RawTrace at frame %d \n', frm);
-            end
-        end
-        
-        function pt = getAnchors(varargin)
-            %% Return one or both Anchors for this Route
-            try
-                obj = varargin{1};
-                switch nargin
-                    case 1
-                        % Both Anchors
-                        pt = obj.Anchors;
-                    case 2
-                        % Starting and Ending Anchors at specific frame
-                        frm = varargin{2};
-                        pt  = obj.Anchors(:,:,frm);
-                        
-                    case 3
-                        % Either Starting or Ending Anchor at specific frame
-                        frm = varargin{2};
-                        req = varargin{3};
-                        switch req
-                            case 'b'
-                                % Starting Anchor
-                                pt  = obj.Anchors(1,:,frm);
-                            case 'd'
-                                % Ending Anchor
-                                pt  = obj.Anchors(2,:,frm);
-                                
-                            case 'b2'
-                                % Mean subtracted Starting Anchor
-                                pt = obj.Anchors(3,:,frm);
-                                
-                            case 'd2'
-                                % Mean subtracted, Zero-set Ending Anchor
-                                pt = obj.Anchors(4,:,frm);
-                                
-                            otherwise
-                                fprintf(2, 'No Anchor specified \n');
-                                return;
-                        end
-                        
-                    otherwise
-                        fprintf(2, 'Error returning Anchors.\n');
-                end
-            catch
-                fprintf(2, 'Error returning Anchors.\n');
-            end
-        end
+        end                
         
     end
     
@@ -260,11 +249,11 @@ classdef Route < handle
             %% Parse input parameters for Constructor method
             p = inputParser;
             p.addOptional('Origin', '');
-            p.addOptional('RawTrace', cell(0));
+            p.addOptional('RawTrace', []);
             p.addOptional('InterpTrace', []);
             p.addOptional('NormalTrace', []);
             p.addOptional('MeanPoint', zeros(1,2));
-            p.addOptional('Anchors', zeros(4, 2, 0));
+            p.addOptional('Anchors', zeros(4, 2));
             p.addOptional('Pmat', zeros(3,3));
             p.addOptional('Ppar', zeros(1,3));
             

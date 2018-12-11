@@ -13,7 +13,7 @@ classdef CircuitJB < handle
         NormalOutline
         Curves
         Routes
-        isTrained
+        isTrained        
     end
     
     properties (Access = private)
@@ -21,6 +21,7 @@ classdef CircuitJB < handle
         RawOutline
         Image
         InterpOutline
+        isFlipped
         INTERPOLATIONSIZE = 2100
         NUMBEROFANCHORS   = 7
     end
@@ -75,29 +76,22 @@ classdef CircuitJB < handle
             n   = obj.NUMBEROFANCHORS;
             
             % Get indices of Outline matching each Anchor Point
-            fidx = @(x,y) find(sum(ismember(x,y), 2) == 2);
-            mtch = arrayfun(@(x) fidx(oL(:,:,x),pts(:,:,x)), ...
-                1:size(oL,3), 'UniformOutput', 0);
-            mtch = cat(2, mtch{:});
+            findIdx = @(x,y) find(sum(ismember(x,y), 2) == 2);
+            mtch    = findIdx(oL, pts);
             
             % Split Outline into separate Trace between each AnchorPoints
             shp    = @(x) reshape(nonzeros(x), [nnz(x)/2 2]);
-            frms   = size(oL,3);
-            traces = arrayfun(@(x) split2trace(oL(:,:,x), mtch(:,x), n), ...
-                1:frms, 'UniformOutput', 0);
+            traces = split2trace(oL, mtch, n);
             
-            % Set data for all Routes at each frame
-            for i = 1 : numel(traces)
-                trc = traces{i};
-                
-                % Copy first anchor point to last index
-                newpts = [pts(:,:,i) ; pts(1,:,i)];
-                arrayfun(@(x) rts(x).setRawTrace(i, shp(trc(:,:,x))), ...
-                    1:n, 'UniformOutput', 0);
-                arrayfun(@(x) rts(x).setAnchors(i, newpts(x,:), ...
-                    newpts(x+1,:)), 1:n, 'UniformOutput', 0);
-                arrayfun(@(x) rts(x).NormalizeTrace, 1:n, 'UniformOutput', 0);
-            end
+            % Set data from this object's outline for all Routes
+            % Copy first anchor point to last index
+            newpts = [pts ; pts(1,:)];
+            arrayfun(@(x) rts(x).setRawTrace(shp(traces(:,:,x))), ...
+                1:n, 'UniformOutput', 0);
+            arrayfun(@(x) rts(x).setAnchors(newpts(x,:), newpts(x+1,:)), ...
+                1:n, 'UniformOutput', 0);
+            arrayfun(@(x) rts(x).NormalizeTrace, 1:n, 'UniformOutput', 0);
+            
         end
         
         function obj = LabelAllPixels(obj, labelname)
@@ -141,7 +135,7 @@ classdef CircuitJB < handle
             obj.setImage(1, 'mask', msk);
         end
         
-        function obj = DrawOutline(obj, frm, buf, flp)
+        function obj = DrawOutline(obj, buf, flp)
             %% Draw RawOutline on this object's Image
             % The function crds2mask was changed (see generateMasks method for
             % this class) to include a buffering size parameter. When creating
@@ -152,31 +146,38 @@ classdef CircuitJB < handle
             % the parent Hypocotyl contains a buffered region around the image.
             %
             % If the flp parameter is set to true, then the FlipMe method is
-            % called before prompting user to draw contour.            
+            % called before prompting user to draw contour.
             try
                 % Trace outline and store as RawOutline
-                img = obj.getImage(frm, 'gray', buf);
-                c   = drawPoints(img, 'y', 'Outline');
+                img = obj.getImage(buf, flp);
+                str = sprintf('Outline\n%s', fixtitle(obj.Origin));
+                c   = drawPoints(img, 'y', str);
                 crd = c.Position;
-                obj.setRawOutline(frm, crd);
-%                 obj.setImage(frm, 'bw', c.createMask);
+                obj.setRawOutline(crd);
+                
                 % Exclude this as it isn't used until creating probability masks
-                %                 msk = crds2mask(img, crd, buff);
-                %                 obj.setImage(frm, 'mask', msk);
+                % msk = crds2mask(img, crd, buff);
+                % obj.setImage(frm, 'mask', msk);
             catch e
                 fprintf(2, 'Error setting outline at frame %d \n%s\n', ...
                     frm, e.getReport);
             end
         end
         
-        function obj = DrawAnchors(obj, frm)
+        function obj = DrawAnchors(obj, buf, flp)
             %% Draw RawPoints on this object's Image
+            % If the buf parameter is set to true, then the image returned from
+            % the parent Hypocotyl contains a buffered region around the image.
+            %
+            % If the flp parameter is set to true, then the FlipMe method is
+            % called before prompting user to draw contour.
             try
                 % Plot anchor points and store as RawPoints
-                img = obj.getImage(frm, 'gray');
-                str = sprintf('%d AnchorPoints', obj.NUMBEROFANCHORS);
+                img = obj.getImage(buf, flp);
+                str = sprintf('%d AnchorPoints\n%s\n', ...
+                    obj.NUMBEROFANCHORS, fixtitle(obj.Origin));
                 p   = drawPoints(img, 'b', str);
-                obj.setRawPoints(frm, p.Position);
+                obj.setRawPoints(p.Position);
             catch e
                 fprintf(2, 'Error setting anchor points at frame %d\n%s', ...
                     frm, e.getReport);
@@ -194,8 +195,6 @@ classdef CircuitJB < handle
             idxA = regexpi(obj.Origin, '{');
             idxB = regexpi(obj.Origin, '}');
             sIdx = obj.Origin(idxA(1) + 1 : idxB(1) - 1);
-            %             hIdx = obj.Origin(idxA(2) + 1 : idxB(2) - 1);
-            %             frm  = obj.Origin(idxA(3) + 1 : idxB(3) - 1);
             
             gen = exp.search4Genotype(obj.GenotypeName);
             sdl = gen.getSeedling(str2double(sIdx));
@@ -214,29 +213,22 @@ classdef CircuitJB < handle
         function obj = ConvertRawOutlines(obj)
             %% Convert contours from RawOutline to InterpOutline
             oL = obj.RawOutline;
-            sz = obj.INTERPOLATIONSIZE;
-            iL = zeros(sz, 2, numel(oL));
-            
-            for i = 1 : numel(oL)
-                iL(:,:,i) = interpolateOutline(oL{i}, sz);
-            end
+            sz = obj.INTERPOLATIONSIZE;          
+            iL = interpolateOutline(oL, sz);
             
             obj.InterpOutline = iL;
         end
         
         function obj = ConvertRawPoints(obj)
-            %% Convert anchor points from floating RawPoints to snapped
-            % AnchorPoints along the manually-drawn outline
+            %% Snap floating RawPoints onto drawn AnchorPoints
+            % First interpolate manually-drawn outline
             if isempty(obj.InterpOutline)
                 obj.ConvertRawOutlines;
             end
             
             iL   = obj.InterpOutline;
             pts  = obj.RawPoints;
-            nPts = zeros(size(pts));
-            for i = 1 : size(pts,3)
-                nPts(:,:,i) = snap2curve(pts(:,:,i), iL(:,:,i));
-            end
+            nPts = snap2curve(pts, iL);
             
             obj.AnchorPoints = nPts;
         end
@@ -288,6 +280,17 @@ classdef CircuitJB < handle
             
         end
         
+        function frm = getFrame(obj)
+            %% Return frame number of this object's parent Hypocotyl
+            % The frame number is the last number in curly brackets from the
+            % name of this CircuitJB object.
+            % (e.g 'sorted_blue_4-16BL_mdr1_Seedling_{2}_Hypocotyl_{2}_Frm{69}')
+            nm  = obj.Origin;
+            aa  = strfind(nm, '{');
+            bb  = strfind(nm, '}');
+            frm = str2double(nm(aa(end) + 1 : bb(end) - 1));
+        end
+        
         function obj = setImage(obj, frm, req, im)
             %% Set grayscale or bw image at given frame [frm, req, im]
             try
@@ -300,24 +303,30 @@ classdef CircuitJB < handle
         function dat = getImage(varargin)
             %% Return image data for ContourJB at desired frame [frm, req]
             % User can specify which image from structure with 3rd parameter
+            % Frame number is automatically deterimend since it is the final
+            % bit of data in the name (Origin property). If I need frame number
+            % anywhere else then I'll make it a method.
             obj = varargin{1};
             
             switch nargin
                 case 1
-                    % Full structure of image data              
+                    % Full structure of image data
                     dat = obj.Image;
                     
                 case 2
-                    % Returns requrested image type
+                    % Returns requested image type
                     try
                         req = varargin{2};
-
-                        nm  = obj.Origin;
-                        aa  = strfind(nm, '{');
-                        bb  = strfind(nm, '}');
-                        frm = str2double(nm(aa(end) + 1 : bb(end) - 1));
-                        dat = obj.Parent.getImage(frm, req);
-
+                        
+                        frm = obj.getFrame;
+                        flp = obj.checkFlipped;
+                        
+                        if flp
+                            dat = flip(obj.Parent.getImage(frm, req), 2);
+                        else
+                            dat = obj.Parent.getImage(frm, req);
+                        end
+                        
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);
                     end
@@ -326,15 +335,12 @@ classdef CircuitJB < handle
                     % Returns buffered image with the option to use the flipped
                     % version of the image
                     try
-                        buf = varargin{2};
+                        buf = varargin{2};                        
                         flp = varargin{3};
-
-                        nm  = obj.Origin;
-                        aa  = strfind(nm, '{');
-                        bb  = strfind(nm, '}');
-                        frm = str2double(nm(aa(end) + 1 : bb(end) - 1));
+                        
+                        frm = obj.getFrame;
                         dat = obj.Parent.getImage(frm, buf, flp);
-
+                        
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);
                     end
@@ -343,98 +349,76 @@ classdef CircuitJB < handle
                     fprintf(2, 'Error requesting data.\n');
                     return;
             end
-        end        
+        end
         
-        function obj = setRawOutline(obj, frm, oL)
+        function obj = setRawOutline(obj, oL)
             %% Set coordinates for RawOutline at specific frame
             try
-                obj.RawOutline{frm} = oL;
-            catch
-                fprintf(2, 'No RawOutline at frame %d \n', frm);
+                obj.RawOutline = oL;
+            catch e
+                fprintf(2, 'Error setting RawOutline\n%s\n', e.getReport);
             end
         end
         
-        function oL = getRawOutline(varargin)
+        function oL = getRawOutline(obj)
             %% Return RawOutline at specific frame
             try
-                obj = varargin{1};
-                if nargin == 1
-                    oL = obj.RawOutline;
-                else
-                    frm = varargin{2};
-                    oL  = obj.RawOutline{frm};
-                end
-            catch
-                fprintf(2, 'No InterpOutline at frame %d \n', varargin{2});
+                oL = obj.RawOutline;
+            catch e
+                fprintf(2, 'Error returning RawOutline\n%s\n', e.getReport);
+                oL = [];
             end
         end
         
-        function iL = getOutline(varargin)
+        function iL = getOutline(obj)
             %% Return Interpolated Outline at specific frame
             try
-                obj = varargin{1};
-                if nargin == 1
-                    iL = obj.InterpOutline;
-                else
-                    frm = varargin{2};
-                    iL = obj.InterpOutline(:,:,frm);
-                end
-            catch
-                fprintf(2, 'No InterpOutline at frame %d \n', varargin{2});
+                iL = obj.InterpOutline;
+            catch e
+                fprintf(2, 'Error returning InterpOutline\n%s\n', e.getReport);
             end
         end
         
-        function nL = getNormalOutline(varargin)
+        function nL = getNormalOutline(obj)
             %% Return Normalized Outline at specific frame
             try
-                obj = varargin{1};
-                if nargin == 1
-                    nL = obj.NormalOutline;
-                else
-                    frm = varargin{2};
-                    nL = obj.NormalOutline(:,:,frm);
-                end
-            catch
-                fprintf(2, 'No NormalOutline at frame %d \n', varargin{2});
+                nL = obj.NormalOutline;
+            catch e
+                fprintf(2, 'Error returning NormalOutline\n%s\n', e.getReport);
             end
         end
         
-        function obj = setRawPoints(obj, frm, pts)
+        function obj = setRawPoints(obj, pts)
             %% Set coordinates pts to AnchorPoint at specific frame
             try
-                obj.RawPoints(:,:,frm) = pts;
-            catch
-                fprintf(2, 'No AnchorPoints at frame %d \n', frm);
+                obj.RawPoints = pts;
+            catch e
+                fprintf(2, 'Error setting RawPoints\n%s\n', e.getReport);
             end
         end
         
-        function pts = getRawPoints(varargin)
+        function pts = getRawPoints(obj)
             %% Return RawPoints at specific frame
             try
-                obj = varargin{1};
-                if nargin == 1
-                    pts = obj.RawPoints;
-                else
-                    frm = varargin{2};
-                    pts = obj.RawPoints(:,:,frm);
-                end
-            catch
-                fprintf(2, 'No points at frame %d \n', varargin{2});
+                pts = obj.RawPoints;
+            catch e
+                fprintf(2, 'Error returning RawPoints\n%s\n', e.getReport);
             end
         end
         
         function pts = getAnchorPoints(varargin)
-            %% Return RawPoints at specific frame
+            %% Return all or specific set of AnchorPoints
             try
                 obj = varargin{1};
                 if nargin == 1
                     pts = obj.AnchorPoints;
                 else
-                    frm = varargin{2};
-                    pts = obj.AnchorPoints(:,:,frm);
+                    idx = varargin{2};
+                    pts = obj.AnchorPoints(idx, :);
                 end
-            catch
-                fprintf(2, 'No points at frame %d \n', varargin{2});
+            catch e
+                fprintf(2, 'Error returning AnchorPoints\n%s\n', e.getReport);
+                pts = [];
             end
         end
         
@@ -507,6 +491,20 @@ classdef CircuitJB < handle
             P = concatParameters(obj);
         end
         
+        function chk = checkFlipped(obj)
+            %% Returns TRUE if this object is the flipped version
+            chk           = contains(obj.Origin, 'flip');
+            obj.isFlipped = chk;
+        end
+        
+        function prp = getProperty(obj, req)
+            %% Returns requested property if it exists
+            try
+                prp = obj.(req);
+            catch e
+                fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
+            end
+        end
     end
     
     %%
@@ -526,7 +524,8 @@ classdef CircuitJB < handle
             p.addOptional('Image', []);
             p.addOptional('Curves', []);
             p.addOptional('Routes', []);
-            p.addOptional('isTrained', false);
+            p.addOptional('isTrained', false);            
+            p.addOptional('isFlipped', false);
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
