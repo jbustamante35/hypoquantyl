@@ -23,7 +23,7 @@ classdef Hypocotyl < handle
         CropBox
         Midline
         Coordinates
-        BUFF_PCT = 40
+        BUFF_PCT = 20
     end
     
     methods (Access = public)
@@ -195,6 +195,7 @@ classdef Hypocotyl < handle
                         buf = varargin{3};
                         flp = varargin{4};
                         
+<<<<<<< HEAD
                         if flp
                             % Extract image from parent Seedling
                             [img, msk] = obj.FlipMe(frm, 0);
@@ -216,6 +217,18 @@ classdef Hypocotyl < handle
                         else
                             dat = scl;
                         end
+=======
+                        % Prep cropped and rescaled image
+                        img = obj.Parent.getImage(frm, 'gray');                        
+                        msk = obj.Parent.getImage(frm, 'bw');
+                        bnd = obj.getCropBox(frm);                         
+                        crp = imcrop(img, bnd);
+                        scl = imresize(crp, sclsz);
+                        
+                        % Set median background value to buffered region 
+                        medBg = median(img(msk == 1));
+                        dat   = cropWithBuffer(scl, bnd, obj.BUFF_PCT, medBg);
+>>>>>>> d9068800eb782cad81a42d859f6baaee43b23ff7
                         
                     catch
                         fprintf(2, ...
