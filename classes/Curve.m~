@@ -60,24 +60,23 @@ classdef Curve < handle
         
         function obj = RunFullPipeline(obj, ver)
             %% Runs full pipeline from full Trace from Parent to generating ImagePatch
-            
-            tPipe = cputime;
-            fprintf('\nRunning Full Pipeline for %s\n', obj.Parent.Origin);
-            tic; obj.SegmentOutline; fprintf('Splitting full outline: %.02f sec\n', toc);
+                        
+            t = tic;
+            tic; obj.SegmentOutline; fprintf('\nSplitting full outline: %.02f sec\n', toc);            
             tic; obj.NormalizeSegments; fprintf('Midpoint Normalization conversion: %.02f sec\n', toc);
             tic; obj.SmoothSegments; fprintf('Smoothing Segments: %.02f sec\n', toc);
             tic; obj.CreateEnvelopeStructure(ver); fprintf('Creating Envelope Structure: %.02f sec\n', toc);
             tic; obj.Normal2Envelope(ver); fprintf('Converting to Envelope coordinates: %.02f sec\n', toc);
             tic; obj.GenerateImagePatch(ver); fprintf('Generating Image Patch: %.02f sec\n', toc);
-            fprintf('%.02f sec to complete a single contour\n\n', cputime-tPipe);
+            fprintf('%.02f sec to complete a single contour\n\n', toc(t));
             
         end
         
         function obj = SegmentOutline(varargin)
-            %% Split CircuitJB outline into defined number of segments
-            % This function will generate all individual curves around the
-            % contour to the total defined by the SEGMENTSIZE parameter. Output
-            % will be N curves of length SEGMENTSIZE, where N is the number of
+            %% Split CircuitJB outline into defined number of segments 
+            % This function will generate all individual curves around the 
+            % contour to the total defined by the SEGMENTSIZE parameter. Output 
+            % will be N curves of length SEGMENTSIZE, where N is the number of 
             % curves around an outline of the CircuitJB object's InterpOutline.
             
             try
@@ -112,7 +111,7 @@ classdef Curve < handle
         end
         
         function obj = NormalizeSegments(obj)
-            %% Convert RawSegments using Midpoint Normalization Method
+            %% Convert RawSegments using Midpoint Normalization Method 
             % Uses the midpoint-normalization method to convert coordinates in
             % the raw image coordinate frame into the normalized coordinate
             % frame (see midpointNorm())
@@ -134,7 +133,7 @@ classdef Curve < handle
         end
         
         function obj = Normal2Envelope(obj, ver)
-            %% Convert NormalSegments to coordinates within envelope
+            %% Convert NormalSegments to coordinates within envelope 
             % Uses the envelope method to convert normalized coordinates to
             % coordinates within an envelope structure (see envelopeMethod()).
             switch ver
@@ -164,18 +163,18 @@ classdef Curve < handle
             % Convert normalized coordinates to envelope coordinates
             env = arrayfun(@(x) envelopeMethod(obj.NormalSegments(:,:,x), ...
                 obj.NormalSegments(:,:,x), maxD), ...
-                1:obj.NumberOfSegments, 'UniformOutput', 0);
+                    1:obj.NumberOfSegments, 'UniformOutput', 0);
             obj.(seg) = cat(3, env{:});
             
         end
         
         function obj = CreateEnvelopeStructure(obj, ver)
-            %% Method 2: mathematical version of augmentEnvelope
-            % Define maximum distance to envelope and create all intermediate
+            %% Method 2: mathematical version of augmentEnvelope 
+            % Define maximum distance to envelope and create all intermediate 
             % curves between main segment and envelope segment. For more detail
             % see assessImagePatches function.
             
-            % Generate Outer and Inner Envelope boundaries and Intermediate
+            % Generate Outer and Inner Envelope boundaries and Intermediate 
             % segments between boundaries
             obj.generateEnvelopeBounds(ver);
             obj.generateEnvelopeIntermediates(ver);
@@ -207,14 +206,14 @@ classdef Curve < handle
             obj.generateEnvelopeBounds('smooth');
             obj.generateEnvelopeIntermediates('smooth');
             
-            % Convert normalized coordinates to envelope coordinates
-            obj.Normal2Envelope('smooth');
+             % Convert normalized coordinates to envelope coordinates
+             obj.Normal2Envelope('smooth');                       
             
         end
         
         function obj = GenerateImagePatch(obj, ver)
             %% Generates ImagePatches property from envelope coordinates
-            % Image patch can be created with main or smoothed segments,
+            % Image patch can be created with main or smoothed segments, 
             % defined by ver parameter.
             
             switch ver
@@ -230,7 +229,7 @@ classdef Curve < handle
             
             % Map main curve first
             seg = sprintf('Normal%s', typ); % Should be envelope segments when I get this right
-            %             seg = sprintf('Envelope%s', typ);
+%             seg = sprintf('Envelope%s', typ);
             
             obj.ImagePatches = ...
                 arrayfun(@(x) obj.setImagePatch(obj.(seg)(:,:,x), x), ...
@@ -287,7 +286,7 @@ classdef Curve < handle
                     end
                     
                 case 3
-                    % Arguments are Curve object, segment index, and
+                    % Arguments are Curve object, segment index, and 
                     % start (0) or endpoint (1)
                     obj = varargin{1};
                     req = varargin{2};
@@ -351,7 +350,7 @@ classdef Curve < handle
         end
         
         function nrm = Envelope2Normal(obj)
-            %% Convert EnvelopeSegments to midpoint-normalized coordinates
+            %% Convert EnvelopeSegments to midpoint-normalized coordinates 
             % This uses the inverse of the envelope method to revert envelope
             % segments back to normalized segments (see reverseEnvelopeMethod).
             nrm = reverseEnvelopeMethod(obj.EnvelopeSegments, obj.ENVELOPESIZE);
@@ -360,7 +359,7 @@ classdef Curve < handle
         
         function raw = Envelope2Raw(obj)
             %% Convert segment in envelope coordinates to raw coordinates
-            % [TODO] This needs to be changed in the future to be able to use
+            % [TODO] This needs to be changed in the future to be able to use 
             % the predicted envelope segments.
             env = obj.EnvelopeSegments;
             crv = obj.NormalSegments;
@@ -392,25 +391,25 @@ classdef Curve < handle
             %% Generate an image patch at desired frame
             % Map original curve segment
             [img, val, Pm, mid] = getMapParams(obj, segIdx);
-            [pxCrv, ~]          = mapCurve2Image(seg, img, Pm, mid);
+            [pxCrv, ~]          = mapCurve2Image(seg, img, Pm, mid, val);            
             
             % Map full envelope structure
             envOut     = obj.getEnvelopeStruct('O');
             envInn     = obj.getEnvelopeStruct('I');
-            [pxOut, ~] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
+            [pxOut, ~] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid, val), ...
                 envOut(segIdx).Full, 'UniformOutput', 0);
-            [pxInn, ~] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
+            [pxInn, ~] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid, val), ...
                 envInn(segIdx).Full, 'UniformOutput', 0);
-            
+                        
             % Create ImagePatch
             allOut   = fliplr(cat(2, pxOut{:}));
-            allInn   = cat(2, pxInn{:}); % Align by flipping inner envelope
+            allInn   = cat(2, pxInn{:}); % Align by flipping inner envelope 
             fullpx   = [allOut pxCrv allInn];
             
-            % Replace all NaN values then perform gaussian filtering
             fullpx(isnan(fullpx)) = val;
-            imgPatch              = imgaussfilt(fullpx, obj.GAUSSSIGMA);
+            imgPatch = imgaussfilt(fullpx, obj.GAUSSSIGMA);
             
+            % Replace all NaN values with median background intensity            
         end
         
         function [crvsX, crvsY] = rasterizeSegments(obj, req)
