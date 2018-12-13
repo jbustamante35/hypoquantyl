@@ -6,12 +6,12 @@ function PATCHES = assessImagePatches(c, itr, scl, gaus, figs, fnms, sv)
 % folder of the name of the contour and segment chosen.
 %
 % Use the following set of commands to run through this pipeline N times:
-%   Ps = cell(1, N)';
-% 	for i = 1 : numel(Ps)
-%   	Ps{i} = assessImagePatches(itr, gaus, f, fn, 1);
-%   end
-%   pnm = sprintf('%s_ImagePatches_%d', datestr(now, 'yymmdd'), numel(Ps));
-%   save(pnm, '-v7.3', 'Ps');
+%    Ps = cell(1, N)';
+%    for i = 1 : numel(Ps)
+%        Ps{i} = assessImagePatches(itr, gaus, f, fn, 1);
+%    end
+%    pnm = sprintf('%s_ImagePatches_%d', datestr(now, 'yymmdd'), numel(Ps));
+%    save(pnm, '-v7.3', 'Ps');
 %
 % Usage:
 %   PATCHES = assessImagePatches(itr, gaus, figs, fnms, sv)

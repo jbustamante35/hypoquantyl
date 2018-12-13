@@ -159,7 +159,7 @@ classdef Hypocotyl < handle
                     %img = obj.Parent.getImage(frm);
                     %crp = imcrop(img, obj.getCropBox(frm));
                     %dat = imresize(crp, sclsz);
-                    dat = [];
+                    dat = obj.Parent.Image;
                     
                 case 2
                     % Return grayscale image at specific time point
@@ -174,7 +174,7 @@ classdef Hypocotyl < handle
                     
                 case 3
                     % Return Specific image type
-                    % Get requested data field
+                    % Get requested data field [ 'gray' | 'bw' ]
                     try
                         frm = varargin{2};
                         req = varargin{3};
@@ -195,7 +195,6 @@ classdef Hypocotyl < handle
                         buf = varargin{3};
                         flp = varargin{4};
                         
-<<<<<<< HEAD
                         if flp
                             % Extract image from parent Seedling
                             [img, msk] = obj.FlipMe(frm, 0);
@@ -217,18 +216,17 @@ classdef Hypocotyl < handle
                         else
                             dat = scl;
                         end
-=======
-                        % Prep cropped and rescaled image
-                        img = obj.Parent.getImage(frm, 'gray');                        
-                        msk = obj.Parent.getImage(frm, 'bw');
-                        bnd = obj.getCropBox(frm);                         
-                        crp = imcrop(img, bnd);
-                        scl = imresize(crp, sclsz);
                         
-                        % Set median background value to buffered region 
-                        medBg = median(img(msk == 1));
-                        dat   = cropWithBuffer(scl, bnd, obj.BUFF_PCT, medBg);
->>>>>>> d9068800eb782cad81a42d859f6baaee43b23ff7
+                        %                         % Prep cropped and rescaled image
+                        %                         img = obj.Parent.getImage(frm, 'gray');
+                        %                         msk = obj.Parent.getImage(frm, 'bw');
+                        %                         bnd = obj.getCropBox(frm);
+                        %                         crp = imcrop(img, bnd);
+                        %                         scl = imresize(crp, sclsz);
+                        %
+                        %                         % Set median background value to buffered region
+                        %                         medBg = median(img(msk == 1));
+                        %                         dat   = cropWithBuffer(scl, bnd, obj.BUFF_PCT, medBg);
                         
                     catch
                         fprintf(2, ...
