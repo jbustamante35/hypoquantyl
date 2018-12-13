@@ -59,28 +59,16 @@ classdef Curve < handle
         end
         
         function obj = RunFullPipeline(obj, ver)
-<<<<<<< HEAD
-            %% Runs full pipeline from full Trace from Parent to generating ImagePatch
-            
-            tPipe = cputime;
-            fprintf('\nRunning Full Pipeline for %s\n', obj.Parent.Origin);
-            tic; obj.SegmentOutline; fprintf('Splitting full outline: %.02f sec\n', toc);
-=======
-            %% Runs full pipeline from Parent's Trace to generating ImagePatch
-
+            %% Runs full pipeline from Parent's Trace to generate ImagePatch
             tRun = cputime;
+            fprintf('\nRunning Full Pipeline for %s\n', obj.Parent.Origin);
             tic; obj.SegmentOutline; fprintf('\nSplitting full outline: %.02f sec\n', toc);            
->>>>>>> d9068800eb782cad81a42d859f6baaee43b23ff7
             tic; obj.NormalizeSegments; fprintf('Midpoint Normalization conversion: %.02f sec\n', toc);
             tic; obj.SmoothSegments; fprintf('Smoothing Segments: %.02f sec\n', toc);
             tic; obj.CreateEnvelopeStructure(ver); fprintf('Creating Envelope Structure: %.02f sec\n', toc);
             tic; obj.Normal2Envelope(ver); fprintf('Converting to Envelope coordinates: %.02f sec\n', toc);
             tic; obj.GenerateImagePatch(ver); fprintf('Generating Image Patch: %.02f sec\n', toc);
-<<<<<<< HEAD
-            fprintf('%.02f sec to complete a single contour\n\n', cputime-tPipe);
-=======
             fprintf('%.02f sec to complete a single contour\n\n', cputime-tRun);
->>>>>>> d9068800eb782cad81a42d859f6baaee43b23ff7
             
         end
         

@@ -3,8 +3,8 @@ function [cIdx, cntr, crvs, segs, sIdx] = randomContourAndSegment(cntrs, rndFun)
 % This function draws from an array of CircuitJB objects and extracts a random 
 % CircuitJB object, it's corresponding Curve object, and a random segment from 
 % that curve. User is only provided the index of the segment, rather than the 
-% segment itself. The randomization function is provided by the user, but if set
-% to false, the default is the following:
+% segment itself. The randomization function is provided by the user, but if 
+% set to false, the default is the following:
 %   rndFun = @(x) randi([1 length(x)], 1)
 %
 % Usage:
