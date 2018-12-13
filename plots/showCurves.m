@@ -16,7 +16,7 @@ function fig = showCurves(c, idx, numC, numE, dL, dR, f, sv)
 %   dL: distance from Curve's segment within the left envelope section
 %   dR: distance from Curve's segment within the right envelope section
 %   f: boolean to overwrite existing figure (0) or create new figure (1)
-%   sv: boolean to save resulting figure as .fig and .tiffn files
+%   sv: boolean to save resulting figure as .fig and .tiff files
 %
 % Output:
 %   fig: resulting figure handle
@@ -97,7 +97,7 @@ title(ttl);
 %% Save figure as .fig and .tiffn files
 if sv
     nm = sprintf('%s_curveData_contour%d_curve%d_envelope%d', ...
-        datestr(now, 'yymmdd'), idx, numC, numE);
+        tdate('s'), idx, numC, numE);
     savefig(fig, nm);
     saveas(fig, nm, 'tiffn');
 end
