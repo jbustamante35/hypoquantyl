@@ -1,8 +1,9 @@
 function F = findFrame(S, E)
-%% findFrame: vector representing the rotation needed to change between reference frames
-% This function uses a rotation matrix to compute the 90-degree rotation from the input vector to
-% find it's orthogonal vector. The input and orthogonal vectors define the new reference frame. This
-% function is primarily used for the midpointNorm() function.
+%% findFrame: returns matrix to change between reference frames
+% This function uses a rotation matrix to compute the 90-degree rotation from 
+% the input normal vector to find it's orthogonal tangent vector. The normal and 
+% tangent vectors define the new reference frame. This function is primarily 
+% used for the midpointNorm() function.
 % 
 % Usage:
 %   F = findFrame(S, E)
@@ -14,13 +15,13 @@ function F = findFrame(S, E)
 % Output:
 %   F: [2 x 2] matrix representing rotated basis vectors
 
-%% Rotation Matrix for orthogonal vector
-% R = Rmat(deg2rad(90));
+%% Rotation Matrix to convert from normal to tangent vector
 R = Rmat(90);
 
-%% New reference frame
+%% Compute new reference frame
 Z = E - S;
 D = Z * norm(Z)^-1;
 N = (R * D')';
 F = [D ; N];
+
 end
