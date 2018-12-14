@@ -99,7 +99,6 @@ ttl = sprintf('Normalized Frame\nFull Envelope\nContour %s\nEnvelope Size %d', .
     segParent, itr);
 title(ttl);
 
-drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Convert to image axis coordinates
 set(0, 'CurrentFigure', figs(nxt));
@@ -148,7 +147,6 @@ ttl = sprintf( ...
     segParent, idx);
 title(ttl);
 
-drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Display pixel intensities along curve and envelope
 set(0, 'CurrentFigure', figs(nxt));
@@ -187,7 +185,6 @@ ttl = sprintf( ...
     segParent, idx, gaus);
 title(ttl);
 
-drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Construct entire contour using this function
 set(0, 'CurrentFigure', figs(nxt));
@@ -214,13 +211,12 @@ ttl = sprintf( ...
     segParent, itr);
 title(ttl);
 
-drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Figures
 if sv
     currDir = pwd;
     for g = 1 : numel(figs)
-        dnm = sprintf('%s/Contour%d_Segment%d', currDir, cName, idx);
+        dnm = sprintf('%s/%s_Segment%d', currDir, cName, idx);
         
         if ~isfolder(dnm)
             mkdir(dnm);
@@ -231,7 +227,7 @@ if sv
         saveas(figs(g), fnms{g}, 'tiffn');
         
         cd(currDir);
-        clf(figs(g));
+%         clf(figs(g));
     end
 end
 
