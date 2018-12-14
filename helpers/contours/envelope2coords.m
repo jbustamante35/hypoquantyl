@@ -7,8 +7,8 @@ function raw = envelope2coords(env, crv, sz, pm, mid)
 %
 % Input:
 %   env: segment in envelope coordinates 
-%   sz: size of envelope used for this envelope
 %   crv: parent curve to standardize to
+%   sz: size of envelope used for this envelope
 %   pm: P-matrix to rotate back to original reference frame
 %   mid: midpoint from raw segment
 %
