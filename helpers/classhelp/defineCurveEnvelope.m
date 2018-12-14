@@ -1,19 +1,20 @@
 function [envOut, envInn, dstOut, dstInn] = defineCurveEnvelope(crds, scl)
 %% defineCurveEnvelope: generate the envelope boundaries around a curve segment
-% This function takes the x-/y-coordinates of a curve segment and defines the extent of it's
-% envelope structure (that is, the furthest extent in which the probability-based search algorithm
-% determine where to set the segment of a contour).
+% This function takes the x-/y-coordinates of a curve segment and defines the 
+% extent of it's envelope structure (that is, the furthest extent in which the 
+% probability-based search algorithm will determine where to set the segment of 
+% a contour).
 %
 % Usage:
 %   [envOut, envInn, dstOut, dstInn] = defineCurveEnvelope(crds)
 %
 % Input:
 %   crds: curve segment in midpoint-normalized x-/y-coordinates
-%   scl: length to scale unit length vector to increase/decrease max envelope distance
+%   scl: scaled unit length vector to increase/decrease max envelope distance
 %
 % Output:
-%   dstOut: unit length vector defining the distance from curve to outer envelope
-%   dstInn: unit length vector defining the distance from curve to inner envelope
+%   dstOut: unit length vector defining distance from curve to outer envelope
+%   dstInn: unit length vector defining distance from curve to inner envelope
 %   envOut: coordinates of outer envelope
 %   envInn: coordinates of inner envelope
 %
