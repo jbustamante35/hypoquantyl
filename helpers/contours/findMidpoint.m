@@ -14,4 +14,5 @@ function M = findMidpoint(S, E)
 %   M: coordinate between start and ending curve
 
 M = S + 0.5 * (E - S);
+
 end
