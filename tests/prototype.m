@@ -84,7 +84,6 @@ arrayfun(@(x) x.RemoveBadFrames, s, 'UniformOutput', 0);
 fprintf('[%.02f sec] Cleaned bad frames from %d Seedlings\n', ...
     cputime-tCheck, numel(s));
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Load full dataset
 folder  = '/home/jbustamante/Dropbox/EdgarSpalding/labdata/hypoquantyl';
@@ -104,6 +103,18 @@ sv  = 1;
 vis = 1;
 
 crcs = randomCircuits(ex, num, typ, flp, sv, vis);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Process manually-drawn contours
+% Generate Curve objects and convert between reference frames
+C = ex.combineContours;
+c = M(C);
+
+arrayfun(@(x) x.CreateCurves, C, 'UniformOutput', 0);
+D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
+D = cat(1, D{:});
+B = arrayfun(@(x) x.getProperty('Contour'), H, 'UniformOutput', 0);
+B = cat(2, B{:});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Display gallery of manually-drawn contours 
