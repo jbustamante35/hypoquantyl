@@ -1,20 +1,23 @@
-function PATCHES = assessImagePatches(c, itr, scl, gaus, figs, fnms, sv)
-%% assessImagePatches: run pipeline to generate and analyze image patches
-% This function runs a neat little pipeline to generate an image patch of a 
-% randomly chosen segment from a randomly chosen contour from the dataset in 
-% section 1 of this file. The sv parameter will save figures in an individual 
-% folder of the name of the contour and segment chosen.
+function figs = assessImagePatches(c, figs, fnms, sv)
+%% assessImagePatches: plot curve data and analyze image patches
+% This function runs a neat little pipeline to take a randomly chosen Curve 
+% segment from the inputted CircuitJB object and generate several plots to 
+% visualize data on the curve segment, envelope structure, and image patch from
+% that Curve object. 
+%
+% The sv parameter will save figures in an individual folder of the name of the 
+% contour and segment chosen.
 %
 % Use the following set of commands to run through this pipeline N times:
 %    Ps = cell(1, N)';
 %    for i = 1 : numel(Ps)
-%        Ps{i} = assessImagePatches(itr, gaus, f, fn, 1);
+%        Ps{i} = assessImagePatches(c, f, fn, 1);
 %    end
 %    pnm = sprintf('%s_ImagePatches_%d', datestr(now, 'yymmdd'), numel(Ps));
 %    save(pnm, '-v7.3', 'Ps');
 %
 % Usage:
-%   PATCHES = assessImagePatches(itr, gaus, figs, fnms, sv)
+%   figs = assessImagePatches(c, figs, fnms, sv)
 %
 % Input:
 %   c: CircuitJB object array of contours to extract image patches
@@ -26,10 +29,8 @@ function PATCHES = assessImagePatches(c, itr, scl, gaus, figs, fnms, sv)
 %   sv: boolean to save figure (1)
 %
 % Output:
-%   PATCHES: image patch of a single curve's envelope structure
+%   figs: figure handles to outputted figures
 %
-% Example:
-%   PATCHES = assessImagePatches(cl, 50, 4, 4, 0, 0, 1)
 
 %% Set-up Figures and random function handle
 m  = @(x) randi([1 length(x)], 1);
@@ -55,11 +56,15 @@ if ~fnms
     fnms{4} = sprintf('%s_CurveAndEnvelopeOnFullContour', tdate('s'));
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Get random curve segment from random contour
-% Take derivative of segment and get tangent line at each coordinate, then get 
-% the unit vector distances for each segment
 [ctrIdx, ctr, crv, numSegs, segIdx] = randomContourAndSegment(c, m);
-segNrm                              = crv.NormalSegments(:, :, segIdx);
+
+% Misc data from CircuitJB object
+img  = ctr.getImage('gray');
+crds = crv.CoordPatches{segIdx};
+itr  = crv.getProperty('ENV_ITRS');
+gaus = crv.getProperty('GAUSSSIGMA');
 
 % Plot midpoint-normalized curve with left and right envelopes
 nxt = 1;
@@ -67,38 +72,37 @@ set(0, 'CurrentFigure', figs(nxt));
 nxt = nxt + 1;
 cla;clf;
 
+% Get envelope structure
 subplot(211);
 hold on;
-[envOut, envInn, dstOut, dstInn] = defineCurveEnvelope(segNrm, scl);
+segNrm = crv.NormalSegments(:, :, segIdx);
+envOut = crv.getEnvelopeStruct('O');
+envInn = crv.getEnvelopeStruct('I');
+
 plt(segNrm, 'k.-', 1);
-plt(envOut, 'r.-', 1);
-plt(envInn, 'b.-', 1);
+plt(envOut(segIdx).Max, 'r.-', 1);
+plt(envInn(segIdx).Max, 'b.-', 1);
 
 axis ij;
 ttl = sprintf( ...
-    'Midpoint-Normalized Curve with Out/Inn Envelope \n Contour %d | Segment %d', ...
+    'Midpoint-Normalized Curve and Envelope\nContour %d | Segment %d', ...
     ctrIdx, segIdx);
 title(ttl);
 
-% Interpolate curve and envelope to generate all intermediate points
+% Plot all intermediate points
 subplot(212);
 hold on;
 axis ij;
 
-ptsOut = generateFullEnvelope(segNrm, dstOut, itr);
-ptsInn = generateFullEnvelope(segNrm, dstInn, itr);
+cellfun(@(x) plt(x, 'r.-', 1), envOut(segIdx).Full, 'UniformOutput', 0);
+cellfun(@(x) plt(x, 'b.-', 1), envInn(segIdx).Full, 'UniformOutput', 0);
 
-for d = 1 : itr
-    plt(ptsOut{d}, 'r.-', 1);
-    plt(ptsInn{d}, 'b.-', 1);
-end
-
-ttl = sprintf('Full Envelope Structure \n Contour %d | Segments %d', ...
-    ctrIdx, numSegs);
+ttl = sprintf('Normalized Frame\nFull Envelope\nContour %d | Envelope Size %d', ...
+    ctrIdx, itr);
 title(ttl);
 
 drawnow;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Convert to image axis coordinates
 set(0, 'CurrentFigure', figs(nxt));
 nxt = nxt + 1;
@@ -108,23 +112,20 @@ cla;clf;
 subplot(211);
 hold on;
 
-img                = ctr.getImage('gray');
-Pm                 = crv.getParameter('Pmats', segIdx);
-mid                = crv.getMidPoint(segIdx);
-[segRawi, segRawm] = mapCurve2Image(segNrm, img, Pm, mid);
-[envOuti, envOutm] = mapCurve2Image(envOut, img, Pm, mid);
-[envInni, envInnm] = mapCurve2Image(envInn, img, Pm, mid);
+segRawm = crds.mid;
+envOutm = crds.out(:,:,itr);
+envInnm = crds.inn(:,:,itr);
 
 imagesc(img);
-plt(segRawm, 'ko-', 1);
-plt(envOutm, 'ro-', 1);
-plt(envInnm, 'bo-', 1);
+plt(segRawm, 'k.-', 3);
+plt(envOutm, 'r.-', 3);
+plt(envInnm, 'b.-', 3);
 
 colormap gray;
 axis ij;
 axis tight;
 ttl = sprintf( ...
-    'Original Reference Frame Coordinates \n Segment and Envelope only  \n Contour %d | Segment %d', ...
+    'Image Frame Coordinates\nSegment and Envelope\nContour %d | Segment %d', ...
     ctrIdx, segIdx);
 title(ttl);
 
@@ -132,65 +133,64 @@ title(ttl);
 subplot(212);
 hold on;
 
-[fullOuti, fullOutm] = ...
-    cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ptsOut, 'UniformOutput', 0);
-[fullInni, fullInnm] = ...
-    cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ptsInn, 'UniformOutput', 0);
-
 imagesc(img);
-plt(segRawm, 'yo-', 1);
-plt(envOutm, 'mo-', 1);
-plt(envInnm, 'go-', 1);
-cellfun(@(x) plt(x, 'r.-', 1), fullOutm, 'UniformOutput', 0);
-cellfun(@(x) plt(x, 'b.-', 1), fullInnm, 'UniformOutput', 0);
+plt(segRawm, 'y.-', 2);
+plt(envOutm, 'm.-', 2);
+plt(envInnm, 'g.-', 2);
+arrayfun(@(x) plt(crds.out(:,:,x), 'r.-', 1), ...
+    1:size(crds.out,3), 'UniformOutput', 0);
+arrayfun(@(x) plt(crds.inn(:,:,x), 'b.-', 1), ...
+    1:size(crds.inn,3), 'UniformOutput', 0);
 
 colormap gray;
 axis ij;
 axis tight;
 ttl = sprintf( ...
-    'Original Reference Frame Coordinates \n Full envelope structure \n Contour %d | Segment %d', ...
+    'Image Frame Coordinates\nFull envelope structure\nContour %d | Segment %d', ...
     ctrIdx, segIdx);
 title(ttl);
 
 drawnow;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Plot pixel intensities along curve and envelopes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Display pixel intensities along curve and envelope
 set(0, 'CurrentFigure', figs(nxt));
 nxt = nxt + 1;
 cla;clf;
 
-% Check segment with left and right envelopes only
+% Check left, center, and right envelopes
 subplot(211);
 hold on;
-px = [envInni segRawi envOuti];
+
+imgPatch = crv.ImagePatches{segIdx};
+segRawi  = imgPatch(:, median(1:size(imgPatch,2)));
+envOuti  = imgPatch(:,1);
+envInni  = imgPatch(:,end);
+
+px = [envOuti segRawi envInni];
 imagesc(px);
 
 colormap summer;
 axis ij;
 axis tight;
 ttl = sprintf( ...
-    'Pixel intensities (extremes) \n Contour %d | Segment %d \n Inner | Center | Outer', ...
+    'Pixel intensities\nContour %d | Segment %d\nOuter | Center | Inner', ...
     ctrIdx, segIdx);
 title(ttl);
 
-% Convert full envelope to image axis coordinates and chek pixel intensities
+% Show full image patch 
 subplot(212);
-allOut = cat(2,fullOuti{:});
-allInn = fliplr(cat(2,fullInni{:})); % Flip inner envelope to align with others
-fullpx = [allInn segRawi allOut];
-imPtch = imgaussfilt(fullpx, gaus); % Apply gaussian smoothing
-imagesc(imPtch);
+imagesc(imgPatch);
 
 colormap summer;
 axis ij;
 axis tight;
 ttl = sprintf( ...
-    'Pixel intensities (full envelope) \n Contour %d | Segment %d \n Inner | Center | Outer', ...
-    ctrIdx, segIdx);
+    'Image Patch\nContour %d | Segment %d | GausSigma %d\nOuter | Center | Inner', ...
+    ctrIdx, segIdx, gaus);
 title(ttl);
 
 drawnow;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Construct entire contour using this function
 set(0, 'CurrentFigure', figs(nxt));
 nxt = nxt + 1;
@@ -200,47 +200,31 @@ imagesc(img);
 hold on;
 
 for s = 1 : numSegs
-    currS                = crv.NormalSegments(:,:,s);
-    [currL, currR, ~, ~] = defineCurveEnvelope(currS, scl);
-    
-    % Convert to image axis coordinates
-    Pm          = crv.getParameter('Pmats', s);
-    mid         = crv.getMidPoint(s);
-    [~, currSm] = mapCurve2Image(currS, img, Pm, mid);
-    [~, currLm] = mapCurve2Image(currL, img, Pm, mid);
-    [~, currRm] = mapCurve2Image(currR, img, Pm, mid);
+    % Get current segment
+    currPatch = crv.CoordPatches{s};
     
     % Plot segment and envelope on image
-    plt(currSm, 'k--', 1);
-    plt(currLm, 'r--', 1);
-    plt(currRm, 'b--', 1);
+    plt(currPatch.mid, 'k--', 1);
+    plt(currPatch.out(:,:,itr), 'r--', 1);
+    plt(currPatch.inn(:,:,itr), 'b--', 1);
 end
 
 colormap gray;
 axis ij;
 ttl = sprintf( ...
-    'Converted Segment and Envelope on Full Contour \n Contour %d | Segment %d', ...
-    ctrIdx, segIdx);
+    'Converted Envelope on Contour \n Contour %d | Envelope Size %d', ...
+    ctrIdx, itr);
 title(ttl);
 
 drawnow;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Store data into Curve object
-% TODO
-
-
-
-%% Save CircuitJB data [when I save to objects]
-% nm = sprintf('%s_randomCircuitsUpdate_%dcircuitsLR', datestr(now, 'yymmdd'), numel(cl));
-% save(nm, '-v7.3', 'cl', 'cr');
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Figures
 if sv
     currDir = pwd;
     for g = 1 : numel(figs)
         dnm = sprintf('%s/Contour%d_Segment%d', currDir, ctrIdx, segIdx);
         
-        if ~isdir(dnm)
+        if ~isfolder(dnm)
             mkdir(dnm);
         end
         
@@ -252,7 +236,5 @@ if sv
         clf(figs(g));
     end
 end
-
-PATCHES = imPtch;
 
 end
