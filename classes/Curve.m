@@ -15,6 +15,7 @@ classdef Curve < handle
         MidPoints
         EndPoints
         ImagePatches
+        CoordPatches
     end
     
     properties (Access = protected)
@@ -35,7 +36,7 @@ classdef Curve < handle
         InnerStruct
         InnerEnvelope
         InnerEnvelopeMax
-        InnerDists
+        InnerDists        
     end
     
     %%
@@ -62,7 +63,7 @@ classdef Curve < handle
             %% Runs full pipeline from Parent's Trace to generate ImagePatch
             tRun = cputime;
             fprintf('\nRunning Full Pipeline for %s\n', obj.Parent.Origin);
-            tic; obj.SegmentOutline; fprintf('\nSplitting full outline: %.02f sec\n', toc);            
+            tic; obj.SegmentOutline; fprintf('Splitting full outline: %.02f sec\n', toc);            
             tic; obj.NormalizeSegments; fprintf('Midpoint Normalization conversion: %.02f sec\n', toc);
             tic; obj.SmoothSegments; fprintf('Smoothing Segments: %.02f sec\n', toc);
             tic; obj.CreateEnvelopeStructure(ver); fprintf('Creating Envelope Structure: %.02f sec\n', toc);
@@ -231,7 +232,7 @@ classdef Curve < handle
             seg = sprintf('Normal%s', typ); % Should be envelope segments when I get this right
             %             seg = sprintf('Envelope%s', typ);
             
-            obj.ImagePatches = ...
+            [obj.ImagePatches, obj.CoordPatches] = ...
                 arrayfun(@(x) obj.setImagePatch(obj.(seg)(:,:,x), x), ...
                 1:obj.NumberOfSegments, 'UniformOutput', 0);
             
@@ -387,18 +388,18 @@ classdef Curve < handle
                 'Dists', obj.InnerDists);
         end
         
-        function imgPatch = setImagePatch(obj, seg, segIdx)
+        function [imgPatch, crdsPatch] = setImagePatch(obj, seg, segIdx)
             %% Generate an image patch at desired frame
             % Map original curve segment
             [img, val, Pm, mid] = getMapParams(obj, segIdx);
-            [pxCrv, ~]          = mapCurve2Image(seg, img, Pm, mid);
+            [pxCrv, crdCrv]          = mapCurve2Image(seg, img, Pm, mid);
             
             % Map full envelope structure
             envOut     = obj.getEnvelopeStruct('O');
             envInn     = obj.getEnvelopeStruct('I');
-            [pxOut, ~] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
+            [pxOut, crdOut] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
                 envOut(segIdx).Full, 'UniformOutput', 0);
-            [pxInn, ~] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
+            [pxInn, crdInn] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
                 envInn(segIdx).Full, 'UniformOutput', 0);
             
             % Create ImagePatch
@@ -409,6 +410,11 @@ classdef Curve < handle
             % Replace all NaN values then perform gaussian filtering
             fullpx(isnan(fullpx)) = val;
             imgPatch              = imgaussfilt(fullpx, obj.GAUSSSIGMA);
+            
+            % Coordinates for ImagePatch
+            crdsOut   = cat(3, crdOut{:});
+            crdsInn   = cat(3, crdInn{:}); % Align by flipping inner envelope
+            crdsPatch = struct('out', crdsOut, 'mid', crdCrv, 'inn', crdsInn);                        
             
         end
         
@@ -470,6 +476,7 @@ classdef Curve < handle
             p.addOptional('InnerEnvelope', []);
             p.addOptional('InnerEnvelopeMax', []);
             p.addOptional('InnerDists', []);
+            p.addOptional('CoordPatches', []);
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
