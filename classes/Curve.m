@@ -13,7 +13,10 @@ classdef Curve < handle
         NormalSmooth
         EnvelopeSmooth
         MidPoints
+        Tangents
+        Normals
         EndPoints
+        MidpointPatches
         ImagePatches
         CoordPatches
     end
@@ -127,8 +130,8 @@ classdef Curve < handle
             obj.NormalSegments = zeros(size(obj.RawSegments));
             for s = 1 : size(obj.RawSegments,3)
                 [obj.NormalSegments(:,:,s), obj.Pmats(:,:,s), ...
-                    obj.MidPoints(:,:,s)] = ...
-                    midpointNorm(obj.RawSegments(:,:,s));
+                    obj.MidPoints(:,:,s), obj.Tangents(:,:,s), ...
+                    obj.Normals(:,:,s)] = midpointNorm(obj.RawSegments(:,:,s));
             end
             
         end
@@ -232,7 +235,7 @@ classdef Curve < handle
             seg = sprintf('Normal%s', typ); % Should be envelope segments when I get this right
             %             seg = sprintf('Envelope%s', typ);
             
-            [obj.ImagePatches, obj.CoordPatches] = ...
+            [obj.ImagePatches, obj.CoordPatches, obj.MidpointPatches] = ...
                 arrayfun(@(x) obj.setImagePatch(obj.(seg)(:,:,x), x), ...
                 1:obj.NumberOfSegments, 'UniformOutput', 0);
             
@@ -388,21 +391,21 @@ classdef Curve < handle
                 'Dists', obj.InnerDists);
         end
         
-        function [imgPatch, crdsPatch] = setImagePatch(obj, seg, segIdx)
+        function [imgPatch, crdsPatch, midsPatch] = setImagePatch(obj, seg, segIdx)
             %% Generate an image patch at desired frame
             % Map original curve segment
             [img, val, Pm, mid] = getMapParams(obj, segIdx);
-            [pxCrv, crdCrv]          = mapCurve2Image(seg, img, Pm, mid);
+            [pxCrv, crdCrv]     = mapCurve2Image(seg, img, Pm, mid);
             
             % Map full envelope structure
-            envOut     = obj.getEnvelopeStruct('O');
-            envInn     = obj.getEnvelopeStruct('I');
+            envOut          = obj.getEnvelopeStruct('O');
+            envInn          = obj.getEnvelopeStruct('I');
             [pxOut, crdOut] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
                 envOut(segIdx).Full, 'UniformOutput', 0);
             [pxInn, crdInn] = cellfun(@(x) mapCurve2Image(x, img, Pm, mid), ...
                 envInn(segIdx).Full, 'UniformOutput', 0);
             
-            % Create ImagePatch
+            % Create image patch for ImagePatches
             allOut   = fliplr(cat(2, pxOut{:}));
             allInn   = cat(2, pxInn{:}); % Align by flipping inner envelope
             fullpx   = [allOut pxCrv allInn];
@@ -411,11 +414,14 @@ classdef Curve < handle
             fullpx(isnan(fullpx)) = val;
             imgPatch              = imgaussfilt(fullpx, obj.GAUSSSIGMA);
             
-            % Coordinates for ImagePatch
+            % Coordinates from image patch for CoordsPatches
             crdsOut   = cat(3, crdOut{:});
             crdsInn   = cat(3, crdInn{:}); % Align by flipping inner envelope
             crdsPatch = struct('out', crdsOut, 'mid', crdCrv, 'inn', crdsInn);                        
             
+            % Create midpoint-centered patch for MidpointPatches
+            patchSize = 20;
+            midsPatch = patchFromCoord(seg, mid, img, patchSize);
         end
         
         function [crvsX, crvsY] = rasterizeSegments(obj, req)
@@ -465,6 +471,8 @@ classdef Curve < handle
             p.addOptional('EnvelopeSmooth', []);
             p.addOptional('ImagePatches', []);
             p.addOptional('MidPoints', []);
+            p.addOptional('Tangents', []);
+            p.addOptional('Normals', []);
             p.addOptional('EndPoints', []);
             p.addOptional('Pmats', []);
             p.addOptional('Ppars', []);
@@ -477,6 +485,7 @@ classdef Curve < handle
             p.addOptional('InnerEnvelopeMax', []);
             p.addOptional('InnerDists', []);
             p.addOptional('CoordPatches', []);
+            p.addOptional('MidpointPatches', []);
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
