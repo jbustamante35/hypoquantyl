@@ -452,7 +452,8 @@ classdef CircuitJB < handle
         end
         
         function rt = getCurve(varargin)
-            %% Return a Route from desired frame
+            %% Return Curve object [DEPRECATED]
+            % This is a deprecated method. Just take the Curves property.
             try
                 obj = varargin{1};
                 switch nargin
