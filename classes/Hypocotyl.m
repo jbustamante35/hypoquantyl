@@ -50,7 +50,7 @@ classdef Hypocotyl < handle
             % Flipped version allows equal representation of all orientations of
             % contours because equality (lolz). If buf is set to true, use the
             % version with a buffered region around the image
-            % 
+            %
             % Input:
             %   obj: this Hypocotyl object
             %   frm: time point to extract image from
@@ -58,16 +58,18 @@ classdef Hypocotyl < handle
             
             if buf
                 im = flip(obj.getImage(frm, 'gray', buf), 2);
-                bw = flip(obj.getImage(frm, 'bw', buf), 2);
+                bw = flip(obj.getImage(frm, 'bw',   buf), 2);
             else
                 im = flip(obj.getImage(frm, 'gray'), 2);
-                bw = flip(obj.getImage(frm, 'bw'), 2);
+                bw = flip(obj.getImage(frm, 'bw'),   2);
             end
             
         end
         
         function obj = DerefParents(obj)
             %% Remove reference to Parent property
+            % This lets you save an array of Hypocotyl objects without having to
+            % save the entire tree of objects and children.
             obj.Parent = [];
             obj.Host   = [];
             obj.Origin = [];
@@ -190,7 +192,7 @@ classdef Hypocotyl < handle
                 case 4
                     % Return frame with cropped and buffered region around image
                     % Set flp to true to use flipped version of image
-                    try                        
+                    try
                         frm = varargin{2};
                         buf = varargin{3};
                         flp = varargin{4};
