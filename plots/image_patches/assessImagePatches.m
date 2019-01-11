@@ -1,11 +1,11 @@
 function figs = assessImagePatches(crv, idx, figs, fnms, sv)
 %% assessImagePatches: plot curve data and analyze image patches
-% This function runs a neat little pipeline to take a randomly chosen Curve 
-% segment from the inputted CircuitJB object and generate several plots to 
+% This function runs a neat little pipeline to take a randomly chosen Curve
+% segment from the inputted CircuitJB object and generate several plots to
 % visualize data on the curve segment, envelope structure, and image patch from
-% that Curve object. 
+% that Curve object.
 %
-% The sv parameter will save figures in an individual folder of the name of the 
+% The sv parameter will save figures in an individual folder of the name of the
 % contour and segment chosen.
 %
 % Use the following set of commands to run through this pipeline N times:
@@ -99,7 +99,6 @@ ttl = sprintf('Normalized Frame\nFull Envelope\nContour %s\nEnvelope Size %d', .
     segParent, itr);
 title(ttl);
 
-drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Convert to image axis coordinates
 set(0, 'CurrentFigure', figs(nxt));
@@ -148,7 +147,6 @@ ttl = sprintf( ...
     segParent, idx);
 title(ttl);
 
-drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Display pixel intensities along curve and envelope
 set(0, 'CurrentFigure', figs(nxt));
@@ -167,7 +165,7 @@ envInni  = imgPatch(:,end);
 px = [envOuti segRawi envInni];
 imagesc(px);
 
-colormap summer;
+colormap bone;
 axis ij;
 axis tight;
 ttl = sprintf( ...
@@ -175,7 +173,7 @@ ttl = sprintf( ...
     segParent, idx);
 title(ttl);
 
-% Show full image patch 
+% Show full image patch
 subplot(212);
 imagesc(imgPatch);
 
@@ -187,7 +185,6 @@ ttl = sprintf( ...
     segParent, idx, gaus);
 title(ttl);
 
-drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Construct entire contour using this function
 set(0, 'CurrentFigure', figs(nxt));
@@ -214,13 +211,12 @@ ttl = sprintf( ...
     segParent, itr);
 title(ttl);
 
-drawnow;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Figures
 if sv
     currDir = pwd;
     for g = 1 : numel(figs)
-        dnm = sprintf('%s/Contour%d_Segment%d', currDir, cName, idx);
+        dnm = sprintf('%s/%s_Segment%d', currDir, cName, idx);
         
         if ~isfolder(dnm)
             mkdir(dnm);
@@ -231,7 +227,7 @@ if sv
         saveas(figs(g), fnms{g}, 'tiffn');
         
         cd(currDir);
-        clf(figs(g));
+        %         clf(figs(g));
     end
 end
 
