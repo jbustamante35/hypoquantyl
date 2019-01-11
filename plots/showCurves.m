@@ -1,4 +1,4 @@
-function fig = showCurves(crv, idx, numE, dL, dR, f, sv)
+function fig = showCurves(crv, idx, f, sv)
 %% showCurves: display segment and envelope data
 % This function creates a simple figure to display the image of the hypocotyl
 % from the CircuitJB object, it's individual Curve objects, midpoints, and
@@ -11,9 +11,6 @@ function fig = showCurves(crv, idx, numE, dL, dR, f, sv)
 % Input:
 %   crv: Curve object
 %   idx: segment index to display data
-%   numE: index along a Curve's normalized segment to plot a datapoint
-%   dL: distance from Curve's segment within the left envelope section
-%   dR: distance from Curve's segment within the right envelope section
 %   f: boolean to overwrite existing figure (0) or create new figure (1)
 %   sv: boolean to save resulting figure as .fig and .tiff files
 %
@@ -50,10 +47,13 @@ imshow(img, []);
 hold on;
 
 % Plot Curve's Segments, Midpoints, Endpoints
-arrayfun(@(x) plt(crv.RawSegments(:,:,x), '.', 3), 1:tSegs, 'UniformOutput', 0);
-arrayfun(@(x) plt(crv.getMidPoint(x),     'x', 2), 1:tSegs, 'UniformOutput', 0);
-arrayfun(@(x) plt(crv.getEndPoint(x, 1),  'o', 3), 1:tSegs, 'UniformOutput', 0);
-arrayfun(@(x) plt(crv.getEndPoint(x, 2),  '+', 3), 1:tSegs, 'UniformOutput', 0);
+for seg = 1 : tSegs
+    plt(crv.RawSegments(:,:,seg), '.', 3);
+    plt(crv.getMidPoint(seg),     'x', 2);
+    plt(crv.getEndPoint(seg, 1),  'o', 3);
+    plt(crv.getEndPoint(seg, 2),  '+', 3);
+end
+
 plt(segRaw, 'y.', 5);
 
 pName = fixtitle(crv.Parent.Origin);
@@ -73,23 +73,8 @@ plt(maxOut, 'r.');
 plt(maxInn, 'b.');
 
 % Plot spline of envelope
-lineInts(crv.NormalSegments(:,:,idx), maxOut, stp, 'm');
-lineInts(crv.NormalSegments(:,:,idx), maxInn, stp, 'b');
-
-% Pick locations above and below Segment
-ptC = segNrm(numE,:);
-ptL = ptC + dL;
-ptR = ptC - dR;
-
-plt(ptC, 'go', 10);
-plt(ptL, 'ro', 10);
-plt(ptR, 'bo', 10);
-
-% Put point distances on plot
-text(ptL(1)-0.5, ptL(2), num2str(-dL), ...
-    'Color', 'k', 'FontSize', 7, 'FontWeight', 'b');
-text(ptR(1)-0.5, ptR(2), num2str(dR), ...
-    'Color', 'k', 'FontSize', 7, 'FontWeight', 'b');
+lineInts(segNrm, maxOut, stp, 'm');
+lineInts(segNrm, maxInn, stp, 'b');
 
 ttl = sprintf( ...
     'Curve %d | SegmentLength %d \n EnvelopeWidth %d | SplineInterval %d', ...
@@ -98,8 +83,8 @@ title(ttl);
 
 %% Save figure as .fig and .tiffn files
 if sv
-    nm = sprintf('%s_curveData_contour%d_curve%d_envelope%d', ...
-        tdate('s'), idx, idx, numE);
+    nm = sprintf('%s_curveData_contour%d_curve%d', ...
+        tdate('s'), idx, idx);
     savefig(fig, nm);
     saveas(fig, nm, 'tiffn');
 end
