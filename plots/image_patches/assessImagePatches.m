@@ -1,11 +1,11 @@
 function figs = assessImagePatches(crv, idx, figs, fnms, sv)
 %% assessImagePatches: plot curve data and analyze image patches
-% This function runs a neat little pipeline to take a randomly chosen Curve 
-% segment from the inputted CircuitJB object and generate several plots to 
+% This function runs a neat little pipeline to take a randomly chosen Curve
+% segment from the inputted CircuitJB object and generate several plots to
 % visualize data on the curve segment, envelope structure, and image patch from
-% that Curve object. 
+% that Curve object.
 %
-% The sv parameter will save figures in an individual folder of the name of the 
+% The sv parameter will save figures in an individual folder of the name of the
 % contour and segment chosen.
 %
 % Use the following set of commands to run through this pipeline N times:
@@ -165,7 +165,7 @@ envInni  = imgPatch(:,end);
 px = [envOuti segRawi envInni];
 imagesc(px);
 
-colormap summer;
+colormap bone;
 axis ij;
 axis tight;
 ttl = sprintf( ...
@@ -173,7 +173,7 @@ ttl = sprintf( ...
     segParent, idx);
 title(ttl);
 
-% Show full image patch 
+% Show full image patch
 subplot(212);
 imagesc(imgPatch);
 
@@ -227,7 +227,7 @@ if sv
         saveas(figs(g), fnms{g}, 'tiffn');
         
         cd(currDir);
-%         clf(figs(g));
+        %         clf(figs(g));
     end
 end
 
