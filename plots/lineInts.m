@@ -1,7 +1,7 @@
 function fig = lineInts(A, B, stp, col)
 %% lineInts: plot two lines with lines in various intervals
-% This function takes two lines of the same length and generates lines between corresponding points
-% at intervals provided by the user.
+% This function takes two lines of the same length and generates lines between 
+% corresponding points at intervals provided by the user.
 %
 % Usage:
 %   fig = lineInts(A, B, stp, col)

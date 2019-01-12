@@ -22,8 +22,8 @@ R = Rmat(90);
 
 %% Compute new reference frame
 Z = E - S;
-N = Z * norm(Z)^-1;
-T = (R * N')';
-F = [N ; T];
+T = Z * norm(Z)^-1;
+N = (R * T')';
+F = [T ; N];
 
 end
