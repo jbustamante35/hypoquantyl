@@ -6,11 +6,11 @@ function T = collectTrainingSet(crvs)
 %
 % The training set consists of the following data:
 % - rCrds: segment coordinates along curve in image coordinate frame
-% - iVals: grayscale intensity values of segment
 % - rMids: midpoint coordinate along curve in image coordinate frame
-% - iMids: image patch centered around midpoint coordinate (rMid)
 % - rTngt: tangent vector from midpoint (rMids) along curve (rCoords)
 % - rNorm: normal vector from midpoint (rMids) along curve (rCoords)
+% - iVals: grayscale intensity values of segment
+% - iMids: image patch centered around midpoint coordinate (rMid)
 %
 % Usage:
 %   T = collectTrainingSet(crvs)
@@ -23,30 +23,30 @@ function T = collectTrainingSet(crvs)
 %
 
 %% Create output structure and collect data
-T = struct('rCrds', [], 'iVals', [], 'rMids', [], ...
-    'iMids', [], 'rTngt', [], 'rNorm', []);
+T       = struct('rCrds', [], 'rMids', [], 'rTngt', [], 'rNorm', [], ...
+    'iVals', [], 'iMids', []);
 getProp = @(y) arrayfun(@(x) x.(y), crvs, 'UniformOutput', 0);
 
 rCrds = getProp('NormalSegments');
 rMids = getProp('MidPoints');
 rTngt = getProp('Tangents');
 rNorm = getProp('Normals');
-iMids = getProp('MidpointPatches'); % TODO
 iVals = getProp('ImagePatches');
+iMids = getProp('MidpointPatches');
 
 %% Reshape and post-process data to desired shapes
-% Segment Coordinates 
+% Midpoint-normalized Segment Coordinates
 T.rCrds = rCrds;
 
 % Midpoint Coordinates
-T.rMids = cellfun(@(x) reshape(x, [size(x,2) size(x,3)])', ...
+T.rMids = cellfun(@(x) reshape(x, [size(x,2) size(x,3)])',
     rMids, 'UniformOutput', 0);
 
-% Tangent Vectors 
+% Tangent Vectors
 T.rTngt = cellfun(@(x) reshape(x, [size(x,2) size(x,3)])', ...
     rTngt, 'UniformOutput', 0);
 
-% Normal Vectors 
+% Normal Vectors
 T.rNorm = cellfun(@(x) reshape(x, [size(x,2) size(x,3)])', ...
     rNorm, 'UniformOutput', 0);
 
@@ -62,7 +62,7 @@ function ints = midInts(P)
 %% Get midpoint intensities from image patch
 % Get middle column of intensities
 midIdx  = @(p) ceil(size(p,2) / 2);
-ints = cellfun(@(x) x(:, midIdx(x)), P, 'UniformOutput', 0);
-ints = cat(2, ints{:});
+ints    = cellfun(@(x) x(:, midIdx(x)), P, 'UniformOutput', 0);
+ints    = cat(2, ints{:});
 
 end
