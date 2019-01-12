@@ -39,7 +39,7 @@ iMids = getProp('MidpointPatches');
 T.rCrds = rCrds;
 
 % Midpoint Coordinates
-T.rMids = cellfun(@(x) reshape(x, [size(x,2) size(x,3)])',
+T.rMids = cellfun(@(x) reshape(x, [size(x,2) size(x,3)])', ...
     rMids, 'UniformOutput', 0);
 
 % Tangent Vectors
