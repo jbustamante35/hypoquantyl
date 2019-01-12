@@ -64,7 +64,7 @@ classdef Curve < handle
         
         function obj = RunFullPipeline(obj, ver)
             %% Runs full pipeline from Parent's Trace to generate ImagePatch
-            tRun = cputime;
+            tRun = tic;
             fprintf('\nRunning Full Pipeline for %s\n', obj.Parent.Origin);
             tic; obj.SegmentOutline; fprintf('Splitting full outline: %.02f sec\n', toc);            
             tic; obj.NormalizeSegments; fprintf('Midpoint Normalization conversion: %.02f sec\n', toc);
@@ -72,7 +72,7 @@ classdef Curve < handle
             tic; obj.CreateEnvelopeStructure(ver); fprintf('Creating Envelope Structure: %.02f sec\n', toc);
             tic; obj.Normal2Envelope(ver); fprintf('Converting to Envelope coordinates: %.02f sec\n', toc);
             tic; obj.GenerateImagePatch(ver); fprintf('Generating Image Patch: %.02f sec\n', toc);
-            fprintf('%.02f sec to complete a single contour\n\n', cputime-tRun);
+            fprintf('%.02f sec to complete a single contour\n\n', toc(tRun));
             
         end
         
@@ -420,8 +420,11 @@ classdef Curve < handle
             crdsPatch = struct('out', crdsOut, 'mid', crdCrv, 'inn', crdsInn);                        
             
             % Create midpoint-centered patch for MidpointPatches
-            patchSize = 20;
-            midsPatch = patchFromCoord(seg, mid, img, patchSize);
+            patchBuff = 0.08;
+            patchSize = 50;
+            midsPatch = patchFromCoord(seg, Pm, mid, img, patchBuff, patchSize);
+            midsPatch(isnan(midsPatch)) = val;
+            
         end
         
         function [crvsX, crvsY] = rasterizeSegments(obj, req)
