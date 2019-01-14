@@ -1,7 +1,8 @@
 function [PCA_custom, PCA_builtin] = pcaAnalysis(rawD, numC, sz, sv, dName, vis)
 %% pcaAnalysis: custom pca analysis
-% This function takes in rasterized data set of size [N x d] and returns a structure containing all
-% data extracted after pca analysis. User defines number of components to reduce to.
+% This function takes in rasterized data set of size [N x d] and returns a 
+% structure containing all data extracted after pca analysis. User defines 
+% number of components to reduce to.
 %
 % Usage:
 %   [PCA_custom, PCA_builtin] = pcaAnalysis(rawD, numC, sz, sv, dName, vis)
@@ -25,12 +26,14 @@ PCA_builtin = builtinPCA(rawD, numC);
 
 %% Save results from custom and built-in analysis
 if sv
-    fname = sprintf('%s_pcaResults_%s_%dPCs', datestr(now, 'yymmdd'), dName, numC);
+    fname = sprintf('%s_pcaResults_%s_%dPCs', ...
+        datestr(now, 'yymmdd'), dName, numC);
     save(fname, '-v7.3', 'PCA_custom', 'PCA_builtin');
 end
 
 %% Show output from custom and builtin PCA analysis
 if vis
+    analysis_name = dName; % Just in case I want to change the title formatting
     [figC, ttlC] = showMyPCA(PCA_custom, analysis_name);
     [figB, ttlB] = showBuiltinPCA(PCA_builtin, analysis_name, sz);
     
