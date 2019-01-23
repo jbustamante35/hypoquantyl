@@ -1,7 +1,8 @@
 function pca_custom = myPCA(rawD, numC)
 %% myPCA: my custom PCA function 
-% This function takes rasterized data and performs PCA with the number of Principal Components (PC)
-% given by the numC parameter. Output is in a structure containing various data from the analysis.
+% This function takes rasterized data and performs PCA with the number of 
+% Principal Components (PC) given by the numC parameter. Output is in a 
+% structure containing various data from the analysis.
 %
 % Usage:
 %   pca_custom = myPCA(rawD, numC)
