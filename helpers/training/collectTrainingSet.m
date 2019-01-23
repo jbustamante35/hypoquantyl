@@ -23,9 +23,9 @@ function T = collectTrainingSet(crvs)
 %
 
 %% Create output structure and collect data
+getProp = @(y) arrayfun(@(x) x.(y), crvs, 'UniformOutput', 0);
 T       = struct('rCrds', [], 'rMids', [], 'rTngt', [], 'rNorm', [], ...
     'iVals', [], 'iMids', []);
-getProp = @(y) arrayfun(@(x) x.(y), crvs, 'UniformOutput', 0);
 
 rCrds = getProp('NormalSegments');
 rMids = getProp('MidPoints');
