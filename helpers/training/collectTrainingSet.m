@@ -1,4 +1,4 @@
-function [T, A] = collectTrainingSet(crvs)
+function [T, Z] = collectTrainingSet(crvs, sv)
 %% collectTrainingSet: compile data structures for training set
 % This function takes in an array of CircuitJB objects with their child Curve
 % objects and combines them to generate the dataset to use for training. This is
@@ -17,9 +17,11 @@ function [T, A] = collectTrainingSet(crvs)
 %
 % Input:
 %   crvs: array of Curve objects made from manually-drawn contours
+%   sv: boolean to save data in a .mat file
 %
 % Ouput:
 %   T: structure containing all training data (see above for details)
+%   Z: structure containing reshaped and vectorized training data
 %
 
 %% Create output structure and collect data
@@ -73,8 +75,14 @@ rastTngt = cat(1, T.rTngt{:}) + rastMids;
 rastNorm = cat(1, T.rNorm{:}) + rastMids;
 rastZvec = [rastMids , rastTngt , rastNorm];
 
-%% Store reshaped data into A structure
-A = struct('xCrds', rastCrds{1}, 'yCrds', rastCrds{2}, 'zVect', rastZvec);
+% Store reshaped data into Z structure
+Z = struct('xCrds', rastCrds{1}, 'yCrds', rastCrds{2}, 'zVect', rastZvec);
+
+%% Save data into .mat file
+if sv
+    fnm = sprintf('%s_TrainingData_%dContours', tdate('s'), numel(T.rCrds));
+    save(fnm, 'T', 'Z');
+end
 
 end
 
