@@ -433,7 +433,8 @@ classdef Curve < handle
             % The req parameter is the requested segment type to rasterize and
             % should be RawSegments, NormalSegments, or EnvelopeSegments.
             try
-                segtype = getSegmentType(obj, req);
+%                 segtype = getSegmentType(obj, req);
+                segtype = getSegmentType(req);
                 X       = obj.(segtype)(:,1,:);
                 Y       = obj.(segtype)(:,2,:);
                 crvsX   = rasterizeImagesHQ(X);
