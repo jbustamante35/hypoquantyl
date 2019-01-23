@@ -107,17 +107,21 @@ if vis
     fig2 = figure;
     for i = 1 : N
         
-        rts = CRCS(i).getRoute;
-        
-        % Draw Routes on grayscale image
-        showImage(i, fig1, CRCS(i).getImage('gray'));
-        hold on;        
-        arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
+        try
+            rts = CRCS(i).getRoute;
 
-        % Draw Routes bw image
-        showImage(i, fig2, CRCS(i).getImage('bw'));
-        hold on;
-        arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
+            % Draw Routes on grayscale image
+            showImage(i, fig1, CRCS(i).getImage('gray'));
+            hold on;        
+            arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
+
+            % Draw Routes bw image
+            showImage(i, fig2, CRCS(i).getImage('bw'));
+            hold on;
+            arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
+        catch e
+            fprintf(2, 'Skipping Circuit %d\n%s\n', i, e.message);
+        end
         
     end
     
