@@ -54,18 +54,29 @@ classdef CircuitJB < handle
             arrayfun(@(x) x.NormalizeTrace, obj.Routes, 'UniformOutput', 0);
         end
         
-        function obj = CreateCurves(obj)
+        function obj = CreateCurves(obj, overwrite)
             %% Full Outline generates Curve objects around CircuitJB object
             % Generate InterpOutline and NormalOutline if not yet done
-            if isempty(obj.NormalOutline)
-                obj.ReconfigInterpOutline;
-                obj.NormalizeOutline;
+            % Set overwrite to 0 to skip curves that are already created
+            
+            if overwrite
+                chk = true;
+            else
+                chk = isempty(obj.Curves);                
             end
             
-            obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
-            obj.Curves.RunFullPipeline('smooth');
-            obj.Curves.Normal2Envelope('main');
-            
+            if chk
+                if isempty(obj.NormalOutline)
+                    obj.ReconfigInterpOutline;
+                    obj.NormalizeOutline;
+                end
+                
+                obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
+                obj.Curves.RunFullPipeline('smooth');
+                obj.Curves.Normal2Envelope('main');
+            else
+                fprintf('\nSkipping %s\n', obj.Origin);
+            end
         end
         
         function obj = CreateRoutes(obj)
