@@ -109,12 +109,12 @@ if vis
         
         try
             rts = CRCS(i).getRoute;
-
+            
             % Draw Routes on grayscale image
             showImage(i, fig1, CRCS(i).getImage('gray'));
-            hold on;        
+            hold on;
             arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
-
+            
             % Draw Routes bw image
             showImage(i, fig2, CRCS(i).getImage('bw'));
             hold on;
@@ -149,14 +149,14 @@ function [crc, flp] = getCircuit(rndS, typ, flipme)
 %% getCircuit: subfunction to manually-draw contour on random frame of Seedling
 
 % Get all un-trained random good frames from Seedling's lifetime
-if typ    
+if typ
     % Get randomly selected untrained frame for Hypocotyl object
     frms = getUntrained(rndS.Parent);
     rFrm = frms(randi(length(frms), 1));
     org  = sprintf('%s_%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
         rndS.GenotypeName, rndS.SeedlingName, rndS.HypocotylName, rFrm);
     
-else    
+else
     % Get randomly selected untrained frame for Hypocotyl object
     frms = getUntrained(rndS);
     rFrm = frms(randi(length(frms), 1));
@@ -209,12 +209,13 @@ crc.checkFlipped;
 crc.DrawOutline(0, flipme);
 crc.DrawAnchors(0, flipme);
 crc.ConvertRawPoints;
-crc.CreateRoutes;
+% crc.CreateRoutes;
 
 end
 
 function showImage(num, fig, im)
 %% Show image on given plot of figure
+% Default expects only 8 subplots [4 rows, 2 columns]
 set(0,'CurrentFigure',fig);
 subplot(4,2,num);
 imagesc(im);
