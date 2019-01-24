@@ -53,7 +53,10 @@ cbBot = [buffVert(1,:) ; buffVert(2,:)];
 intT  = interpolateOutline(cbTop, sz);
 intB  = interpolateOutline(cbBot, sz);
 
+%%
+
 % Interpolate segments of columns
+% Straight segments will make interpolation impossible, so use method to 
 crds = arrayfun(@(x) interpolateOutline([intT(x,:) ; intB(x,:)], sz), ...
     1 : sz, 'UniformOutput', 0);
 
@@ -75,6 +78,10 @@ function V = adjustVertices(vert, buff)
 %   V: new rectangle's vertices
 %
 
+% Set constant parameter to deal with edge cases where vertices overlap when
+% segment is a straight line 
+C = 0.001;
+
 % Define initial vertices locations
 % NOTE: These may change over time
 oldTL = vert(1,:);
@@ -84,7 +91,7 @@ oldBL = vert(4,:);
 
 % Compute distance to translate
 rectArea = boxArea(oldTL, oldTR, oldBL);
-trnsDist = (rectArea * buff) / 4;
+trnsDist = ((rectArea * buff) + C) / 4;
 
 % Get new vertices coordinates
 newTL = [oldTL(1)-trnsDist , oldTL(2)-trnsDist];
