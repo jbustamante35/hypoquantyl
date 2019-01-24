@@ -22,8 +22,8 @@ classdef Curve < handle
     end
     
     properties (Access = protected)
-        SEGMENTSIZE  = 200;     % Number of coordinates per segment
-        SEGMENTSTEPS = 50;      % Size of step to next segment
+        SEGMENTSIZE  = 50;     % Number of coordinates per segment [default 200]
+        SEGMENTSTEPS = 1;      % Size of step to next segment [default 50]
         ENVELOPESIZE = 20;      % Hard-coded max distance from original segment to envelope [deprecated]
         SMOOTHSPAN   = 0.7;     % Moving average span for smoothing segment coordinates
         SMOOTHMETHOD = 'sgolay' % Smoothing method
@@ -69,9 +69,9 @@ classdef Curve < handle
             tic; obj.SegmentOutline; fprintf('Splitting full outline: %.02f sec\n', toc);            
             tic; obj.NormalizeSegments; fprintf('Midpoint Normalization conversion: %.02f sec\n', toc);
             tic; obj.SmoothSegments; fprintf('Smoothing Segments: %.02f sec\n', toc);
-            tic; obj.CreateEnvelopeStructure(ver); fprintf('Creating Envelope Structure: %.02f sec\n', toc);
-            tic; obj.Normal2Envelope(ver); fprintf('Converting to Envelope coordinates: %.02f sec\n', toc);
-            tic; obj.GenerateImagePatch(ver); fprintf('Generating Image Patch: %.02f sec\n', toc);
+%             tic; obj.CreateEnvelopeStructure(ver); fprintf('Creating Envelope Structure: %.02f sec\n', toc);
+%             tic; obj.Normal2Envelope(ver); fprintf('Converting to Envelope coordinates: %.02f sec\n', toc);
+%             tic; obj.GenerateImagePatch(ver); fprintf('Generating Image Patch: %.02f sec\n', toc);
             fprintf('%.02f sec to complete a single contour\n\n', toc(tRun));
             
         end
@@ -508,7 +508,7 @@ classdef Curve < handle
         
         function [img, medBg, Pmat, midpoint] = getMapParams(obj, segIdx)
             %% Returns parameters for mapping curve to image for setImagePatch
-            img      = obj.Parent.getImage('gray');
+            img      = double(obj.Parent.getImage('gray'));
             msk      = obj.Parent.getImage('bw');
             medBg    = median(img(msk == 1));
             Pmat     = obj.getParameter('Pmats', segIdx);
