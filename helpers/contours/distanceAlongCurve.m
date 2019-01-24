@@ -14,6 +14,6 @@ function dst = distanceAlongCurve(envelope_coordinate, curve)
 %   dst: normalized distance representing how far along an envelope point is within a segment
 %
 
-dst = find(getDim(envelope_coordinate, 1) == curve) / length(curve);
+dst = find(getDim(envelope_coordinate, 1) == getDim(curve,1)) / length(curve);
 
 end
