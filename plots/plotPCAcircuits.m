@@ -1,6 +1,6 @@
 function fig = plotPCAcircuits(X, Y, c, n, f)
 %% plotPCAcircuits: plot for checking PCA results of fully normalized manual contours
-% 
+%  DEPRECATED VERSION FROM OLD ROUTE METHOD
 %
 % Usage:
 %   fig = plotPCAcircuits(X, Y, c, n, f)
@@ -26,7 +26,7 @@ else
 end
 
 set(gcf, 'Color', 'w');
-n2i = @(x,y) norm2interp(y, x.getMean, x.getAnchors(1, 'b2'), x.getAnchors(1, 'd2'));
+n2i = @(x,y) norm2interp(y, x.getMean, x.getAnchorPoints(1, 'b2'), x.getAnchorPoints(1, 'd2'));
 
 %% Extract data from index defined in n
 raw = [X.InputData(n,:) ; Y.InputData(n,:)]';
