@@ -1,8 +1,8 @@
 function oL = interpolateOutline(crds, sz)
 %% interpolateOutline: interpolate a set of coordinates to desired length
-% This function takes a set of coordinates, determines cumulative sum of all the arc lengths
-% between each coordinate, then interpolates along each axis to the number of coordinates defined by
-% the sz parameter.
+% This function takes a set of coordinates, determines cumulative sum of all the
+% arc lengths between each coordinate, then interpolates along each axis to the
+% number of coordinates defined by the sz parameter.
 %
 % Usage:
 %   oL = interpolateOutline(crds, sz)
