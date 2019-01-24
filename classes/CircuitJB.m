@@ -22,7 +22,7 @@ classdef CircuitJB < handle
         Image
         InterpOutline
         isFlipped
-        INTERPOLATIONSIZE = 2100
+        INTERPOLATIONSIZE = 210 % [default 2100 --> gives 10 points per pixel]
         NUMBEROFANCHORS   = 7
     end
     
@@ -222,9 +222,16 @@ classdef CircuitJB < handle
         end
         
         function obj = ConvertRawOutlines(obj)
-            %% Convert contours from RawOutline to InterpOutline
-            oL = obj.RawOutline;
-            sz = obj.INTERPOLATIONSIZE;          
+            %% Convert contours from RawOutline to InterpOutline            
+            if iscell(obj.RawOutline)
+                oL = obj.RawOutline{1};
+            else
+                oL = obj.RawOutline;
+            end
+            
+            % Wrap contour back to first coordinate
+            oL = [oL ; oL(1,:)];
+            sz = obj.INTERPOLATIONSIZE;
             iL = interpolateOutline(oL, sz);
             
             obj.InterpOutline = iL;
@@ -249,9 +256,15 @@ classdef CircuitJB < handle
             % This will change the coordinates from this object's InterpOutline
             % property to the InterpTrace of each of this object's Route array.
             % This ensures that there is a segment defining the base segment.
-            trc = arrayfun(@(x) x.getInterpTrace, ...
-                obj.Routes, 'UniformOutput', 0);
-            obj.FullOutline = cat(1, trc{:});
+            %
+            % Update [01-24-2019]
+            % Don't use Route traces anymore
+            obj.FullOutline = obj.InterpOutline;
+            
+            % Old version that uses Route traces
+%             trc = arrayfun(@(x) x.getInterpTrace, ...
+%                 obj.Routes, 'UniformOutput', 0);
+%             obj.FullOutline = cat(1, trc{:});
         end
         
         function obj = trainCircuit(obj, trainStatus)
@@ -513,6 +526,15 @@ classdef CircuitJB < handle
             %% Returns requested property if it exists
             try
                 prp = obj.(req);
+            catch e
+                fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
+            end
+        end
+        
+        function obj = setProperty(obj, req, val)
+            %% Set requested property if it exists [for private properties]
+            try
+                obj.(req) = val;
             catch e
                 fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
             end
