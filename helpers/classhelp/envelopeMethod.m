@@ -19,7 +19,10 @@ function env = envelopeMethod(crd, seg, maxD)
 %
 
 %% Dew-it, Anikin
-env  = [distanceAlongCurve(crd, seg) distanceFromCurve(crd, seg, maxD)];
-
+try
+    env  = [distanceAlongCurve(crd, seg) distanceFromCurve(crd, seg, maxD)];
+catch e
+    fprintf(2, '%s\n', e.getReport);
+end
 end
 
