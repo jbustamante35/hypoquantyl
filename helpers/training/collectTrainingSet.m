@@ -1,4 +1,4 @@
-function T = collectTrainingSet(crvs)
+function [T, A] = collectTrainingSet(crvs)
 %% collectTrainingSet: compile data structures for training set
 % This function takes in an array of CircuitJB objects with their child Curve
 % objects and combines them to generate the dataset to use for training. This is
@@ -55,6 +55,26 @@ T.iVals = cellfun(@(x) midInts(x), iVals, 'UniformOutput', 0);
 
 % Midpoint Patches
 T.iMids = iMids;
+
+%% Set up function handles for reshaping dataset
+rastFnc  = @(d,c) cellfun(@(x) reshape(x(:,d,:), [size(x,1) size(x,3)])', ...
+    T.(c), 'UniformOutput', 0);
+rastDims = @(d,c) arrayfun(@(x) rastFnc(x, c), d, 'UniformOutput', 0);
+rastXY   = @(f)   cellfun(@(x) cat(1, x{:}), f, 'UniformOutput', 0);
+rastData = @(c)   rastXY(rastDims(1:size(T.(c){1},2), c));
+
+%% Reshape coordinates for rasterized dataset
+% Midpoint-Normalized Coordinates
+rastCrds = rastData('rCrds');
+
+% Midpoint-Tangent-Normal Coordinates [ Z Vectors ]
+rastMids = cat(1, T.rMids{:});
+rastTngt = cat(1, T.rTngt{:}) + rastMids;
+rastNorm = cat(1, T.rNorm{:}) + rastMids;
+rastZvec = [rastMids , rastTngt , rastNorm];
+
+%% Store reshaped data into A structure
+A = struct('xCrds', rastCrds{1}, 'yCrds', rastCrds{2}, 'zVect', rastZvec);
 
 end
 

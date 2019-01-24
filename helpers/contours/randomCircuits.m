@@ -144,15 +144,17 @@ end
 function [crc, flp] = getCircuit(rndS, typ, flipme)
 %% getCircuit: subfunction to manually-draw contour on random frame of Seedling
 
-% Get a random good frame and image from Seedling's lifetime
-if typ
-    frms = rndS.Parent.getGoodFrames;
+% Get all un-trained random good frames from Seedling's lifetime
+if typ    
+    % Get randomly selected untrained frame for Hypocotyl object
+    frms = getUntrained(rndS.Parent);
     rFrm = frms(randi(length(frms), 1));
     org  = sprintf('%s_%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
         rndS.GenotypeName, rndS.SeedlingName, rndS.HypocotylName, rFrm);
     
-else
-    frms = rndS.getGoodFrames;
+else    
+    % Get randomly selected untrained frame for Hypocotyl object
+    frms = getUntrained(rndS);
     rFrm = frms(randi(length(frms), 1));
     org  = sprintf('%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
         rndS.GenotypeName, rndS.SeedlingName, rFrm);
@@ -178,6 +180,16 @@ if flipme
         rndS.setContour(rFrm, flp);
     end
 end
+end
+
+function untrainedFrames = getUntrained(s)
+%% Returns frames that have already been trained
+goodFrms        = s.getGoodFrames;
+h               = s.MyHypocotyl;
+all_circuits    = arrayfun(@(x) h.getCircuit(x, 'org'), ...
+    goodFrms, 'UniformOutput', 0);
+untrainedFrames = find(cellfun(@isempty, all_circuits));
+
 end
 
 function crc = drawCircuit(rndS, org, flipme)
