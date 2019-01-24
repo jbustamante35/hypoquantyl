@@ -18,26 +18,31 @@ function segs = split2Segments(trc, len, step)
 %
 
 % Determine number of iterations needed to slide around contour
-t       = 1;
+sIdx    = 1;
 stepper = 1 : step : (length(trc) - len - 1);
 segs    = zeros(len, 2, size(stepper, 2));
 for s = stepper
-    segs(:, :, t) = trc((s : (s + len - 1)), :);
-    t = t + 1;
+    segs(:, :, sIdx) = trc((s : (s + len - 1)), :);
+    sIdx             = sIdx + 1;
 end
 
-% Interpolate last segment if step size exceeds total length of contour
+% Interpolate last segment if step size exceeds total length of contour [DEPRECATED]
 if ~isequal(segs(end, :, end), trc(end, :))
     endIdx = stepper(end) + step;
     endSeg = trc(endIdx : end, :);
     
     try
-        segs(:, :, t) = interpolateOutline(endSeg, len);
+        segs(:, :, sIdx) = interpolateOutline(endSeg, len);
     catch
         if isequal(length(endSeg), len)
-            segs(:, :, t) = endSeg;
+            segs(:, :, sIdx) = endSeg;
         end
     end
 end
+
+% Continue generating segments to fully wrap around contour
+
+
+
 
 end
