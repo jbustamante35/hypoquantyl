@@ -92,6 +92,7 @@ subplot(212);
 hold on;
 axis ij;
 
+plt(segNrm, 'k.-', 1);
 cellfun(@(x) plt(x, 'r.-', 1), envOut(idx).Full, 'UniformOutput', 0);
 cellfun(@(x) plt(x, 'b.-', 1), envInn(idx).Full, 'UniformOutput', 0);
 
@@ -119,6 +120,7 @@ plt(envOutm, 'r.-', 3);
 plt(envInnm, 'b.-', 3);
 
 colormap bone;
+axis image;
 axis ij;
 axis tight;
 ttl = sprintf( ...
@@ -140,6 +142,7 @@ arrayfun(@(x) plt(crds.inn(:,:,x), 'b.-', 1), ...
     1:size(crds.inn,3), 'UniformOutput', 0);
 
 colormap bone;
+axis image;
 axis ij;
 axis tight;
 ttl = sprintf( ...
@@ -205,6 +208,7 @@ for s = 1 : numSegs
 end
 
 colormap bone;
+axis image;
 axis ij;
 ttl = sprintf( ...
     'Converted Envelope on Contour \n Contour %s\nEnvelope Size %d', ...
@@ -229,6 +233,9 @@ if sv
         cd(currDir);
         %         clf(figs(g));
     end
+    
+else
+    pause(1);
 end
 
 end
