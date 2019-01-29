@@ -13,7 +13,7 @@ function [T, Z] = collectTrainingSet(crvs, sv)
 % - iMids: image patch centered around midpoint coordinate (rMid)
 %
 % Usage:
-%   T = collectTrainingSet(crvs)
+%   [T, Z] = collectTrainingSet(crvs, sv)
 %
 % Input:
 %   crvs: array of Curve objects made from manually-drawn contours
@@ -53,10 +53,10 @@ T.rNorm = cellfun(@(x) reshape(x, [size(x,2) size(x,3)])', ...
     rNorm, 'UniformOutput', 0);
 
 % Segment Grayscale Intensities
-% T.iVals = cellfun(@(x) midInts(x), iVals, 'UniformOutput', 0);
+T.iVals = cellfun(@(x) midInts(x), iVals, 'UniformOutput', 0);
 
 % Midpoint Patches
-% T.iMids = iMids;
+T.iMids = iMids;
 
 %% Set up function handles for reshaping dataset
 rastFnc  = @(d,c) cellfun(@(x) reshape(x(:,d,:), [size(x,1) size(x,3)])', ...
