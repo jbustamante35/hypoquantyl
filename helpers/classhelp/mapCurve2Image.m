@@ -28,8 +28,8 @@ try
     % Need to figure out what to do with NaN values
     % FIX CROPPING BY BUFFERING
     Xm = reverseMidpointNorm(crds, pm) + md;
-    %Xi = getDim(impixel(im, round(Xm(:,1)), round(Xm(:,2))), 1);
-    Xi = ba_interp2(im,Xm(:,1),Xm(:,2));
+    Xi = getDim(impixel(im, round(Xm(:,1)), round(Xm(:,2))), 1);
+%     Xi = ba_interp2(im, Xm(:,1), Xm(:,2));
 catch
     % [ TODO ] Need to convert Nan to something else. Otherwise I need to fix 
     % the buffering of cropped images. 
