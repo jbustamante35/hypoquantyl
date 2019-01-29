@@ -17,7 +17,7 @@ function segs = split2Segments(trc, len, step)
 %   segs: [len x 2 x N] matrix of N segments of len size
 %
 
-%% OLD METHOD
+%% OLD METHOD [ DEPRECATED ]
 % Determine number of iterations needed to slide around contour
 % sIdx    = 1;
 % stepper = 1 : step : (length(trc) - len - 1);
@@ -26,12 +26,12 @@ function segs = split2Segments(trc, len, step)
 %     segs(:, :, sIdx) = trc((s : (s + len - 1)), :);
 %     sIdx             = sIdx + 1;
 % end
-% 
+%
 % % Interpolate last segment if step size exceeds total length of contour [DEPRECATED]
 % if ~isequal(segs(end, :, end), trc(end, :))
 %     endIdx = stepper(end) + step;
 %     endSeg = trc(endIdx : end, :);
-%     
+%
 %     try
 %         segs(:, :, sIdx) = interpolateOutline(endSeg, len);
 %     catch
