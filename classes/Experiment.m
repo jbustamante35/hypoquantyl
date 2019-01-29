@@ -235,6 +235,43 @@ classdef Experiment < handle
 
             C   = [org ; flp];
         end
+        
+        function [noflp, hyp] = findMissingContours(obj)
+            %% Find missing contours (accidentally cancelled when training)
+            C = obj.combineContours;
+            D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
+            D = cat(1, D{:});
+            
+            if mod(numel(D),2)
+                nms   = arrayfun(@(x) x.Parent.Origin, D, 'UniformOutput', 0);
+                hlfSz = ceil(length(nms) / 2);
+                org   = nms(1       : hlfSz);
+                flp   = nms(hlfSz+1 : end);
+                flp{end+1} = '';
+                flps  = cellfun(@(x) x(6:end), flp, 'UniformOutput', 0);
+                mems  = cellfun(@(x) ismember(x, flps), org, 'UniformOutput', 0);
+                mems  = cat(1, mems{:});
+            else
+                mems = [];
+            end
+            
+            noflp = org{~mems};
+            noflp = noflp{1};
+            
+            % Search for and Return Hypocotyl with missing contour
+            [~, exIdx] = regexp(noflp, [ex.ExperimentName , '_']);
+            sdIdx = regexp(noflp, '_Seedling');
+            gname = noflp(exIdx+1 : sdIdx-1);
+            gen   = ex.search4Genotype(gname);
+            aa    = strfind(noflp, '{');
+            bb    = strfind(noflp, '}');
+            hyIdx = str2double(noflp(aa + 1 : bb - 1));
+            sdl   = gen.getSeedling(hyIdx);
+            hyp   = sdl.MyHypocotyl;
+            
+            
+            %             x{numel(x) + abs(numel(x) - numel(y))} = '';
+        end
 
         function P = combineParameters(obj)
             %% Return all Ppar (theta, dX, dY) from CircuitJB Routes
