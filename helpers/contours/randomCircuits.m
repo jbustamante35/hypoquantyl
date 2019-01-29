@@ -209,7 +209,7 @@ crc.checkFlipped;
 crc.DrawOutline(0, flipme);
 crc.DrawAnchors(0, flipme);
 crc.ConvertRawPoints;
-% crc.CreateRoutes;
+% crc.CreateRoutes; % Use of Routes is deprecated [01-23-2019]
 
 end
 
@@ -219,7 +219,8 @@ function showImage(num, fig, im)
 set(0,'CurrentFigure',fig);
 subplot(4,2,num);
 imagesc(im);
-colormap gray, axis image;
+colormap bone;
+axis image;
 hold on;
 
 end
