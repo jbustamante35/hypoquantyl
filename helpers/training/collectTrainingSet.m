@@ -13,7 +13,7 @@ function [T, Z] = collectTrainingSet(crvs, sv)
 % - iMids: image patch centered around midpoint coordinate (rMid)
 %
 % Usage:
-%   T = collectTrainingSet(crvs)
+%   [T, Z] = collectTrainingSet(crvs, sv)
 %
 % Input:
 %   crvs: array of Curve objects made from manually-drawn contours
