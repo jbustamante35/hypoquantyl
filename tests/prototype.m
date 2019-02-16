@@ -18,9 +18,9 @@ if f
     fnms{1} = sprintf('%s_DrawnContour', datestr(now, 'yymmdd'));
     figs(2) = figure; % Check array of manually-drawn contours
     fnms{2} = sprintf('%s_ContourGallery', datestr(now, 'yymmdd'));
-    
+
     set(figs, 'Color', 'w');
-    
+
 else
     cla(figs);
     clf(figs);
@@ -59,7 +59,7 @@ fprintf('Extracted %d seeldlings from %d genotypes in %s [%.02f sec]\n\n', ...
     numel(ex.combineSeedlings), ex.NumberOfGenotypes, ...
     ex.ExperimentName, cputime-tSeeds);
 
-% Extract Hypocotyls 
+% Extract Hypocotyls
 tHyps = cputime;
 ex.FindHypocotylAllGenotypes(verbosity);
 fprintf('Extracted %d hypocotyls from %d genotypes in %s [%.02f sec]\n\n', ...
@@ -117,7 +117,7 @@ B = arrayfun(@(x) x.getProperty('Contour'), H, 'UniformOutput', 0);
 B = cat(2, B{:});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Display gallery of manually-drawn contours 
+%% Display gallery of manually-drawn contours
 set(0, 'CurrentFigure', figs(2));
 cla;clf;
 
