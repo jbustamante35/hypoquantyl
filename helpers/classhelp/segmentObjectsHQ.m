@@ -1,11 +1,12 @@
 function [obs, msk] = segmentObjectsHQ(im, sz)
-%% segmentObjects: segment image to bw and filter out small objects
-% This function takes a grayscale image, uses simple Otsu method to segment into bw image, then
-% filters out smaller objects between the pixel range defined by sz parameter. Output is a structure
-% obtained by MATLAB's bwconncomp function.
+%% segmentObjectsHQ: segment image to bw and filter out small objects
+% This function takes a grayscale image, uses simple Otsu method to segment
+% into bw image, then filters out smaller objects between the pixel range
+% defined by sz parameter. Output is a structure obtained by MATLAB's
+% bwconncomp function.
 %
 % Usage:
-%  [obs, bw] = segmentObjects(im, sz)
+%  [obs, msk] = segmentObjectsHQ(im, sz)
 %
 % Input:
 %  im: grayscale image
@@ -17,10 +18,13 @@ function [obs, msk] = segmentObjectsHQ(im, sz)
 %
 % This version is for HypoQuantyl
 
-% msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, 'ForegroundPolarity', 'bright');
+% msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, ...
+%   'ForegroundPolarity', 'bright');
 % flt = bwareafilt(imcomplement(msk), sz);
-msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.4, 'ForegroundPolarity', 'dark');
+msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.4, ...
+    'ForegroundPolarity', 'dark');
 flt = bwareafilt(imcomplement(msk), sz);
 obs = bwconncomp(flt);
 % msk = imcomplement(msk);
+
 end
