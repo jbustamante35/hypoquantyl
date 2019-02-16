@@ -1,7 +1,7 @@
 function [pcaX, pcaY] = multiPCAoptimal(varargin)
-%% multiPCAoptimal: run multiPCA with optimal number of PCs based on variance explained
-% This function runs through the multiPCA pipeline with varying number of Principal Components
-% (defined by values from variance explained).
+%% multiPCAoptimal: optimal multiPCA using variance explained
+% This function runs through the multiPCA pipeline with varying number of
+% Principal Components (defined by values from variance explained).
 %
 % Usage:
 %   [customPCA, builtinPCA] = multiPCAoptimal(varargin)
@@ -12,14 +12,14 @@ function [pcaX, pcaY] = multiPCAoptimal(varargin)
 %   SaveData: boolean to save final results
 %   ShowResults: boolean to show figures of output
 %   NumPCs: number of PCs to use for PCA (optional)
-%   Optimize: boolean to optimize number of PCs for each Route of CircuitJB (optional)
+%   Optimize: boolean to optimize PCs for each Route of CircuitJB (optional)
 %   pcaX: x-coordinate pca output to extract variance explained data
 %   pcaY: y-coordinate pca output to extract variance explained data
 %   Cutoff: minimum percentage for variance explained to determine optimal PCs
 %
 % Output:
 %   pcaX: full pca output for all Routes of x-coordinate data
-%   pcaY: full pca output for all Routes of y-coordinate data 
+%   pcaY: full pca output for all Routes of y-coordinate data
 %
 
 %% Parse input and set parameters
@@ -50,7 +50,8 @@ customPCA  = cell(numel(D), 1);
 builtinPCA = cell(numel(D), 1);
 dNames     = {'xCoords', 'yCoords'};
 for i = 1 : numel(D)
-    [customPCA{i}, builtinPCA{i}] = multiPCArun(D{i}, pcs(:,i), sv, dNames{i}, vis);
+    [customPCA{i}, builtinPCA{i}] = ...
+        multiPCArun(D{i}, pcs(:,i), sv, dNames{i}, vis);
 end
 
 pcaX = struct('customPCA', customPCA{1}, ...
@@ -60,7 +61,8 @@ pcaY = struct('customPCA', customPCA{2}, ...
 
 if sv
     N = numel(C);
-    nm = sprintf('%s_multiPCA_xyCoords_%sPCs_%dCircuitJB', datestr(now, 'yymmdd'), 'optimal', N);
+    nm = sprintf('%s_multiPCA_xyCoords_%sPCs_%dCircuitJB', ...
+        datestr(now, 'yymmdd'), 'optimal', N);
     save(nm, '-v7.3', 'pcaX', 'pcaY');
 end
 
