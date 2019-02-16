@@ -1,7 +1,7 @@
-function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flipme, sv, vis)
+function [CRCS, figs] = trainCircuits(Ein, crcsIn, typ, flipme, sv, vis)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
 % This function takes in a fully-generated Experiment object as input and
-% extracts random frames from random Hypocotyl objects to use as training data
+% extracts Hypocotyl objects to use as training data (defined in crcsIn matrix)
 % for the machine learning segmentation algorithm. The user is prompted to trace
 % a manually-drawn contour around a hypocotyl, which will be stored as a
 % CircuitJB object. The full array of CircuitJB objects is returned as well,
@@ -17,12 +17,23 @@ function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flipme, sv, vis)
 %   - Each Seedling object must also have bad frames removed
 %       * Run RemoveBadFrames method
 %
+% [NOTE] Selecting training data:
+% Input is in the form of indexed values in an Experiment object. Indices
+% in the cin parameter should map to a frame containing a Seedling or Hypocotyl
+% object in a given Genotype object.
+%
+% The following example would train 4 objects
+% [ [ 8 3 10 ];  % 8th genotype , 3rd seedling , 10th frame
+%   [ 1 2 1  ];  % 1st genotype , 2nd seedling , 1st  frame
+%   [ 3 5 25 ];  % 3rd genotype , 5th seedling , 25th frame
+%   [ 5 4 20 ] ] % 5th genotype , 4th seedling , 20th frame
+%
 % Usage:
-%   CRCS = randomCircuits(Ein, Ncrcs, typ, flipme, sv, vis)
+%   CRCS = trainCircuits(Ein, crcsIn, typ, flipme, sv, vis)
 %
 % Input:
 %   Ein: Experiment object to draw from to generate contour data
-%   Ncrcs: number of random Seedlings to analyze
+%   crcsIn: matrix mapping to data to train
 %   typ: 0 to get contours of Seedlings, 1 to get contours of Hypocotyls
 %   flipme: boolean to inflate dataset with flipped versions of each Hypocotyl
 %   sv: save figures as .fig and .tiff files
@@ -32,73 +43,49 @@ function [CRCS, figs] = randomCircuits(Ein, Ncrcs, typ, flipme, sv, vis)
 %   CRCS: CircuitJB array of manually-drawn contours from Experiment Ein
 %   figs: handles to figures if vis is set to true
 %
-% NOTE: [11/28/2018]
-%   I completely changed the methods used for extracting images from a class,
-%   as well as the way Hypocotyl objects are stored in a Seedling object:
-%       - Images are stored as filepath names, rather than raw image matrices
-%       - Hypocotyls are stored as a single object with multiple frames, rather
-%         than each frame being an individual Hypocotyl object
-%
-%   Because of this drastic change, I needed to change this function to extract
-%   frames from Hypocotyl objects, rather than PreHypocotyl objects, as it was
-%   before the change.
-%
-% TODO: [12/06/2018]
-%   There will be a need to generate datasets of hypocotyls of specific shapes
-%   or specific time points, so I need to make this more flexible to allow a
-%   matrix input to draw contours around a desired hypocotyl.
-%
-%   I'm imagining this as a [N x 3] input, where N is the desired number of
-%   contours to draw, each with 3 integers designating a specific Genotype,
-%   Seedling, and frame to show.
-%
-%   As of now, let's just focus on getting a solid algorithm established.
-%
 
 %% Initialize object array of Seedlings/Hypocotyl to draw contours for
-if typ
-    S = Ein.combineHypocotyls;
-else
-    S = Ein.combineSeedlings;
-end
+% Select [Genotype , Seedling | Hypocotyl , frame]
+nCrcs = size(crcsIn, 1);
 
-sIdx = randi(numel(S), 1, Ncrcs);
+% Initialize empty object array
 if flipme
-    CRCS = makeCircuits(Ncrcs * 2);
+    CRCS = makeCircuits(nCrcs * 2);
 else
-    CRCS = makeCircuits(Ncrcs);
+    CRCS = makeCircuits(nCrcs);
 end
 
 %% Draw contours at random frame from random Seedling/Hypocotyl
 % If flipme parameter set to true, then CircuitJB array is stored in n x 2,
 % where the flipped version is stored in dimension 2 of a Hypocotyl object
+OBJS = retrieveDataObjects(crcsIn, Ein, typ);
 cIdx = 1;
-for k = sIdx
-    rs = S(k);
-    
+for o = 1 : numel(OBJS)
+    obj = OBJS(o);
+    frm = crcsIn(o, 3);
     if flipme
-        [org, flp] = getCircuit(rs, typ, flipme);
+        [org, flp] = getCircuit(obj, frm, typ, flipme);
         CRCS(cIdx) = org;
         cIdx       = cIdx + 1;
         CRCS(cIdx) = flp;
         cIdx       = cIdx + 1;
     else
-        CRCS(cIdx) = getCircuit(rs, typ, flipme);
-        cIdx = cIdx + 1;
+        CRCS(cIdx) = getCircuit(obj, frm, typ, flipme);
+        cIdx       = cIdx + 1;
     end
     cla;clf;
 end
 
 if sv
     arrayfun(@(x) x.DerefParents, CRCS, 'UniformOutput', 0);
-    nm = sprintf('%s_%drandomCircuits_circuits', tdate('s'), Ncrcs);
+    nm = sprintf('%s_%drandomCircuits_circuits', tdate('s'), nCrcs);
     save(nm, '-v7.3', 'CRCS');
     arrayfun(@(x) x.ResetReference(Ein), CRCS, 'UniformOutput', 0);
 end
 
 %% Show 8 first images and masks, unless < 8 contours drawn
 if vis
-    if Ncrcs < 8
+    if numel(CRCS) < 8
         N = numel(CRCS);
     else
         N = 8;
@@ -108,18 +95,23 @@ if vis
     fig2 = figure;
     for i = 1 : N
         
-        try
-            rts = CRCS(i).getRoute;
-            
+        try            
             % Draw Routes on grayscale image
             showImage(i, fig1, CRCS(i).getImage('gray'));
             hold on;
-            arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
-            
+            plt(CRCS(i).getRawOutline, 'm.', 14);
+            plt(CRCS(i).getOutline, 'b-', 3);
+            plt(CRCS(i).getRawPoints, 'y+', 14);
+            plt(CRCS(i).getAnchorPoints, 'co', 14);
+
             % Draw Routes bw image
             showImage(i, fig2, CRCS(i).getImage('bw'));
             hold on;
-            arrayfun(@(x) drawRoutesAndMidPoints(x), rts, 'UniformOutput', 0);
+            plt(CRCS(i).getRawOutline, 'm.', 14);
+            plt(CRCS(i).getOutline, 'b-', 3);
+            plt(CRCS(i).getRawPoints, 'y+', 14);
+            plt(CRCS(i).getAnchorPoints, 'co', 14);
+            
         catch e
             fprintf(2, 'Skipping Circuit %d\n%s\n', i, e.message);
         end
@@ -146,62 +138,87 @@ for i = 1 : n
 end
 end
 
-function [crc, flp] = getCircuit(rndS, typ, flipme)
+function dout = retrieveDataObjects(din, ex, typ)
+%% retrieveDataObjects: return data objects defined by [3 3] input matrix
+% Input is in the form of indexed values in an Experiment object. Indices
+% in the cin parameter should map to a frame containing a Seedling or Hypocotyl
+% object in a given Genotype object.
+%
+% Example:
+% [
+%   [ 8 3 10 ] % 8th genotype , 3rd seedling , 10th frame
+%   [ 1 2 1  ] % 1st genotype , 2nd seedling , 1st  frame
+%   [ 3 5 25 ] % 3rd genotype , 5th seedling , 25th frame
+%   [ 5 4 20 ] % 5th genotype , 4th seedling , 20th frame
+%               ]
+
+try
+    if typ
+        dtyp = 'Hypocotyl';
+    else
+        dtyp = 'Seedling';
+    end
+    
+    dttl = size(din, 1);
+    dout = repmat(eval(dtyp), 1, dttl);
+    for d = 1 : dttl
+        g = ex.getGenotype(din(d,1));
+        s = g.getSeedling(din(d,2));
+        
+        if typ
+            dout(d) = s.MyHypocotyl;
+        else
+            dout(d) = s;
+        end
+    end
+catch e
+    x = din(d,:);
+    fprintf('Error extracting %s [ %d %d %d ]\n%s\n', dtyp, x, e.message);
+    dout = [];
+end
+
+end
+
+function [crc, flp] = getCircuit(obj, frm, typ, flipme)
 %% getCircuit: subfunction to manually-draw contour on random frame of Seedling
 
 % Get all un-trained random good frames from Seedling's lifetime
 if typ
-    % Get randomly selected untrained frame for Hypocotyl object
-    frms = getUntrained(rndS.Parent);
-    rFrm = frms(randi(length(frms), 1));
-    org  = sprintf('%s_%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
-        rndS.GenotypeName, rndS.SeedlingName, rndS.HypocotylName, rFrm);
-    
+    % Get selected frame for Hypocotyl object
+    org  = sprintf('%s_%s_%s_%s_Frm{%d}', obj.ExperimentName, ...
+        obj.GenotypeName, obj.SeedlingName, obj.HypocotylName, frm);
 else
-    % Get randomly selected untrained frame for Hypocotyl object
-    frms = getUntrained(rndS);
-    rFrm = frms(randi(length(frms), 1));
-    org  = sprintf('%s_%s_%s_Frm{%d}', rndS.ExperimentName, ...
-        rndS.GenotypeName, rndS.SeedlingName, rFrm);
-    
+    % Get selected frame for Seedling object
+    org  = sprintf('%s_%s_%s_Frm{%d}', obj.ExperimentName, ...
+        obj.GenotypeName, obj.SeedlingName, frm);
 end
 
 % Set original orientation of Circuit or Contour for this object
-crc = drawCircuit(rndS, org, 0);
+crc = drawCircuit(obj, org, 0);
 if typ
-    rndS.setCircuit(rFrm, crc, 'org');
+    obj.setCircuit(frm, crc, 'org');
 else
-    rndS.setContour(rFrm, crc);
+    obj.setContour(frm, crc);
 end
 
 % Set flipped orientation of Circuit or Contour for this object
 if flipme
     forg = sprintf('flip_%s', org);
-    flp  = drawCircuit(rndS, forg, flipme);
+    flp  = drawCircuit(obj, forg, flipme);
     
     if typ
-        rndS.setCircuit(rFrm, flp, 'flp');
+        obj.setCircuit(frm, flp, 'flp');
     else
-        rndS.setContour(rFrm, flp);
+        obj.setContour(frm, flp);
     end
 end
 end
 
-function untrainedFrames = getUntrained(s)
-%% Returns frames that have already been trained
-goodFrms        = s.getGoodFrames;
-h               = s.MyHypocotyl;
-all_circuits    = arrayfun(@(x) h.getCircuit(x, 'org'), ...
-    goodFrms, 'UniformOutput', 0);
-untrainedFrames = find(cellfun(@isempty, all_circuits));
-
-end
-
-function crc = drawCircuit(rndS, org, flipme)
+function crc = drawCircuit(obj, org, flipme)
 %% Create CircuitJB and prompt user to draw contour
 % Set image and origin data for CircuitJB
-crc = CircuitJB('Origin', org, 'Parent', rndS);
-crc.setParent(rndS);
+crc = CircuitJB('Origin', org, 'Parent', obj);
+crc.setParent(obj);
 crc.checkFlipped;
 
 % Draw Outline and AnchorPoints and normalize coordinates
@@ -214,32 +231,20 @@ crc.ConvertRawPoints;
 
 end
 
-function showImage(num, fig, im)
+function showImage(fIdx, fHdl, im)
 %% Show image on given plot of figure
 % Default expects only 8 subplots [4 rows, 2 columns]
-set(0,'CurrentFigure',fig);
-subplot(4,2,num);
+set(0,'CurrentFigure',fHdl);
+subplot(4,2,fIdx);
 imagesc(im);
 colormap bone;
 axis image;
-hold on;
-
-end
-
-function drawRoutesAndMidPoints(r)
-%% Plot single Route onto figure
-crd = r.getInterpTrace;
-mid = r.getMidPoint;
-
-plt([crd(:,1) , crd(:,2)], '-', 2);
-plt([mid(1)   , mid(2)],   'o', 7);
-hold on;
 
 end
 
 function saveFigure(im, N, fig)
 %% Save figure as .fig and .tiff files
-nm = sprintf('%s_%drandomCircuits_%s', tdate('s'), N, im);
+nm = sprintf('%s_%dtrainedCircuits_%s', tdate('s'), N, im);
 set(fig, 'Color', 'w');
 savefig(fig, nm);
 saveas(fig, nm, 'tiffn');
