@@ -13,7 +13,7 @@ classdef CircuitJB < handle
         NormalOutline
         Curves
         Routes
-        isTrained        
+        isTrained
     end
     
     properties (Access = private)
@@ -62,7 +62,7 @@ classdef CircuitJB < handle
             if overwrite
                 chk = true;
             else
-                chk = isempty(obj.Curves);                
+                chk = isempty(obj.Curves);
             end
             
             if chk
@@ -222,7 +222,7 @@ classdef CircuitJB < handle
         end
         
         function obj = ConvertRawOutlines(obj)
-            %% Convert contours from RawOutline to InterpOutline            
+            %% Convert contours from RawOutline to InterpOutline
             if iscell(obj.RawOutline)
                 oL = obj.RawOutline{1};
             else
@@ -262,9 +262,9 @@ classdef CircuitJB < handle
             obj.FullOutline = obj.InterpOutline;
             
             % Old version that uses Route traces
-%             trc = arrayfun(@(x) x.getInterpTrace, ...
-%                 obj.Routes, 'UniformOutput', 0);
-%             obj.FullOutline = cat(1, trc{:});
+            %             trc = arrayfun(@(x) x.getInterpTrace, ...
+            %                 obj.Routes, 'UniformOutput', 0);
+            %             obj.FullOutline = cat(1, trc{:});
         end
         
         function obj = trainCircuit(obj, trainStatus)
@@ -352,14 +352,19 @@ classdef CircuitJB < handle
                         end
                         
                     catch
-                        fprintf(2, 'No image at frame %d \n', frm);
+%                         fprintf(2, 'No image at frame %d \n', frm);
+                        fprintf(2, 'No image at frame\n');
+                        
+                        % Check if image is stored inside object
+                        fprintf(2, 'Checking for self-contained image\n');
+                        dat = obj.Image.(req);
                     end
                     
                 case 3
                     % Returns buffered image with the option to use the flipped
                     % version of the image
                     try
-                        buf = varargin{2};                        
+                        buf = varargin{2};
                         flp = varargin{3};
                         
                         frm = obj.getFrame;
@@ -558,7 +563,7 @@ classdef CircuitJB < handle
             p.addOptional('Image', []);
             p.addOptional('Curves', []);
             p.addOptional('Routes', []);
-            p.addOptional('isTrained', false);            
+            p.addOptional('isTrained', false);
             p.addOptional('isFlipped', false);
             
             % Parse arguments and output into structure
