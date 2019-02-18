@@ -1,4 +1,4 @@
-function I  = makeToyData(N)
+function [C, D, figs] = makeToyData(N, vis)
 %% makeToyData: generate fake dataset for HypoQuantyl pipeline
 % description
 %
@@ -22,14 +22,14 @@ function I  = makeToyData(N)
 ISZ = [101 101];
 BG  = 90; % average background intensity
 FG  = 42; % average foreground intensity
-RAD = 20 : 40; % range for randomly chosen circle radii
+RAD = 15 : 35; % range for randomly chosen circle radii
 XC  = 45 : 55; % range for x-coordinate centers of circle
 YC  = 45 : 55; % range for y-coordinate centers of circle
 ZC  = 20; % resolution of circle edge
 CSZ = 21; % coordinates for contour
 
 %% Function handles to get random index
-m = @(x) randi([1 length(x)], 1); 
+m = @(x) randi([1 length(x)], 1);
 M = @(x) x(m(x));
 
 %% Generate the CircuitJB array
@@ -48,66 +48,87 @@ D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
 D = cat(1, D{:});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Show randomly-generated circle's grayscale and mask images
-set(0, 'CurrentFigure', figs(1));
-cla;clf;
-
-c = M(C);
-img = c.getImage.gray;
-msk = c.getImage.bw;
-
-subplot(211);
-imshow(img,[]);
-
-subplot(212);
-imshow(msk,[]);
-
-%% Show 25 random CircuitJB contours with their outlines
-set(0, 'CurrentFigure', figs(2));
-cla;clf;
-
-q    = 1;
-cIdx = sort(randperm(N, 25));
-for c = cIdx    
-    subplot(5, 5, q);
-    hold on;    
-    imagesc(C(c).getImage.gray);
-    colormap gray;
-    axis image;
-    axis ij;
-    plt(C(c).FullOutline, 'y-', 3);
+%% Visualize data
+if vis
+    figs = 1 : 3;
+    figs(1) = figure(1);
+    figs(2) = figure(2);
+    figs(3) = figure(3);
     
-    ttl = sprintf('%s', C(c).Origin);
-    title(fixtitle(ttl));
+    %% Show randomly-generated circle's grayscale and mask images
+    set(0, 'CurrentFigure', figs(1));
+    cla;clf;
     
-    q = q + 1;
-end
-
-%% Run through a single contour's segments and patches
-set(0, 'CurrentFigure', figs(3));
-cla;clf;
-
-c = M(C);
-c.CreateCurves(1);
-d = c.Curves;
-
-subplot(122);
-imagesc(c.getImage.gray);
-hold on;
-
-for p = 1 : d.NumberOfSegments
-    subplot(121);
-    imagesc(d.ImagePatches{p});
-    axis image;
-    axis ij;
-    colormap gray;
+    c   = M(C);
+    img = c.getImage.gray;
+    msk = c.getImage.bw;
+    
+    subplot(211);
+    imshow(img,[]);
+    
+    subplot(212);
+    imshow(msk,[]);
+    
+    %% Show 25 random CircuitJB contours with their outlines
+    set(0, 'CurrentFigure', figs(2));
+    cla;clf;
+    
+    q = 1;
+    
+    try
+        cIdx = sort(randperm(N, 25));
+    catch
+        cIdx = 1 : N;
+    end
+    
+    for c = cIdx
+        subplot(5, 5, q);
+        hold on;
+        imagesc(C(c).getImage.gray);
+        colormap gray;
+        axis image;
+        axis ij;
+        plt(C(c).FullOutline, 'y-', 3);
+        
+        ttl = sprintf('%s', C(c).Origin);
+        title(fixtitle(ttl));
+        
+        q = q + 1;
+    end
+    
+    %% Run through a single contour's segments and patches
+    set(0, 'CurrentFigure', figs(3));
+    cla;clf;
+    
+    c = M(C);
+    
+    if isempty(c.Curves)
+        c.CreateCurves(1);
+    end
+    
+    d = c.Curves;
     
     subplot(122);
-    plt(d.RawSmooth(:,:,p), '-', 3);
+    imagesc(c.getImage.gray);
+    axis image;
+    axis ij;
+    colormap gray;
+    hold on;
     
-    pause(0.01);
+    for p = 1 : d.NumberOfSegments
+        subplot(121);
+        imagesc(d.ImagePatches{p});
+        axis image;
+        axis ij;
+        colormap gray;
+        
+        subplot(122);
+        plt(d.RawSmooth(:,:,p), '-', 3);
+        
+        pause(0.01);
+    end
+    
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Run contours through PCA pipelines [x-/y-/z-coordinates]
@@ -120,7 +141,7 @@ end
 
 function c = makeFakeCircle(cnm, isz, bg, fg, r, x, y, z, csz)
 %% makeFakeCircle: generate fake CircuitJB object
-% asdf 
+% asdf
 
 %% Make circles on images
 % Make image
