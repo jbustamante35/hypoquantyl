@@ -353,10 +353,10 @@ classdef CircuitJB < handle
                         
                     catch
 %                         fprintf(2, 'No image at frame %d \n', frm);
-                        fprintf(2, 'No image at frame\n');
+%                         fprintf(2, 'No image at frame\n');
                         
                         % Check if image is stored inside object
-                        fprintf(2, 'Checking for self-contained image\n');
+%                         fprintf(2, 'Checking for self-contained image\n');
                         dat = obj.Image.(req);
                     end
                     
