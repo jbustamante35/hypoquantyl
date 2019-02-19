@@ -113,7 +113,7 @@ for idx = 1:flpMe
     
     % Plot midpoint skeletons, halfway coodinates, and predictions
     %     plt(mi,  'y-' , 2);   % Inputted halfway coordinates from PCA
-    plt(mc,  'y-' , 2);   % Simulatd halfway coordinates from PCA
+    plt(mc,  'y-' , 2);  % Simulated halfway coordinates from PCA
     plt(MID, 'g-' , 1);  % Actual midpoint coordinates
     plt(mid, 'r.' , 10); % Requested midpoint coordinates
     
