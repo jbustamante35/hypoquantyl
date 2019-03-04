@@ -98,7 +98,6 @@ for idx = 1:flpMe
     
     %% Plot all segments for single contour [converted to image frame]
     subplot(1, flpMe, idx);
-%     imshow(img, []);
     imagesc(img);
     colormap gray;
     axis image;
