@@ -28,8 +28,8 @@ classdef Curve < handle
         SMOOTHSPAN   = 0.7;     % Moving average span for smoothing segment coordinates
         SMOOTHMETHOD = 'sgolay' % Smoothing method
         GAUSSSIGMA   = 3;       % Sigma parameter for gaussian smoothing of ImagePatches
-        ENV_ITRS     = 5;       % Number of intermediate curves between segment and envelope [default 25]
-        ENV_SCALE    = 2;       % Size to scale unit length vector to define max envelope distance
+        ENV_ITRS     = 8;       % Number of intermediate curves between segment and envelope [default 25]
+        ENV_SCALE    = 8;       % Size to scale unit length vector to define max envelope distance
         Pmats
         Ppars
         OuterStruct
@@ -384,10 +384,12 @@ classdef Curve < handle
 
         function obj = updateEnvelopeStructure(obj)
             %% Update Inner/Outer envelope structure
+            obj.OuterStruct = [];
             obj.OuterStruct = struct('Max', obj.OuterEnvelopeMax, ...
                 'Full', obj.OuterEnvelope, ...
                 'Dists', obj.OuterDists);
 
+            obj.InnerStruct = [];
             obj.InnerStruct = struct('Max', obj.InnerEnvelopeMax, ...
                 'Full', obj.InnerEnvelope, ...
                 'Dists', obj.InnerDists);
@@ -455,6 +457,16 @@ classdef Curve < handle
             catch e
                 fprintf(2, 'Property %s does not exist\n%s\n', ...
                     prp, e.getReport);
+            end
+        end
+        
+        
+        function obj = setProperty(obj, req, val)
+            %% Set requested property if it exists [for private properties]
+            try
+                obj.(req) = val;
+            catch e
+                fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
             end
         end
 
