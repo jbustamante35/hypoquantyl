@@ -6,7 +6,7 @@ function [envOut, envInn, dstOut, dstInn] = defineCurveEnvelope(crds, scl)
 % a contour).
 %
 % Usage:
-%   [envOut, envInn, dstOut, dstInn] = defineCurveEnvelope(crds)
+%   [envOut, envInn, dstOut, dstInn] = defineCurveEnvelope(crds, scl)
 %
 % Input:
 %   crds: curve segment in midpoint-normalized x-/y-coordinates
