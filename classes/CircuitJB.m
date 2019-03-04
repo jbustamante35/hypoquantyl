@@ -72,7 +72,7 @@ classdef CircuitJB < handle
                 end
                 
                 obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
-                obj.Curves.RunFullPipeline('smooth');
+                obj.Curves.RunFullPipeline('main');
                 obj.Curves.Normal2Envelope('main');
             else
                 fprintf('\nSkipping %s\n', obj.Origin);
