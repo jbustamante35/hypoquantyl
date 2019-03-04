@@ -1,9 +1,9 @@
-function [IN, OUT] = pcaOptimized(C, D, vis)
+function [IN, OUT] = pcaOptimized_old(C, D, vis)
 %% Constants
 figs = 1 : 5;
 sav = 0;
 flp = 0;
-pct = 0.99999999;
+pct = 0.98;
 maxPC = 10;
 
 %%
