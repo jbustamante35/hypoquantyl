@@ -24,9 +24,13 @@ cla;clf;
 
 % Show image with ground truth and simulated prediction
 imshow(I, []);
+imagesc(I);
+colormap gray;
+axis image;
+axis off;
 hold on;
 plt(X, 'g--' , 7);
-plt(Y, 'y-' , 7);
+plt(Y, 'y-'  , 7);
 ttl = ...
     sprintf('Contour Prediction\nTruth (green) | Predicted (yellow)\nContour %d', ...
     idx);
