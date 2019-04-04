@@ -3,7 +3,7 @@ function [syntHalf_inp, syntHalf_sim, fig] = plotFrankencotyls(idx1, idx2, px, p
 %
 %
 % Usage:
-%   fig = plotFrankencotyls(cIdx1, cIdx2, px, py, pz, crvs)
+%   [syntHalf_inp, syntHalf_sim, fig] = plotFrankencotyls(idx1, idx2, px, py, pz, pMids, crvs, req, flp, sav, f)
 %
 % Input:
 %   cIdx1: index in crvs of hypocotyl 1 (provides backbone)
