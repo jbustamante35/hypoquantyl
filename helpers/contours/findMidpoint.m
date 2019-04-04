@@ -1,7 +1,7 @@
 function M = findMidpoint(S, E)
 %% getMidpoint: find midpoint coordinate between points S and E
-% This function returns the midpoint between two coordinates. This
-% function is primarily used for the midpointNorm() function.
+% This function returns the midpoint between two coordinates. This is primarily 
+% used for the midpointNorm function.
 %
 % Usage:
 %   M = findMidpoint(S, E)
