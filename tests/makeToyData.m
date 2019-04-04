@@ -54,33 +54,33 @@ if vis
     figs(1) = figure(1);
     figs(2) = figure(2);
     figs(3) = figure(3);
-    
+
     %% Show randomly-generated circle's grayscale and mask images
     set(0, 'CurrentFigure', figs(1));
     cla;clf;
-    
+
     c   = M(C);
     img = c.getImage.gray;
     msk = c.getImage.bw;
-    
+
     subplot(211);
     imshow(img,[]);
-    
+
     subplot(212);
     imshow(msk,[]);
-    
+
     %% Show 25 random CircuitJB contours with their outlines
     set(0, 'CurrentFigure', figs(2));
     cla;clf;
-    
+
     q = 1;
-    
+
     try
         cIdx = sort(randperm(N, 25));
     catch
         cIdx = 1 : N;
     end
-    
+
     for c = cIdx
         subplot(5, 5, q);
         hold on;
@@ -89,45 +89,45 @@ if vis
         axis image;
         axis ij;
         plt(C(c).FullOutline, 'y-', 3);
-        
+
         ttl = sprintf('%s', C(c).Origin);
         title(fixtitle(ttl));
-        
+
         q = q + 1;
     end
-    
+
     %% Run through a single contour's segments and patches
     set(0, 'CurrentFigure', figs(3));
     cla;clf;
-    
+
     c = M(C);
-    
+
     if isempty(c.Curves)
         c.CreateCurves(1);
     end
-    
+
     d = c.Curves;
-    
+
     subplot(122);
     imagesc(c.getImage.gray);
     axis image;
     axis ij;
     colormap gray;
     hold on;
-    
+
     for p = 1 : d.NumberOfSegments
         subplot(121);
         imagesc(d.ImagePatches{p});
         axis image;
         axis ij;
         colormap gray;
-        
+
         subplot(122);
         plt(d.RawSmooth(:,:,p), '-', 3);
-        
+
         pause(0.01);
     end
-    
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
