@@ -8,7 +8,7 @@ function plotSegmentAndPatch(crv, idx)
 % of a contour with the following code:
 %
 % Usage:
-%   plotSegmentAndPatch(crv, idx, cIdx, img, cvrt, envO, envI, imPt)
+%   plotSegmentAndPatch(crv, idx)
 %
 % Input:
 %   crv: Curve object to extract data from
