@@ -6,6 +6,13 @@ function X = reverseMidpointNorm(P, Pmat)
 % and end points are set to [0 0]. This function requires the P-matrix (Pmat)
 % that contains the vectors in the old and new reference frame in order to
 % perform the rotation required for the conversion.
+% 
+% In short, this operation rotates the inputted vector P by the amount described
+% by the tangent vectoris visualized below (see midpointNorm for more detail):
+%   Normalized --> Original
+%                       [Tx Ty (-TxMx - TyMy)]-1   [Cx]     [Fx]
+%     Pmat^-1 * Cxy =>  [Nx Ny (NxMx  - NyMy)]   . [Cy] ==> [Fy] + Mxy
+%                       [0  0         1      ]     [1 ]     [1 ]
 %
 % NOTE: full conversion to raw coordinates requires addition of the midpoint!!!
 %
