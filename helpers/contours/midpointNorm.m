@@ -1,8 +1,30 @@
 function [P, Pmat, M, T, N] = midpointNorm(X)
 %% midpointNorm: normalization method for curves around midpoint
-% This function implements the method of normalization to express values in the
-% inputted curve X in the new reference frame established at the midpoint
-% between the starting and ending points of X.
+% This function implements the normalization method to express values in the
+% inputted curve X's reference frame into a new reference frame. This new
+% reference frame is centered at the midpoint between the starting and ending
+% points of X and rotated along the vector tangent to the midpoint and end
+% point, such that the midpoint becomes the origin and the tangent and normal
+% vectors lie along the unit vectors.
+%
+% An intermediate step in this operation generates what I call a "P-matrix" (or
+% "Pmat" for short), which contains the vectors necessary to convert coordinates
+% from the normalized reference frame back to the original reference frame. The
+% required elements of a Pmat are the following:
+%   M) Midpoint vector: coordinate between start-end points
+%   T) Tangent vector: coordinate parallel along the imaginary start-end line
+%   N) Normal vector: coordinate perpendicular to the Tangent vector
+%
+% The operation to convert a point [Fx , Fy] between reference frames is as so:
+%   Original --> Normalized
+%                   [Tx Ty 0]   [0 0 -Mx]   [Tx Ty (-TxMx - TyMy)]   [Fx]   [Cx]
+%     Pmat * Fxy => [Nx Ny 0] . [0 1 -My]=> [Nx Ny (NxMx  - NyMy)] . [Fy]=> [Cy]
+%                   [0  0  1]   [0 0  1 ]   [0  0         1      ]   [1 ]   [1 ]
+%
+%   Normalized --> Original (see reverseMidpointNorm)
+%                       [Tx Ty (-TxMx - TyMy)]-1   [Cx]     [Fx]
+%     Pmat^-1 * Cxy =>  [Nx Ny (NxMx  - NyMy)]   . [Cy] ==> [Fy] + Mxy
+%                       [0  0         1      ]     [1 ]     [1 ]
 %
 % Usage:
 %   [P, Pmat, M, T, N] = midpointNorm(X)
