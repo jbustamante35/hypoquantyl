@@ -1,11 +1,12 @@
-function [CRCS, figs] = trainCircuits(Ein, crcsIn, typ, flipme, sv, vis)
+function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sv, vis)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
 % This function takes in a fully-generated Experiment object as input and
-% extracts Hypocotyl objects to use as training data (defined in crcsIn matrix)
+% extracts Hypocotyl objects to use as training data (defined in cin matrix)
 % for the machine learning segmentation algorithm. The user is prompted to trace
 % a manually-drawn contour around a hypocotyl, which will be stored as a
 % CircuitJB object. The full array of CircuitJB objects is returned as well,
-% although it has been de-referenced from all parent objects.
+% although it has been de-referenced from all parent objects to decrease the 
+% size of the output.
 %
 % In order to use this function, a number of conditions must be met:
 %   - The Experiment object must contain nested Genotype objects
@@ -29,11 +30,11 @@ function [CRCS, figs] = trainCircuits(Ein, crcsIn, typ, flipme, sv, vis)
 %   [ 5 4 20 ] ] % 5th genotype , 4th seedling , 20th frame
 %
 % Usage:
-%   CRCS = trainCircuits(Ein, crcsIn, typ, flipme, sv, vis)
+%   CRCS = trainCircuits(Ein, cin, typ, flipme, sv, vis)
 %
 % Input:
 %   Ein: Experiment object to draw from to generate contour data
-%   crcsIn: matrix mapping to data to train
+%   cin: matrix mapping to data to train
 %   typ: 0 to get contours of Seedlings, 1 to get contours of Hypocotyls
 %   flipme: boolean to inflate dataset with flipped versions of each Hypocotyl
 %   sv: save figures as .fig and .tiff files
@@ -46,7 +47,7 @@ function [CRCS, figs] = trainCircuits(Ein, crcsIn, typ, flipme, sv, vis)
 
 %% Initialize object array of Seedlings/Hypocotyl to draw contours for
 % Select [Genotype , Seedling | Hypocotyl , frame]
-nCrcs = size(crcsIn, 1);
+nCrcs = size(cin, 1);
 
 % Initialize empty object array
 if flipme
@@ -58,11 +59,11 @@ end
 %% Draw contours at random frame from random Seedling/Hypocotyl
 % If flipme parameter set to true, then CircuitJB array is stored in n x 2,
 % where the flipped version is stored in dimension 2 of a Hypocotyl object
-OBJS = retrieveDataObjects(crcsIn, Ein, typ);
+OBJS = retrieveDataObjects(cin, Ein, typ);
 cIdx = 1;
 for o = 1 : numel(OBJS)
     obj = OBJS(o);
-    frm = crcsIn(o, 3);
+    frm = cin(o, 3);
     if flipme
         [org, flp] = getCircuit(obj, frm, typ, flipme);
         CRCS(cIdx) = org;
