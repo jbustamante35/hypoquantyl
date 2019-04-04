@@ -105,3 +105,4 @@ MIT license found in [LICENSE](./LICENSE) <br />
 | Create accounts     | University Network, CyVerse, HTCondor
 | Set up submit files | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
 | Run Test Data       | Run HypoQuantyl on Sample data on cloud computing environment
+
