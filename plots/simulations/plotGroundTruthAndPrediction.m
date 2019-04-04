@@ -10,7 +10,7 @@ function fig = plotGroundTruthAndPrediction(X, Y, I, idx, numPCs, sav, f)
 %   Y: predicted contour coordinates
 %   I: grayscale image associated with contour
 %   idx: index in Curve object array for naming figure
-%   numPCs: [4 x 1] array of principal component values used for prediction
+%   numPCs: [3 x 1] array of principal component values used for prediction
 %   sav: boolean to save figure as .fig and .tiff image
 %   f: index of figure handle to plot data onto
 %
@@ -23,10 +23,13 @@ fig = figure(f);
 cla;clf;
 
 % Show image with ground truth and simulated prediction
-imshow(I, []);
+imagesc(I);
+colormap gray;
+axis image;
+axis off;
 hold on;
-plt(X, 'g--' , 7);
-plt(Y, 'y-' , 7);
+plt(X, 'g--' , 5);
+plt(Y, 'y-'  , 5);
 ttl = ...
     sprintf('Contour Prediction\nTruth (green) | Predicted (yellow)\nContour %d', ...
     idx);
@@ -35,8 +38,8 @@ title(ttl);
 % Save figure
 if sav
     
-    fnm = sprintf('%s_ContourPrediction_p%dPCs_m%dPCs_x%dPCs_y%dPCs_Contour%d', ...
-        tdate('s'), numPCs(1), numPCs(2), numPCs(3), numPCs(4), idx);
+    fnm = sprintf('%s_ContourPrediction_x%dPCs_y%dPCs_z%dPCs_Contour%d', ...
+        tdate('s'), numPCs(1), numPCs(2), numPCs(3), idx);
     savefig(fig, fnm);
     saveas(fig, fnm, 'tiffn');
 else
