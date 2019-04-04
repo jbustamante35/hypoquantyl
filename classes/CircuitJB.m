@@ -57,15 +57,23 @@ classdef CircuitJB < handle
         function obj = CreateCurves(obj, overwrite)
             %% Full Outline generates Curve objects around CircuitJB object
             % Generate InterpOutline and NormalOutline if not yet done
-            % Set overwrite to 0 to skip curves that are already created
+            % Set overwrite to 'skip' to skip curves that are already created
             
-            if overwrite
-                chk = true;
-            else
-                chk = isempty(obj.Curves);
+            switch overwrite
+                case 'redo'
+                    % Redo pipeline even if already done
+                    chkEmpty = true;
+                    
+                case 'skip'
+                    % Run pipeline only if data is empty
+                    chkEmpty = isempty(obj.Curves);
+                    
+                otherwise
+                    % Default to skip if already done
+                    chkEmpty = isempty(obj.Curves);
             end
             
-            if chk
+            if chkEmpty
                 if isempty(obj.NormalOutline)
                     obj.ReconfigInterpOutline;
                     obj.NormalizeOutline;
