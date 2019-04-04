@@ -15,7 +15,7 @@ classdef CircuitJB < handle
         Routes
         isTrained
     end
-    
+
     properties (Access = private)
         RawPoints
         RawOutline
@@ -25,7 +25,7 @@ classdef CircuitJB < handle
         INTERPOLATIONSIZE = 210 % [default 2100 --> gives 10 points per pixel]
         NUMBEROFANCHORS   = 7
     end
-    
+
     %%
     methods (Access = public)
         %% Constructor and primary methods
@@ -34,26 +34,26 @@ classdef CircuitJB < handle
             if ~isempty(varargin)
                 % Parse inputs to set properties
                 args = obj.parseConstructorInput(varargin);
-                
+
                 fn = fieldnames(args);
                 for k = fn'
                     obj.(cell2mat(k)) = args.(cell2mat(k));
                 end
-                
+
             else
                 % Set default properties for empty object
             end
-            
+
             obj.Routes = initializeRoutes(obj);
             obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
-            
+
         end
-        
+
         function obj = NormalizeRoutes(obj)
             %% Run MidpointNormalization method on all of this object's Routes
             arrayfun(@(x) x.NormalizeTrace, obj.Routes, 'UniformOutput', 0);
         end
-        
+
         function obj = CreateCurves(obj, overwrite)
             %% Full Outline generates Curve objects around CircuitJB object
             % Generate InterpOutline and NormalOutline if not yet done
@@ -78,7 +78,7 @@ classdef CircuitJB < handle
                     obj.ReconfigInterpOutline;
                     obj.NormalizeOutline;
                 end
-                
+
                 obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
                 obj.Curves.RunFullPipeline('main');
                 obj.Curves.Normal2Envelope('main');
@@ -86,22 +86,22 @@ classdef CircuitJB < handle
                 fprintf('\nSkipping %s\n', obj.Origin);
             end
         end
-        
+
         function obj = CreateRoutes(obj)
             %% Interpolated Outline and Anchor Points create Route objects
             rts = obj.Routes;
             pts = obj.AnchorPoints;
             oL  = obj.getOutline;
             n   = obj.NUMBEROFANCHORS;
-            
+
             % Get indices of Outline matching each Anchor Point
             findIdx = @(x,y) find(sum(ismember(x,y), 2) == 2);
             mtch    = findIdx(oL, pts);
-            
+
             % Split Outline into separate Trace between each AnchorPoints
             shp    = @(x) reshape(nonzeros(x), [nnz(x)/2 2]);
             traces = split2trace(oL, mtch, n);
-            
+
             % Set data from this object's outline for all Routes
             % Copy first anchor point to last index
             newpts = [pts ; pts(1,:)];
@@ -110,9 +110,9 @@ classdef CircuitJB < handle
             arrayfun(@(x) rts(x).setAnchors(newpts(x,:), newpts(x+1,:)), ...
                 1:n, 'UniformOutput', 0);
             arrayfun(@(x) rts(x).NormalizeTrace, 1:n, 'UniformOutput', 0);
-            
+
         end
-        
+
         function obj = LabelAllPixels(obj, labelname)
             %% Labels all pixels inside contour as 'Hypocotyl'
             % This is to test out a method of deep learning for semantic
@@ -124,7 +124,7 @@ classdef CircuitJB < handle
             lbl(obj.Image.bw ~= 1) = 'bg';
             obj.Image.labels = lbl;
         end
-        
+
         function obj = generateMasks(obj, buff)
             %% Create probability matrix from manually-drawn outline
             % This function generates a binary mask where the coordinates of
@@ -146,14 +146,14 @@ classdef CircuitJB < handle
             %
             % tl;dr: I might be able to remove the buff parameter from here
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
+
             img = obj.getImage(1, 'gray');
             crd = obj.getNormalOutline; % Use normalized coordinates
             %             crd = obj.FullOutline;
             msk = crds2mask(img, crd, buff);
             obj.setImage(1, 'mask', msk);
         end
-        
+
         function obj = DrawOutline(obj, buf, flp)
             %% Draw RawOutline on this object's Image
             % The function crds2mask was changed (see generateMasks method for
@@ -173,7 +173,7 @@ classdef CircuitJB < handle
                 c   = drawPoints(img, 'y', str);
                 crd = c.Position;
                 obj.setRawOutline(crd);
-                
+
                 % Exclude this as it isn't used until creating probability masks
                 % msk = crds2mask(img, crd, buff);
                 % obj.setImage(frm, 'mask', msk);
@@ -182,7 +182,7 @@ classdef CircuitJB < handle
                     frm, e.getReport);
             end
         end
-        
+
         function obj = DrawAnchors(obj, buf, flp)
             %% Draw RawPoints on this object's Image
             % If the buf parameter is set to true, then the image returned from
@@ -202,33 +202,33 @@ classdef CircuitJB < handle
                     frm, e.getReport);
             end
         end
-        
+
         function obj = DerefParents(obj)
             %% Remove reference to Parent property
             obj.Parent = [];
         end
-        
+
         function obj = ResetReference(obj, exp)
             %% Searches inputted Experiment object to find parent Hypocotyl
             % Iteratively parse though Genotype -> Seedling -> Hypocotyl
             idxA = regexpi(obj.Origin, '{');
             idxB = regexpi(obj.Origin, '}');
             sIdx = obj.Origin(idxA(1) + 1 : idxB(1) - 1);
-            
+
             gen = exp.search4Genotype(obj.GenotypeName);
             sdl = gen.getSeedling(str2double(sIdx));
             hyp = sdl.MyHypocotyl;
-            
+
             obj.setParent(hyp);
-            
+
         end
-        
+
         function obj = NormalizeOutline(obj)
             %% Normalize InterpOutline to NormalOutline
             % Rescale outlines by base width to set common start and end point
             obj.NormalOutline = rescaleNormMethod(obj.InterpOutline, 15);
         end
-        
+
         function obj = ConvertRawOutlines(obj)
             %% Convert contours from RawOutline to InterpOutline
             if iscell(obj.RawOutline)
@@ -236,29 +236,29 @@ classdef CircuitJB < handle
             else
                 oL = obj.RawOutline;
             end
-            
+
             % Wrap contour back to first coordinate
             oL = [oL ; oL(1,:)];
             sz = obj.INTERPOLATIONSIZE;
             iL = interpolateOutline(oL, sz);
-            
+
             obj.InterpOutline = iL;
         end
-        
+
         function obj = ConvertRawPoints(obj)
             %% Snap floating RawPoints onto drawn AnchorPoints
             % First interpolate manually-drawn outline
             if isempty(obj.InterpOutline)
                 obj.ConvertRawOutlines;
             end
-            
+
             iL   = obj.InterpOutline;
             pts  = obj.RawPoints;
             nPts = snap2curve(pts, iL);
-            
+
             obj.AnchorPoints = nPts;
         end
-        
+
         function obj = ReconfigInterpOutline(obj)
             %% Convert interpolated outline to Route's interpolated traces
             % This will change the coordinates from this object's InterpOutline
@@ -268,13 +268,13 @@ classdef CircuitJB < handle
             % Update [01-24-2019]
             % Don't use Route traces anymore
             obj.FullOutline = obj.InterpOutline;
-            
+
             % Old version that uses Route traces
             %             trc = arrayfun(@(x) x.getInterpTrace, ...
             %                 obj.Routes, 'UniformOutput', 0);
             %             obj.FullOutline = cat(1, trc{:});
         end
-        
+
         function obj = trainCircuit(obj, trainStatus)
             %% Set this object as 'trained' or 'untrained'
             try
@@ -287,9 +287,9 @@ classdef CircuitJB < handle
                 obj.isTrained = true;
             end
         end
-        
+
     end
-    
+
     %%
     methods (Access = public)
         %% Various helper methods
@@ -297,21 +297,21 @@ classdef CircuitJB < handle
             %% Set parent of this CircuitJB
             obj.Origin = org;
         end
-        
+
         function org = getOrigin(obj)
             %% Return parent of this CircuitJB
             org = obj.Origin;
         end
-        
+
         function obj = setParent(obj, p)
             %% Set this object's parent Hypocotyl object
             obj.Parent = p;
             obj.HypocotylName  = p.HypocotylName;
             obj.GenotypeName   = p.GenotypeName;
             obj.ExperimentName = p.ExperimentName;
-            
+
         end
-        
+
         function frm = getFrame(obj)
             %% Return frame number of this object's parent Hypocotyl
             % The frame number is the last number in curly brackets from the
@@ -322,7 +322,7 @@ classdef CircuitJB < handle
             bb  = strfind(nm, '}');
             frm = str2double(nm(aa(end) + 1 : bb(end) - 1));
         end
-        
+
         function obj = setImage(obj, frm, req, im)
             %% Set grayscale or bw image at given frame [frm, req, im]
             try
@@ -331,7 +331,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error setting %s image at frame %d\n', req, frm);
             end
         end
-        
+
         function dat = getImage(varargin)
             %% Return image data for ContourJB at desired frame [frm, req]
             % User can specify which image from structure with 3rd parameter
@@ -339,55 +339,55 @@ classdef CircuitJB < handle
             % bit of data in the name (Origin property). If I need frame number
             % anywhere else then I'll make it a method.
             obj = varargin{1};
-            
+
             switch nargin
                 case 1
                     % Full structure of image data
                     dat = obj.Image;
-                    
+
                 case 2
                     % Returns requested image type
                     try
                         req = varargin{2};
-                        
+
                         frm = obj.getFrame;
                         flp = obj.checkFlipped;
-                        
+
                         if flp
                             dat = flip(obj.Parent.getImage(frm, req), 2);
                         else
                             dat = obj.Parent.getImage(frm, req);
                         end
-                        
+
                     catch
 %                         fprintf(2, 'No image at frame %d \n', frm);
 %                         fprintf(2, 'No image at frame\n');
-                        
+
                         % Check if image is stored inside object
 %                         fprintf(2, 'Checking for self-contained image\n');
                         dat = obj.Image.(req);
                     end
-                    
+
                 case 3
                     % Returns buffered image with the option to use the flipped
                     % version of the image
                     try
                         buf = varargin{2};
                         flp = varargin{3};
-                        
+
                         frm = obj.getFrame;
                         dat = obj.Parent.getImage(frm, buf, flp);
-                        
+
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);
                     end
-                    
+
                 otherwise
                     fprintf(2, 'Error requesting data.\n');
                     return;
             end
         end
-        
+
         function obj = setRawOutline(obj, oL)
             %% Set coordinates for RawOutline at specific frame
             try
@@ -396,7 +396,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error setting RawOutline\n%s\n', e.getReport);
             end
         end
-        
+
         function oL = getRawOutline(obj)
             %% Return RawOutline at specific frame
             try
@@ -406,7 +406,7 @@ classdef CircuitJB < handle
                 oL = [];
             end
         end
-        
+
         function iL = getOutline(obj)
             %% Return Interpolated Outline at specific frame
             try
@@ -415,7 +415,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error returning InterpOutline\n%s\n', e.getReport);
             end
         end
-        
+
         function nL = getNormalOutline(obj)
             %% Return Normalized Outline at specific frame
             try
@@ -424,7 +424,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error returning NormalOutline\n%s\n', e.getReport);
             end
         end
-        
+
         function obj = setRawPoints(obj, pts)
             %% Set coordinates pts to AnchorPoint at specific frame
             try
@@ -433,7 +433,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error setting RawPoints\n%s\n', e.getReport);
             end
         end
-        
+
         function pts = getRawPoints(obj)
             %% Return RawPoints at specific frame
             try
@@ -442,7 +442,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error returning RawPoints\n%s\n', e.getReport);
             end
         end
-        
+
         function pts = getAnchorPoints(varargin)
             %% Return all or specific set of AnchorPoints
             try
@@ -458,7 +458,7 @@ classdef CircuitJB < handle
                 pts = [];
             end
         end
-        
+
         function obj = setRoute(obj, idx, rt)
             %% Set Route rt to desired index
             try
@@ -467,7 +467,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'No Route at frame %d index %d\n', idx);
             end
         end
-        
+
         function rt = getRoute(varargin)
             %% Return a Route from desired frame
             try
@@ -475,11 +475,11 @@ classdef CircuitJB < handle
                 switch nargin
                     case 1
                         rt = obj.Routes;
-                        
+
                     case 2
                         idx = varargin{2};
                         rt  = obj.Routes(idx);
-                        
+
                     otherwise
                         fprintf(2, 'No Route specified\n');
                 end
@@ -487,7 +487,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error return Route %d at frame %d\n', idx, frm);
             end
         end
-        
+
         function rt = getCurve(varargin)
             %% Return Curve object [DEPRECATED]
             % This is a deprecated method. Just take the Curves property.
@@ -496,14 +496,14 @@ classdef CircuitJB < handle
                 switch nargin
                     case 2
                         rt = obj.Curves;
-                        
+
                     case 3
                         idx = varargin{2};
                         req = varargin{3};
                         typ = sprintf('%sSegments', req);
                         crv = obj.Curves.(typ);
                         rt  = crv(:,:,idx);
-                        
+
                     otherwise
                         fprintf(2, 'No Curve specified\n');
                 end
@@ -511,30 +511,30 @@ classdef CircuitJB < handle
                 fprintf(2, 'Error return Curve %d \n', idx);
             end
         end
-        
+
         function [X, Y] = rasterizeCurves(obj, req)
             %% Rasterize all segments of requested type
             % This method is used to prepare for Principal Components Analysis
             [X, Y] = obj.Curves.rasterizeSegments(req);
-            
+
         end
-        
+
         function [X, Y] = LinearizeRoutes(obj)
             %% Return all X and Y coordinates from all Routes
             [~, X, Y] = concatTraces(obj);
         end
-        
+
         function P = getRouteParameters(obj)
             %% Return all theta, deltaX, deltaY parameters from all Routes
             P = concatParameters(obj);
         end
-        
+
         function chk = checkFlipped(obj)
             %% Returns TRUE if this object is the flipped version
             chk           = contains(obj.Origin, 'flip');
             obj.isFlipped = chk;
         end
-        
+
         function prp = getProperty(obj, req)
             %% Returns requested property if it exists
             try
@@ -543,7 +543,7 @@ classdef CircuitJB < handle
                 fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
             end
         end
-        
+
         function obj = setProperty(obj, req, val)
             %% Set requested property if it exists [for private properties]
             try
@@ -553,7 +553,7 @@ classdef CircuitJB < handle
             end
         end
     end
-    
+
     %%
     methods (Access = private)
         %% Private helper methods
@@ -573,12 +573,12 @@ classdef CircuitJB < handle
             p.addOptional('Routes', []);
             p.addOptional('isTrained', false);
             p.addOptional('isFlipped', false);
-            
+
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
             args = p.Results;
         end
-        
+
         function R = initializeRoutes(obj)
             %% Initialize Route objects for Constructor
             R = repmat(Route, 1, obj.NUMBEROFANCHORS);
@@ -586,7 +586,7 @@ classdef CircuitJB < handle
                 R(i) = Route('Origin', obj.Origin);
             end
         end
-        
+
         function [C,X,Y] = concatTraces(obj)
             %% Concatenate Routes into [m x n x 2] array
             % m is the number of Route objects
@@ -595,29 +595,29 @@ classdef CircuitJB < handle
             %   C: x- and y-coordinates in [m x n x 2] array
             %   X: all x-coordinates in [n x 1 x m] array
             %   Y: all y-coordinates in [n x 1 x m] array
-            
+
             getDim = @(x,y) x(:,y);
             R = obj.Routes;
             X = arrayfun(@(x) getDim(x.getTrace(1), 1), R, 'UniformOutput', 0);
             Y = arrayfun(@(x) getDim(x.getTrace(1), 2), R, 'UniformOutput', 0);
-            
+
             X = cat(3, X{:});
             Y = cat(3, Y{:});
             C = cat(3, X, Y);
         end
-        
+
         function P = concatParameters(obj)
             %% Concatenate parameters for Routes into [m x p] array
             % m is the number of Route objects
             % p is the number of parameters
             % Output:
             %   P: parameters for each Route in [m x p] array
-            
+
             R = arrayfun(@(x) x.getPpar, obj.Routes, 'UniformOutput', 0);
             P = cat(1, R{:});
         end
-        
+
     end
-    
+
 end
 
