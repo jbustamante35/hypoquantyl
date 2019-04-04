@@ -1,6 +1,6 @@
 function [IN, OUT, figs] = pcaOptimized(C, D, sav, vis)
 %% Constants
-figs = 1 : 6;
+figs = 1 : 3;
 flp  = 0;
 pcx  = 3;
 pcy  = 3;
@@ -150,9 +150,6 @@ if vis
     figs(1) = figure(1);
     figs(2) = figure(2);
     figs(3) = figure(3);
-    figs(4) = figure(4);
-    figs(5) = figure(5);
-    figs(6) = figure(6);
     
     %% Plot Frankencotyls to show backbone predictions [single]
     [idx1 , idx2] = deal(3);
@@ -183,18 +180,18 @@ if vis
     for n = trnIdx
         [segInp_truth, ~] = ...
             plotFrankencotyls(n, n, px, py, pz, preMids, D, ...
-            'truth',     flp, sav, 4);
+            'truth',     flp, sav, 1);
         
         [~, segSim_pred] = ...
             plotFrankencotyls(n, n, px, py, pz, preMids, D, ...
-            'predicted', flp, sav, 5);
+            'predicted', flp, sav, 2);
         
         % Plot predictions and truths
         chkX = segInp_truth{1};
         chkY = segSim_pred{1};
         I    = C(n).getImage('gray');
         P    = [pcr, pcz, pcx, pcy];
-        plotGroundTruthAndPrediction(chkX, chkY, I, n, P, sav, 6);
+        plotGroundTruthAndPrediction(chkX, chkY, I, n, P, sav, 3);
         
     end
     
@@ -202,18 +199,18 @@ if vis
     for n = valIdx
         [segInp_truth, ~] = ...
             plotFrankencotyls(n, n, px, py, pz, preMids, D, ...
-            'truth',     flp, sav, 4);
+            'truth',     flp, sav, 1);
         
         [~, segSim_pred] = ...
             plotFrankencotyls(n, n, px, py, pz, preMids, D, ...
-            'predicted', flp, sav, 5);
+            'predicted', flp, sav, 2);
         
         % Plot predictions and truths
         chkX = segInp_truth{1};
         chkY = segSim_pred{1};
         I    = C(n).getImage('gray');        
         P    = [pcr, pcz, pcx, pcy];
-        plotGroundTruthAndPrediction(chkX, chkY, I, n, P, sav, 6);
+        plotGroundTruthAndPrediction(chkX, chkY, I, n, P, sav, 3);
         
     end
     
