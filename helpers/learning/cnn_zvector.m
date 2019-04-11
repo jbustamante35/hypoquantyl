@@ -1,17 +1,15 @@
-function [IN, OUT, figs] = cnn_zvector(C, D, px, py, pz, predMethod, sav, vis)
+function [IN, OUT, figs] = cnn_zvector(D, px, py, pz, sav, vis)
 %% cnn_zvector:
 %
 %
 % Usage:
-%   [IN, OUT, figs] = cnn_zvector(C, D, px, py, pz, predMethod, sav, vis)
+%   [IN, OUT, figs] = cnn_zvector(D, px, py, pz, sav, vis)
 %
 % Input:
-%   C:
 %   D:
 %   px:
 %   py:
 %   pz:
-%   predMethod:
 %   sav:
 %   vis:
 %
@@ -24,7 +22,6 @@ function [IN, OUT, figs] = cnn_zvector(C, D, px, py, pz, predMethod, sav, vis)
 %% Constants
 % Misc constants
 figs = 1 : 3;
-flp  = 0;
 
 % Principal Components
 pcx = length(px.EigValues);
@@ -35,15 +32,15 @@ pcr = 10;
 % Image input scale
 imScl = 1;
 
-%% Concatenate necessary training data into single structure
+%% Extract some info about the dataset
 ttlSegs = D(1).NumberOfSegments;
 numCrvs = numel(D);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Prep input data for CNN
 % Resize hypocotyl images to isz x isz
-isz      = ceil(size(C(1).getImage('gray')) * imScl);
-imgs_raw = arrayfun(@(x) x.getImage('gray'), C, 'UniformOutput', 0);
+isz      = ceil(size(D(1).Parent.getImage('gray')) * imScl);
+imgs_raw = arrayfun(@(x) x.Parent.getImage('gray'), D, 'UniformOutput', 0);
 imgs_rsz = cellfun(@(x) imresize(x, isz), imgs_raw, 'UniformOutput', 0);
 imgs     = cat(3, imgs_rsz{:});
 imSize   = size(imgs);
@@ -166,146 +163,10 @@ predZ_cnn = bsxfun(@plus, (ypreNet * pz.EigVectors'), pz.MeanVals);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Plotting functions to visualize predictions
-% This will be replaced with the plotPredictions function once I reshape the 
-% predicted matrices correctly. 
+% This will be replaced with the plotPredictions function once I reshape the
+% predicted matrices correctly.
 if vis
-    %     figs(1) = figure(1);
-    %     figs(2) = figure(2);
-    %     figs(3) = figure(3);
-    %
-    %     %%
-    %     switch predMethod
-    %         case 'plsr'
-    %             predZ     = predZ_plsr;
-    %             cnvMethod = @(x) x;
-    %
-    %         case 'cnn'
-    %             predZ     = predZ_cnn;
-    %             catCrd    = @(x) x(:);
-    %
-    %             % Only extracts x-/y-fields [DEPRECATED]
-    % %             cnvMethod = @(x) [catCrd(x(:, 1:(end/2))') , ...
-    % %                 catCrd(x(:, (end/2 + 1) : end)')];
-    %
-    %             % Extracts indices for all 6 fields
-    %             idx1      = @(x) 1 + (ttlSegs * (x - 1));
-    %             idx2      = @(x) (x * ttlSegs);
-    %             zOrder = [1 4 , 2 5 , 3 6];
-    %             cnvIdx = arrayfun(@(x) idx1(x) : idx2(x), zOrder, 'UniformOutput', 0);
-    %
-    %             % Linearizes each field into separate columns
-    %             cnvZ      = @(y) cellfun(@(x) catCrd(y(:, x)'), cnvIdx, 'UniformOutput', 0);
-    %             cnvMethod = @(x) cell2mat(cnvZ(x));
-    %
-    %         otherwise
-    %             predZ     = predZ_cnn;
-    %             catCrd    = @(x) x(:);
-    %
-    %             % Extracts indices for all 6 fields
-    %             idx1   = @(x) 1 + (ttlSegs * (x - 1));
-    %             idx2   = @(x) (x * ttlSegs);
-    %             zOrder = [1 4 , 2 5 , 3 6];
-    %             cnvIdx = arrayfun(@(x) idx1(x) : idx2(x), zOrder, 'UniformOutput', 0);
-    %
-    %             % Linearizes each field into separate columns
-    %             cnvZ      = @(y) cellfun(@(x) catCrd(y(:, x)'), cnvIdx, 'UniformOutput', 0);
-    %             cnvMethod = @(x) cell2mat(cnvZ(x));
-    %     end
-    %
-    %     %% Plot Frankencotyls to show backbone predictions [single]
-    %     idx = 20;
-    %
-    %     % DEBUG: Check simulated ground truths
-    %     %     tmpX = pz.SimData(:, 1:(end/2))';
-    %     %     tmpY = pz.SimData(:, (end/2 + 1) : end)';
-    %     %     preMids = [tmpX(:) , tmpY(:)];
-    %
-    %     %     tmpX    = preMids(:, 1:(end/2))';
-    %     %     tmpY    = preMids(:, (end/2 + 1) : end)';
-    %     %     tmpMids = [tmpX(:) , tmpY(:)];
-    %
-    %     tmpZ = cnvMethod(predZ);
-    %
-    %     [segInp_truth, ~] = ...
-    %         plotPredictions(idx, px, py, pz, tmpZ, D, 'truth', sav, 1);
-    %     [~, segSim_pred] = ...
-    %         plotPredictions(idx, px, py, pz, tmpZ, D, 'predicted', sav, 2);
-    %
-    %     %% Plot predictions and truths
-    %     chkX = segInp_truth{1};
-    %     chkY = segSim_pred{1};
-    %     I    = C(idx).getImage('gray');
-    %     P    = [pcr, pcz, pcx, pcy];
-    %     plotGroundTruthAndPrediction(chkX, chkY, I, idx, P, sav, 3);
-    %
-    %     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %     %% Show n Frankencotyls to show backbone predictions [looping, training]
-    %     currDir = pwd;
-    %     if sav
-    %         trnDir = sprintf('%s', [pwd '/' 'trained_examples']);
-    %         eval(sprintf('mkdir %s', trnDir));
-    %         eval(sprintf('cd %s', trnDir));
-    %     end
-    %
-    %     for n = trnIdx
-    %
-    %         tmpX    = predZ(:, 1:(end/2))';
-    %         tmpY    = predZ(:, (end/2 + 1) : end)';
-    %         tmpZ = [tmpX(:) , tmpY(:)];
-    %
-    %         [segInp_truth, ~] = ...
-    %             plotFrankencotyls(n, n, px, py, pz, tmpZ, D, ...
-    %             'truth',     flp, sav, 1);
-    %
-    %         [~, segSim_pred] = ...
-    %             plotFrankencotyls(n, n, px, py, pz, tmpZ, D, ...
-    %             'predicted', flp, sav, 2);
-    %
-    %         % Plot predictions and truths
-    %         chkX = segInp_truth{1};
-    %         chkY = segSim_pred{1};
-    %         I    = C(n).getImage('gray');
-    %         P    = [pcr, pcz, pcx, pcy];
-    %         plotGroundTruthAndPrediction(chkX, chkY, I, n, P, sav, 3);
-    %
-    %         pause(1);
-    %     end
-    %
-    %     eval(sprintf('cd %s', currDir));
-    %
-    %     %% Show n Frankencotyls to show backbone predictions [looping, validation]
-    %     if sav
-    %         valDir = sprintf('%s', [pwd '/' 'validation_examples']);
-    %         eval(sprintf('mkdir %s', valDir));
-    %         eval(sprintf('cd %s', valDir));
-    %     end
-    %
-    %     for n = valIdx
-    %
-    %         tmpX    = predZ(:, 1:(end/2))';
-    %         tmpY    = predZ(:, (end/2 + 1) : end)';
-    %         tmpZ = [tmpX(:) , tmpY(:)];
-    %
-    %         [segInp_truth, ~] = ...
-    %             plotFrankencotyls(n, n, px, py, pz, tmpZ, D, ...
-    %             'truth',     flp, sav, 1);
-    %
-    %         [~, segSim_pred] = ...
-    %             plotFrankencotyls(n, n, px, py, pz, tmpZ, D, ...
-    %             'predicted', flp, sav, 2);
-    %
-    %         % Plot predictions and truths
-    %         chkX = segInp_truth{1};
-    %         chkY = segSim_pred{1};
-    %         I    = C(n).getImage('gray');
-    %         P    = [pcr, pcz, pcx, pcy];
-    %         plotGroundTruthAndPrediction(chkX, chkY, I, n, P, sav, 3);
-    %
-    %         pause(1);
-    %     end
-    %
-    %     eval(sprintf('cd %s', currDir));
-    
+    fprintf('\n\nNote [%s]\nVisualization does nothing yet!\n\n', tdate('l'));    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
