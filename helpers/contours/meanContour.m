@@ -1,11 +1,11 @@
 function [CTR, fig] = meanContour(C, Dx, Dy, fc, sv, f)
-%% meanContour: obtain the mean contour from the training set based on PCA results
-% This function combines results from PCA (see pcaAnalysis) and training data (see CircuitJB and
-% Routes) to synthetically construct the average contour shape based on the mean of the PCA scores
-% of each Route from the training set.
+%% meanContour: obtain the mean contour of a training set's PCA results
+% This function combines results from PCA (see pcaAnalysis) and training data 
+% (see CircuitJB and Routes) to synthetically construct the average contour 
+% shape based on the mean of the PCA scores of each Route from the training set.
 %
 % Usage:
-%   CTR = meanContour(C, D, sv, f)
+%   CTR = meanContour(C, Dx, Dy, sv, f)
 %
 % Input:
 %   C: CircuitJB object array containing contour data
@@ -27,9 +27,10 @@ else
     fig = figure;
 end
 
-%% Function Handles: general plotting function, get random from set, convert contours
+%% Function Handles: plotting function, get random from set, convert contours
 m        = @(x) randi([1 length(x)], 1);
-norm2raw = @(o, m, x, t) reverseMidpointNorm([o{x, 1} ; o{x, 2}]', m(:, :, x))' + t(:, 2:3, x);
+norm2raw = @(o, m, x, t) ...
+    reverseMidpointNorm([o{x, 1} ; o{x, 2}]', m(:, :, x))' + t(:, 2:3, x);
 
 %% Extract P-matrix and P-parameters from all Routes of CircuitJB array
 D        = [Dx Dy];
