@@ -32,6 +32,7 @@ pcx  = length(px.EigValues);
 pcy  = length(py.EigValues);
 pcz  = length(pz.EigValues);
 
+%% 
 %% Get midpoint indices and image data for contour
 crv        = crvs(idx);
 img        = crv.Parent.getImage('gray');
