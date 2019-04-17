@@ -1,4 +1,4 @@
-function fig = plotGroundTruthAndPrediction(X, Y, I, idx, numPCs, sav, f)
+function fig = plotGroundTruthAndPrediction(idx, img, Zin, Zout, sav, f)
 %% plotGroundTruthAndPrediction: overlay ground truth contour on predicted
 %
 %
@@ -18,32 +18,127 @@ function fig = plotGroundTruthAndPrediction(X, Y, I, idx, numPCs, sav, f)
 %   fig: handle to outputted figure
 %
 
-% Plot predictions and truths
-fig = figure(f);
+%% Plot input vs converted outputs [single, plot only]
+fIdx = f;
+set(0, 'CurrentFigure', figs(fIdx));
 cla;clf;
 
-% Show image with ground truth and simulated prediction
-imagesc(I);
+% Figure data
+row   = 2;
+col   = 4;
+pIdx  = 1;
+
+%% Check if data to plot is in training or testing set
+chk = ismember(idx, trnIdx);
+if chk
+    tSet = 'in training set';
+    fSet = 'training';
+else
+    tSet = 'in testing set';
+    fSet = 'testing';
+end
+
+%% Store input and predicted data
+Xin      = Zin.FullData;
+Xin_rev  = Zin.RevertData;
+Xin_n    = extractIndices(idx, ttlSegs, Xin_rev)';
+Xout     = Zout.FullData;
+Xout_rev = Zout.RevertData;
+Xout_n   = extractIndices(idx, ttlSegs, Xout_rev)';
+
+%% Store input and predicted data
+% Xin      = pz.InputData;
+% Xin_rev  = zVectorConversion(Xin, ttlSegs, numCrvs, 'rev');
+% Xin_n    = extractIndices(idx, ttlSegs, Xin_rev)';
+% Xout     = predZ_cnn;
+% Xout_rev = zVectorConversion(Xout, ttlSegs, numCrvs, 'rev');
+% Xout_n   = extractIndices(idx, ttlSegs, Xout_rev)';
+
+%% Show CNN Input
+subplot(row , col , pIdx); pIdx = pIdx + 1;
+imagesc(Xin);
 colormap gray;
-axis image;
-axis off;
-hold on;
-plt(X, 'g--' , 5);
-plt(Y, 'y-'  , 5);
-ttl = ...
-    sprintf('Contour Prediction\nTruth (green) | Predicted (yellow)\nContour %d', ...
-    idx);
+ttl = sprintf('Full Input');
 title(ttl);
 
-% Save figure
+%% Show reverted inputed rasterized
+subplot(row , col , pIdx); pIdx = pIdx + 1;
+imagesc(Xin_rev);
+colormap gray;
+ttl = sprintf('Full Input Reversion');
+title(ttl);
+
+%% Show reverted input for single hypocotyl
+subplot(row , col , pIdx); pIdx = pIdx + 1;
+imagesc(Xin_n);
+colormap gray;
+ttl = sprintf('Input Reversion\nContour %d [%s]', cIdx, tSet);
+title(ttl);
+
+%% Overlay Z-Vector on hypocotyl image
+subplot(row , col , pIdx); pIdx = pIdx + 1;
+imagesc(img);
+colormap gray;
+axis image;
+axis ij;
+hold on;
+
+arrayfun(@(x) plt(Zin.M(x,:), 'g.', 3), sIdxs, 'UniformOutput', 0);
+arrayfun(@(x) plt([Zin.M(x,:) ; Zin.T(x,:)], 'b-', 1), ...
+    sIdxs, 'UniformOutput', 0);
+arrayfun(@(x) plt([Zin.M(x,:) ; Zin.N(x,:)], 'r-', 1), ...
+    sIdxs, 'UniformOutput', 0);
+ttl = sprintf('Midpoint-Tangent-Normal\nGround Truth\nContour %d [%s]', ...
+    cIdx, tSet);
+title(ttl);
+
+%% Show CNN Predictions
+subplot(row , col , pIdx); pIdx = pIdx + 1;
+imagesc(Xout);
+colormap gray;
+ttl = sprintf('Full Predictions');
+title(ttl);
+
+%% Show reverted predictions rasterized
+subplot(row , col , pIdx); pIdx = pIdx + 1;
+imagesc(Xout_rev);
+colormap gray;
+ttl = sprintf('Full Predictions Reversion');
+title(ttl);
+
+%% Show reverted predictions for single hypocotyl
+subplot(row , col , pIdx); pIdx = pIdx + 1;
+imagesc(Xout_n);
+colormap gray;
+ttl = sprintf('Predicted Reversion\nContour %d [%s]', cIdx, tSet);
+title(ttl);
+
+%% Overlay predicted Z-Vector on hypocotyl image
+subplot(row , col , pIdx); pIdx = pIdx + 1;
+imagesc(img);
+colormap gray;
+axis image;
+axis ij;
+hold on;
+
+arrayfun(@(x) plt(Zout.M(x,:), 'g.', 3), sIdxs, 'UniformOutput', 0);
+arrayfun(@(x) plt([Zout.M(x,:) ; Zout.T(x,:)], 'b-', 1), ...
+    sIdxs, 'UniformOutput', 0);
+arrayfun(@(x) plt([Zout.M(x,:) ; Zout.N(x,:)], 'r-', 1), ...
+    sIdxs, 'UniformOutput', 0);
+hold off;
+ttl = sprintf('Midpoint-Tangent-Normal\nPredicted\nContour %d [%s]', ...
+    cIdx, tSet);
+title(ttl);
+
+%% Save figure as .fig and .tif
 if sav
-    
-    fnm = sprintf('%s_ContourPrediction_x%dPCs_y%dPCs_z%dPCs_Contour%d', ...
-        tdate('s'), numPCs(1), numPCs(2), numPCs(3), idx);
-    savefig(fig, fnm);
-    saveas(fig, fnm, 'tiffn');
+    fnms{fIdx} = sprintf('%s_ReversionPipeline_Contour%d_%s', ...
+        tdate('s'), cIdx, fSet);
+    savefig(figs(fIdx), fnms{fIdx});
+    saveas(figs(fIdx), fnms{fIdx}, 'tiffn');
 else
-    pause(0.5);
+    pause(1);
 end
 
 end
