@@ -3,13 +3,18 @@ function Zn = convertPredictions(predZ, req, px, py, pz, sav)
 % This
 %
 % Usage:
-%
+%   Zn = convertPredictions(predZ, req, px, py, pz, sav)
 %
 % Input:
-%
+%   predZ: predicted values from CNN output
+%   req: requested data set can be 'truth', 'sim', or 'predicted'
+%   px: output from PCA of X-coordinates
+%   py: output from PCA of Y-coordinates
+%   pz: output from PCA of Z-vectors
+%   sav: boolean to save output in a .mat file
 %
 % Output:
-%
+%   Zin: structure containing processed Z-Vector data
 %
 
 %% Get full Z-Vector data set
@@ -85,45 +90,15 @@ end
 
 %% Store output in structure
 Zn = struct('FullData', Xdat, 'RevertData', Xrev, 'NormalData', ni, ...
-    'ConvertData', ci, 'Pmat', Pm, 'HalfData', hi);
-
-%% Revert output back to rasterized form
-% Xrev = zVectorConversion(Xdat, ttlSegs, numCrvs, 'rev');
-% Xn   = extractIndices(idx, ttlSegs, Xrev)';
-%
-% % Regenerate Pmat from Z-Vector
-% Pm = arrayfun(@(x) reconstructPmat(Xn(x,:)), 1:length(Xn), 'UniformOutput', 0);
-% Pm = cat(3, Pm{:});
-%
-% % Extract each segment's midpoint-normaized x-/y-coordinates
-% nxi = extractIndices(idx, ttlSegs, px.(dat))';
-% nyi = extractIndices(idx, ttlSegs, py.(dat))';
-%
-% % Combine x-/y-coordinates into single cell array
-% sIdxs = 1 : ttlSegs;
-% xi    = arrayfun(@(x) nxi(x,:), sIdxs, 'UniformOutput', 0);
-% yi    = arrayfun(@(x) nyi(x,:), sIdxs, 'UniformOutput', 0);
-% ni    = arrayfun(@(x) [xi{x}' yi{x}'], sIdxs, 'UniformOutput', 0);
-%
-% % Convert to image coordinates using processed Z-Vectors
-% cp = arrayfun(@(x) reverseMidpointNorm(ni{x}, Pm(:,:,x)) + Xn(x,1:2), ...
-%     sIdxs, 'UniformOutput', 0);
-%
-% % Get half coordinates of segments [minimize amount of data to plot]
-% halfIdx = ceil(size(nxi,2) / 2);
-% hp   = cellfun(@(x) x(halfIdx,:), cp, 'UniformOutput', 0);
-% hp   = cat(1, hp{:});
-%
-% % Store output in structure
-% Zn = struct('FullData', Xdat, 'RevertData', Xrev, 'Pmat', Pm, 'HalfData', hp, ...
-%     'M', Xn(:,1:2), 'T', Xn(:,3:4), 'N', Xn(:,5:6));
+    'ConvertData', ci, 'Pmat', Pm, 'HalfData', squeeze(hi));
 
 %% Save data
 if sav
     pcx = length(px.EigValues);
     pcy = length(py.EigValues);
     pcz = length(pz.EigValues);
-    fn = sprintf('%s_ConvertedZvector_x%d_y%d_z%d', tdate('s'), pcx, pcy, pcz);
+    fn = sprintf('%s_ConvertedZvector_%dCurves_%dSegments_x%d_y%d_z%d_%s', ...
+        tdate('s'), numCrvs, ttlSegs, pcx, pcy, pcz, req);
     save(fn, '-v7.3', 'Zn');
 end
 
