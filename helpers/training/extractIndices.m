@@ -1,9 +1,9 @@
-function [I, D] = extractIndices(idx, ttlSegs, spltData)
+function [D, I] = extractIndices(idx, ttlSegs, spltData)
 %% extractIndicies: extract indices of contour by splitting by segments
 % This function
 %
 % Usage:
-%   [I, D] = extractIndices(idx, ttlSegs, splitData)
+%   [D, I] = extractIndices(idx, ttlSegs, spltData)
 %
 % Input:
 %   idx: index to extract coordinates from
@@ -11,8 +11,8 @@ function [I, D] = extractIndices(idx, ttlSegs, spltData)
 %   spltData: data to actually split dateset, set to 0 to return only indicies
 %
 % Output:
-%   I: array of indices corresponding to idx
 %   D: subset of splitData corresponding to indices from I
+%   I: array of indices corresponding to idx
 %
 
 splitIdx = @(c,s) (((s * c) - s) + 1) : ((s * (c+1)) - s);
