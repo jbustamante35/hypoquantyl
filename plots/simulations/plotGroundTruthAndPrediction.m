@@ -1,4 +1,4 @@
-function fig = plotGroundTruthAndPrediction(idx, img, Zin, Zout, sav, f)
+function fig = plotGroundTruthAndPrediction(idx, img, trnIdx, Zin, Zout, sav, f)
 %% plotGroundTruthAndPrediction: overlay ground truth contour on predicted
 %
 %
@@ -19,8 +19,8 @@ function fig = plotGroundTruthAndPrediction(idx, img, Zin, Zout, sav, f)
 %
 
 %% Plot input vs converted outputs [single, plot only]
-fIdx = f;
-set(0, 'CurrentFigure', figs(fIdx));
+fig = figure(f);
+% set(0, 'CurrentFigure', fig);
 cla;clf;
 
 % Figure data
@@ -38,21 +38,28 @@ else
     fSet = 'testing';
 end
 
+%% Extract set-up data
+ttlSegs    = size(Zin.FullData, 2) / 6;
+numCrvs    = size(Zin.FullData, 1);
+[~, sIdxs] = extractIndices(idx, ttlSegs, Zin.RevertData);
+
 %% Store input and predicted data
 Xin      = Zin.FullData;
 Xin_rev  = Zin.RevertData;
-Xin_n    = extractIndices(idx, ttlSegs, Xin_rev)';
+Xin_n    = Zin.RevertData(sIdxs,:);
 Xout     = Zout.FullData;
 Xout_rev = Zout.RevertData;
-Xout_n   = extractIndices(idx, ttlSegs, Xout_rev)';
+Xout_n   = Zout.RevertData(sIdxs,:);
 
 %% Store input and predicted data
-% Xin      = pz.InputData;
-% Xin_rev  = zVectorConversion(Xin, ttlSegs, numCrvs, 'rev');
-% Xin_n    = extractIndices(idx, ttlSegs, Xin_rev)';
-% Xout     = predZ_cnn;
-% Xout_rev = zVectorConversion(Xout, ttlSegs, numCrvs, 'rev');
-% Xout_n   = extractIndices(idx, ttlSegs, Xout_rev)';
+Min  = Zin.RevertData(sIdxs,1:2);
+Tin  = Zin.RevertData(sIdxs,3:4);
+Nin  = Zin.RevertData(sIdxs,5:6);
+Hin  = Zin.HalfData(:,:,idx)';
+Mout = Zout.RevertData(sIdxs,1:2);
+Tout = Zout.RevertData(sIdxs,3:4);
+Nout = Zout.RevertData(sIdxs,5:6);
+Hout = Zout.HalfData(:,:,idx)';
 
 %% Show CNN Input
 subplot(row , col , pIdx); pIdx = pIdx + 1;
@@ -72,7 +79,7 @@ title(ttl);
 subplot(row , col , pIdx); pIdx = pIdx + 1;
 imagesc(Xin_n);
 colormap gray;
-ttl = sprintf('Input Reversion\nContour %d [%s]', cIdx, tSet);
+ttl = sprintf('Input Reversion\nContour %d [%s]', idx, tSet);
 title(ttl);
 
 %% Overlay Z-Vector on hypocotyl image
@@ -83,13 +90,11 @@ axis image;
 axis ij;
 hold on;
 
-arrayfun(@(x) plt(Zin.M(x,:), 'g.', 3), sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([Zin.M(x,:) ; Zin.T(x,:)], 'b-', 1), ...
-    sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([Zin.M(x,:) ; Zin.N(x,:)], 'r-', 1), ...
-    sIdxs, 'UniformOutput', 0);
+plt(Min, 'g.', 3);
+plt([Min ; Tin], 'b-', 1);
+plt([Min ; Nin], 'r-', 1);
 ttl = sprintf('Midpoint-Tangent-Normal\nGround Truth\nContour %d [%s]', ...
-    cIdx, tSet);
+    idx, tSet);
 title(ttl);
 
 %% Show CNN Predictions
@@ -110,7 +115,7 @@ title(ttl);
 subplot(row , col , pIdx); pIdx = pIdx + 1;
 imagesc(Xout_n);
 colormap gray;
-ttl = sprintf('Predicted Reversion\nContour %d [%s]', cIdx, tSet);
+ttl = sprintf('Predicted Reversion\nContour %d [%s]', idx, tSet);
 title(ttl);
 
 %% Overlay predicted Z-Vector on hypocotyl image
@@ -121,22 +126,20 @@ axis image;
 axis ij;
 hold on;
 
-arrayfun(@(x) plt(Zout.M(x,:), 'g.', 3), sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([Zout.M(x,:) ; Zout.T(x,:)], 'b-', 1), ...
-    sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([Zout.M(x,:) ; Zout.N(x,:)], 'r-', 1), ...
-    sIdxs, 'UniformOutput', 0);
+plt(Mout, 'g.', 3);
+plt([Mout ; Tin], 'b-', 1);
+plt([Mout ; Nin], 'r-', 1);
 hold off;
 ttl = sprintf('Midpoint-Tangent-Normal\nPredicted\nContour %d [%s]', ...
-    cIdx, tSet);
+    idx, tSet);
 title(ttl);
 
 %% Save figure as .fig and .tif
 if sav
-    fnms{fIdx} = sprintf('%s_ReversionPipeline_Contour%d_%s', ...
-        tdate('s'), cIdx, fSet);
-    savefig(figs(fIdx), fnms{fIdx});
-    saveas(figs(fIdx), fnms{fIdx}, 'tiffn');
+    fnm = sprintf('%s_ReversionPipeline_%dCurves_%dSegments_Contour%d_%s', ...
+        tdate('s'), numCrvs, ttlSegs, idx, fSet);
+    savefig(fig, fnm);
+    saveas(fig, fnm, 'tiffn');
 else
     pause(1);
 end

@@ -1,4 +1,4 @@
-function [syntHalf_inp, syntHalf_sim, fig] = plotPredictions(idx, px, py, pz, pMids, crvs, req, sav, f)
+function fig = plotPredictions(idx, img, trnIdx, Zin, Zout, sav, f)
 %% plotPredictions: Plot predictions from CNN or PLSR
 %
 %
@@ -22,8 +22,8 @@ function [syntHalf_inp, syntHalf_sim, fig] = plotPredictions(idx, px, py, pz, pM
 %
 
 %% Plot Contours to Compare Ground Truth vs Predicted
-fIdx = f;
-set(0, 'CurrentFigure', figs(fIdx));
+fig = figure(f);
+% set(0, 'CurrentFigure', fig);
 cla;clf;
 
 % Figure data
@@ -41,6 +41,21 @@ else
     fSet = 'testing';
 end
 
+%% Extract set-up data
+ttlSegs = size(Zin.FullData, 2) / 6;
+numCrvs = size(Zin.FullData, 1);
+[~, sIdxs] = extractIndices(idx, ttlSegs, Zin.RevertData);
+
+%% Store input and predicted data
+Min  = Zin.RevertData(sIdxs,1:2);
+Tin  = Zin.RevertData(sIdxs,3:4);
+Nin  = Zin.RevertData(sIdxs,5:6);
+Hin  = Zin.HalfData(:,:,idx)';
+Mout = Zout.RevertData(sIdxs,1:2);
+Tout = Zout.RevertData(sIdxs,3:4);
+Nout = Zout.RevertData(sIdxs,5:6);
+Hout = Zout.HalfData(:,:,idx)';
+
 %% Show ground truth Z-Vectors and Contours
 subplot(row , col , pIdx); pIdx = pIdx + 1;
 imagesc(img);
@@ -48,15 +63,12 @@ colormap gray;
 axis image;
 hold on;
 
-arrayfun(@(x) plt(Zin.M(x,:), 'g.', 3), sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([Zin.M(x,:) ; Zin.T(x,:)], 'b-', 1), ...
-    sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([Zin.M(x,:) ; Zin.N(x,:)], 'r-', 1), ...
-    sIdxs, 'UniformOutput', 0);
-
-plt(ht, 'g--', 1);
+plt(Min, 'g.', 3);
+plt([Min ; Tin], 'b-', 1);
+plt([Min ; Nin], 'r-', 1);
+plt(Hin, 'g--', 1);
 ttl = sprintf('Contour from Z-Vectors\nTruth\nContour %d [%s]', ...
-    cIdx, tSet);
+    idx, tSet);
 title(ttl);
 
 %% Show predicted Z-Vectors and Contours
@@ -66,15 +78,12 @@ colormap gray;
 axis image;
 hold on;
 
-arrayfun(@(x) plt(Zout.M(x,:), 'g.', 3), sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([Zout.M(x,:) ; Zout.T(x,:)], 'b-', 1), ...
-    sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([Zout.M(x,:) ; Zout.N(x,:)], 'r-', 1), ...
-    sIdxs, 'UniformOutput', 0);
-
-plt(hp, 'g--', 1);
+plt(Mout, 'g.', 3);
+plt([Mout ; Tin], 'b-', 1);
+plt([Mout ; Nin], 'r-', 1);
+plt(Hout, 'g--', 1);
 ttl = sprintf('Contour from Z-Vectors\nPredicted\nContour %d [%s]', ...
-    cIdx, tSet);
+    idx, tSet);
 title(ttl);
 
 %% Overlay Ground Truth Vs Predicted Z-Vector
@@ -84,15 +93,15 @@ colormap gray;
 axis image;
 hold on;
 
-arrayfun(@(x) plt(mdt(x,:), 'g.', 3), sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([mdt(x,:) ; tnt(x,:)], 'b--', 1), sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([mdt(x,:) ; nrt(x,:)], 'r--', 1), sIdxs, 'UniformOutput', 0);
+plt(Min, 'g.', 3);
+plt([Min ; Tin], 'b-', 1);
+plt([Min ; Nin], 'r-', 1);
 
-arrayfun(@(x) plt(mdp(x,:), 'go', 3), sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([mdp(x,:) ; tnp(x,:)], 'b-', 1), sIdxs, 'UniformOutput', 0);
-arrayfun(@(x) plt([mdp(x,:) ; nrp(x,:)], 'r-', 1), sIdxs, 'UniformOutput', 0);
+plt(Mout, 'g.', 3);
+plt([Mout ; Tin], 'b-', 1);
+plt([Mout ; Nin], 'r-', 1);
 ttl = sprintf('Z-Vectors only\nTruth Vs. Predicted\nContour %d [%s]', ...
-    cIdx, tSet);
+    idx, tSet);
 title(ttl);
 
 %% Overlay Ground Truth Vs Predicted Contour
@@ -102,66 +111,21 @@ colormap gray;
 axis image;
 hold on;
 
-plt(ht, 'g--', 1);
-plt(hp, 'y-', 1);
+plt(Hin, 'g--', 1);
+plt(Hout, 'y-', 1);
 ttl = sprintf('Contour only\nTruth Vs. Predicted\nContour %d [%s]', ...
-    cIdx, tSet);
+    idx, tSet);
 title(ttl);
 
 %% Save figure as .fig and .tif
 if sav
-    fnms{fIdx} = sprintf('%s_TruthVsPredictedContours_Contour%d_%s', ...
-        tdate('s'), cIdx, fSet);
-    savefig(figs(fIdx), fnms{fIdx});
-    saveas(figs(fIdx), fnms{fIdx}, 'tiffn');
+    fnm = sprintf('%s_TruthVsPredictedContours_%dCurves_%dSegments_Contour%d_%s', ...
+        tdate('s'), numCrvs, ttlSegs, idx, fSet);
+    savefig(fig, fnm);
+    saveas(fig, fnm, 'tiffn');
 else
     pause(1);
 end
 
 end
 
-function midFnc = getMidpointFunction(req, crv, pMids, midIdx)
-%% getMidpointFunction: return function to get midpoint
-switch req
-    case 'truth'
-        midFnc  = @(sIdx) crv.getMidPoint(sIdx);
-        
-    case 'predicted'
-        %         midFnc  = @(sIdx) pMids(midIdx(sIdx),:);
-        midFnc  = @(sIdx) pMids(midIdx(sIdx),1:2);
-        
-    otherwise
-        % Default to raw midpoint value
-        midFnc  = @(sIdx) crv.getMidPoint(sIdx);
-end
-
-end
-
-function pm = getPmat(req, crv, zVec, sIdx)
-%% reconstructPmat: return ground truth or generate the predicted Pmat
-% Returns the ground truth Pmat directly from the Curve object or generates a
-% Pmat from the predicted Z-Vector.
-switch req
-    case 'truth'
-        pm = crv.getParameter('Pmats', sIdx);
-        
-    case 'predicted'
-        pm = reconstructPmat(zVec(sIdx,:));
-        %
-        %         M    = zVec(1:2);
-        %         T    = zVec(3:4) - M; % Pmats have T and N subtracted by M
-        %         N    = zVec(5:6) - M; % Pmats have T and N subtracted by M
-        %         tF   = [T(1) , T(2) , 0 ; ...
-        %                 N(1) , N(2) , 0 ; ...
-        %                 0    ,  0   , 1 ];
-        %         mF   = [1    , 0    , -M(1) ; ...
-        %                 0    , 1    , -M(2) ; ...
-        %                 0    , 0    , 1 ];
-        %         pm   = tF * mF;
-        
-    otherwise
-        % Default to ground truth value
-        pm = crv.getParameter('Pmats', sIdx);
-end
-
-end
