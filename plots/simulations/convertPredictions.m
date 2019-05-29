@@ -35,7 +35,8 @@ switch req
 end
 
 %% Extract set-up data
-ttlSegs = size(predZ, 2) / 6;
+NUMCOLS = 6;
+ttlSegs = size(predZ, 2) / NUMCOLS;
 numCrvs = size(predZ, 1);
 sIdxs   = 1 : ttlSegs;
 cIdxs   = 1 : numCrvs;
