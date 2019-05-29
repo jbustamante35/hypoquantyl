@@ -1,4 +1,4 @@
-function [IN, OUT, figs] = cnn_zvector(D, px, py, pz, sav, vis)
+function [IN, OUT, FIGS] = cnn_zvector(D, px, py, pz, sav, vis)
 %% cnn_zvector:
 %
 %
@@ -21,25 +21,25 @@ function [IN, OUT, figs] = cnn_zvector(D, px, py, pz, sav, vis)
 
 %% Constants
 % Misc constants
-figs = 1 : 3;
+FIGS = 1 : 3;
 
 % Principal Components
-pcx = length(px.EigValues);
-pcy = length(py.EigValues);
-pcz = length(pz.EigValues);
-pcr = 10;
+PCX = length(px.EigValues);
+PCY = length(py.EigValues);
+PCZ = length(pz.EigValues);
+PCR = 10;
 
 % Image input scale
-imScl = 1;
+SCALE = 1;
 
 %% Extract some info about the dataset
-ttlSegs = D(1).NumberOfSegments;
-numCrvs = numel(D);
+SEGS = D(1).NumberOfSegments;
+CRVS = numel(D);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Prep input data for CNN
 % Resize hypocotyl images to isz x isz
-isz      = ceil(size(D(1).Parent.getImage('gray')) * imScl);
+isz      = ceil(size(D(1).Parent.getImage('gray')) * SCALE);
 imgs_raw = arrayfun(@(x) x.Parent.getImage('gray'), D, 'UniformOutput', 0);
 imgs_rsz = cellfun(@(x) imresize(x, isz), imgs_raw, 'UniformOutput', 0);
 imgs     = cat(3, imgs_rsz{:});
@@ -50,13 +50,17 @@ IMGS = double(reshape(imgs, [imSize(1:2), 1, imSize(3)]));
 SCRS = pz.PCAscores;
 
 %% Split into training, validation, and testing sets
-trnPct              = 0.8;
-valPct              = 1 - trnPct;
-tstPct              = 0;
-[trnIdx, valIdx, ~] = divideblock(Shuffle(1:numCrvs), trnPct, valPct, tstPct);
-% [trnIdx, valIdx, ~] = divideblock(numCrvs, trnPct, valPct, tstPct);
-trnIdx              = sort(trnIdx);
-valIdx              = sort(valIdx);
+trnPct                   = 0.8;
+valPct                   = 1 - trnPct;
+tstPct                   = 0;
+[trnIdx, valIdx, tstIdx] = ...
+    divideblock(Shuffle(1:CRVS), trnPct, valPct, tstPct);
+% [trnIdx, valIdx, tstIdx] = divideblock(numCrvs, trnPct, valPct, tstPct);
+
+% Sort numerically
+trnIdx = sort(trnIdx);
+valIdx = sort(valIdx);
+tstIdx = sort(tstIdx);
 
 % Do the split
 X = IMGS(:,:,:,trnIdx); % For CNN
@@ -70,8 +74,8 @@ plsrX = PLSRX(trnIdx, :);
 
 % PLSR on midpoint coordinates and cropped images
 rttl = sprintf('r%dHypocotylsTrained_%dHypocotylsTotal', ...
-    length(trnIdx), numCrvs);
-pr   = plsrAnalysis(plsrX, Y, pcr, sav, rttl, 0);
+    length(trnIdx), CRVS);
+pr   = plsrAnalysis(plsrX, Y, PCR, sav, rttl, 0);
 
 % Project beta onto X values to make predictions of midpoint locations
 beta       = pr.Beta;
@@ -84,7 +88,7 @@ predZ_plsr = reshape(ypre', size(pz.InputData));
 net = cell(1, size(Y,2)); % Iteratively predicts all PCs
 
 for e = 1 : size(Y,2)
-    % for e = 1 : 1
+    % for e = 1 : 1 % Debug by running only 1 PC
     cnnX = X;
     cnnY = Y(:,e);
     
@@ -166,7 +170,7 @@ predZ_cnn = bsxfun(@plus, (ypreNet * pz.EigVectors'), pz.MeanVals);
 % This will be replaced with the plotPredictions function once I reshape the
 % predicted matrices correctly.
 if vis
-    fprintf('\n\nNote [%s]\nVisualization does nothing yet!\n\n', tdate('l'));    
+    fprintf('\n\nNote [%s]\nVisualization does nothing yet!\n\n', tdate('l'));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -175,7 +179,8 @@ end
 Din  = struct('Xcrd', px.InputData, 'Ycrd', py.InputData, 'Zvec', pz.InputData);
 
 % Output (predictions)
-Trng = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'IMGS', IMGS, 'MIDS', SCRS);
+Trng = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'tstIdx', tstIdx, ...
+    'IMGS', IMGS, 'MIDS', SCRS);
 Dout = struct('plsrPredictions', predZ_plsr, 'cnnPredictions', predZ_cnn, ...
     'PLSR', pr, 'NET', net);
 
@@ -186,7 +191,7 @@ OUT = struct('TrainingProcessed', Trng, 'DataOut', Dout);
 % Save results in structure
 if sav
     pnm = sprintf('%s_PredictionsCNN_%dContours_m%dPCs_x%dPCs_y%dPCs', ...
-        tdate('s'), numCrvs, pcz, pcx, pcy);
+        tdate('s'), CRVS, PCZ, PCX, PCY);
     save(pnm, '-v7.3', 'IN', 'OUT');
     
 end
