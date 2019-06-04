@@ -1,9 +1,9 @@
-function [obs, msk] = segmentObjectsHQ(im, sz)
+function [obs, msk] = segmentObjectsHQ(im, sz, fnc)
 %% segmentObjectsHQ: segment image to bw and filter out small objects
-% This function takes a grayscale image, uses simple Otsu method to segment
-% into bw image, then filters out smaller objects between the pixel range
+% This function takes a grayscale image, uses a simple Otsu method to segment
+% into a bw image, then filters out smaller objects between the pixel range
 % defined by sz parameter. Output is a structure obtained by MATLAB's
-% bwconncomp function.
+% bwconncomp function and the binary mask.
 %
 % Usage:
 %  [obs, msk] = segmentObjectsHQ(im, sz)
@@ -18,13 +18,47 @@ function [obs, msk] = segmentObjectsHQ(im, sz)
 %
 % This version is for HypoQuantyl
 
-% msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, ...
-%   'ForegroundPolarity', 'bright');
-% flt = bwareafilt(imcomplement(msk), sz);
-msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.4, ...
-    'ForegroundPolarity', 'dark');
-flt = bwareafilt(imcomplement(msk), sz);
-obs = bwconncomp(flt);
-% msk = imcomplement(msk);
+%% Use alternative function below [for automated training]
+if fnc
+    [obs, msk] = altBinarization(im , sz);
+else
+    % msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, ...
+    %   'ForegroundPolarity', 'bright');
+    % flt = bwareafilt(imcomplement(msk), sz);
+    
+    msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.4, ...
+        'ForegroundPolarity', 'dark');
+    flt = bwareafilt(imcomplement(msk), sz);
+    obs = bwconncomp(flt);
+    % msk = imcomplement(msk);
+end
+
+end
+
+function [maxArea, bw] = altBinarization(im, sz)
+%% testBinarization: test out segmentation methods
+% Find best parameters to segment hypocotyls with traditional methods
+% Input:
+%   im: grayscale image to segment
+%   sz: dimensions to resize segmented image (currently[101 101])
+%
+% Output:
+%   maxArea: area of object extracted from image
+%   bw: resized and segmented image
+%
+
+% Some constants to play around with
+% SZ = [100 , 1000000]; % [Min , Max] area of objects
+
+%% Segmentation algorithm
+% Binarize
+adt = adaptthresh(im);
+msk = imcomplement(imbinarize(adt, 'adaptive', 'Sensitivity', 0.6, ...
+    'ForegroundPolarity', 'dark'));
+
+% Extract largest object and resize to specified dimensions
+prp                = regionprops(msk, 'Area', 'Image');
+[maxArea , maxIdx] = max(cell2mat(arrayfun(@(x) x.Area, prp, 'UniformOutput', 0)));
+bw                 = imresize(prp(maxIdx).Image, sz);
 
 end
