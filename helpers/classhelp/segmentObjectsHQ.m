@@ -1,4 +1,4 @@
-function [obs, msk] = segmentObjectsHQ(im, sz, fnc)
+function [obs, msk] = segmentObjectsHQ(im, sz, sens)
 %% segmentObjectsHQ: segment image to bw and filter out small objects
 % This function takes a grayscale image, uses a simple Otsu method to segment
 % into a bw image, then filters out smaller objects between the pixel range
@@ -6,11 +6,12 @@ function [obs, msk] = segmentObjectsHQ(im, sz, fnc)
 % bwconncomp function and the binary mask.
 %
 % Usage:
-%  [obs, msk] = segmentObjectsHQ(im, sz)
+%  [obs, msk] = segmentObjectsHQ(im, sz, sens)
 %
 % Input:
 %  im: grayscale image
 %  sz: [2 x 1] array defining minimum and maximum range to search for objects
+%   sens: sensitivity for alternative algorithm [recommended 0.6]
 %
 % Output:
 %  obs: structure containing information about objects extracted from im
@@ -19,8 +20,8 @@ function [obs, msk] = segmentObjectsHQ(im, sz, fnc)
 % This version is for HypoQuantyl
 
 %% Use alternative function below [for automated training]
-if fnc
-    [obs, msk] = altBinarization(im , sz);
+if nargin > 2
+    [obs, msk] = altBinarization(im , sz, sens);
 else
     % msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, ...
     %   'ForegroundPolarity', 'bright');
@@ -35,12 +36,13 @@ end
 
 end
 
-function [maxArea, bw] = altBinarization(im, sz)
+function [maxArea, bw] = altBinarization(im, sz, sens)
 %% testBinarization: test out segmentation methods
 % Find best parameters to segment hypocotyls with traditional methods
 % Input:
 %   im: grayscale image to segment
 %   sz: dimensions to resize segmented image (currently[101 101])
+%   sens: sensitivity [recommended 0.6]
 %
 % Output:
 %   maxArea: area of object extracted from image
@@ -53,12 +55,14 @@ function [maxArea, bw] = altBinarization(im, sz)
 %% Segmentation algorithm
 % Binarize
 adt = adaptthresh(im);
-msk = imcomplement(imbinarize(adt, 'adaptive', 'Sensitivity', 0.6, ...
+msk = imcomplement(imbinarize(adt, 'adaptive', 'Sensitivity', sens, ...
     'ForegroundPolarity', 'dark'));
 
 % Extract largest object and resize to specified dimensions
-prp                = regionprops(msk, 'Area', 'Image');
-[maxArea , maxIdx] = max(cell2mat(arrayfun(@(x) x.Area, prp, 'UniformOutput', 0)));
-bw                 = imresize(prp(maxIdx).Image, sz);
+prp                          = regionprops(msk, 'Area', 'PixelIdxList');
+[maxArea , maxIdx]           = max(cell2mat(arrayfun(@(x) x.Area, ...
+    prp, 'UniformOutput', 0)));
+bw                           = zeros(sz);
+bw(prp(maxIdx).PixelIdxList) = 1;
 
 end
