@@ -294,7 +294,7 @@ classdef Hypocotyl < handle
                     crc = obj.Contour;
                 case 2
                     frm = varargin{2};
-                    crc = obj.Contour(frm);
+                    crc = obj.Contour(frm);                    
                 otherwise
                     fprintf(2, 'Error returning ContourJB\n');
                     crc = [];
