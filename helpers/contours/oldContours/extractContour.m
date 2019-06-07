@@ -1,13 +1,14 @@
-function cntr = extractContour(bw, max_size)
+function cntr = extractContour(bw, max_size, alt)
 %% extractContour: find contour of single image
 % This function blah
 %
 % Usage:
-%   cntr = extractContour(bw, max_size)
+%   cntr = extractContour(bw, max_size, alt)
 %
 % Input:
 %   bw: bw image
 %   max_size: number of coordinates to normalize boundaries
+%   alt: use alternative parameter to use HypoQuantyl's method
 %
 % Output:
 %   cntr: various data from contour at given frame
@@ -24,7 +25,13 @@ bnds   = [getDim(bnds, 2) , getDim(bnds, 1)]; % Switch y-/x-coordinates to x-/y-
 intrps = interpolateOutline(bnds, max_size);
 
 %% Output final structure
-cntr = ContourJB('Outline', bnds, 'InterpOutline', intrps);
-cntr.ReindexCoordinates;
-
+if nargin <= 2
+    % Use default algorithm
+    cntr = ContourJB('Outline', bnds, 'InterpOutline', intrps);
+    cntr.ReindexCoordinates;
+else
+    % Use alternative start coordinate by adding alt parameter
+    cntr = ContourJB('Outline', bnds, 'InterpOutline', intrps, 'AltInit', alt);
+    cntr.ReindexCoordinates;
+end
 end
