@@ -43,37 +43,37 @@ function D = runSweepAnalysis(BW, numX, numY, stps, vis, sv)
 if vis
     figs = [];
     fnms = {};
-    
+
     figs(1) = figure; % Reconvert simulated contours
     figs(2) = figure; % Mean contour vs random contours
     figs(3) = figure; % All Sweeps on Mean Contour
     figs(4) = 4; % Sweep through x-coordinate PCs
     figs(5) = 5; % Sweep through y-coordinate PCs
-    
+
     fnms{1} = sprintf('%s_ReconvertedOnImage', datestr(now, 'yymmdd'));
     fnms{2} = sprintf('%s_MeanVsRandomContours', datestr(now, 'yymmdd'));
     fnms{3} = sprintf('%s_SweepsOnMeanContour', datestr(now, 'yymmdd'));
     fnms{4} = sprintf('%s_PCSweep_xCoords', datestr(now, 'yymmdd'));
     fnms{5} = sprintf('%s_PCSweep_yCoords', datestr(now, 'yymmdd'));
-    
+
     set(figs(1:3), 'Color', 'w');
-    
+
 else
     figs = [];
     fnms = {};
-    
+
     figs = 1 : 5; % PC sweep figures are figs(4:5)
-    
+
     fnms{1} = '';
     fnms{2} = '';
     fnms{3} = '';
     fnms{4} = sprintf('%s_PCSweep_xCoords', datestr(now, 'yymmdd'));
     fnms{5} = sprintf('%s_PCSweep_yCoords', datestr(now, 'yymmdd'));
-    
+
 end
 
 %% Extract and Rasterize normalized contours from BW images
-m  = @(x) randi([1 length(x)], 1);
+m            = @(x) randi([1 length(x)], 1);
 [X, Y, CNTR] = extractAndRasterize(BW);
 
 %% Run PCA on x-/y-coordinates
@@ -83,7 +83,7 @@ sz        = [size(CNTR{1}.NormalizedOutline,1) 1];
 
 %% Sweep through all PCs
 [scFull, smFull, fg] = performSweep('pcaX', pcaX, 'pcaY', pcaY, 'nsteps', stps, 'sv', 0);
-figs(4:5) = fg;
+figs(4:5)            = fg;
 
 %% Set x-/y-limits equal [figure out how to set this dynamically]
 % xl = [-900 200];
@@ -107,14 +107,14 @@ for s = 1 : numY
 %     ylim(yl);
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% END OF MAIN PIPELINE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% END OF MAIN PIPELINE %%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Plot re-converted simulated contour onto bw image
 if vis
     set(0, 'CurrentFigure', figs(1));
     cla;clf;
-    
+
     numCV = 16;
     rows  = numCV/4;
     cols  = numCV/4;
@@ -122,36 +122,36 @@ if vis
         set(0, 'CurrentFigure', figs(1));
         subplot(rows, cols, p);
         hold on;
-        
+
         % Get random index and extract data
         rIdx = m(BW);
         img  = BW{rIdx};
         apt  = CNTR{rIdx}.getAnchorPoint;
         aid  = CNTR{rIdx}.getAnchorIndex;
-        
+
         % Convert normalized input and simulated contour to raw image coordinates
         nInp = [pcaX.InputData(rIdx,:) ; pcaY.InputData(rIdx,:)]';
         cInp = norm2raw(nInp, apt, aid);
         nSim = [pcaX.SimData(rIdx,:) ; pcaY.SimData(rIdx,:)]';
         cSim = norm2raw(nSim, apt, aid);
-        
+
         % Overlay converted input and simulated contour on bw image
         imagesc(img);
         plt(cInp, 'g-', 1);
         plt(cSim, 'y-', 1);
-        
+
         colormap gray;
         axis ij;
         axis tight;
         ttl = sprintf('Contour %d', rIdx);
         title(ttl);
     end
-    
+
     %% Compare mean contour with actual contours
     set(0, 'CurrentFigure', figs(2));
     cla;clf;
     hold on;
-    
+
     CT    = cat(1, CNTR{:});
     numCT = numel(CNTR) / 10;
     for c = 1 : numCT
@@ -159,10 +159,10 @@ if vis
         rand_contour = CT(m(CT)).NormalizedOutline;
         plt(rand_contour, 'm--', 1);
     end
-    
+
     mean_contour = smFull{1}{1}.mean;
     plt(mean_contour, 'k-', 5);
-    
+
     axis ij;
     xll = [-1800 50];
     yll = [-120 120];
@@ -170,12 +170,12 @@ if vis
     ylim(yll);
     ttl = sprintf('%d contours on mean contour', numCT);
     title(ttl);
-    
+
     %% Plot all PC sweeps on single mean contour
     set(0, 'CurrentFigure', figs(3));
     cla;clf;
     hold on;
-    
+
     for d = 1 : size(smFull, 1)
         dim = smFull(d,:);
         for p = 1 : size(dim, 2)
@@ -192,20 +192,20 @@ if vis
             end
         end
     end
-    
+
     plt(mean_contour, 'k-', 5);
-    
+
     axis ij;
     xlim(xll);
     ylim(yll);
     ttl = sprintf('%d Swept PCs on mean contour', stps);
     title(ttl);
-    
+
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SAVE DATA HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SAVE DATA HERE %%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Figures and Dataset
 D  = v2struct(pcaX, pcaY, scFull, smFull, CNTR);
 
@@ -218,7 +218,7 @@ if sv
             continue;
         end
     end
-    
+
     D  = v2struct(pcaX, pcaY, scFull, smFull, CNTR);
     nm = sprintf('%s_carrotPCA_analysis_%dRoots', datestr(now, 'yymmdd'), numel(CNTR));
     save(nm, '-v7.3', 'D');
@@ -238,3 +238,4 @@ X    = rasterizeImagesHQ(bndX);
 Y    = rasterizeImagesHQ(bndY);
 
 end
+
