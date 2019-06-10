@@ -1,6 +1,6 @@
 function figs = assessImagePatches(crv, idx, figs, fnms, sv)
 %% assessImagePatches: plot curve data and analyze image patches
-% This function runs a neat little pipeline to take a randomly chosen Curve
+% This function runs a neat little pipeline to take a user-selected Curve
 % segment from the inputted CircuitJB object and generate several plots to
 % visualize data on the curve segment, envelope structure, and image patch from
 % that Curve object.
@@ -17,7 +17,7 @@ function figs = assessImagePatches(crv, idx, figs, fnms, sv)
 %    save(pnm, '-v7.3', 'Ps');
 %
 % Usage:
-%   figs = assessImagePatches(c, figs, fnms, sv)
+%   figs = assessImagePatches(crv, idx, figs, fnms, sv)
 %
 % Input:
 %   crv: Curve object to extract image patches

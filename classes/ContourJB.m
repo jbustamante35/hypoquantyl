@@ -1,5 +1,5 @@
-%% ContourJB: my customized class for generating contours of  [NO LONGER USED]
-% Class description
+%% ContourJB: my customized class for generating contours
+% Class description [you really need to document this] test
 
 classdef ContourJB < handle
     properties (Access = public)
@@ -14,6 +14,7 @@ classdef ContourJB < handle
     properties (Access = private)
         AnchorPoint
         AnchorIndex
+        AltInit
         Dists
         Sums
         Image
@@ -44,14 +45,17 @@ classdef ContourJB < handle
         
         function obj = ReindexCoordinates(obj)
             %% Reindex coordinates to normalize start points
-            [obj.AnchorPoint, obj.AnchorIndex] = findAnchorPoint(obj, obj.InterpOutline);
+            [obj.AnchorPoint, obj.AnchorIndex] = ...
+                findAnchorPoint(obj, obj.InterpOutline, obj.AltInit);
             obj.NormalizedOutline              = ...
-                repositionPoints(obj, obj.InterpOutline, obj.AnchorIndex);
+                repositionPoints(obj, obj.InterpOutline, obj.AnchorIndex, ...
+                obj.AltInit);
         end
         
         function crds = Normal2Raw(obj)
             %% Convert NormalizedOutline to un-indexed InterpOutline
-            crds = norm2raw(obj.NormalizedOutline, obj.AnchorPoint, obj.AnchorIndex);
+            crds = norm2raw(obj.NormalizedOutline, ...
+                obj.AnchorPoint, obj.AnchorIndex);
             
         end
     end
@@ -146,7 +150,7 @@ classdef ContourJB < handle
             % Parent is Seedling object
             % Host is Genotype object
             % Origin is Experiment object
-            p = inputParser;                     
+            p = inputParser;
             p.addOptional('Outline', []);
             p.addOptional('Dists', []);
             p.addOptional('Sums', []);
@@ -158,48 +162,89 @@ classdef ContourJB < handle
             p.addOptional('bw', []);
             p.addOptional('Parent', []);
             p.addOptional('Origin', []);
-            p.addOptional('Host', []);   
+            p.addOptional('Host', []);
+            p.addOptional('AltInit', 'default');
             
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
             args = p.Results;
         end
         
-        function [apt, idx] = findAnchorPoint(obj, crds)
-            %% Find coordinate at anchor point
-            % Anchor point is defined as lowest and central location of a
+        function [apt, idx] = findAnchorPoint(obj, crds, init)
+            %% findAnchorPoint: find anchor point coordinate
+            % The definition of the anchor point is determined by the algorithm
+            % selected.
+            %
+            % The first is typically for CarrotSweeper, where the
+            % anchor point is defined as lowest and central location of the
+            % corresponding image. This is the default algorithm if the alg
+            % parameter is empty.
+            %
+            % The second algorithm is for HypoQuantyl, where the anchor point is
+            % defined as the lower-left coordinate of the image. This is the
+            % standardaized starting location for training hypocotyl images. The
+            % alg parameter should be set to 1 or true to use this.
+            %
             
-            % Find lowest row point and range of columns at lowest row point
-            low = max(crds(:,1));
-            rng = round(crds(crds(:,1) == low, :), 4);
-            
-            % Get median of column range
-            if mod(size(rng,1), 2)
-                mtc = median(rng, 1);
+            if strcmpi(init , 'default')
+                %% Use CarrotSweeper's anchor point
+                low = max(crds(:,1));
+                rng = round(crds(crds(:,1) == low, :), 4);
+                
+                % Get median of column range
+                if mod(size(rng,1), 2)
+                    mtc = median(rng, 1);
+                else
+                    % Remove last row if even number of values
+                    nrng = rng(1:end-1, :);
+                    mtc  = median(nrng, 1);
+                end
+                
+                % Get index of Anchor Point
+                idx = find(ismember(round(crds, 4), round(mtc, 4), 'rows'));
+                if ~isempty(idx > 1)
+                    % Check if more than 1 index and choose larger index
+                    idx = max(idx);
+                elseif isnan(mtc)
+                    % Check if no index found, if range is only a single value
+                    %idx = find(crds == rng);
+                    idx = find(ismember(round(crds), round(rng), 'rows'));
+                end
+                
             else
-                % Remove last row if even number of values
-                nrng = rng(1:end-1, :);
-                mtc  = median(nrng, 1);
+                %% Use HypoQuantyl's anchor point
+                % Get the initial starting point for contours and shift indexing of coordinates
+                % for CircuitJB objects used for smy training set
+                
+                % Get subset of coordinates at lowest rows
+                [maxRowCrd , ~] = max(crds(:,2));
+                maxRowCrds      = crds((crds(:,2) == maxRowCrd), :);
+                
+                % Get left-most coordinate within subset of lowest row points
+                [~ , maxRow_minCol_idx] = min(maxRowCrds(:,1));
+                maxRow_minCol           = maxRowCrds(maxRow_minCol_idx,:);
+                
+                apt = maxRow_minCol;
+                idx = find(ismember(crds, apt, 'rows'));
+                
             end
             
-            % Get index of Anchor Point
-            idx = find(ismember(round(crds, 4), round(mtc, 4), 'rows'));
-            if ~isempty(idx > 1)
-                % Check if more than 1 index and choose larger index
-                idx = max(idx);
-            elseif isnan(mtc)
-                % Check if no index found, if range is only a single value
-                %idx = find(crds == rng);
-                idx = find(ismember(round(crds), round(rng), 'rows'));
-            end
-            
+            %% Pull out the anchor point from the coordinates
             apt = crds(idx, :);
+            
         end
         
-        function shft = repositionPoints(obj, crds, idx)
-            %% Re-index coordinates from Anchor Point and Re-center around AnchorPoint
-            subt = crds - crds(idx,:);
-            shft = circshift(subt, -idx+1);
+        function shft = repositionPoints(obj, crds, idx, init)
+            %% Shift contour points around AnchorPoint coordinate
+            
+            if strcmpi(init, 'default')
+                %% Re-index and Re-Center around AnchorPoint
+                subt = crds - crds(idx,:);
+                shft = circshift(subt, -idx+1);
+            else
+                %% Only Re-index saround AnchorPoint coordinate
+                shft = circshift(crds, -idx+1);
+            end
         end
         
     end
