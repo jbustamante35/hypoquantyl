@@ -369,6 +369,29 @@ classdef Hypocotyl < handle
             end
         end
         
+        function [untrained_frames , trained_frames] = getUntrainedFrames(obj)
+            %% Returns array of frames that have not been trained
+            % Note that this only checks for a CircuitJB object in the original 
+            % orientation and assumes that the flipped orientation will give
+            % the same result. 
+            try
+                frms_all = 1 : obj.Lifetime;
+                
+                orgs = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'org')), ...
+                    frms_all, 'UniformOutput', 0));
+                
+%                 flps = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'flp')), ...
+%                     frms_all, 'UniformOutput', 0));
+                                
+                trained_frames   = frms_all(orgs);
+                untrained_frames = frms_all(~orgs);
+            catch e
+                fprintf(2, 'Error returning untrained frames\n%s', e.message);
+                untrained_frames = [];
+                trained_frames   = [];
+            end
+        end
+        
     end
     
     methods (Access = private)
