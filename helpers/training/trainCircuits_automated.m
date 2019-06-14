@@ -26,11 +26,6 @@ TOTAL_ANCHORPOINTS  = 1 : 7; % Number of simulated anchor points for CircuitJB
 TRAINING_TYPE       = 1;     % 0 to training Seedlings, 1 to training Hypocotyls
 
 %% Extract untrained data from range of frames
-% Extract 5 random genotypes and seedlings between 20% - 80% of frames
-% tot  = 10;
-% rng  = [0.30 , 0.80];
-% idxs = getTrainingIndex(ex, tot, rng);
-
 % Store images with original and flipped versions
 G  = Ein.getGenotype(cin(:,1));
 S  = arrayfun(@(x) G(x).getSeedling(cin(x,2)), 1:numel(G), 'UniformOutput', 0);
@@ -106,7 +101,7 @@ if vis
     [n , o] = deal(1 : numel(G));
     p       = deal(horzcat(n,o));
     tot     = numel(X);
-    rows    = 4;
+    rows    = round(tot / 10);
     cols    = ceil(tot / ceil(rows / 2));
     for slot = 1 : tot
         
@@ -193,14 +188,7 @@ if sav
     nm = sprintf('%s_AutoTrainedCircuits_%dHypocotyls', tdate('s'), tot);
     save(nm, '-v7.3', 'CRCS');
     arrayfun(@(x) x.ResetReference(Ein), CRCS, 'UniformOutput', 0);
-
 end
-
-%% Post-process outlines to convert to data used for downstream algorithms
-% This is lengthy and should probably be done separately of this function
-% arrayfun(@(x) x.CreateCurves('redo'), CRCS, 'UniformOutput', 0);
-% D = arrayfun(@(x) x.Curves, CRCS, 'UniformOutput', 0);
-% D = cat(1, D{:});
 
 end
 
@@ -219,18 +207,21 @@ function dout = getHypocotylObjects(din, ex, typ)
 %               ]
 
 try
+    % Determine final class to extract 
     if typ
         dtyp = 'Hypocotyl';
     else
         dtyp = 'Seedling';
     end
     
+    % Iterate through Genotype index [column 1]
     dttl = size(din, 1);
     dout = repmat(eval(dtyp), 1, dttl);
     for d = 1 : dttl
         g = ex.getGenotype(din(d,1));
         s = g.getSeedling(din(d,2));
         
+        % Extract Hypocotyl or keep as Seedling
         if typ
             dout(d) = s.MyHypocotyl;
         else
@@ -259,7 +250,6 @@ else
     org  = sprintf('%s_%s_%s_Frm{%d}', obj.ExperimentName, ...
         obj.GenotypeName, obj.SeedlingName, frm);
 end
-
 
 if flipme
     % Set flipped orientation of Circuit or Contour
@@ -292,9 +282,7 @@ crc = CircuitJB('Origin', org, 'Parent', obj);
 crc.setParent(obj);
 crc.checkFlipped;
 
-% Draw Outline and AnchorPoints and normalize coordinates
-% NOTE: At this point, I decided don't want to buffer images anymore. Instead,
-% I will just set out-of-frame coordinates as the median background intensity.
+% Set Outline and AnchorPoints and normalize coordinates
 crc.setRawOutline(cntr);
 crc.setRawPoints(pts);
 crc.ConvertRawPoints;
