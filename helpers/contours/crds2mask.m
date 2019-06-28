@@ -23,10 +23,15 @@ end
 
 %% Create mask and set coordinates to true
 % Setup / initialization.
+% [Original - DEPRECATED]
 % WHAT IS ORG?! WHY DIVIDE BY 2.5?! eff my life [me in 11/28/2018]
+% msk = createMask(size(img), buff);
+% org = [round(size(msk,2)/2.5) size(msk,1)];
+% crd = slideCoords(crd, org);
+
+% Setup / initialization.
+% [Update 06.19.2019]
 msk = createMask(size(img), buff);
-org = [round(size(msk,2)/2.5) size(msk,1)];
-crd = slideCoords(crd, org);
 
 try
     idx = sub2ind(size(msk), crd(:,2), crd(:,1));
