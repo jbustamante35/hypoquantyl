@@ -5,6 +5,9 @@ learning algorithms to identify a hypocotyl, extract the growth region, form
 a midline, then quantify the elemental growth rate in which cellular elongation
 occurs at many locations along that midline.
 
+## Note
+Used BFG to remove all objects > 100K in size
+
 ## Summary [re-iterate above description and expand on use, novelty, and similar software]
 A) What is this program for? <br />
 Learning algorithms: predict contour, predict ending of midline <br />
