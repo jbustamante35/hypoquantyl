@@ -1,9 +1,9 @@
-function [IN, OUT, FIGS] = cnn_zvector(D, px, py, pz, sav, vis)
+function [IN, OUT, FIGS] = cnn_zvector(D, px, py, pz, sav, vis, par)
 %% cnn_zvector:
 %
 %
 % Usage:
-%   [IN, OUT, figs] = cnn_zvector(D, px, py, pz, sav, vis)
+%   [IN, OUT, figs] = cnn_zvector(D, px, py, pz, sav, vis, par)
 %
 % Input:
 %   D:
@@ -12,6 +12,7 @@ function [IN, OUT, FIGS] = cnn_zvector(D, px, py, pz, sav, vis)
 %   pz:
 %   sav:
 %   vis:
+%   par:
 %
 % Output:
 %   IN:
@@ -87,75 +88,148 @@ predZ_plsr = reshape(ypre', size(pz.InputData));
 %% Start training Convolution Neural Net [midpoint CNN method]
 net = cell(1, size(Y,2)); % Iteratively predicts all PCs
 
-for e = 1 : size(Y,2)
-    % for e = 1 : 1 % Debug by running only 1 PC
-    cnnX = X;
-    cnnY = Y(:,e);
+if par
+    %% Run with parallel processing
+    parfor e = 1 : size(Y,2)
+        % for e = 1 : 1 % Debug by running only 1 PC
+        cnnX = X;
+        cnnY = Y(:,e);
+        
+        % Create CNN Layers
+        layers = [
+            imageInputLayer([size(imgs,1) , size(imgs,2) , 1], ...
+            'Normalization', 'none');
+            
+            % Layer 1
+            convolution2dLayer(7, 10, 'Padding', 'same');
+            batchNormalizationLayer;
+            reluLayer;
+            maxPooling2dLayer(2,'Stride',2);
+            
+            %         averagePooling2dLayer(2,'Stride',2);
+            
+            % Layer 2
+            convolution2dLayer(7, 5,'Padding','same');
+            batchNormalizationLayer;
+            reluLayer;
+            maxPooling2dLayer(2,'Stride',2);
+            
+            % Layer 3
+            convolution2dLayer(7, 3,'Padding','same');
+            batchNormalizationLayer;
+            reluLayer;
+            maxPooling2dLayer(2,'Stride',2);
+            
+            %
+            %     averagePooling2dLayer(2,'Stride',2)
+            %
+            %     convolution2dLayer(3,32,'Padding','same')
+            %     batchNormalizationLayer
+            %     reluLayer
+            %
+            %     convolution2dLayer(3,32,'Padding','same')
+            %     batchNormalizationLayer
+            %     reluLayer
+            
+            dropoutLayer(0.2);
+            fullyConnectedLayer(size(cnnY,2));
+            regressionLayer;
+            ];
+        
+        % Configure CNN options
+        miniBatchSize = 128;
+        options = trainingOptions( ...
+            'sgdm', ...
+            'MiniBatchSize',         miniBatchSize, ...
+            'MaxEpochs',             300, ...
+            'InitialLearnRate',      1e-4, ...
+            'Shuffle',              'every-epoch', ...
+            'Plots',                'training-progress', ...
+            'Verbose',              true, ...
+            'ExecutionEnvironment', 'cpu');
+        %         'ExecutionEnvironment', 'parallel'); % JDev's parallel pool is broken
+        
+        
+        % Removed [02-18-19]
+        %     'LearnRateSchedule',     'piecewise', ...
+        %     'LearnRateDropFactor',   0.1, ...
+        %     'LearnRateDropPeriod',   20, ...
+        
+        % Run CNN
+        net{e} = trainNetwork(cnnX, cnnY, layers, options);
+    end
+else
+    %% Run with basic for loop [slower]
+    for e = 1 : size(Y,2)
+        % for e = 1 : 1 % Debug by running only 1 PC
+        cnnX = X;
+        cnnY = Y(:,e);
+        
+        % Create CNN Layers
+        layers = [
+            imageInputLayer([size(imgs,1) , size(imgs,2) , 1], ...
+            'Normalization', 'none');
+            
+            % Layer 1
+            convolution2dLayer(7, 10, 'Padding', 'same');
+            batchNormalizationLayer;
+            reluLayer;
+            maxPooling2dLayer(2,'Stride',2);
+            
+            %         averagePooling2dLayer(2,'Stride',2);
+            
+            % Layer 2
+            convolution2dLayer(7, 5,'Padding','same');
+            batchNormalizationLayer;
+            reluLayer;
+            maxPooling2dLayer(2,'Stride',2);
+            
+            % Layer 3
+            convolution2dLayer(7, 3,'Padding','same');
+            batchNormalizationLayer;
+            reluLayer;
+            maxPooling2dLayer(2,'Stride',2);
+            
+            %
+            %     averagePooling2dLayer(2,'Stride',2)
+            %
+            %     convolution2dLayer(3,32,'Padding','same')
+            %     batchNormalizationLayer
+            %     reluLayer
+            %
+            %     convolution2dLayer(3,32,'Padding','same')
+            %     batchNormalizationLayer
+            %     reluLayer
+            
+            dropoutLayer(0.2);
+            fullyConnectedLayer(size(cnnY,2));
+            regressionLayer;
+            ];
+        
+        % Configure CNN options
+        miniBatchSize = 128;
+        options = trainingOptions( ...
+            'sgdm', ...
+            'MiniBatchSize',         miniBatchSize, ...
+            'MaxEpochs',             300, ...
+            'InitialLearnRate',      1e-4, ...
+            'Shuffle',              'every-epoch', ...
+            'Plots',                'training-progress', ...
+            'Verbose',              true, ...
+            'ExecutionEnvironment', 'cpu');
+        %         'ExecutionEnvironment', 'parallel'); % JDev's parallel pool is broken
+        
+        
+        % Removed [02-18-19]
+        %     'LearnRateSchedule',     'piecewise', ...
+        %     'LearnRateDropFactor',   0.1, ...
+        %     'LearnRateDropPeriod',   20, ...
+        
+        % Run CNN
+        net{e} = trainNetwork(cnnX, cnnY, layers, options);
+    end
     
-    % Create CNN Layers
-    layers = [
-        imageInputLayer([size(imgs,1) , size(imgs,2) , 1], ...
-        'Normalization', 'none');
-        
-        % Layer 1
-        convolution2dLayer(7, 10, 'Padding', 'same');
-        batchNormalizationLayer;
-        reluLayer;
-        maxPooling2dLayer(2,'Stride',2);
-        
-        %         averagePooling2dLayer(2,'Stride',2);
-        
-        % Layer 2
-        convolution2dLayer(7, 5,'Padding','same');
-        batchNormalizationLayer;
-        reluLayer;
-        maxPooling2dLayer(2,'Stride',2);
-        
-        % Layer 3
-        convolution2dLayer(7, 3,'Padding','same');
-        batchNormalizationLayer;
-        reluLayer;
-        maxPooling2dLayer(2,'Stride',2);
-        
-        %
-        %     averagePooling2dLayer(2,'Stride',2)
-        %
-        %     convolution2dLayer(3,32,'Padding','same')
-        %     batchNormalizationLayer
-        %     reluLayer
-        %
-        %     convolution2dLayer(3,32,'Padding','same')
-        %     batchNormalizationLayer
-        %     reluLayer
-        
-        dropoutLayer(0.2);
-        fullyConnectedLayer(size(cnnY,2));
-        regressionLayer;
-        ];
-    
-    % Configure CNN options
-    miniBatchSize = 128;
-    options = trainingOptions( ...
-        'sgdm', ...
-        'MiniBatchSize',         miniBatchSize, ...
-        'MaxEpochs',             300, ...
-        'InitialLearnRate',      1e-4, ...
-        'Shuffle',              'every-epoch', ...
-        'Plots',                'training-progress', ...
-        'Verbose',              true, ...
-        'ExecutionEnvironment', 'cpu');
-    %         'ExecutionEnvironment', 'parallel'); % JDev's parallel pool is broken
-    
-    
-    % Removed [02-18-19]
-    %     'LearnRateSchedule',     'piecewise', ...
-    %     'LearnRateDropFactor',   0.1, ...
-    %     'LearnRateDropPeriod',   20, ...
-    
-    % Run CNN
-    net{e} = trainNetwork(cnnX, cnnY, layers, options);
 end
-
 %% Predictions per PC
 ypreNet = [];
 for e = 1 : numel(net)
