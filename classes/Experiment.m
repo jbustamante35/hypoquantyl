@@ -190,14 +190,14 @@ classdef Experiment < handle
             G = obj.getGenotype(':');
         end
         
-        function g = search4Genotype(obj, nm)
+        function [g, i] = search4Genotype(obj, nm)
             %% Return specific Genotype by GenotypeName
             gts = obj.getGenotype(':')';
             
-            for gt = gts
-                mtc = gt.GenotypeName;
+            for i = 1 : numel(gts)
+                mtc = gts(i).GenotypeName;
                 if isequal(nm, mtc)
-                    g = gt;
+                    g = gts(i);
                     return;
                 end
             end
