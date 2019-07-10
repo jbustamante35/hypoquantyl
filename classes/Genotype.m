@@ -275,6 +275,19 @@ classdef Genotype < handle
             end
         end
         
+        function [s, i] = search4Seedling(obj, nm)
+            %% Return specific Seedling by SeedlingName and index
+            sdls = obj.getSeedling(':');
+            
+            for i = 1 : numel(sdls)
+                mtc = sdls(i).SeedlingName;
+                if isequal(nm, mtc)
+                    s = sdls(i);
+                    return;
+                end
+            end
+        end
+        
         function prp = getProperty(obj, req)
             %% Returns a property of this Genotype object
             try
