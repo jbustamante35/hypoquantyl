@@ -6,7 +6,7 @@ a midline, then quantify the elemental growth rate in which cellular elongation
 occurs at many locations along that midline.
 
 ## Note
-Used BFG to remove all objects > 100K in size
+Used BFG to remove all objects > 500K in size [07-09-2019]
 
 ## Summary [re-iterate above description and expand on use, novelty, and similar software]
 A) What is this program for? <br />
