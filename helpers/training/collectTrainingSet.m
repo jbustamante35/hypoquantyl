@@ -65,7 +65,7 @@ rastDims = @(d,c) arrayfun(@(x) rastFnc(x, c), d, 'UniformOutput', 0);
 rastXY   = @(f)   cellfun(@(x) cat(1, x{:}), f, 'UniformOutput', 0);
 rastData = @(c)   rastXY(rastDims(1:size(T.(c){1},2), c));
 
-%% Reshape coordinates for rasterized dataset
+%% Reshape coordinates for rasterized dataset 
 % Midpoint-Normalized Coordinates
 rastCrds = rastData('rCrds');
 

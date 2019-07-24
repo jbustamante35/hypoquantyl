@@ -3,21 +3,19 @@ function fig = plotPredictions(idx, img, trnIdx, Zin, Zout, sav, f)
 %
 %
 % Usage:
-%   [syntHalf_inp, syntHalf_sim, fig] = plotPredictions(idx, px, py, pz, pMids, crvs, req, sav, f)
+%   fig = plotPredictions(idx, img, trnIdx, Zin, Zout, sav, f)
 %
 % Input:
 %   idx: index in crvs of hypocotyl to show prediction
+%   img: grayscale image corresponding to index in training set
 %   px: PCA data of x-coordinates
 %   py: PCA data of y-coordinates
 %   pz: PCA data of midpoints
-%   crvs: object array of Curves to provide image and raw midpoint data
-%   req: set to 'truth' or 'predicted' midpoint values
+%   req: set to 'truth', 'sim', or 'predicted' midpoint values
 %   sav: boolean to save figure as .fig and .tiff files
-%   f: select index of figure
+%   f: select index of figure handle
 %
 % Output:
-%   syntHalf_inp: converted halfway coordinate segments from inputted PCA data
-%   syntHalf_sim: converted halfway coordinate segments from simulated PCA data
 %   fig: figure handle to generated data
 %
 
@@ -119,7 +117,8 @@ title(ttl);
 
 %% Save figure as .fig and .tif
 if sav
-    fnm = sprintf('%s_TruthVsPredictedContours_%dCurves_%dSegments_Contour%d_%s', ...
+    fnm = ...
+        sprintf('%s_TruthVsPredicted_%dCurves_%dSegments_Contour%d_%s', ...
         tdate('s'), numCrvs, ttlSegs, idx, fSet);
     savefig(fig, fnm);
     saveas(fig, fnm, 'tiffn');
