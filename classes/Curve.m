@@ -64,6 +64,7 @@ classdef Curve < handle
 
         function obj = RunFullPipeline(obj, ver)
             %% Runs full pipeline from Parent's Trace to generate ImagePatch
+            % ver: 'main' to use raw coordinates or 'smooth' to use smoothed
             tRun = tic;
             fprintf('\nRunning Full Pipeline for %s\n', obj.Parent.Origin);
 

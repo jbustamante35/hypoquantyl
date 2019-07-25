@@ -11,13 +11,15 @@ function [Rm, R3] = Rmat(deg, d)
 % transpose of the vector to rotate to yield the rotated vector.
 %
 % Usage:
-%   Rm = Rmat(deg)
+%   [Rm, R3] = Rmat(deg, d)
 %
 % Input:
 %   deg: degrees in which to rotate the vector in a counter-clockwise direction
+%   d: dimension (x, y, or z) to perform a 3D rotation
 %
 % Output:
 %   Rm: matrix that will perform the rotation transformation
+%   R3: 3-Dimensional rotation matrix in x, y, or z direction
 %
 
 rotation_matrix = @(t) [[cos(t) ; -sin(t)], ...
