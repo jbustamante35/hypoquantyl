@@ -56,7 +56,6 @@ valPct                   = 1 - trnPct;
 tstPct                   = 0;
 [trnIdx, valIdx, tstIdx] = ...
     divideblock(Shuffle(1:nCrvs), trnPct, valPct, tstPct);
-% [trnIdx, valIdx, tstIdx] = divideblock(numCrvs, trnPct, valPct, tstPct);
 
 % Sort numerically
 trnIdx = sort(trnIdx);

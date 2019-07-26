@@ -30,14 +30,29 @@ try
             
             rZ    = arrayfun(@(x) reshape(z(:,x), [cSz rSz])', ...
                 1:nDims, 'UniformOutput', 0);
-            Z     = cat(2, rZ{[1 3 5 2 4 6]});
+            
+            if nDims == 6
+                % Concat all Z-Vector dimensions
+                Z = cat(2, rZ{[1 3 5 2 4 6]});
+            else
+                % If omitting Normal vectors
+                Z = cat(2, rZ{[1 3 2 4]});
+            end
             
         case 'rev'
             %% Reconstruct PCA shape back into original shape
             % Extract indices for all dimensions
             idx1   = @(x) 1 + (ttlSegs * (x - 1));
             idx2   = @(x) (x * ttlSegs);
-            zOrder = [1 4 , 2 5 , 3 6];
+            
+            if size(z, 2) == (ttlSegs * 6)
+                % Reverting all Z-Vector dimensions
+                zOrder = [1 4 , 2 5 , 3 6];
+            else
+                % If omitting Normal vectors
+                zOrder = [1 3 , 2 4];
+            end
+            
             cnvIdx = arrayfun(@(x) idx1(x) : idx2(x), ...
                 zOrder, 'UniformOutput', 0);
             
