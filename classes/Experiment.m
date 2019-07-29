@@ -170,6 +170,23 @@ classdef Experiment < handle
                 fprintf(2, 'Error setting new path\n%s\n', e.message);
             end
         end
+        
+        function IMGS = PrepareHypocotylImages(obj, SCALE)
+            %% Prepare hypocotyl images for CNN
+            CRVS = obj.combineContours;
+            
+            % Resize hypocotyl images to isz x isz
+            isz      = ceil(size(CRVS(1).getImage('gray')) * SCALE);
+            imgs_raw = arrayfun(@(x) x.getImage('gray'), CRVS, 'UniformOutput', 0);
+            imgs_rsz = cellfun(@(x) imresize(x, isz), imgs_raw, 'UniformOutput', 0);
+            imgs     = cat(3, imgs_rsz{:});
+            imSize   = size(imgs);
+            
+            % Reshape image data as X values and use Midpoint PCA scores as Y values
+            IMGS = double(reshape(imgs, [imSize(1:2), 1, imSize(3)]));
+            
+        end
+        
     end
     
     methods (Access = public)

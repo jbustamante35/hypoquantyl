@@ -40,11 +40,11 @@ if ~figs
     
     set(figs, 'Color', 'w');
 else
-    cla(figs);
-    clf(figs);
+%     cla(figs);
+%     clf(figs);
 end
 
-if ~fnms
+if isempty(fnms)
     fnms = cell(1,4);
     fnms{1} = sprintf('%s_TraceDecomposedCurve', tdate('s'));
     fnms{2} = sprintf('%s_DecomposedCurveOnImage', tdate('s'));
@@ -87,7 +87,7 @@ ttl = sprintf( ...
     segParent, idx);
 title(ttl);
 
-% Plot all intermediate points
+% Plot all intermediate points1
 subplot(212);
 hold on;
 axis ij;

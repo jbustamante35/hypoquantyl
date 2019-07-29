@@ -1,15 +1,17 @@
-function [IN, OUT, FIGS] = cnn_zvector(CRVS, px, py, pz, sav, vis, par)
-%% cnn_zvector:
-%
+function [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, vis, par)
+%% cnn_zvector: Convolution Neural Net to predict hypocotyl skeletons
+% 
 %
 % Usage:
-%   [IN, OUT, figs] = cnn_zvector(D, px, py, pz, sav, vis, par)
+%   [IN, OUT] = cnn_zvector(CRVS, IMGS, px, py, pz, sav, vis, par)
 %
 % Input:
-%   D:
+%   SCRS: PCA scores of Z-Vector data set [N pcz]
+%   IMGS: reshaped and rescaled hypocotyl images [x x 1 N]
 %   px:
 %   py:
 %   pz:
+%   skp: skip running PLSR 
 %   sav:
 %   vis:
 %   par:
@@ -17,13 +19,9 @@ function [IN, OUT, FIGS] = cnn_zvector(CRVS, px, py, pz, sav, vis, par)
 % Output:
 %   IN:
 %   OUT:
-%   figs:
 %
 
-%% Constants
-% Misc constants
-FIGS = 1 : 3;
-
+%% Extract some info about the dataset
 % Principal Components
 PCX = length(px.EigValues);
 PCY = length(py.EigValues);
@@ -31,24 +29,22 @@ PCZ = length(pz.EigValues);
 PCR = 10;
 
 % Image input scale
-SCALE = 1;
-
-%% Extract some info about the dataset
-nSegs = CRVS(1).NumberOfSegments;
-nCrvs = numel(CRVS);
+% SCALE = 1;
+% nCrvs = numel(CRVS);
+nCrvs = length(pz.PCAscores);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Prep input data for CNN
-% Resize hypocotyl images to isz x isz
-isz      = ceil(size(CRVS(1).Parent.getImage('gray')) * SCALE);
-imgs_raw = arrayfun(@(x) x.Parent.getImage('gray'), CRVS, 'UniformOutput', 0);
-imgs_rsz = cellfun(@(x) imresize(x, isz), imgs_raw, 'UniformOutput', 0);
-imgs     = cat(3, imgs_rsz{:});
-imSize   = size(imgs);
-
-% Reshape image data as X values and use Midpoint PCA scores as Y values
-IMGS = double(reshape(imgs, [imSize(1:2), 1, imSize(3)]));
-SCRS = pz.PCAscores;
+% % Resize hypocotyl images to isz x isz
+% isz      = ceil(size(CRVS(1).Parent.getImage('gray')) * SCALE);
+% imgs_raw = arrayfun(@(x) x.Parent.getImage('gray'), CRVS, 'UniformOutput', 0);
+% imgs_rsz = cellfun(@(x) imresize(x, isz), imgs_raw, 'UniformOutput', 0);
+% imgs     = cat(3, imgs_rsz{:});
+% imSize   = size(imgs);
+% 
+% % Reshape image data as X values and use Midpoint PCA scores as Y values
+% IMGS = double(reshape(imgs, [imSize(1:2), 1, imSize(3)]));
+% SCRS = pz.PCAscores;
 
 %% Split into training, validation, and testing sets
 trnPct                   = 0.8;
@@ -68,20 +64,26 @@ Y = SCRS(trnIdx,:);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Start training PLS Regression [midpoint PLSR method]
-% Prep image data
-PLSRX = double(reshape(imgs, [prod(imSize(1:2)) imSize(3)])'); % For PLSR
-plsrX = PLSRX(trnIdx, :);
-
-% PLSR on midpoint coordinates and cropped images
-rttl = sprintf('r%dHypocotylsTrained_%dHypocotylsTotal', ...
-    length(trnIdx), nCrvs);
-pr   = plsrAnalysis(plsrX, Y, PCR, sav, rttl, 0);
-
-% Project beta onto X values to make predictions of midpoint locations
-beta       = pr.Beta;
-ypre       = [ones(size(PLSRX,1) , 1) PLSRX] * beta;
-ypre       = bsxfun(@plus, (ypre * pz.EigVectors'), pz.MeanVals);
-predZ_plsr = reshape(ypre', size(pz.InputData));
+% Skip if skp set to true
+if ~skp
+    % Prep image data
+    PLSRX = double(reshape(imgs, [prod(imSize(1:2)) imSize(3)])'); % For PLSR
+    plsrX = PLSRX(trnIdx, :);
+    
+    % PLSR on midpoint coordinates and cropped images
+    rttl = sprintf('r%dHypocotylsTrained_%dHypocotylsTotal', ...
+        length(trnIdx), nCrvs);
+    pr   = plsrAnalysis(plsrX, Y, PCR, sav, rttl, 0);
+    
+    % Project beta onto X values to make predictions of midpoint locations
+    beta       = pr.Beta;
+    ypre       = [ones(size(PLSRX,1) , 1) PLSRX] * beta;
+    ypre       = bsxfun(@plus, (ypre * pz.EigVectors'), pz.MeanVals);
+    predZ_plsr = reshape(ypre', size(pz.InputData));
+else
+    predZ_plsr = [];
+    pr         = [];
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Start training Convolution Neural Net [midpoint CNN method]
@@ -104,7 +106,8 @@ for e = 1 : size(Y,2)
     
     % Create CNN Layers
     layers = [
-        imageInputLayer([size(imgs,1) , size(imgs,2) , 1], ...
+%         imageInputLayer([size(imgs,1) , size(imgs,2) , 1], ...
+        imageInputLayer([size(IMGS,1) , size(IMGS,2) , 1], ...
         'Normalization', 'none');
         
         % Layer 1
