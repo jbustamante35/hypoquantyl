@@ -24,7 +24,7 @@ try
         D = X(:,n);
     end
 catch
-    fprint(2, 'Input should either be cell array or data matrix\n');
+    fprintf(2, 'Input should either be cell array or data matrix\n');
 end
 
 end
