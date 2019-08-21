@@ -39,9 +39,9 @@ else
 end
 
 %% Extract set-up data
-ttlSegs    = size(Zin.FullData, 2) / 6;
-numCrvs    = size(Zin.FullData, 1);
-[~, sIdxs] = extractIndices(idx, ttlSegs, Zin.RevertData);
+ttlSegs = size(Zin.FullData, 2) / 6;
+numCrvs = size(Zin.FullData, 1);
+sIdxs   = extractIndices(idx, ttlSegs, Zin.RevertData);
 
 %% Store input and predicted data
 Xin      = Zin.FullData;

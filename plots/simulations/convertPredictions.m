@@ -60,7 +60,7 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 t = tic;
 
 Xrev       = zVectorConversion(Xdat, ttlSegs, numCrvs, 'rev');
-[Xnd, Xid] = arrayfun(@(x) extractIndices(x, ttlSegs, Xrev), ...
+[Xid, Xnd] = arrayfun(@(x) extractIndices(x, ttlSegs, Xrev), ...
     cIdxs, 'UniformOutput', 0);
 Xns        = cellfun(@(x) x', Xnd, 'UniformOutput', 0);
 

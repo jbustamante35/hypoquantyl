@@ -1,9 +1,9 @@
 function [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, vis, par)
-%% cnn_zvector: Convolution Neural Net to predict hypocotyl skeletons
+%% cnn_zvector: CNN to predict Z-Vector slices given grayscale images
 % 
 %
 % Usage:
-%   [IN, OUT] = cnn_zvector(CRVS, IMGS, px, py, pz, sav, vis, par)
+%   [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, vis, par)
 %
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
@@ -34,18 +34,6 @@ PCR = 10;
 nCrvs = length(pz.PCAscores);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Prep input data for CNN
-% % Resize hypocotyl images to isz x isz
-% isz      = ceil(size(CRVS(1).Parent.getImage('gray')) * SCALE);
-% imgs_raw = arrayfun(@(x) x.Parent.getImage('gray'), CRVS, 'UniformOutput', 0);
-% imgs_rsz = cellfun(@(x) imresize(x, isz), imgs_raw, 'UniformOutput', 0);
-% imgs     = cat(3, imgs_rsz{:});
-% imSize   = size(imgs);
-% 
-% % Reshape image data as X values and use Midpoint PCA scores as Y values
-% IMGS = double(reshape(imgs, [imSize(1:2), 1, imSize(3)]));
-% SCRS = pz.PCAscores;
-
 %% Split into training, validation, and testing sets
 trnPct                   = 0.8;
 valPct                   = 1 - trnPct;

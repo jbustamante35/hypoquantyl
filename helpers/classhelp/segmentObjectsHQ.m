@@ -11,7 +11,7 @@ function [obs, msk] = segmentObjectsHQ(im, sz, sens)
 % Input:
 %  im: grayscale image
 %  sz: [2 x 1] array defining minimum and maximum range to search for objects
-%   sens: sensitivity for alternative algorithm [recommended 0.6]
+%  sens: sensitivity for alternative algorithm [recommended 0.6]
 %
 % Output:
 %  obs: structure containing information about objects extracted from im

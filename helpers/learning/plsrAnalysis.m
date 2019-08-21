@@ -31,24 +31,25 @@ if sv
 end
 
 %% Show output from custom and builtin PCA analysis [TODO]
-% if vis
-%     analysis_name = dName; % Just in case I want to change the title formatting
-%     [figC, ttlC]  = showMyPLSR(PLSR, analysis_name);
-%     
-%     %% Save figures as .fig and .tiff
-%     figA = [figC figB];
-%     ttlA = [ttlC ttlB];
-%     if sv
-%         savename = sprintf('%s_PCA', datestr(now, 'yymmdd'));
-%         for i = 1 : length(figA)
-%             fignm = sprintf('%s_%s', savename, ttlA{i});
-%             curr = figA(i);
-%             savefig(curr, fignm);
-%             saveas(curr, fignm, 'tiffn');
-%         end
-%     end
-%     
-% end
+if vis
+    analysis_name = dName; % Just in case I want to change the title formatting
+    [figC, ttlC]  = showMyPLSR(PLSR, analysis_name);
+    
+    %% Save figures as .fig and .tiff
+    figA = [figC figB];
+    ttlA = [ttlC ttlB];
+    if sv
+        savename = sprintf('%s_PCA', datestr(now, 'yymmdd'));
+        for i = 1 : length(figA)
+            fignm = sprintf('%s_%s', savename, ttlA{i});
+            curr = figA(i);
+            savefig(curr, fignm);
+            saveas(curr, fignm, 'tiffn');
+        end
+    end
+else
+    fprintf('Parameter ''vis'' does nothing yet!\n');
+end
 
 end
 

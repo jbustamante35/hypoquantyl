@@ -47,10 +47,10 @@ else
 end
 
 % Extract set-up data
-ttlSegs    = size(Zin.FullData, 2) / 6;
-numCrvs    = size(Zin.FullData, 1);
-allSegs    = 1 : ttlSegs;
-[~, sIdxs] = extractIndices(idx, ttlSegs, Zin.RevertData);
+ttlSegs  = size(Zin.FullData, 2) / 6;
+numCrvs  = size(Zin.FullData, 1);
+allSegs  = 1 : ttlSegs;
+sIdxs    = extractIndices(idx, ttlSegs, Zin.RevertData);
 
 msg = sprintf('Extracted information: Contour %d of %d [%s] [%d segments]', ...
     idx, numCrvs, tSet, ttlSegs);
