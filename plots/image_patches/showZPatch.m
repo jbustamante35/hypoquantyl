@@ -17,9 +17,9 @@ function showZPatch(zpatch, zdata, cIdx, sIdx, img, mids, f)
 % Output: n/a
 %
 
-%% Extract data to show
-boxT = zdata.CropBoxFwd;
-boxB = zdata.CropBoxRev;
+%% Extract data to be shown
+boxT = zdata.CropBoxTop;
+boxB = zdata.CropBoxBot;
 mid  = boxT(1:2);
 tngT = boxT(3:4);
 nrmT = boxT(5:6);
@@ -38,16 +38,15 @@ imagesc(img);
 colormap gray;
 axis image;
 hold on;
-plt(mids, 'y.', 8);
-
-% Reversed and scaled vectors
+plt(mids, 'y.', 5);
+plt(envT, 'g.', 2);
+plt(envB, 'm.', 2);
 plt([tngB ; tngT], 'r--', 2);
 plt([nrmB ; nrmT], 'b--', 2);
 plt([mid ; tngT], 'r-', 2);
 plt([mid ; nrmT], 'b-', 2);
 plt(mid, 'go', 5);
-plt(envT, 'g.', 2);
-plt(envB, 'm.', 2);
+hold off;
 ttl = sprintf('Z-Vector Box\nHypocotyl %d | Segment %d', cIdx, sIdx);
 title(ttl);
 
@@ -59,7 +58,5 @@ axis image;
 ttl = sprintf('Z-Patch\nHypocotyl %d | Segment %d', cIdx, sIdx);
 title(ttl);
 
-hold off;
-drawnow;
-
 end
+

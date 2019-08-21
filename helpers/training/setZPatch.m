@@ -23,26 +23,26 @@ if nargin < 3
 end
 
 %% Crop Box vectors
-[boxT, boxB] = setBoxBounds(zSlice, SCL);
-mid          = zSlice(1:2);
-tngT         = boxT(3:4);
-tngB         = boxB(3:4);
-nrmT         = boxT(5:6);
-nrmB         = boxB(5:6);
+[boxTop, boxBot] = setBoxBounds(zSlice, SCL);
+mid              = zSlice(1:2);
+tngTop           = boxTop(3:4);
+tngBot           = boxBot(3:4);
+nrmTop           = boxTop(5:6);
+nrmBto           = boxBot(5:6);
 
 %% Envelope Structure set from requested vector [tangent|normal]
-env  = setEnvelopeBounds(mid, nrmT, nrmB, tngT, tngB, VER);
-envT = env.UpperPoints;
-envB = env.LowerPoints;
+env    = setEnvelopeBounds(mid, nrmTop, nrmBto, tngTop, tngBot, VER);
+envTop = env.UpperPoints;
+envBot = env.LowerPoints;
 
 %% Z-Patch
 hlfsz  = round(size(env.UpperStruct,2) / 2);
 qrtsz  = round(hlfsz / 2);
 sz     = [qrtsz , hlfsz];
-zpatch = patch2img(envT, envB, sz, img);
+zpatch = patch2img(envTop, envBot, sz, img);
 
 %% Extra data for debugging and plotting
-patchData = struct('CropBoxFwd', boxT, 'CropBoxRev', boxB, ...
+patchData = struct('CropBoxTop', boxTop, 'CropBoxBot', boxBot, ...
     'Envelope', env, 'ZPatch', zpatch);
 
 end
@@ -119,7 +119,7 @@ function [ptcF, ptcT, ptcB] = patch2img(envTop, envBot, sz, img)
 % out-of-bounds coordinates to the median background intensity.
 
 % Interpolate envelope coordinates onto image coordinates
-outT  = ba_interp2(img, envTop(:,1), envTop(:,2));
+outT = ba_interp2(img, envTop(:,1), envTop(:,2));
 ptcT = reshape(outT, sz);
 
 outB = ba_interp2(img, envBot(:,1), envBot(:,2));
