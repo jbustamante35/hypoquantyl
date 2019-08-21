@@ -38,11 +38,11 @@ img        = crv.Parent.getImage('gray');
 mids_truth = crv.getMidPoint(1:crv.NumberOfSegments);
 
 % Extract x-/y-coordinates of contour from input and simulated PCA data
-ttlSegs  = crv.NumberOfSegments;
-[~, nxi] = extractIndices(idx, ttlSegs, px.InputData);
-[~, nxs] = extractIndices(idx, ttlSegs, px.SimData);
-[~, nyi] = extractIndices(idx, ttlSegs, py.InputData);
-[~, nys] = extractIndices(idx, ttlSegs, py.SimData);
+ttlSegs = crv.NumberOfSegments;
+nxi     = extractIndices(idx, ttlSegs, px.InputData);
+nxs     = extractIndices(idx, ttlSegs, px.SimData);
+nyi     = extractIndices(idx, ttlSegs, py.InputData);
+nys     = extractIndices(idx, ttlSegs, py.SimData);
 
 % Set up output data and get truth or predicted midpoint function
 [ci, cs]  = deal(zeros([size(nxi,1) , 2, size(nxi,3)]));

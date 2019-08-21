@@ -30,6 +30,7 @@ classdef Curve < handle
         GAUSSSIGMA   = 3;       % Sigma parameter for gaussian smoothing of ImagePatches
         ENV_ITRS     = 8;       % Number of intermediate curves between segment and envelope [default 25]
         ENV_SCALE    = 8;       % Size to scale unit length vector to define max envelope distance
+        MIDPATCHVER  = 'fixed'; % Set Z-Vector patches as fixed around midpoing
         Pmats
         Ppars
         OuterStruct
@@ -236,10 +237,11 @@ classdef Curve < handle
 
             % Map main curve first
             seg = sprintf('Normal%s', typ); % Should be envelope segments when I get this right
+            ver = obj.MIDPATCHVER;
             %             seg = sprintf('Envelope%s', typ);
 
             [obj.ImagePatches, obj.CoordPatches, obj.MidpointPatches] = ...
-                arrayfun(@(x) obj.setImagePatch(obj.(seg)(:,:,x), x), ...
+                arrayfun(@(x) obj.setImagePatch(obj.(seg)(:,:,x), x, ver), ...
                 1:obj.NumberOfSegments, 'UniformOutput', 0);
 
         end
@@ -396,7 +398,7 @@ classdef Curve < handle
                 'Dists', obj.InnerDists);
         end
 
-        function [imgPatch, crdsPatch, midsPatch] = setImagePatch(obj, seg, segIdx)
+        function [imgPatch, crdsPatch, midsPatch] = setImagePatch(obj, seg, segIdx, ver)
             %% Generate an image patch at desired frame
             % Map original curve segment
             [img, val, Pm, mid] = getMapParams(obj, segIdx);
@@ -427,7 +429,8 @@ classdef Curve < handle
             % Create midpoint-centered patch for MidpointPatches
             patchBuff = 0.08;
             patchSize = 50;
-            midsPatch = patchFromCoord(seg, Pm, mid, img, patchBuff, patchSize);
+            midsPatch = ...
+                patchFromCoord(seg, Pm, mid, img, patchBuff, patchSize, ver);
             midsPatch(isnan(midsPatch)) = val;
 
         end
@@ -573,7 +576,7 @@ classdef Curve < handle
             %
             % Output:
             %   OuterEnvelope: segments between outer segment and main curve
-            %   InnerEnvelope: segments between inner segment and main curve
+            %   InnerEnvelope: segments between inner segment and main cunormalsrve
             %
 
             switch ver
@@ -588,7 +591,7 @@ classdef Curve < handle
             end
             seg = sprintf('Normal%s', typ);
 
-            genFull = @(S,dst) generateFullEnvelope(S, dst, obj.ENV_ITRS);
+            genFull = @(S,dst) generateFullEnvelope(S, dst, obj.ENV_ITRS, 'hq');
 
             obj.OuterEnvelope = arrayfun(@(x) genFull(obj.(seg)(:,:,x), ...
                 obj.OuterDists{x}), 1:obj.NumberOfSegments, 'UniformOutput', 0);

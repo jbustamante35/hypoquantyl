@@ -1,9 +1,10 @@
 function [syntHalf_inp, syntHalf_sim, fig] = plotFrankencotyls(idx1, idx2, px, py, pz, pMids, crvs, req, flp, sav, f)
-%% plotFrankencotyls: Plot one hypocotyl's backbone onto another's flesh
+%% plotFrankencotyls: Plot a hypocotyl's backbone onto another's flesh
 %
 %
 % Usage:
-%   [syntHalf_inp, syntHalf_sim, fig] = plotFrankencotyls(idx1, idx2, px, py, pz, pMids, crvs, req, flp, sav, f)
+%   [syntHalf_inp, syntHalf_sim, fig] = ...
+%       plotFrankencotyls(idx1, idx2, px, py, pz, pMids, crvs, req, flp, sav, f)
 %
 % Input:
 %   cIdx1: index in crvs of hypocotyl 1 (provides backbone)
@@ -59,17 +60,17 @@ for idx = 1:flpMe
     
     % Extract x-/y-coordinates of Contour1 from input and simulated PCA data
     ttlSegs  = crv.NumberOfSegments;
-    [~, nxi] = extractIndices(cIdx1, ttlSegs, px.InputData);
-    [~, nxs] = extractIndices(cIdx1, ttlSegs, px.SimData);
-    [~, nyi] = extractIndices(cIdx1, ttlSegs, py.InputData);
-    [~, nys] = extractIndices(cIdx1, ttlSegs, py.SimData);
+    nxi = extractIndices(cIdx1, ttlSegs, px.InputData);
+    nxs = extractIndices(cIdx1, ttlSegs, px.SimData);
+    nyi = extractIndices(cIdx1, ttlSegs, py.InputData);
+    nys = extractIndices(cIdx1, ttlSegs, py.SimData);
     
     % Set up output data and get truth or predicted midpoint function
     [ci, cs] = deal(zeros([size(nxi,1) , 2, size(nxi,3)]));
     [mi, mc] = deal([]);
     mid      = zeros(size(MID));
     hlfSeg   = ceil(size(nxi,1)/2);
-    midIdx   = extractIndices(cIdx2, ttlSegs, []);
+    midIdx   = extractIndices(cIdx2, ttlSegs);
     midFnc   = getMidpointFunction(req, crv, pMids, midIdx);
     
     % Convert midpoints to to image frame coordinates
