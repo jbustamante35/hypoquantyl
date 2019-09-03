@@ -1,5 +1,6 @@
 function [envOut, envInn, dstOut, dstInn] = defineCurveEnvelope(crds, scl)
 %% defineCurveEnvelope: generate the envelope boundaries around a curve segment
+%% [NOTE] Deprecated 08.21.2019 - use generateFullEnvelope function 
 % This function takes the x-/y-coordinates of a curve segment and defines the 
 % extent of it's envelope structure (that is, the furthest extent in which the 
 % probability-based search algorithm will determine where to set the segment of 

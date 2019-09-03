@@ -21,8 +21,8 @@ function [F, T, N] = findFrame(S, E)
 R = Rmat(90);
 
 %% Compute new reference frame
-Z = E - S;
-T = Z * norm(Z)^-1;
+X = E - S;
+T = X * norm(X)^-1;
 N = (R * T')';
 F = [T ; N];
 

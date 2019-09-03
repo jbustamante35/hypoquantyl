@@ -14,20 +14,18 @@ function segtype = getSegmentType(req)
 
 switch req
     case 'raw'
-        typ = 'Raw';
+        segtype = 'RawSegments';
         
     case 'norm'
-        typ = 'Normal';
+        segtype = 'SVectors';
         
     case 'env'
-        typ = 'Envelope';
+        segtype = 'EnvelopeSegments';
         
     otherwise
         fprintf(2, 'Invalid type parameter: %s\n', req);
         segtype = '';
         return;
 end
-
-segtype = sprintf('%sSegments', typ);
 
 end
