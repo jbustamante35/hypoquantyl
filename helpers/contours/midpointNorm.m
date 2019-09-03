@@ -53,7 +53,6 @@ Z = [M , T+M , N+M];
 
 %% Compute conversion with P matrix
 Pmat = [F , V ; 0 0 1]; % MidPoint in new reference frame
-% Pmat = [F , M' ; 0 0 1];  % MidPoint in original reference frame
 Pcnv = Pmat * [X, ones(length(X), 1)]';
 P    = Pcnv(1:2,:)';
 

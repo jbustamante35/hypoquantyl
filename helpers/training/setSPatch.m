@@ -9,8 +9,8 @@ function [spatch, patchData] = setSPatch(seg, img, BNZ, SCL)
 % Input:
 %   seg: x-/y-coordinates of segment to map to image
 %   img: image to interpolate pixels from coordinates
-%   bnz: boolean to binarize the final mask [for bw objects]
-%   dscl: scaler to extend normal to desired distance [in pixels]
+%   BNZ: boolean to binarize the final mask [for bw objects]
+%   DSCL: scaler to extend normal to desired distance [in pixels]
 %
 % Output:
 %   smsk: straightened image

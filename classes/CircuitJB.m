@@ -46,7 +46,6 @@ classdef CircuitJB < handle
 
             obj.Routes = initializeRoutes(obj);
             obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
-
         end
 
         function obj = NormalizeRoutes(obj)
@@ -54,7 +53,7 @@ classdef CircuitJB < handle
             arrayfun(@(x) x.NormalizeTrace, obj.Routes, 'UniformOutput', 0);
         end
 
-        function obj = CreateCurves(obj, overwrite)
+        function obj = CreateCurves(obj, overwrite, par)
             %% Full Outline generates Curve objects around CircuitJB object
             % Generate InterpOutline and NormalOutline if not yet done
             % Set overwrite to 'skip' to skip curves that are already created
@@ -80,8 +79,7 @@ classdef CircuitJB < handle
                 end
 
                 obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
-                obj.Curves.RunFullPipeline('main');
-                obj.Curves.Normal2Envelope('main');
+                obj.Curves.RunFullPipeline(par);
             else
                 fprintf('\nSkipping %s\n', obj.Origin);
             end
@@ -110,7 +108,6 @@ classdef CircuitJB < handle
             arrayfun(@(x) rts(x).setAnchors(newpts(x,:), newpts(x+1,:)), ...
                 1:n, 'UniformOutput', 0);
             arrayfun(@(x) rts(x).NormalizeTrace, 1:n, 'UniformOutput', 0);
-
         end
 
         function obj = LabelAllPixels(obj, labelname)
@@ -122,7 +119,7 @@ classdef CircuitJB < handle
             lbl = repmat("", size(obj.Image.bw));
             lbl(obj.Image.bw == 1) = labelname;
             lbl(obj.Image.bw ~= 1) = 'bg';
-            obj.Image.labels = lbl;
+            obj.Image.labels       = lbl;
         end
 
         function obj = generateMasks(obj, buff)
@@ -265,14 +262,8 @@ classdef CircuitJB < handle
             % property to the InterpTrace of each of this object's Route array.
             % This ensures that there is a segment defining the base segment.
             %
-            % Update [01-24-2019]
-            % Don't use Route traces anymore
-            obj.FullOutline = obj.InterpOutline;
 
-            % Old version that uses Route traces
-            %             trc = arrayfun(@(x) x.getInterpTrace, ...
-            %                 obj.Routes, 'UniformOutput', 0);
-            %             obj.FullOutline = cat(1, trc{:});
+            obj.FullOutline = obj.InterpOutline;
         end
 
         function obj = trainCircuit(obj, trainStatus)
@@ -287,7 +278,6 @@ classdef CircuitJB < handle
                 obj.isTrained = true;
             end
         end
-
     end
 
     %%
@@ -309,7 +299,6 @@ classdef CircuitJB < handle
             obj.HypocotylName  = p.HypocotylName;
             obj.GenotypeName   = p.GenotypeName;
             obj.ExperimentName = p.ExperimentName;
-
         end
 
         function frm = getFrame(obj)
@@ -360,12 +349,8 @@ classdef CircuitJB < handle
                         end
 
                     catch
-%                         fprintf(2, 'No image at frame %d \n', frm);
-%                         fprintf(2, 'No image at frame\n');
-
                         % Check if image is stored inside object
-%                         fprintf(2, 'Checking for self-contained image\n');
-                        dat = obj.Image.(req);
+                        dat = obj.Image.(req);                        
                     end
 
                 case 3
@@ -488,35 +473,10 @@ classdef CircuitJB < handle
             end
         end
 
-        function rt = getCurve(varargin)
-            %% Return Curve object [DEPRECATED]
-            % This is a deprecated method. Just take the Curves property.
-            try
-                obj = varargin{1};
-                switch nargin
-                    case 2
-                        rt = obj.Curves;
-
-                    case 3
-                        idx = varargin{2};
-                        req = varargin{3};
-                        typ = sprintf('%sSegments', req);
-                        crv = obj.Curves.(typ);
-                        rt  = crv(:,:,idx);
-
-                    otherwise
-                        fprintf(2, 'No Curve specified\n');
-                end
-            catch
-                fprintf(2, 'Error return Curve %d \n', idx);
-            end
-        end
-
         function [X, Y] = rasterizeCurves(obj, req)
             %% Rasterize all segments of requested type
             % This method is used to prepare for Principal Components Analysis
             [X, Y] = obj.Curves.rasterizeSegments(req);
-
         end
 
         function [X, Y] = LinearizeRoutes(obj)

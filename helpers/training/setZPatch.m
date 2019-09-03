@@ -36,14 +36,13 @@ envTop = env.UpperPoints;
 envBot = env.LowerPoints;
 
 %% Z-Patch
-hlfsz  = round(size(env.UpperStruct,2) / 2);
+hlfsz  = round(env.GridSize(2) / 2);
 qrtsz  = round(hlfsz / 2);
 sz     = [qrtsz , hlfsz];
 zpatch = patch2img(envTop, envBot, sz, img);
 
 %% Extra data for debugging and plotting
-patchData = struct('CropBoxTop', boxTop, 'CropBoxBot', boxBot, ...
-    'Envelope', env, 'ZPatch', zpatch);
+patchData = struct('CropBoxTop', boxTop, 'CropBoxBot', boxBot, 'Envelope', env);
 
 end
 
@@ -106,10 +105,9 @@ bndBot = (endVec - mid) + botSld;
 
 % Generate envelope
 [eTop, sTop] = generateFullEnvelope(endVec, bndTop, iscl, 'cs');
-[eBot, sBot] = generateFullEnvelope(endVec, bndBot, iscl, 'cs');
+[eBot, ~]    = generateFullEnvelope(endVec, bndBot, iscl, 'cs');
 
-env = struct('UpperPoints', eTop, 'LowerPoints', eBot, ...
-    'UpperStruct', sTop, 'LowerStruct', sBot);
+env = struct('UpperPoints', eTop, 'LowerPoints', eBot, 'GridSize', size(sTop));
 
 end
 
