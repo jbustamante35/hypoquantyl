@@ -32,19 +32,16 @@ switch req
     case tru
         Xdat = [px.PCAscores , py.PCAscores];
         Ydat = pz.InputData;
-        dat  = 'InputData';
     case sim
         Xdat = [px.PCAscores , py.PCAscores];
         Ydat = pz.SimData;
-        dat  = 'SimData';
     case pre
         Xdat = predS;
         Ydat = inptZ;
-        dat  = 'SimData';
     otherwise
         % Exit if none chosen (or req incorrectly spelled)
         Sn = [];
-        fprintf(2, 'Parameter ''req'' must be [truth|sim|predicted]\n');
+        fprintf(2, 'Parameter ''req'' must be [%s|%s|%s]\n', tru, sim, pre);
         fprintf('Done!...[%.02f sec]%s', toc(tAll), str);
         return;
 end
