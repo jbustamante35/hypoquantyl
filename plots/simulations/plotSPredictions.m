@@ -1,16 +1,17 @@
-function fig = plotPredictions(idx, img, trnIdx, Zin, Zout, req, sav, f)
-%% plotPredictions: Plot predictions from CNN or PLSR
+function fig = plotSPredictions(idx, img, trnIdx, Sin, Sout, ttlSegs, numCrvs, req, sav, f)
+%% plotSPredictions: Plot predictions from NN for S-Vectors
 %
 %
 % Usage:
-%   fig = plotPredictions(idx, img, trnIdx, Zin, Zout, req, sav, f)
+%   fig = plotSPredictions(idx, img, trnIdx, Sin, Sout, ttlSegs, numCrvs, req, sav, f)
 %
 % Input:
 %   idx: index in crvs of hypocotyl to show prediction
 %   img: grayscale image corresponding to index in training set
-%   px: PCA data of x-coordinates
-%   py: PCA data of y-coordinates
-%   pz: PCA data of midpoints
+%   Sin:
+%   Sout:
+%   ttlSegs:
+%   numCrvs:
 %   req: set to 'truth', 'sim', or 'predicted' midpoint values
 %   sav: boolean to save figure as .fig and .tiff files
 %   f: select index of figure handle
@@ -47,10 +48,8 @@ else
 end
 
 % Extract set-up data
-ttlSegs  = size(Zin.FullData, 2) / 6;
-numCrvs  = size(Zin.FullData, 1);
 allSegs  = 1 : ttlSegs;
-sIdxs    = extractIndices(idx, ttlSegs, Zin.RevertData);
+sIdxs    = extractIndices(idx, ttlSegs);
 
 msg = sprintf('Extracted information: Contour %d of %d [%s] [%d segments]', ...
     idx, numCrvs, tSet, ttlSegs);
@@ -66,18 +65,18 @@ tng = 3:4;
 nrm = 5:6;
 
 % Store M-T-N in separate arrays
-revI = Zin.RevertData(sIdxs, :);
-Min  = revI(:, mid);
+revI = Sin.ZVectors(sIdxs,:);
+Min  = revI(:,mid);
 Tin  = arrayfun(@(x) [revI(x,mid) ; revI(x,tng)], allSegs, 'UniformOutput', 0);
 Nin  = arrayfun(@(x) [revI(x,mid) ; revI(x,nrm)], allSegs, 'UniformOutput', 0);
-Hin  = Zin.HalfData(:,:,idx)';
+Hin  = Sin.HalfData(sIdxs,:);
 
 %
-revO = Zout.RevertData(sIdxs, :);
-Mout = revO(:, mid);
+revO = Sout.ZVectors(sIdxs,:);
+Mout = revO(:,mid);
 Tout = arrayfun(@(x) [revO(x,mid) ; revO(x,tng)], allSegs, 'UniformOutput', 0);
 Nout = arrayfun(@(x) [revO(x,mid) ; revO(x,nrm)], allSegs, 'UniformOutput', 0);
-Hout = Zout.HalfData(:,:,idx)';
+Hout = Sout.HalfData(sIdxs,:);
 
 msg = sprintf('Extracted information: Contour %d of %d [%s] [%d segments]', ...
     idx, numCrvs, tSet, ttlSegs);

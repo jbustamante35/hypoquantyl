@@ -1,9 +1,9 @@
-function Zn = convertPredictions(predZ, req, px, py, pz, sav)
-%% convertPredictions:
+function Zn = convertZPredictions(predZ, req, px, py, pz, sav)
+%% convertZPredictions:
 % This
 %
 % Usage:
-%   Zn = convertPredictions(predZ, req, px, py, pz, sav)
+%   Zn = convertZPredictions(predZ, req, px, py, pz, sav)
 %
 % Input:
 %   predZ: predicted values from CNN output
@@ -60,9 +60,9 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 t = tic;
 
 Xrev       = zVectorConversion(Xdat, ttlSegs, numCrvs, 'rev');
-[Xid, Xnd] = arrayfun(@(x) extractIndices(x, ttlSegs, Xrev), ...
+[Xid, Xns] = arrayfun(@(x) extractIndices(x, ttlSegs, Xrev), ...
     cIdxs, 'UniformOutput', 0);
-Xns        = cellfun(@(x) x', Xnd, 'UniformOutput', 0);
+% Xns        = cellfun(@(x) x', Xnd, 'UniformOutput', 0); % Function default
 
 msg = sprintf('Reverting prepped form [%s] to raw form [%s]', ...
     num2str(size(Xrev)), num2str(size(Xns{1})));

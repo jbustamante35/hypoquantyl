@@ -39,7 +39,7 @@ axis image;
 hold on;
 
 plt(cntr, 'y.', 5);
-plt(mids, 'yv', 1);
+plt(mids, 'rv', 1);
 
 plt(envOut, 'm.', 10);
 plt(envInn, 'g.', 10);
