@@ -1,4 +1,4 @@
-function showZPatch(zpatch, zdata, cIdx, sIdx, img, mids, f)
+function fig = showZPatch(zpatch, zdata, cIdx, sIdx, img, mids, f)
 %% showZPatch: visualize a Z-Patch from a Z-Vector slice
 %
 %
@@ -29,6 +29,7 @@ envT = zdata.Envelope.UpperPoints;
 envB = zdata.Envelope.LowerPoints;
 
 %% Show slice and patch
+fig = figure(f);
 set(0, 'CurrentFigure', f);
 cla;clf;
 

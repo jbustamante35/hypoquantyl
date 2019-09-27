@@ -1,6 +1,6 @@
-function [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, vis, par)
+function [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, par)
 %% cnn_zvector: CNN to predict Z-Vector slices given grayscale images
-% 
+%
 %
 % Usage:
 %   [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, vis, par)
@@ -8,21 +8,20 @@ function [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, vis, par)
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
 %   IMGS: reshaped and rescaled hypocotyl images [x x 1 N]
-%   px:
-%   py:
-%   pz:
-%   skp: skip running PLSR 
-%   sav:
-%   vis:
-%   par:
+%   px: output from PCA of X-coordinates
+%   py: output from PCA of Y-coordinates
+%   pz: output from PCA of Z-vectors
+%   skp: boolean to skip running PLSR if not needed
+%   sav: boolean to save output in a .mat file
+%   par: boolean to use parallel computing if available
 %
 % Output:
-%   IN:
-%   OUT:
+%   IN: structure containing the inputs used for the neural net run
+%   OUT: structure containing predictions, network objects, and data splits
 %
 
 %% Extract some info about the dataset
-% Principal Components
+% Principal Components [figure out how to remove this]
 PCX = length(px.EigValues);
 PCY = length(py.EigValues);
 PCZ = length(pz.EigValues);
@@ -32,6 +31,7 @@ PCR = 10;
 % SCALE = 1;
 % nCrvs = numel(CRVS);
 nCrvs = length(pz.PCAscores);
+pcs   = size(SCRS,2);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Split into training, validation, and testing sets
@@ -78,7 +78,7 @@ end
 net = cell(1, size(Y,2)); % Iteratively predicts all PCs
 
 % Determine parallelization
-if par    
+if par
     % Run with parallel processing [less stable]
     exenv = 'parallel';
 else
@@ -87,14 +87,14 @@ else
 end
 
 % Run CNN to predict all 6 parts of the Z-vector
-for e = 1 : size(Y,2)
+for pc = 1 : pcs
     % for e = 1 : 1 % Debug by running only 1 PC
     cnnX = X;
-    cnnY = Y(:,e);
+    cnnY = Y(:,pc);
     
     % Create CNN Layers
     layers = [
-%         imageInputLayer([size(imgs,1) , size(imgs,2) , 1], ...
+        %         imageInputLayer([size(imgs,1) , size(imgs,2) , 1], ...
         imageInputLayer([size(IMGS,1) , size(IMGS,2) , 1], ...
         'Normalization', 'none');
         
@@ -152,29 +152,25 @@ for e = 1 : size(Y,2)
     %     'LearnRateDropPeriod',   20, ...
     
     % Run CNN
-    net{e} = trainNetwork(cnnX, cnnY, layers, options);
+    net{pc} = trainNetwork(cnnX, cnnY, layers, options);
 end
 
+% Store Networks in a structure
+netStr = arrayfun(@(x) sprintf('Net%d', x), 1 : pcs, 'UniformOutput', 0);
+net    = cell2struct(net, netStr, 2);
+
 %% Predictions per PC
-ypreNet = [];
-for e = 1 : numel(net)
-    ypreNet(:,e) = net{e}.predict(IMGS);
+ypre = zeros(size(SCRS));
+for pc = 1 : pcs
+    ypre(:,pc) = net.(netStr{pc}).predict(IMGS);
 end
 
 %
-predZ_cnn = bsxfun(@plus, (ypreNet * pz.EigVectors'), pz.MeanVals);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Plotting functions to visualize predictions
-% This will be replaced with the plotPredictions function once I reshape the
-% predicted matrices correctly.
-if vis
-    fprintf('\n\nNote [%s]\nVisualization does nothing yet!\n\n', tdate('l'));
-end
+predZ_cnn = bsxfun(@plus, (ypre * pz.EigVectors'), pz.MeanVals);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structure
-% Input (raw and PCA data)
+% Input (raw and PCA data) [figure out how to remove this]
 Din  = struct('Xcrd', px.InputData, 'Ycrd', py.InputData, 'Zvec', pz.InputData);
 
 % Output (predictions)

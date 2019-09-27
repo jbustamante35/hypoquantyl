@@ -28,10 +28,10 @@ mid              = zSlice(1:2);
 tngTop           = boxTop(3:4);
 tngBot           = boxBot(3:4);
 nrmTop           = boxTop(5:6);
-nrmBto           = boxBot(5:6);
+nrmBot           = boxBot(5:6);
 
 %% Envelope Structure set from requested vector [tangent|normal]
-env    = setEnvelopeBounds(mid, nrmTop, nrmBto, tngTop, tngBot, VER);
+env    = setEnvelopeBounds(mid, nrmTop, nrmBot, tngTop, tngBot, VER);
 envTop = env.UpperPoints;
 envBot = env.LowerPoints;
 
@@ -95,7 +95,7 @@ switch ver
 end
 
 % Define top-bottom points and interpolate to set 1:1 coordinates to image
-endPts = [topVec; botVec];
+endPts = [topVec ; botVec];
 iscl   = round(pdist(endPts) / 2);
 endVec = interpolateOutline(endPts, iscl * 2);
 
