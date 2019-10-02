@@ -1,4 +1,4 @@
-function [zpatch, patchData] = setZPatch(zSlice, img, SCL, VER)
+function [zpatch, patchData] = setZPatch(zSlice, img, SCL, VER, MTH)
 %% setZPatch: set Z-Patch from Z-Vector slice
 %
 %
@@ -10,6 +10,7 @@ function [zpatch, patchData] = setZPatch(zSlice, img, SCL, VER)
 %   img: grayscale image corresponding to zSlice
 %   SCL: distance to scale up the tangent-normal vector
 %   VER: use tangent 'tng' or normal 'nrm' to set base of envelope
+%   MTH: method to run [old|new]
 %
 % Output:
 %   zpatch: [SCL*2 x SCL*2] matrix mapping coordinate patch to image
@@ -18,31 +19,23 @@ function [zpatch, patchData] = setZPatch(zSlice, img, SCL, VER)
 
 %% Set default scale factor scl to 10% of image size if not set
 if nargin < 3
+    MTH = 'new';                   % Default to new method
     SCL = ceil(size(img,1) * 0.1); % Scale by 10% of image size
     VER = 'tng';                   % Set from tangent vector
 end
 
-%% Crop Box vectors
-[boxTop, boxBot] = setBoxBounds(zSlice, SCL);
-mid              = zSlice(1:2);
-tngTop           = boxTop(3:4);
-tngBot           = boxBot(3:4);
-nrmTop           = boxTop(5:6);
-nrmBot           = boxBot(5:6);
-
-%% Envelope Structure set from requested vector [tangent|normal]
-env    = setEnvelopeBounds(mid, nrmTop, nrmBot, tngTop, tngBot, VER);
-envTop = env.UpperPoints;
-envBot = env.LowerPoints;
-
-%% Z-Patch
-hlfsz  = round(env.GridSize(2) / 2);
-qrtsz  = round(hlfsz / 2);
-sz     = [qrtsz , hlfsz];
-zpatch = patch2img(envTop, envBot, sz, img);
-
-%% Extra data for debugging and plotting
-patchData = struct('CropBoxTop', boxTop, 'CropBoxBot', boxBot, 'Envelope', env);
+switch MTH
+    case 'old'
+        [zpatch, patchData] = runOldMethod(zSlice, img, SCL, VER);
+        
+    case 'new'
+        [zpatch, patchData] = runNewMethod(zSlice, img, SCL);
+        
+    otherwise
+        fprintf(2, 'Select Method to run [old|new]\n');
+        zpatch    = [];
+        patchData = [];
+end
 
 end
 
@@ -125,6 +118,72 @@ ptcB = reshape(outB, sz);
 
 % Combine Top and Bottom envelope images
 ptcF = handleFLIP([flipud(ptcT) ; ptcB], 3);
+
+end
+
+function [zpatch, patchData] = runOldMethod(zSlice, img, SCL, VER)
+%% runOldMethod: my old [less efficient] way of getting Z-Patches
+
+%% Crop Box vectors
+[boxTop, boxBot] = setBoxBounds(zSlice, SCL);
+mid              = zSlice(1:2);
+tngTop           = boxTop(3:4);
+tngBot           = boxBot(3:4);
+nrmTop           = boxTop(5:6);
+nrmBot           = boxBot(5:6);
+
+%% Envelope Structure set from requested vector [tangent|normal]
+env    = setEnvelopeBounds(mid, nrmTop, nrmBot, tngTop, tngBot, VER);
+envTop = env.UpperPoints;
+envBot = env.LowerPoints;
+
+%% Z-Patch
+hlfsz  = round(env.GridSize(2) / 2);
+qrtsz  = round(hlfsz / 2);
+sz     = [qrtsz , hlfsz];
+zpatch = patch2img(envTop, envBot, sz, img);
+
+%% Extra data for debugging and plotting
+patchData = struct('CropBoxTop', boxTop, 'CropBoxBot', boxBot, 'Envelope', env);
+
+end
+
+function [zpatch, patchData] = runNewMethod(zSlice, img, SCL)
+%% runNewMethod: new and improved way for getting Z-Patches
+% Set tangent and normal to unit length
+m  = zSlice(1:2);
+t  = zSlice(3:4) - m;
+n  = zSlice(5:6) - m;
+t  = t / norm(t);
+n  = n / norm(n);
+Pm = [[t , 0]', [n , 0]' , [m , 1]'];
+
+% Set domain size
+d1  = -SCL;
+d2  =  SCL;
+d3  = round(pdist([d1 ; d2]));
+
+% Create gridded domain
+[n1 , n2] = ndgrid(linspace(d1, d2, d3), linspace(d1, d2, d3));
+D         = [n1(:) , n2(:) , ones(numel(n1), 1)];
+Dn        = Pm * D';
+% Dn        = mtimesx(Pm, D, 't', 'speed');
+Dn        = double(Dn(1:2,:)');
+
+% Sample image patch from domain coordinates
+zpatch = ba_interp2(img, Dn(:,1), Dn(:,2));
+zpatch = flipud(reshape(zpatch, [d3 d3])');
+
+% Get Patch Data
+boxTop          = [m ,  (SCL * t) + m ,  (SCL * n) + m];
+boxBot          = [m ,  -(SCL * t) + m ,  -(SCL * n) + m];
+env             = struct('UpperPoints', [], 'LowerPoints', [], 'GridSize', []);
+hIdx            = ceil(size(Dn,1) / 2);
+env.LowerPoints = Dn(1      : hIdx,:);
+env.UpperPoints = Dn(hIdx+1 : end,:);
+env.GridSize    = [ceil(size(zpatch,1) / 2) , ceil(size(zpatch,2) * 2)];
+
+patchData = struct('CropBoxTop', boxTop, 'CropBoxBot', boxBot, 'Envelope', env);
 
 end
 
