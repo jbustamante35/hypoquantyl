@@ -177,7 +177,7 @@ Din  = struct('Xcrd', px.InputData, 'Ycrd', py.InputData, 'Zvec', pz.InputData);
 Trng = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'tstIdx', tstIdx, ...
     'IMGS', IMGS, 'MIDS', SCRS);
 Dout = struct('plsrPredictions', predZ_plsr, 'cnnPredictions', predZ_cnn, ...
-    'PLSR', pr, 'NET', net);
+    'PLSR', pr, 'Net', net);
 
 % Full structure
 IN  = struct('DataIn', Din);

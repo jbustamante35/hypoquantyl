@@ -9,7 +9,7 @@ function [scrStruct, simStruct] = pcaSweep(mns, eigs, scrs, pc, upFn, dwnFn, stp
 % an iterative step up and down overlaid on the same plot.
 %
 % The up and down functions [upFn|dwnFn] are an anonymous function that takes in
-% as input the PC score (x) and the value to increment by (y): 
+% as input the PC score (x) and the value to increment by (y):
 %    upFn  = @(x,y) x+y;
 %    dwnFn = @(x,y) x-y;
 %
@@ -41,7 +41,7 @@ function [scrStruct, simStruct] = pcaSweep(mns, eigs, scrs, pc, upFn, dwnFn, stp
 %% Mean and StDev of all PCs in x and y coords
 % Take mean if sngl parameter is true
 if nargin < 9
-    scoreMn = mean(scrs);    
+    scoreMn = mean(scrs);
 else
     scoreMn = scrs(sngl,:);
 end
@@ -54,7 +54,7 @@ if pc > 0
     val    = stDevs(pc) * stp;
     itrUp  = upFn(scoreMn(pc), val);
     itrDwn = dwnFn(scoreMn(pc), val);
-    
+
     % Replace old with new values and store updated mean PC scores
     [scoreUp, scoreDown] = deal(scoreMn);
     scoreUp(pc)          = itrUp;
@@ -65,9 +65,9 @@ else
 end
 
 %% Create new synthetic images with updated PC scores
-orgSim = [input2sim(scoreMn, eigs, mns)   ; 1:length(eigs)]';
-upSim  = [input2sim(scoreUp, eigs, mns)   ; 1:length(eigs)]';
-dwnSim = [input2sim(scoreDown, eigs, mns) ; 1:length(eigs)]';
+orgSim = [pcaProject(scoreMn,   eigs, mns, 'scr2sim') ; 1:length(eigs)]';
+upSim  = [pcaProject(scoreUp,   eigs, mns, 'scr2sim') ; 1:length(eigs)]';
+dwnSim = [pcaProject(scoreDown, eigs, mns, 'scr2sim') ; 1:length(eigs)]';
 
 %% Create output structures
 scrStruct = struct('up', scoreUp, 'mean', scoreMn, 'down', scoreDown);
@@ -80,7 +80,7 @@ if f
     hold on;
     plt(dwnSim, 'r-', 1);
     plt(upSim, 'g-', 1);
-    
+
     ttl = sprintf('PC_%d|Steps_%d', pc, stp);
     title(ttl);
     axis ij;
