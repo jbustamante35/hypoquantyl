@@ -331,8 +331,15 @@ classdef CircuitJB < handle
 
             switch nargin
                 case 1
-                    % Full structure of image data
-                    dat = obj.Image;
+                    % Grayscale image
+                    frm = obj.getFrame;
+                    flp = obj.checkFlipped;
+                    
+                    if flp
+                        dat = flip(obj.Parent.getImage(frm), 2);
+                    else
+                        dat = obj.Parent.getImage(frm);
+                    end
 
                 case 2
                     % Returns requested image type

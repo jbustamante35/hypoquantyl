@@ -156,22 +156,41 @@ classdef Hypocotyl < handle
             switch nargin
                 case 1
                     % Return grayscale images at all time points
-                    % DON'T USE THIS YET
-                    %frm = obj.getFrame('b') : obj.getFrame('d');
-                    %img = obj.Parent.getImage(frm);
-                    %crp = imcrop(img, obj.getCropBox(frm));
-                    %dat = imresize(crp, sclsz);
-                    dat = obj.Parent.Image;
+                    try
+                        frm = obj.getFrame('b') : obj.getFrame('d');
+                        img = obj.Parent.getImage(frm);
+                        bnd = obj.getCropBox(frm);
+                        bnd = num2cell(bnd, 2)';
+                        crp = cellfun(@(i,b) imcrop(i,b), ...
+                            img, bnd, 'UniformOutput', 0);
+                        dat = cellfun(@(x) imresize(x, sclsz), ...
+                            crp, 'UniformOutput', 0);
+                    catch
+                        fprintf(2, 'Error returning %d images\n', numel(frm));
+                        dat = [];
+                    end
                     
                 case 2
-                    % Return grayscale image at specific time point
+                    % Return grayscale image(s) at specific time point(s)
                     try
                         frm = varargin{2};
-                        img = obj.Parent.getImage(frm);
-                        crp = imcrop(img, obj.getCropBox(frm));
-                        dat = imresize(crp, sclsz);
+                        
+                        if numel(frm) > 1
+                            img = obj.Parent.getImage(frm);
+                            bnd = num2cell(...
+                                obj.getCropBox(frm), 2)';
+                            crp = cellfun(@(i,b) imcrop(i,b), ...
+                                img, bnd, 'UniformOutput', 0);
+                            dat = cellfun(@(x) imresize(x, sclsz), ...
+                                crp, 'UniformOutput', 0);
+                        else
+                            img = obj.Parent.getImage(frm);
+                            crp = imcrop(img, obj.getCropBox(frm));
+                            dat = imresize(crp, sclsz);
+                        end
                     catch
                         fprintf(2, 'Requested field must be either: %s\n', str);
+                        dat = [];
                     end
                     
                 case 3
@@ -180,9 +199,21 @@ classdef Hypocotyl < handle
                     try
                         frm = varargin{2};
                         req = varargin{3};
-                        img = obj.Parent.getImage(frm, req);
-                        crp = imcrop(img, obj.getCropBox(frm));
-                        dat = imresize(crp, sclsz);
+                        
+                        if numel(frm) > 1
+                            img = obj.Parent.getImage(frm, req);
+                            bnd = num2cell(...
+                                obj.getCropBox(frm), 2)';
+                            crp = cellfun(@(i,b) imcrop(i,b), ...
+                                img, bnd, 'UniformOutput', 0);
+                            dat = cellfun(@(x) imresize(x, sclsz), ...
+                                crp, 'UniformOutput', 0);
+                        else
+                            img = obj.Parent.getImage(frm, req);
+                            crp = imcrop(img, obj.getCropBox(frm));
+                            dat = imresize(crp, sclsz);
+                        end
+                        
                     catch
                         fprintf(2, ...
                             'Requested field must be either: gray | bw\n');
@@ -294,7 +325,7 @@ classdef Hypocotyl < handle
                     crc = obj.Contour;
                 case 2
                     frm = varargin{2};
-                    crc = obj.Contour(frm);                    
+                    crc = obj.Contour(frm);
                 otherwise
                     fprintf(2, 'Error returning ContourJB\n');
                     crc = [];
@@ -371,18 +402,18 @@ classdef Hypocotyl < handle
         
         function [untrained_frames , trained_frames] = getUntrainedFrames(obj)
             %% Returns array of frames that have not been trained
-            % Note that this only checks for a CircuitJB object in the original 
+            % Note that this only checks for a CircuitJB object in the original
             % orientation and assumes that the flipped orientation will give
-            % the same result. 
+            % the same result.
             try
                 frms_all = 1 : obj.Lifetime;
                 
                 orgs = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'org')), ...
                     frms_all, 'UniformOutput', 0));
                 
-%                 flps = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'flp')), ...
-%                     frms_all, 'UniformOutput', 0));
-                                
+                %                 flps = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'flp')), ...
+                %                     frms_all, 'UniformOutput', 0));
+                
                 trained_frames   = frms_all(orgs);
                 untrained_frames = frms_all(~orgs);
             catch e

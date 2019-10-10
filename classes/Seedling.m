@@ -278,7 +278,9 @@ classdef Seedling < handle
                     try
                         img = obj.Parent.getImage(rng);
                         bnd = obj.getPData(rng, 'BoundingBox');
-                        dat = imcrop(img, bnd);
+                        bnd = num2cell(bnd,2)';
+                        dat = cellfun(@(i,b) imcrop(i,b), ...
+                            img, bnd, 'UniformOutput', 0);
                     catch
                         fprintf(2, 'Error returning Image\n');
                         dat = [];
@@ -324,9 +326,17 @@ classdef Seedling < handle
                             idx = obj.getFrame('b');
                         end
                                                 
-                        img = obj.Parent.getImage(idx, req);
-                        bnd = obj.getPData(frm, 'BoundingBox');
-                        dat = imcrop(img, bnd);
+                        if numel(idx) > 1
+                            img = obj.Parent.getImage(idx, req);
+                            bnd = num2cell(...
+                                obj.getPData(frm, 'BoundingBox'), 2)';
+                            dat = cellfun(@(i,b) imcrop(i,b), ...
+                                img, bnd, 'UniformOutput', 0);
+                        else                            
+                            img = obj.Parent.getImage(idx, req);
+                            bnd = obj.getPData(frm, 'BoundingBox');
+                            dat = imcrop(img, bnd);
+                        end
                     catch
                         fprintf(2, ...
                             'No %s image at frame %d indexed at %d \n', ...

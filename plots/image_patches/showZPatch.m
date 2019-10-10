@@ -1,4 +1,4 @@
-function fig = showZPatch(zpatch, zdata, cIdx, sIdx, img, mids, f)
+function fig = showZPatch(zpatch, zdata, cIdx, sIdx, img, mids, f, VER, scls)
 %% showZPatch: visualize a Z-Patch from a Z-Vector slice
 %
 %
@@ -17,6 +17,27 @@ function fig = showZPatch(zpatch, zdata, cIdx, sIdx, img, mids, f)
 % Output: n/a
 %
 
+if nargin < 8
+    VER = 1;
+end
+
+switch VER
+    case 1
+        % Visualize using old version of Z-Patch and Z-Data
+        fig = showVersion1(zpatch, zdata, cIdx, sIdx, img, mids, f);
+        
+    case 2
+        % Visualize using method with structured functions as Z-Data
+        fig = showVersion2(zdata, cIdx, sIdx, img, mids, f, scls);
+        
+    otherwise
+        fprintf(2, 'Version should be [1|2]\n');
+        fig = [];
+end
+
+end
+
+function fig = showVersion1(zpatch, zdata, cIdx, sIdx, img, mids, f)
 %% Extract data to be shown
 boxT = zdata.CropBoxTop;
 boxB = zdata.CropBoxBot;
@@ -60,4 +81,73 @@ ttl = sprintf('Z-Patch\nHypocotyl %d | Segment %d', cIdx, sIdx);
 title(ttl);
 
 end
+
+function fig = showVersion2(zdata, cIdx, sIdx, img, mids, f, scls)
+%%
+
+nscls = size(scls,1);
+dCrds = arrayfun(@(x) zdata.domCrds(sIdx,x), 1:nscls, 'UniformOutput', 0);
+
+% Setup figure
+fig = figure(f);
+set(0, 'CurrentFigure', fig);
+cla;clf;
+
+%% Image with Midpoints and Domain Coordinates
+% Image
+subplot(121);
+imagesc(img);
+colormap gray;
+axis image;
+axis off;
+hold on;
+
+% Plot Midpoints, Tangents, and Normals 
+% I can't believe how long I spent on this
+plt(mids, 'g.', 3);
+plt(mids(sIdx,:), 'ro', 10);
+
+% ptcSize = cellfun(@(x) size(x,1), dCrds, 'UniformOutput', 0);
+% domSize = cellfun(@(x) ceil(sqrt(size(x,1))), dCrds, 'UniformOutput', 0);
+% midCrd  = cellfun(@(c,p) c(ceil(p / 2),:), dCrds, ptcSize, 'UniformOutput', 0);
+% 
+% rgtTng = cellfun(@(p,d) (round(p / 2) + round(d / 2))-1, ptcSize, domSize, 'UniformOutput', 0);
+% lftTng = cellfun(@(p,d) (round(p / 2) - round(d / 2))+1, ptcSize, domSize, 'UniformOutput', 0);
+% topNrm = cellfun(@(p,d) p - round(d / 2) + 1, ptcSize, domSize, 'UniformOutput', 0);
+% dwnNrm = cellfun(@(d)   round(d / 2), domSize, 'UniformOutput', 0);
+% 
+% rtng = cellfun(@(c,x) c(x,:), dCrds, rgtTng, 'UniformOutput', 0);
+% ltng = cellfun(@(c,x) c(x,:), dCrds, lftTng, 'UniformOutput', 0);
+% tnrm = cellfun(@(c,x) c(x,:), dCrds, topNrm, 'UniformOutput', 0);
+% dnrm = cellfun(@(c,x) c(x,:), dCrds, dwnNrm, 'UniformOutput', 0);
+% 
+% cellfun(@(m,x) plt([m ; x], 'b-', 1), midCrd, rtng, 'UniformOutput', 0);
+% cellfun(@(m,x) plt([m ; x], 'r-', 1), midCrd, ltng, 'UniformOutput', 0);
+% cellfun(@(m,x) plt([m ; x], 'y-', 1), midCrd, tnrm, 'UniformOutput', 0);
+% cellfun(@(m,x) plt([m ; x], 'g-', 1), midCrd, dnrm, 'UniformOutput', 0);
+
+% Plot domain coordinates
+hlf   = ceil(size(dCrds{1},1) / 2);
+cellfun(@(x) plt(x(1:hlf,:), '.', 3), dCrds, 'UniformOutput', 0);
+cellfun(@(x) plt(x(hlf+1:end,:), '.', 3), dCrds, 'UniformOutput', 0);
+
+ttl = sprintf('Z-Patch Domain\nHypocotyl %d | Segment %d', cIdx, sIdx);
+title(ttl);
+
+%% The Patches
+rows = nscls;
+
+for scl = 1 : nscls
+    subplot(rows, 2, scl*2);
+    ptch = zdata.vec2patch(sIdx,scl);
+    imagesc(ptch);
+    axis image;
+    axis off;
+    ttl = sprintf('Scale %s', num2str(scls(scl,:)));
+    title(ttl);
+end
+
+end
+
+
 

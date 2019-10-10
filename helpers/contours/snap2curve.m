@@ -1,4 +1,4 @@
-function snp = snap2curve(pts, crd)
+function [snp, idx] = snap2curve(pts, crd)
 %% snap2curve: snap coordinates to closest point along curve
 % This function takes [m x n] coordinate positions, finds the index along [p x n] coordinate matrix,
 % and returns an [m x n] matrix, where coordinates are replaced by nearest coordinates in crds. 

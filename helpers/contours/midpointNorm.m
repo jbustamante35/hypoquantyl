@@ -1,4 +1,4 @@
-function [P, Pmat, M, T, N, Z] = midpointNorm(X)
+function [P, Pmat, M, T, N, Z] = midpointNorm(X, mth)
 %% midpointNorm: normalization method for curves around midpoint
 % This function implements the normalization method to express values in the
 % inputted curve X's reference frame into a new reference frame. This new
@@ -41,6 +41,10 @@ function [P, Pmat, M, T, N, Z] = midpointNorm(X)
 %   Z: Z-Vector slice [M T N]
 %
 
+if nargin < 2
+    mth = 'old';
+end
+
 %% Find midpoint and vectors for new reference frame
 s         = X(1,:);
 e         = X(end,:);
@@ -48,8 +52,15 @@ M         = findMidpoint(s,e);
 [F, T, N] = findFrame(s,e);
 V         = -F * M';
 
-% Store Z-Vector
-Z = [M , T+M , N+M];
+% Store Z-Vector with or without midpoint added
+switch mth
+    case 'old'
+        Z = [M , T+M , N+M];
+    case 'new'
+        Z = [M , T , N];
+    otherwise
+        fprintf(2, 'Method must be [old|new]'\n');
+end
 
 %% Compute conversion with P matrix
 Pmat = [F , V ; 0 0 1]; % MidPoint in new reference frame

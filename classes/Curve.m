@@ -49,7 +49,9 @@ classdef Curve < handle
             %% Runs full pipeline from Parent's Trace to generate ImagePatch
             % par: 0 to use normal for loop, 1 to use with parallel processing
             tRun = tic;
-            fprintf('\nRunning Full Pipeline for %s...\n', obj.Parent.Origin);
+            msg  = repmat('-', 1, 80);
+            fprintf('\n%s\nRunning Full Pipeline for %s...\n', ...
+                msg, obj.Parent.Origin);
             
             tic; fprintf('Splitting full outline...')            ; obj.SegmentOutline         ; fprintf('done [%.02f sec]\n', toc);
             tic; fprintf('Midpoint Normalization conversion...') ; obj.NormalizeSegments(par) ; fprintf('done [%.02f sec]\n', toc);
@@ -57,7 +59,7 @@ classdef Curve < handle
             tic; fprintf('Generating Z-Patches...')              ; obj.GenerateZPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
             tic; fprintf('Envelope coordinates conversion...')   ; obj.Normal2Envelope(par)   ; fprintf('done [%.02f sec]\n', toc);
             
-            fprintf('DONE! [%.02f sec ]\n\n', toc(tRun));
+            fprintf('DONE! [%.02f sec ]\n%s\n', toc(tRun), msg);
             
         end
         
@@ -166,7 +168,7 @@ classdef Curve < handle
             
             %
             segs    = obj.RawSegments;
-            img     = obj.Parent.getImage('gray');
+            img     = obj.getImage('gray');
             allSegs = 1 : obj.NumberOfSegments;
             
             %%
@@ -199,7 +201,7 @@ classdef Curve < handle
             
             %
             zvec    = obj.ZVector;
-            img     = double(obj.Parent.getImage('gray'));
+            img     = double(obj.getImage('gray'));
             allSegs = 1 : obj.NumberOfSegments;
             
             %%
@@ -256,20 +258,23 @@ classdef Curve < handle
         
         function pts = getEndPoint(varargin)
             %% Returns all EndPoint values or EndPoint at requested segment
+            % Removed the EndPoints property [10.02.2019]
+            
             switch nargin
                 case 1
                     % Returns all segment endpoints
                     obj = varargin{1};
-                    pts = obj.EndPoints;
+                    pts = obj.RawSegments([1 , end],:,:);
                     
                 case 2
                     % Arguments are Curve object and segment index
                     obj = varargin{1};
-                    req = varargin{2};
+                    idx = varargin{2};
                     try
-                        pts = obj.EndPoints(:,:,req);
+                        pts = [obj.RawSegments(1,:,idx) ; ...
+                            obj.RawSegments(end,:,idx)];
                     catch
-                        r = num2str(req);
+                        r = num2str(idx);
                         fprintf(2, 'Error requesting EndPoints %s\n', r);
                     end
                     
@@ -277,20 +282,21 @@ classdef Curve < handle
                     % Arguments are Curve object, segment index, and
                     % start (0) or endpoint (1)
                     obj = varargin{1};
-                    req = varargin{2};
+                    idx = varargin{2};
                     pnt = varargin{3};
                     if any(pnt == 1:2)
-                        pts = obj.EndPoints(pnt,:,req);
+                        pts = [obj.RawSegments(1,:,idx) ; ...
+                            obj.RawSegments(end,:,idx)];
+                        pts = pts(pnt,:);
                     else
                         p = num2str(pnt);
-                        r = num2str(req);
+                        r = num2str(idx);
                         fprintf(2, ...
                             'Error requesting EndPoints (pnt%s,seg%s)\n', p, r);
                     end
                     
                 otherwise
-                    obj = varargin{1};
-                    pts = obj.EndPoints;
+                    pts = [];
             end
             
         end
@@ -366,6 +372,20 @@ classdef Curve < handle
             
         end
         
+        function img = getImage(varargin)
+            %% Return image data for Curve at desired frame            
+            obj = varargin{1};
+            switch nargin
+                case 1
+                    img = obj.Parent.getImage;
+                case 2
+                    req = varargin{2};            
+                    img = obj.Parent.getImage(req);
+                otherwise
+                    fprintf(2, 'Error getting image\n');
+            end
+        end
+        
         function prp = getProperty(obj, prp)
             %% Return property of this object
             try
@@ -397,15 +417,15 @@ classdef Curve < handle
             p.addOptional('Parent', CircuitJB);
             p.addOptional('Trace', []);
             p.addOptional('NumberOfSegments', 0);
-            p.addOptional('RawSegments', []);
-            p.addOptional('EnvelopeSegments', []);
-            p.addOptional('EndPoints', []);
+            p.addOptional('RawSegments', []);      % Use optimized method [10.02.2019]
+%             p.addOptional('EnvelopeSegments', []); % Remove me! [10.02.2019]
+%             p.addOptional('EndPoints', []);        % Remove me! [10.02.2019]
             p.addOptional('SVectors', []);
             p.addOptional('ZVector', []);
             p.addOptional('SPatches', []);
-            p.addOptional('ZPatches', []);
+            p.addOptional('ZPatches', []);         % Use optimized method [10.02.2019]
             p.addOptional('SData', []);
-            p.addOptional('ZData', []);
+            p.addOptional('ZData', []);            % Use optimized method [10.02.2019]
             p.addOptional('Pmats', []);
             p.addOptional('Ppars', []);
             
@@ -416,10 +436,14 @@ classdef Curve < handle
         
         function obj = loadRawSegmentData(obj, trace, segment_length, step_size)
             %% Set data for RawSegments, EndPoints, and NumberOfSegments
+            %
+            
+            %% NOTE [10.02.2019]
+            % Splitting methods were optimized, but now makes one more segment
+            % than the old method. Run the full dataset through the pipelines
+            % when all the optimizations are done. 
             obj.RawSegments      = ...
-                split2Segments(trace, segment_length, step_size);
-            obj.EndPoints        = ...
-                [obj.RawSegments(1,:,:) ; obj.RawSegments(end,:,:)];
+                split2Segments(trace, segment_length, step_size, 'new');
             obj.NumberOfSegments = size(obj.RawSegments,3);
             
         end
@@ -427,8 +451,8 @@ classdef Curve < handle
         function [img, medBg, Pmat, midpoint] = getMapParams(obj, segIdx)
             %% Returns parameters for mapping curve to image for setImagePatch
             %% [NOTE] Deprecated [08.21.2019]
-            img      = double(obj.Parent.getImage('gray'));
-            msk      = obj.Parent.getImage('bw');
+            img      = double(obj.getImage('gray'));
+            msk      = obj.getImage('bw');
             medBg    = median(img(msk == 1));
             Pmat     = obj.getParameter('Pmats', segIdx);
             midpoint = obj.getMidPoint(segIdx);
