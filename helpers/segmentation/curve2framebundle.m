@@ -1,18 +1,31 @@
-function Z = curve2framebundle(C)
-%% curve2
+function fb = curve2framebundle(crv)
+%% curve2framebundle: generates a frame bundle from a curve
+% This function computes the frame bundle - or tangent bundle - that defines the
+% tangents of the points along a curve.
 %
-len = size(C,1);
-tmp = [C' , C' , C']';
+% Usage:
+%   z = curve2framebundle(crv)
+%
+% Input:
+%   crv: x-/y-coordinates of the curve
+%
+% Output:
+%   z: frame bundle of the curve
+%
 
-%
+%%
+len = size(crv,1);
+tmp = [crv' , crv' , crv']';
+
+%% Compute the tangents vectors along the curve
 dc = gradient(tmp')';
 dl = sum(dc .* dc, 2).^-0.5;
 dc = bsxfun(@times, dc, dl);
 dn = [dc(:,2) , -dc(:,1)];
-Z  = [tmp , dc , dn];
+fb = [tmp , dc , dn];
 
 %
-Z = Z(len+1 : 2*len, :);
+fb = fb(len+1 : 2*len, :);
 
 
 end

@@ -53,16 +53,74 @@ classdef Curve < handle
             fprintf('\n%s\nRunning Full Pipeline for %s...\n', ...
                 msg, obj.Parent.Origin);
             
-            tic; fprintf('Splitting full outline...')            ; obj.SegmentOutline         ; fprintf('done [%.02f sec]\n', toc);
-            tic; fprintf('Midpoint Normalization conversion...') ; obj.NormalizeSegments(par) ; fprintf('done [%.02f sec]\n', toc);
-            tic; fprintf('Generating S-Patches...')              ; obj.GenerateSPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
-            tic; fprintf('Generating Z-Patches...')              ; obj.GenerateZPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
-            tic; fprintf('Envelope coordinates conversion...')   ; obj.Normal2Envelope(par)   ; fprintf('done [%.02f sec]\n', toc);
+%             tic; fprintf('Splitting full outline...')            ; obj.SegmentOutline         ; fprintf('done [%.02f sec]\n', toc);
+%             tic; fprintf('Midpoint Normalization conversion...') ; obj.NormalizeSegments(par) ; fprintf('done [%.02f sec]\n', toc);
+%             tic; fprintf('Generating S-Patches...')              ; obj.GenerateSPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
+%             tic; fprintf('Generating Z-Patches...')              ; obj.GenerateZPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
+%             tic; fprintf('Envelope coordinates conversion...')   ; obj.Normal2Envelope(par)   ; fprintf('done [%.02f sec]\n', toc);
             
             fprintf('DONE! [%.02f sec ]\n%s\n', toc(tRun), msg);
             
         end
         
+        function trc = getTrace(obj, req)
+            %% Returns the manually-drawn contour            
+            switch nargin
+                case 1
+                    trc = obj.Parent.FullOutline;
+                case 2
+                    switch req
+                        case 'int'
+                            trc = obj.Parent.FullOutline;
+                        case 'raw'
+                            trc = obj.Parent.RawOutline;
+                        otherwise
+                            fprintf(2, 'Trace %s must be [int|raw]\n', req);
+                            trc = [];
+                    end
+                otherwise
+                    fprintf(2, 'Error getting trace\n');
+                    trc = [];
+            end
+                        
+        end
+        
+        function segs = getSegmentedOutline(varargin)
+            %% Compute the segmented outline 
+            % This will segment the outline each time, rather than storing it
+            % into the object after being run once. This will deprecate the
+            % SegmentOutline method. 
+            try
+                obj = varargin{1};
+                trc = obj.Trace;
+                
+                switch nargin
+                    case 1                        
+                        len = obj.SEGMENTSIZE;
+                        stp = obj.SEGMENTSTEPS;
+                        
+                    case 3
+                        len = varargin{2};
+                        stp = varargin{3};
+                        
+                    otherwise
+                        len = obj.SEGMENTSIZE;
+                        stp = obj.SEGMENTSTEPS;
+                        msg = sprintf(...
+                            ['Input must be (segment_size, steps_per_segment)\n', ...
+                            'Segmenting with default parameters (%d, %d)\n'], ...
+                            len, stp);
+                        fprintf(2, msg);
+                        
+                end
+                segs                 = split2Segments(trc, len, stp, 1);
+                obj.NumberOfSegments = size(segs,3);
+                
+            catch 
+                fprintf(2, 'Error splitting outline into multiple segments\n');
+            end
+        end
+            
         function obj = SegmentOutline(varargin)
             %% Split CircuitJB outline into defined number of segments
             % This function will generate all individual curves around the
@@ -161,6 +219,38 @@ classdef Curve < handle
             
         end        
         
+        function [sp , sd] = getSPatch(varargin)
+            %% Generates an S-Patch from a segment
+            % This computes the S-Patch from the given segment each time, rather
+            % than storing it in the object. This saves disk space, and will
+            % deprecate the GenerateSPatches method.
+            try
+                obj     = varargin{1};
+                segs    = obj.getSegmentedOutline;
+                allSegs = 1 : obj.NumberOfSegments;
+                img     = obj.getImage;
+                
+                switch nargin
+                    case 1
+                        % Get S-Patch for all segments
+                        [sp , sd] = arrayfun(@(x) setSPatch(segs(:,:,x), img), ...
+                            allSegs, 'UniformOutput', 0);
+                    case 2
+                        % Get S-Patch for single segment
+                        sIdx = varargin{2};
+                        [sp , sd] = setSPatch(segs(:,:,sIdx), img);
+                    otherwise
+                        fprintf(2, 'Segment index must be between 1 and %d\n', ...
+                            obj.NumberOfSegments);
+                        [sp , sd] = deal([]);
+                end
+                
+            catch
+                fprintf(2, 'Error getting S-Patch\n');
+                [sp , sd] = deal([]);
+            end
+        end
+        
         function [obj, SP, DS] = GenerateSPatches(obj, par)
             %% Generates S-Patches from image frame coordinates
             %
@@ -186,13 +276,58 @@ classdef Curve < handle
             end
             
             %
-            DS   = cat(1, DS{:});
+            DS = cat(1, DS{:});
             
             %
             obj.SPatches     = SP;
             obj.SData        = DS;
             obj.ENVELOPESIZE = DS(1).OuterData.GridSize(1);
             
+        end
+        function [zp , zd] = getZPatch(varargin)
+            %% Generates an Z-Patch from a segment's Z-Vector
+            % This computes the S-Patch from the given segment each time, rather
+            % than storing it in the object. This saves disk space, and will
+            % deprecate the GenerateSPatches method.
+            try
+                obj = varargin{1}; 
+                trc = obj.Trace;
+                len = obj.SEGMENTSIZE;
+                stp = obj.SEGMENTSTEPS;
+                z   = contour2corestructure(trc, len, stp);
+                mid = z(:,1:2);
+                tng = z(:,3:4);
+                nrm = z(:,5:6);
+                z   = [mid , tng+mid , nrm+mid];
+                
+                img     = double(obj.getImage);
+                allSegs = 1 : obj.NumberOfSegments;
+                
+                switch nargin
+                    case 1
+                        % Get Z-Patch for all segments
+                        [zp , zd] = arrayfun(@(x) setZPatch(z(x,:), img), ...
+                            allSegs, 'UniformOutput', 0);
+                    case 2
+                        % Get S-Patch for single segment
+                        sIdx = varargin{2};
+                        [zp , zd] = setZPatch(z(sIdx,:), img);
+                    case 3
+                        % Get S-Patch at specific scale
+                        sIdx = varargin{2};
+                        scl  = varargin{3};
+                        [zp , zd] = setZPatch(z(sIdx,:), img, scl, [], 2, []);
+                        
+                    otherwise
+                        fprintf(2, 'Segment index must be between 1 and %d\n', ...
+                            obj.NumberOfSegments);
+                        [zp , zd] = deal([]);
+                end
+                
+            catch
+                fprintf(2, 'Error getting Z-Patch\n');
+                [zp , zd] = deal([]);
+            end
         end
         
         function [obj, ZP, DZ] = GenerateZPatches(obj, par)
@@ -381,6 +516,10 @@ classdef Curve < handle
                 case 2
                     req = varargin{2};            
                     img = obj.Parent.getImage(req);
+                case 3
+                    req = varargin{2};
+                    flp = varargin{3};
+                    img = obj.Parent.getImage(0, flp);
                 otherwise
                     fprintf(2, 'Error getting image\n');
             end
@@ -443,7 +582,7 @@ classdef Curve < handle
             % than the old method. Run the full dataset through the pipelines
             % when all the optimizations are done. 
             obj.RawSegments      = ...
-                split2Segments(trace, segment_length, step_size, 'new');
+                split2Segments(trace, segment_length, step_size, 1);
             obj.NumberOfSegments = size(obj.RawSegments,3);
             
         end

@@ -1,17 +1,22 @@
-function [dom , domSize] = generateDomains(dSize, sSize, vSize, hSize)
-%% generateDomains: create domain for a disk d and square s
-%
+function [dom , domSize] = generateDomains(dSize, sSize, vSize, hSize, toRemove)
+%% generateDomains: create domain for a disk, square, vertical/horizontal line
+% This function generates domains for generating a disk (d), square (s),
+% vertical line (v) and a horizontal line (h). These domains can be used with an
+% image to map the domain coordinates onto that image using ba_interp2 or a
+% similar interpolation function.
 %
 % Usage:
-%   [dsk , sqr] = generateDomains(dSize, sSize)
+%   [dom , domSize] = generateDomains(dSize, sSize, vSize, hSize)
 %
 % Input:
 %   dSize: size to create a disk domain [d , d]
 %   sSize: size to create a sqare domain [s , s]
+%   vSize: size to create a vertical line domain [r , c]
+%   hSize: size to create a horizontal line domain [c , r]
 %
 % Output:
-%   dsk: domain of size dSize of a disk
-%   sqr: domain of size sSize of a square
+%   dom: cell array of all domains
+%   domSize: cell array of sizes used for the domains
 
 %%
 % Disk
@@ -37,5 +42,11 @@ hline    = [h1(:) , h2(:) , ones(size(h1(:)))];
 %% Store everything in a cell array
 dom     = {dsk ,  sqr , vline , hline};
 domSize = {dSize, sSize, vSize, hSize};
+
+%% Remove indices
+if ~isempty(toRemove)
+    dom(toRemove)     = [];
+    domSize(toRemove) = [];
+end
 
 end

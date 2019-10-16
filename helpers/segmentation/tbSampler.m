@@ -14,20 +14,24 @@ function ptch = tbSampler(img, aff, dom, domSize, vis)
 %   ptch: image patches sampled from the domains of the transformations
 %
 
-ptch = zeros([size(aff,1) , domSize , size(aff,4)]);
-msk  = img > graythresh(img/255)*255;
-bk   = mean(img(msk(:)));
-pv   = 101;
-img  = padarray(img, [pv pv], bk, 'both');
+%%
+ptch   = zeros([size(aff,1) , domSize , size(aff,4)]);
+msk    = img > graythresh(img / 255) * 255;
+bk     = mean(img(msk(:)));
+padVal = size(img,1);
+img    = padarray(img, [padVal , padVal], bk, 'both');
 
-% For each segment
+%% Sample image with affines for each segment
 for e = 1 : size(aff,1)
-    % For each scale
+    % Sample image with affines for each scale
     for s = 1 : size(aff,4)
-        sample_domain = squeeze(aff(e,:,:,s)) * dom';
-        img_sample    = ba_interp2(img, sample_domain(1,:)+pv, sample_domain(2,:)+pv);
-        img_sample    = reshape(img_sample, domSize);
-        ptch(e,:,:,s) = img_sample;
+        domSample = squeeze(aff(e,:,:,s)) * dom';
+        imgSample = ...
+            ba_interp2(img, domSample(1,:) + padVal, domSample(2,:) + padVal);
+        
+        %
+        imgSample     = reshape(imgSample, domSize);
+        ptch(e,:,:,s) = imgSample;
         
         if vis
             cla;
@@ -36,7 +40,7 @@ for e = 1 : size(aff,1)
             axis image;
             axis off;
             hold on;
-            plt(sample_domain(1:2,:)'+pv, 'g.', 10);
+            plt(domSample(1:2,:)'+padVal, 'g.', 10);
             
             drawnow;
         end

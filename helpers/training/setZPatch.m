@@ -26,18 +26,21 @@ end
 
 switch VER
     case 1
+        % Patch at the default scale of 10% of image size
         [zpatch, patchData] = runVersion1(zSlice, img, SCL, DIM);
         
     case 2
+        % Patch at a given scale
         [zpatch, patchData] = runVersion2(zSlice, img, SCL);
         
     case 3
+        % Set scale with a single domain and domain size
         scls    = SCL;
         domSize = DIM;
         [zpatch, patchData] = runVersion3(zSlice, img, scls, dom, domSize);
         
     case 4
-        % Scales, Domains, and Domain Sizes are now cell arrays
+        % Multiple Scales, Domains, and Domain Sizes as cell arrays
         scls    = SCL;
         domSize = DIM;
         [zpatch, patchData] = runVersion4(zSlice, img, scls, dom, domSize);

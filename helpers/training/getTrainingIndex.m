@@ -6,7 +6,7 @@ function I = getTrainingIndex(Ein, N, rng, minf)
 % within the percentage range defined in the R parameter. 
 %
 % Usage:
-%   I = getTrainingIndex(Ein, N, rng)
+%   I = getTrainingIndex(Ein, N, rng, minf)
 %
 % Input:
 %   Ein: Experiment object with Genotype and Seedling objects

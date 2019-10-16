@@ -1,5 +1,23 @@
 function X = sampleCorePatches(img, Z, scls, dom, domSize, vis)
 %% sampleCorePatches: sample image from tangent bundle points
+%
+%
+% Usage:
+%   X = sampleCorePatches(img, Z, scls, dom, domSize, vis)
+%
+% Input:
+%   img:
+%   Z:
+%   scls:
+%   dom:
+%   domSize:
+%   vis:
+%
+% Output:
+%   X:
+%
+
+%%
 if vis
     cla;clf;
 end

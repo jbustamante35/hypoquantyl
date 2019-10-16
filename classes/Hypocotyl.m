@@ -117,17 +117,26 @@ classdef Hypocotyl < handle
         
         function frm = getFrame(obj, req)
             %% Returns birth or death frame
-            switch req
-                case 'b'
-                    frm = obj.Frame(1);
-                    
-                case 'd'
-                    frm = obj.Frame(2);
-                    
-                otherwise
-                    fprintf(2, 'Request must be ''b'' or ''d''\n');
-                    return;
+            try
+                switch req
+                    case 'a'
+                        frm = obj.Frame;
+                        
+                    case 'b'
+                        frm = obj.Frame(1);
+                        
+                    case 'd'
+                        frm = obj.Frame(2);
+                        
+                    otherwise
+                        fprintf(2, 'Request must be ''b'' or ''d''\n');
+                        frm = [];
+                end
+            catch
+                fprintf(2, 'Request must be ''b'' or ''d''\n');
+                frm = [];
             end
+            
         end
         
         function obj = setImage(obj, req, dat)
@@ -265,10 +274,12 @@ classdef Hypocotyl < handle
                         fprintf(2, ...
                             'Requested field must be either: gray | bw\n');
                         dat = [];
+                        return;
                     end
                     
                 otherwise
                     fprintf(2, 'Error requesting data.\n');
+                    dat = [];
                     return;
             end
         end

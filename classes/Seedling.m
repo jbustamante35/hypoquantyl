@@ -176,6 +176,15 @@ classdef Seedling < handle
             sn = obj.SeedlingName;
         end
         
+        function si = getSeedlingIndex(obj)
+            %% Return index of the Seedling 
+            sn = obj.getSeedlingName;
+            aa = strfind(sn, '{');
+            bb = strfind(sn, '}');
+            si  = str2double(sn(aa+1:bb-1));
+            
+        end
+        
         function obj = setParent(obj, p)
             %% Set Genotype parent and Experiment host
             obj.Parent       = p;
