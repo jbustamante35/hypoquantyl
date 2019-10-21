@@ -16,10 +16,10 @@ function showHypocotylPrediction(img, znrms, simg, idx, trnIdx, f)
 % Output: n/a
 %
 
-%% Check out the results! WOW
+%% Check the results from two-step neural net
 hlfIdx = ceil(length(simg{1}) / 2);
 Shlf   = cell2mat(cellfun(@(x) x(hlfIdx,:), simg, 'UniformOutput', 0)');
-Send   = cellfun(@(x) [x(1,:) ; x(end,:)], simg, 'UniformOutput', 0)';
+Sext   = cellfun(@(x,y) [x(1,:) ; y(hlfIdx,:)], znrms, simg, 'UniformOutput', 0)';
 
 % Check set
 if ismember(idx, trnIdx)
@@ -29,15 +29,30 @@ else
 end
 
 %%
-set(0, 'CurrentFigure', f(1));
+% Scale tangent vector
+scl = 5;
+mid = hq(c).ZVectors(:,1:2);
+tng = (scl * (hq(c).ZVectors(:,3:4) - mid)) + hq(c).ZVectors(:,1:2);
+
+% Half Indices
+hlfIdx = ceil(length(hq(c).SVectors{1}) / 2);
+Shlf   = cell2mat(cellfun(@(x) x(hlfIdx,:), hq(c).SVectors, 'UniformOutput', 0)');
+
+set(0, 'CurrentFigure', figs(fIdx));
 cla;clf;
-imagesc(img);
-colormap gray;
-axis image;
+
 hold on;
+imagesc(imgs{c});
+colormap gray;
+axis ij;
+axis image;
+cellfun(@(x) plt(x, '-', 1), hq(c).SVectors, 'UniformOutput', 0);
+plt(hq(c).ZVectors, 'r.', 10);
+arrayfun(@(x) plt([mid(x,:) ; tng(x,:)], 'b-', 1), ...
+    allSegs, 'UniformOutput', 0);
 plt(Shlf, 'y-', 2);
-plt(znrms(:,1:2), 'r.', 5);
-ttl = sprintf('Segment Half-Indices\nHypocotyl %d [in %s set]', idx, cSet);
+
+ttl = sprintf('2-Step Neural Net Prediction\nHypocotyl %d', c);
 title(ttl);
 
 %%
@@ -62,7 +77,7 @@ hold on;
 plt(znrms(:,1:2), 'r.', 5);
 cellfun(@(x) plt(x(1,:), 'go', 1), simg, 'UniformOutput', 0);
 cellfun(@(x) plt(x(end,:), 'b+', 1), simg, 'UniformOutput', 0);
-cellfun(@(x) plt(x, '-', 1), Send, 'UniformOutput', 0);
+cellfun(@(x) plt(x, '-', 1), Sext, 'UniformOutput', 0);
 ttl = sprintf('Segment end points \nHypocotyl %d [in %s set]', idx, cSet);
 title(ttl);
 

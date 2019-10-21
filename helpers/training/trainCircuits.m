@@ -1,11 +1,11 @@
-function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sv, vis)
+function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sav, vis)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
 % This function takes in a fully-generated Experiment object as input and
 % extracts Hypocotyl objects to use as training data (defined in cin matrix)
 % for the machine learning segmentation algorithm. The user is prompted to trace
 % a manually-drawn contour around a hypocotyl, which will be stored as a
 % CircuitJB object. The full array of CircuitJB objects is returned as well,
-% although it has been de-referenced from all parent objects to decrease the 
+% although it has been de-referenced from all parent objects to decrease the
 % size of the output.
 %
 % In order to use this function, a number of conditions must be met:
@@ -30,14 +30,14 @@ function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sv, vis)
 %   [ 5 4 20 ] ] % 5th genotype , 4th seedling , 20th frame
 %
 % Usage:
-%   CRCS = trainCircuits(Ein, cin, typ, flipme, sv, vis)
+%   CRCS = trainCircuits(Ein, cin, typ, flipme, sav, vis)
 %
 % Input:
 %   Ein: Experiment object to draw from to generate contour data
 %   cin: matrix mapping to data to train
 %   typ: 0 to get contours of Seedlings, 1 to get contours of Hypocotyls
 %   flipme: boolean to inflate dataset with flipped versions of each Hypocotyl
-%   sv: save figures as .fig and .tiff files
+%   sav: save figures as .fig and .tiff files
 %   vis: boolean to plot figures or not
 %
 % Output:
@@ -77,7 +77,7 @@ for o = 1 : numel(OBJS)
     cla;clf;
 end
 
-if sv
+if sav
     arrayfun(@(x) x.DerefParents, CRCS, 'UniformOutput', 0);
     nm = sprintf('%s_%drandomCircuits_circuits', tdate('s'), nCrcs);
     save(nm, '-v7.3', 'CRCS');
@@ -96,7 +96,7 @@ if vis
     fig2 = figure;
     for i = 1 : N
         
-        try            
+        try
             % Draw Routes on grayscale image
             showImage(i, fig1, CRCS(i).getImage('gray'));
             hold on;
@@ -104,7 +104,7 @@ if vis
             plt(CRCS(i).getOutline, 'b-', 3);
             plt(CRCS(i).getRawPoints, 'y+', 14);
             plt(CRCS(i).getAnchorPoints, 'co', 14);
-
+            
             % Draw Routes bw image
             showImage(i, fig2, CRCS(i).getImage('bw'));
             hold on;
@@ -119,7 +119,7 @@ if vis
         
     end
     
-    if sv
+    if sav
         saveFigure('gray', N, fig1);
     end
     

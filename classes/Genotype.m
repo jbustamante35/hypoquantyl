@@ -237,6 +237,7 @@ classdef Genotype < handle
                                 
                             otherwise
                                 fprintf(2, 'Error requesting %s image\n', req);
+                                im = [];
                         end
                     catch
                         fprintf(2, 'No image(s) at index/range %s \n', idx);

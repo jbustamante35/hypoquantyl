@@ -83,7 +83,7 @@ end
 env = reshape(mapimg, sz);
 
 % Extra data for visualization or debugging
-edata = struct('eCrds', eCrds, 'eGrid', eGrid);
+edata = struct('eCrds', eCrds, 'eGrid', eGrid, 'GridSize', size(eGrid));
 
 end
 

@@ -1,4 +1,4 @@
-function segs = split2Segments(trc, len, step)
+function segs = split2Segments(trc, len, stp, mth)
 %% split2Segments: split contour into pieces of len size around the segment
 % This function takes a set of coordinates (typically defining a full contour)
 % and splits it into many segments of len size. These segments iteratively slide
@@ -6,56 +6,80 @@ function segs = split2Segments(trc, len, step)
 % step parameter.
 %
 % Usage:
-%   segs = split2Segments(trc, len, step)
+%   segs = split2Segments(trc, len, stp, mth)
 %
 % Input:
 %   trc: full contour as a set of x-/y-coordinates
 %   len: length to split each segment around the contour
-%   step: step size for each iterative slide
+%   stp: step size for each iterative slide
+%   mth: method for performing the split [1|2|3]
 %
 % Output:
-%   segs: [len x 2 x N] matrix of N segments of len size
+%   segs: [len x d x N] matrix of N segments of len size and d dimensions
 %
 
-%% OLD METHOD [ DEPRECATED ]
-% Determine number of iterations needed to slide around contour
-% sIdx    = 1;
-% stepper = 1 : step : (length(trc) - len - 1);
-% segs    = zeros(len, 2, size(stepper, 2));
-% for s = stepper
-%     segs(:, :, sIdx) = trc((s : (s + len - 1)), :);
-%     sIdx             = sIdx + 1;
-% end
-%
-% % Interpolate last segment if step size exceeds total length of contour [DEPRECATED]
-% if ~isequal(segs(end, :, end), trc(end, :))
-%     endIdx = stepper(end) + step;
-%     endSeg = trc(endIdx : end, :);
-%
-%     try
-%         segs(:, :, sIdx) = interpolateOutline(endSeg, len);
-%     catch
-%         if isequal(length(endSeg), len)
-%             segs(:, :, sIdx) = endSeg;
-%         end
-%     end
-% end
+%% Default to method 1
+if nargin < 4
+    mth = 1;
+end
 
 %% Continue generating segments to fully wrap around contour
-startIdx       = 1 : step : (length(trc) - 1);
-endIdx         = startIdx + len - 1;
-outIdx         = endIdx > size(trc,1);
-endIdx(outIdx) = endIdx(outIdx) - size(trc,1) + step;
-
-segs = zeros(len, 2, size(startIdx, 2));
-for sIdx = 1 : size(segs,3)
-    if endIdx(sIdx) >= startIdx(sIdx)
-        segs(:, :, sIdx) = trc(startIdx(sIdx) : endIdx(sIdx), :);
-    else
-        segA           = trc(startIdx(sIdx) : end         , :);
-        segB           = trc(2              : endIdx(sIdx), :);
-        segs(:,:,sIdx) = [segA ; segB];
-    end
+switch mth
+    case 1
+        % Open contour if closed
+        if all(trc(1,:) == trc(end,:))
+            trc(end,:) = [];
+        end
+        
+        %% Fastest and least complex method
+        % This method works with all step sizes
+        pad    = len - stp;
+        wid    = size(trc,2);
+        padtrc = double([trc ; trc(1:pad,:)]);
+        segF   = im2colF(padtrc, [len , wid], [stp, 1]);
+        segs   = reshape(segF, [len , wid , size(segF,2)]);
+        
+        % Convert back to original class
+        cls  = class(trc);
+        segs = eval(sprintf('%s(%s)', cls, 'segs'));
+        
+    case 2
+        %% Nathan's method that labels stacked curves
+        % Note that this only works if stp = 1
+        trc(end,:) = [];
+        lbl  = ones(size(trc,1), 1);                                % Label matrix
+        stk  = [[0 * lbl , trc] ; [1 * lbl, trc] ; [0 * lbl, trc]]; % Stacking curves
+        wid  = size(stk,2);                                         % Dimensions of curve
+        out  = im2colF(stk, [len , wid], [stp , 1]);
+        
+        % Pull out segments
+        kp   = out((len - 1) / 2 , :) == 1; % Keep 2nd layers containing segments
+        out  = out((len + 1) : end, kp);
+        segs = reshape(out, [len , wid-1 , size(trc,1)]);
+        
+    case 3
+        %% Oldest and Slowest method
+        % Note that this only works if stp = 1
+        startIdx       = 1 : stp : (length(trc) - 1);
+        endIdx         = startIdx + len - 1;
+        outIdx         = endIdx > size(trc,1);
+        endIdx(outIdx) = endIdx(outIdx) - size(trc,1) + stp;
+        
+        segs = zeros(len, 2, size(startIdx, 2));
+        for sIdx = 1 : size(segs,3)
+            if endIdx(sIdx) >= startIdx(sIdx)
+                segs(:, :, sIdx) = trc(startIdx(sIdx) : endIdx(sIdx), :);
+            else
+                segA           = trc(startIdx(sIdx) : end         , :);
+                segB           = trc(2              : endIdx(sIdx), :);
+                segs(:,:,sIdx) = [segA ; segB];
+            end
+        end
+    otherwise
+        %% Incorrect method chosen
+        fprintf(2, 'Method must be [1|2|3]\n');
+        segs = [];
 end
 
 end
+

@@ -1,7 +1,8 @@
 function img = searchImageStore(I, idx)
-%% searchImageStore: returns images in an ImageDataStore at requested index or range of indices
-% This function does a simple job and I'm getting to the point where I don't want to explain it in
-% detail. I think it's pretty straight-forward.
+%% searchImageStore: returns requested images from an ImageDataStore 
+% This function does a simple job and I'm getting to the point where I don't 
+% want to explain it in detail. I think it's pretty straight-forward. It returns
+% the images at the requested index or set of indices. 
 %
 % Usage:
 %   img = searchImageStore(I, idx)

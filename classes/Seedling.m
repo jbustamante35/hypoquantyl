@@ -176,6 +176,15 @@ classdef Seedling < handle
             sn = obj.SeedlingName;
         end
         
+        function si = getSeedlingIndex(obj)
+            %% Return index of the Seedling 
+            sn = obj.getSeedlingName;
+            aa = strfind(sn, '{');
+            bb = strfind(sn, '}');
+            si  = str2double(sn(aa+1:bb-1));
+            
+        end
+        
         function obj = setParent(obj, p)
             %% Set Genotype parent and Experiment host
             obj.Parent       = p;
@@ -278,7 +287,9 @@ classdef Seedling < handle
                     try
                         img = obj.Parent.getImage(rng);
                         bnd = obj.getPData(rng, 'BoundingBox');
-                        dat = imcrop(img, bnd);
+                        bnd = num2cell(bnd,2)';
+                        dat = cellfun(@(i,b) imcrop(i,b), ...
+                            img, bnd, 'UniformOutput', 0);
                     catch
                         fprintf(2, 'Error returning Image\n');
                         dat = [];
@@ -324,9 +335,17 @@ classdef Seedling < handle
                             idx = obj.getFrame('b');
                         end
                                                 
-                        img = obj.Parent.getImage(idx, req);
-                        bnd = obj.getPData(frm, 'BoundingBox');
-                        dat = imcrop(img, bnd);
+                        if numel(idx) > 1
+                            img = obj.Parent.getImage(idx, req);
+                            bnd = num2cell(...
+                                obj.getPData(frm, 'BoundingBox'), 2)';
+                            dat = cellfun(@(i,b) imcrop(i,b), ...
+                                img, bnd, 'UniformOutput', 0);
+                        else                            
+                            img = obj.Parent.getImage(idx, req);
+                            bnd = obj.getPData(frm, 'BoundingBox');
+                            dat = imcrop(img, bnd);
+                        end
                     catch
                         fprintf(2, ...
                             'No %s image at frame %d indexed at %d \n', ...
