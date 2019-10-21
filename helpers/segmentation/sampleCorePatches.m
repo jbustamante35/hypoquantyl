@@ -28,7 +28,7 @@ for d = 1 : numel(dom)
     aff = tb2affine(Z, scls{d});
     
     % Sample image at affines
-    smpl = tbSampler(double(img), aff, dom{d}, domSize{d}, vis);
+    smpl = tbSampler(double(img), double(aff), dom{d}, domSize{d}, vis);
     
     % Return Patches sampled from the Core and Displacements along the Core
     szS  = size(smpl);

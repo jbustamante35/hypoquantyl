@@ -30,13 +30,13 @@ dsk           = [d1(:) , d2(:) , ones(size(d1(:)))];
 sqr      = [s1(:) , s2(:) , ones(size(s1(:)))];
 
 % Vertical Line
-vmag     = 10;
-[v2, v1] = ndgrid(linspace(-1/vmag, 1/vmag, vSize(1)), linspace(-1, 1, vSize(2)));
+vmag     = 0.1;
+[v2, v1] = ndgrid(linspace(-vmag, vmag, vSize(1)), linspace(-1, 1, vSize(2)));
 vline    = [v1(:) , v2(:) , ones(size(v1(:)))];
 
 % Horizontal Line
-hmag     = 10;
-[h2, h1] = ndgrid(linspace(-1, 1, hSize(1)), linspace(-1/hmag, 1/hmag, hSize(2)));
+hmag     = 0.1;
+[h2, h1] = ndgrid(linspace(-1, 1, hSize(1)), linspace(-hmag, hmag, hSize(2)));
 hline    = [h1(:) , h2(:) , ones(size(h1(:)))];
 
 %% Store everything in a cell array

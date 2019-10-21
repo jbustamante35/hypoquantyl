@@ -15,7 +15,7 @@ function segs = split2Segments(trc, len, stp, mth)
 %   mth: method for performing the split [1|2|3]
 %
 % Output:
-%   segs: [len x 2 x N] matrix of N segments of len size
+%   segs: [len x d x N] matrix of N segments of len size and d dimensions
 %
 
 %% Default to method 1
@@ -31,9 +31,10 @@ switch mth
             trc(end,:) = [];
         end
         
-        %% Fastest and least complex method        
+        %% Fastest and least complex method
+        % This method works with all step sizes
         pad    = len - stp;
-        wid    = size(trc,2);        
+        wid    = size(trc,2);
         padtrc = double([trc ; trc(1:pad,:)]);
         segF   = im2colF(padtrc, [len , wid], [stp, 1]);
         segs   = reshape(segF, [len , wid , size(segF,2)]);
@@ -44,6 +45,7 @@ switch mth
         
     case 2
         %% Nathan's method that labels stacked curves
+        % Note that this only works if stp = 1
         trc(end,:) = [];
         lbl  = ones(size(trc,1), 1);                                % Label matrix
         stk  = [[0 * lbl , trc] ; [1 * lbl, trc] ; [0 * lbl, trc]]; % Stacking curves
@@ -57,6 +59,7 @@ switch mth
         
     case 3
         %% Oldest and Slowest method
+        % Note that this only works if stp = 1
         startIdx       = 1 : stp : (length(trc) - 1);
         endIdx         = startIdx + len - 1;
         outIdx         = endIdx > size(trc,1);
@@ -74,7 +77,7 @@ switch mth
         end
     otherwise
         %% Incorrect method chosen
-        fprintf(2, 'Method must be [old|new]\n');
+        fprintf(2, 'Method must be [1|2|3]\n');
         segs = [];
 end
 
