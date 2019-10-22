@@ -1,4 +1,4 @@
-function [simg, znrms, cntr] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
+function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
 %% twoStepNetPredictor: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -17,7 +17,7 @@ function [simg, znrms, cntr] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
 % Predict S-Vector scores from Z-Vector slices
 %
 % Usage:
-%   [Simg, Znrms, Cntr] = hypocotylPredictor(imgs, par, Nz, Ns, px, py, pz, pp)
+%   [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -37,12 +37,12 @@ function [simg, znrms, cntr] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %
-znrms = zScrsFromImage(img, Nz, pz);
-zslcs = generateZSlices(img, znrms, pp);
-simg  = sScrsFromSlices(zslcs, Ns, px, py);
+Znrms = zScrsFromImage(img, Nz, pz);
+zslcs = generateZSlices(img, Znrms, pp);
+Simg  = sScrsFromSlices(zslcs, Ns, px, py);
 
 % Generate continous contour from segments [not yet implemented]
-cntr = [];
+Cntr = [];
 
 end
 

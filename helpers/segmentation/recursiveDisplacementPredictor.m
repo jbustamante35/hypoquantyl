@@ -1,4 +1,4 @@
-function Cntr = recursiveDisplacementPredictor(imgs, ptx, pty, pz, pp, Nz, Nt)
+function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, ptx, pty, pz, pp, Nz, Nt, z)
 %% recursiveDisplacementPredictor: recursive predictions of  displacement vector
 % This function runs the full pipeline for the recursive neural net algorithm
 % that returns the contour in the image reference frame from a grayscale image
@@ -41,9 +41,12 @@ sprA = repmat('=', 1, 80);
 sprB = repmat('-', 1, 80);
 
 % Constants
+LEN             = 25;
+STP             = 1;
 VIS             = 0;
 dom2Omit        = 1;
 foldPredictions = 1;
+lastFrmFold     = 0;
 npc             = size(ptx.EigVectors,2);
 nItrs           = numel(pp.EigVectors);
 allItrs         = 1 : nItrs;
@@ -53,17 +56,26 @@ allItrs         = 1 : nItrs;
 
 %% Get initial frame bundle and image patches
 tCrv = tic;
-
-% Predict initial skeleton for first iteration
-t = tic;
 fprintf('Getting initial tangent bundle and image patch samples...');
-z = predictZvectorFromImage(imgs, Nz, pz);
+
+% Predict skeleton if input is empty
+t = tic;
+if isempty(z)
+    tt = tic;
+    fprintf('Predicting Tangent Bundle from Image...');
+    z  = predictZvectorFromImage(imgs, Nz, pz);
+    fprintf('DONE [%.02f sec]\n', toc(tt));
+end
+
+% Znrms = z;
 
 % Get image patches and differnet scales and domain shapes/sizes
 x = sampleCorePatches(imgs, z, scls, dom, domSize, VIS);
 fprintf('DONE [%.02f sec]\n', toc(t));
 
 %% Recursively predict vector displacements from frame bundles
+Simg = cell(1, nItrs); % Debugging variable
+
 for itr = allItrs
     tItr = tic;
     fprintf('\n%s\nPredicting image from Iteration %d...\n', ...
@@ -106,7 +118,9 @@ for itr = allItrs
         
         tshp = [preX , preY];
         
-        fprintf('DONE [%.02f sec]...', toc(tt));
+        fprintf('DONE [%.02f sec]...\n', toc(tt));
+    else
+        tshp = tshp(:,1:2);
     end
     
     % Create frame bundle from initial predicted contour
@@ -119,10 +133,31 @@ for itr = allItrs
     %
     fprintf('%s\nFinished iteration %d! [%.02f sec]\n%s\n', ...
         sprB, itr, toc(tItr), sprA);
+    
+    %% Always fold at the last iteration
+    if itr == nItrs && lastFrmFold
+        tt = tic;
+        fprintf('Smoothing %d predictions with %d PCs...', ...
+            size(tshp,1), npc);
+        
+        % Convert to PC scores, Back-Project, and Reshape for x-/y-coordinates
+        tx   = squeeze((tshp(:,1)))';
+        preX = pcaProject(tx,   ptx.EigVectors, ptx.MeanVals, 'sim2scr');
+        preX = pcaProject(preX, ptx.EigVectors, ptx.MeanVals, 'scr2sim')';
+        
+        ty   = squeeze((tshp(:,2)))';
+        preY = pcaProject(ty,   pty.EigVectors, pty.MeanVals, 'sim2scr');
+        preY = pcaProject(preY, pty.EigVectors, pty.MeanVals, 'scr2sim')';
+        
+        tshp = [preX , preY];
+        
+        fprintf('DONE [%.02f sec]...\n', toc(tt));
+    end
 end
 
 %
-Cntr = tshp;
+Cntr  = tshp;
+Znrms = contour2corestructure(tshp, LEN, STP); % Get skeleton of prediction
 
 fprintf('\n%s\nDone predicting image from %d iterations! [%.02f sec]\n%s\n', ...
     sprB, nItrs, toc(tCrv), sprB);
