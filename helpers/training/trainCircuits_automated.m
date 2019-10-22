@@ -40,7 +40,7 @@ imgsz   = size(X{1});
     X, 'UniformOutput', 0);
 
 % Extract contours for all images and remove all overlapping poings
-CJB = cellfun(@(x) extractContour(x, SEGMENTATION_SIZE, 'alt'), ...
+CJB = cellfun(@(x) extractContour(x, SEGMENTATION_SIZE, 'alt', 'alt'), ...
     BW, 'UniformOutput', 0);
 CNT = cellfun(@(x) unique(x.NormalizedOutline, 'rows', 'stable'), ...
     CJB, 'UniformOutput', 0);
@@ -58,8 +58,8 @@ for t = 1 : tot
     CRCS(t) = CircuitJB;
 end
 
-idxs_o = [cin zeros(length(cin), 1)];
-idxs_f = [cin ones(length(cin), 1)];
+idxs_o = [cin zeros(size(cin,1), 1)];
+idxs_f = [cin ones(size(cin,1), 1)];
 hidxs  = [idxs_o ; idxs_f];
 hyps   = getHypocotylObjects(hidxs, Ein, 'Hypocotyl');
 

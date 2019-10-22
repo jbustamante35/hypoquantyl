@@ -53,8 +53,9 @@ classdef ContourJB < handle
             [obj.AnchorPoint, obj.AnchorIndex] = ...
                 findAnchorPoint(obj, obj.InterpOutline, obj.AltInit);
             
-            obj.NormalizedOutline              = ...
+            obj.NormalizedOutline = ...
                 repositionPoints(obj, obj.InterpOutline, obj.AnchorIndex, init);
+            
         end
         
         function crds = Normal2Raw(obj)
@@ -189,12 +190,12 @@ classdef ContourJB < handle
             % defined as the lower-left coordinate of the image. This is the
             % standardaized starting location for training hypocotyl images. The
             % alg parameter should be set to 1 or true to use this.
-            %           
+            %
             
             if strcmpi(init , 'default')
                 %% Use CarrotSweeper's anchor point
-                low = min(crds(:,1));                
-                rng = round(crds(crds(:,1) == low, :), 4);                
+                low = min(crds(:,1));
+                rng = round(crds(crds(:,1) == low, :), 4);
                 
                 % Get median of column range
                 if mod(size(rng,1), 2)
@@ -218,19 +219,35 @@ classdef ContourJB < handle
                 
             else
                 %% Use HypoQuantyl's anchor point
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % NOTE [10.22.2019]
+                % I screwed up this method such that the starting coordinates
+                % are not at the bottom-leftmost coordinate of the contour
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Get the initial starting point for contours and shift indexing of coordinates
                 % for CircuitJB objects used for smy training set
+                %
                 
-                % Get subset of coordinates at lowest rows
-                [maxRowCrd , ~] = max(crds(:,2));
-                maxRowCrds      = crds((crds(:,2) == maxRowCrd), :);
+                %                 % Get subset of coordinates at lowest rows
+                %                 [maxRowCrd , ~] = max(crds(:,2));
+                %                 maxRowCrds      = crds((crds(:,2) == maxRowCrd), :);
+                %
+                %                 % Get left-most coordinate within subset of lowest row points
+                %                 [~ , maxRow_minCol_idx] = min(maxRowCrds(:,1));
+                %                 maxRow_minCol           = maxRowCrds(maxRow_minCol_idx,:);
+                %
+                %                 apt = maxRow_minCol;
+                %                 idx = find(ismember(crds, apt, 'rows'));
                 
-                % Get left-most coordinate within subset of lowest row points
-                [~ , maxRow_minCol_idx] = min(maxRowCrds(:,1));
-                maxRow_minCol           = maxRowCrds(maxRow_minCol_idx,:);
+                %% Revised version to get anchor point
+                LOWRANGE     = 1;
+                wid          = max(crds(:,2)) - LOWRANGE;
+                widRng       = crds(crds(:,2) >= wid,:);
+                [~ , lftIdx] = min(widRng(:,1));
                 
-                apt = maxRow_minCol;
-                idx = find(ismember(crds, apt, 'rows'));
+                %
+                apt = widRng(lftIdx,:);
+                idx = find(all(apt == crds, 2));
                 
             end
             
