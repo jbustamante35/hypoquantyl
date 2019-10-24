@@ -1,4 +1,4 @@
-function [targets, szY] = computeTargets(Y, Z, toShape)
+function [targets, szY] = computeTargets(Y, Z, toShape, par)
 %% computeTargets: compute vector displacements from tangent and frame bundles
 %
 %
@@ -15,17 +15,39 @@ function [targets, szY] = computeTargets(Y, Z, toShape)
 %
 
 %%
+if nargin < 4
+    par = false;
+end
+
 nCrvs   = size(Y,3);
 allCrvs = 1 : nCrvs;
-targets = zeros(size(Y));
-for tr = allCrvs
-    tmpAff          = tb2affine(Z(:,:,tr), [1 , 1], toShape);
-    targets(:,:,tr) = ...
-        applyAffineSequence(tmpAff, permute(Y(:,:,tr), [2 1]))';
+
+%%
+if par
+    %% Run with parallization
+    Y       = arrayfun(@(y) Y(:,:,y), allCrvs, 'UniformOutput', 0);
+    Z       = arrayfun(@(z) Z(:,:,z), allCrvs, 'UniformOutput', 0);
+    targets = cell(1, nCrvs);
+    parfor tr = allCrvs
+        tmpAff          = tb2affine(Z{tr}, [1 , 1], toShape);
+        targets{tr} = ...
+            applyAffineSequence(tmpAff, permute(Y{tr}, [2 1]))';
+    end
+    
+    targets = cat(3, targets{:});
+    
+else
+    %% Run with single-thread
+    targets = zeros(size(Y));
+    for tr = allCrvs
+        tmpAff          = tb2affine(Z(:,:,tr), [1 , 1], toShape);
+        targets(:,:,tr) = ...
+            applyAffineSequence(tmpAff, permute(Y(:,:,tr), [2 1]))';
+    end
 end
 
 %% Reshape to specific size
-if toShape    
+if toShape
     targets = permute(targets, [1 , 3 , 2]);
     szY     = size(targets);
     targets = reshape(targets, [prod(szY(1:2)) , prod(szY(3))]);
