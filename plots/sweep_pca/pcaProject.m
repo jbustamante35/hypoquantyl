@@ -1,4 +1,4 @@
-function S = pcaProject(vec, eigs, mns, req)
+function S = pcaProject(vec, eigs, mns, req, dims)
 %% pcaProject: project PCA data from scores to simulated data or vice versa
 % This function generates simulated data by the following computation:
 %   (X * Y') + Z
@@ -15,11 +15,20 @@ function S = pcaProject(vec, eigs, mns, req)
 %   eigs: [n x m] matrix representing eigenvectors
 %   mns:  [1 x n] means array to add back to original reference frame
 %   req: project to simulated data ('scr2sim') or to PC scores ('sim2score')
+%   dims: dimensions to compute on
 %
 % Output:
 %   S: [1 x n] array of simulated data or PC scores
 %
 
+%%
+if nargin < 5
+    dims = ':';
+end
+
+vec = vec(dims, :);
+
+%%
 scr2sim = 'scr2sim';
 sim2scr = 'sim2scr';
 switch req

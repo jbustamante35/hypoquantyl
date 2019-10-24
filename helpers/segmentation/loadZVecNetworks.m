@@ -1,5 +1,10 @@
-function [ptx, pty, pz, pp, Nz, Nt] = loadZVecNetworks(ROOTDIR, PCADIR, SIMDIR, TRNDIR)
+function [ptx, pty, pz, ptp, Nz, Nt] = loadZVecNetworks(ROOTDIR, PCADIR, SIMDIR, TRNDIR)
 %% loadZVecNetworks: load PCA datasets and neural net models for Z-Vectors
+%
+% Usage:
+%   [ptx, pty, pz, pp, Nz, Nt] = ...
+%           loadZVecNetworks(ROOTDIR, PCADIR, SIMDIR, TRNDIR)
+%
 % Input:
 %   DATADIR: root directory of datasets
 %   MFILES: directory with .mat files
@@ -30,25 +35,29 @@ fprintf('\n\n%s\nLoading datasets and neural networks from %s:\n', ...
     sprt, ROOTDIR);
 
 %% PCA data for Z-Vectors
-PCA  = 'PCA_custom';
-pcaz = '190726_pcaResults_z210Hypocotyls_Reduced_10PCs.mat';
+PCA  = 'mypca';
+pcaz = 'pcaz.mat';
 pz   = loadFnc(ROOTDIR, PCADIR, pcaz, PCA);
-pz   = pz.PCA_custom;
+pz   = pz.(PCA);
 
 %% Neural Net model for predicting Z-Vectors
 DOUT   = 'OUT';
-cnnout = 'zvectors/190727_ZScoreCNN_210Contours_z10PCs_x3PCs_y3PCs.mat';
-co     = loadFnc(ROOTDIR, SIMDIR, cnnout, DOUT);
-ZNN    = co.OUT.DataOut;
+znnout = 'zvectors/znnout.mat';
+co     = loadFnc(ROOTDIR, SIMDIR, znnout, DOUT);
+ZNN    = co.OUT;
 
 % Extract the networks
-Nz = arrayfun(@(x) x.NET, ZNN, 'UniformOutput', 0);
-s  = arrayfun(@(x) sprintf('N%d', x), 1:numel(Nz), 'UniformOutput', 0);
-Nz = cell2struct(Nz, s, 2);
+if isstruct(ZNN.Net)
+    Nz = ZNN.Net;
+else
+    Nz = arrayfun(@(x) x.Net, ZNN, 'UniformOutput', 0);
+    s  = arrayfun(@(x) sprintf('N%d', x), 1:numel(Nz), 'UniformOutput', 0);
+    Nz = cell2struct(Nz, s, 2);
+end
 
 %% Neural Net model for predicting displacement vectors
 TOUT   = 'TN';
-trnnet = '191017_HQTrainedData_20Iterations_300Curves.mat';
+trnnet = 'trnnet.mat';
 TN     = loadFnc(ROOTDIR, TRNDIR, trnnet, TOUT);
 
 % Extract the networks
@@ -57,16 +66,16 @@ s   = arrayfun(@(x) sprintf('N%d', x), 1:numel(Nt), 'UniformOutput', 0);
 Nt = cell2struct(Nt, s, 2);
 
 %% Eigenvectors and Means for image patches
-pp.EigVectors = arrayfun(@(x) x.EigVectors, TN.TN, 'UniformOutput', 0);
-pp.MeanVals   = arrayfun(@(x) x.Means, TN.TN, 'UniformOutput', 0);
+ptp.EigVectors = arrayfun(@(x) x.EigVectors, TN.TN, 'UniformOutput', 0);
+ptp.MeanVals   = arrayfun(@(x) x.Means, TN.TN, 'UniformOutput', 0);
 
 %% PCA data for folding predictions
-pcatx = '191017_pcaResults_FoldPredictionsX_10PCs';
-pcaty = '191017_pcaResults_FoldPredictionsY_10PCs';
+pcatx = 'pcatx.mat';
+pcaty = 'pcaty.mat';
 ptx   = loadFnc(ROOTDIR, PCADIR, pcatx, PCA);
 pty   = loadFnc(ROOTDIR, PCADIR, pcaty, PCA);
-ptx   = ptx.PCA_custom;
-pty   = pty.PCA_custom;
+ptx   = ptx.(PCA);
+pty   = pty.(PCA);
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
 
@@ -79,3 +88,4 @@ fprintf('DONE! [%.02f sec]\n', toc(t));
     end
 
 end
+

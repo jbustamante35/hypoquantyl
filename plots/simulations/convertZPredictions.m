@@ -44,7 +44,10 @@ end
 %% Extract information about dataset
 t = tic;
 
-NUMCOLS = 6;
+if 
+NUMCOLS = 6; % [Mx My Tx Ty Nx Ny]
+
+
 ttlSegs = size(predZ, 2) / NUMCOLS;
 numCrvs = size(predZ, 1);
 sIdxs   = 1 : ttlSegs;

@@ -1,8 +1,11 @@
 function [px, py, pz, pp, Nz, Ns] = loadNetworkDatasets(ROOTDIR, PCADIR, SIMDIR)
 %% loadNetworkDatasets: load given PCA datasets and neural net models
+%
+% Usage:
+%   [px, py, pz, pp, Nz, Ns] = loadNetworkDatasets(ROOTDIR, PCADIR, SIMDIR)
+%
 % Input:
-%   DATADIR: root directory of datasets
-%   MFILES: directory with .mat files
+%   ROOTDIR: root directory of datasets and .mat files
 %   PCADIR: directory with PCA datasets
 %   SIMDIR: directory with neural net data
 %
@@ -26,38 +29,43 @@ sprt = repmat('-', 1, 80);
 fprintf('\n\n%s\nLoading datasets and neural networks from %s:\n', ...
     sprt, ROOTDIR);
 
-% Load PCA data [trim down and move into repository]
-PCA  = 'PCA_custom';
-pcax = '190709_pcaResults_x210Hypocotyls_3PCs.mat';
-pcay = '190709_pcaResults_y210Hypocotyls_3PCs.mat';
-pcaz = '190726_pcaResults_z210Hypocotyls_Reduced_10PCs.mat';
-pcap = '190913_pcaResults_zp43890ZPatches_5PCs.mat';
+% Load latest PCA data [trim down and move into repository]
+% PCA  = 'PCA_custom';
+PCA  = 'mypca';
+pcax = 'pcax.mat';
+pcay = 'pcay.mat';
+pcaz = 'pcaz.mat';
+pcap = 'pcap.mat';
 
 px = loadFnc(ROOTDIR, PCADIR, pcax, PCA);
 py = loadFnc(ROOTDIR, PCADIR, pcay, PCA);
 pz = loadFnc(ROOTDIR, PCADIR, pcaz, PCA);
 pp = loadFnc(ROOTDIR, PCADIR, pcap, PCA);
 
-px = px.PCA_custom;
-py = py.PCA_custom;
-pz = pz.PCA_custom;
-pp = pp.PCA_custom;
+px = px.(PCA);
+py = py.(PCA);
+pz = pz.(PCA);
+pp = pp.(PCA);
 
 % Load latest network models [trim down and move into repository]
 DOUT   = 'OUT';
-cnnout = 'zvectors/190727_ZScoreCNN_210Contours_z10PCs_x3PCs_y3PCs.mat';
-snnout = 'svectors/190916_SScoreNN_43890Segment_s6PCs.mat';
+znnout = 'zvectors/znnout.mat';
+snnout = 'svectors/snnout.mat';
 
-co = loadFnc(ROOTDIR, SIMDIR, cnnout, DOUT);
+co = loadFnc(ROOTDIR, SIMDIR, znnout, DOUT);
 so = loadFnc(ROOTDIR, SIMDIR, snnout, DOUT);
 
-ZNN = co.OUT.DataOut;
+ZNN = co.OUT;
 SNN = so.OUT.DataOut;
 
 % Extract the networks
-Nz = arrayfun(@(x) x.NET, ZNN, 'UniformOutput', 0);
-s  = arrayfun(@(x) sprintf('N%d', x), 1:numel(Nz), 'UniformOutput', 0);
-Nz = cell2struct(Nz, s, 2);
+if isstruct(ZNN.Net)
+    Nz = ZNN.Net;
+else
+    Nz = arrayfun(@(x) x.Net, ZNN, 'UniformOutput', 0);
+    s  = arrayfun(@(x) sprintf('N%d', x), 1:numel(Nz), 'UniformOutput', 0);
+    Nz = cell2struct(Nz, s, 2);
+end
 
 Ns = arrayfun(@(x) x.Net, SNN, 'UniformOutput', 0);
 s  = arrayfun(@(x) sprintf('N%d', x), 1:numel(Ns), 'UniformOutput', 0);

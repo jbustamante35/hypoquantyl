@@ -1,4 +1,4 @@
-function [IN, OUT] = cnn_zvector(IMGS, SCRS, sav, par)
+function [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, par)
 %% cnn_zvector: CNN to predict Z-Vector slices given grayscale images
 %
 %
@@ -21,26 +21,61 @@ function [IN, OUT] = cnn_zvector(IMGS, SCRS, sav, par)
 %
 
 %% Extract some info about the dataset
+% Principal Components [figure out how to remove this]
+PCX = length(px.EigValues);
+PCY = length(py.EigValues);
+PCZ = length(pz.EigValues);
+PCR = 10;
+
 % Image input scale
 % SCALE = 1;
-nCrvs   = size(SCRS,1);
-allCrvs = 1 : nCrvs;
-pcs     = size(SCRS,2);
+% nCrvs = numel(CRVS);
+nCrvs = length(pz.PCAscores);
+pcs   = size(SCRS,2);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Split into training, validation, and testing sets
 trnPct                   = 0.8;
 valPct                   = 1 - trnPct;
 tstPct                   = 0;
-[trnIdx, valIdx, tstIdx] = splitDataset(allCrvs, trnPct, valPct, tstPct);
+[trnIdx, valIdx, tstIdx] = ...
+    divideblock(Shuffle(1:nCrvs), trnPct, valPct, tstPct);
+
+% Sort numerically
+trnIdx = sort(trnIdx);
+valIdx = sort(valIdx);
+tstIdx = sort(tstIdx);
 
 % Do the split
 X = IMGS(:,:,:,trnIdx); % For CNN
 Y = SCRS(trnIdx,:);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Start training PLS Regression [midpoint PLSR method]
+% Skip if skp set to true
+if ~skp
+    % Prep image data
+    PLSRX = double(reshape(imgs, [prod(imSize(1:2)) imSize(3)])'); % For PLSR
+    plsrX = PLSRX(trnIdx, :);
+    
+    % PLSR on midpoint coordinates and cropped images
+    rttl = sprintf('r%dHypocotylsTrained_%dHypocotylsTotal', ...
+        length(trnIdx), nCrvs);
+    pr   = plsrAnalysis(plsrX, Y, PCR, sav, rttl, 0);
+    
+    % Project beta onto X values to make predictions of midpoint locations
+    beta       = pr.Beta;
+    ypre       = [ones(size(PLSRX,1) , 1) PLSRX] * beta;
+    ypre       = bsxfun(@plus, (ypre * pz.EigVectors'), pz.MeanVals);
+    predZ_plsr = reshape(ypre', size(pz.InputData));
+else
+    predZ_plsr = [];
+    pr         = [];
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Start training Convolution Neural Net [midpoint CNN method]
-znet = cell(1, size(Y,2)); % Iteratively predicts all PCs
+net = cell(1, size(Y,2)); % Iteratively predicts all PCs
 
 % Determine parallelization
 if par
@@ -117,38 +152,41 @@ for pc = 1 : pcs
     %     'LearnRateDropPeriod',   20, ...
     
     % Run CNN
-    znet{pc} = trainNetwork(cnnX, cnnY, layers, options);
+    net{pc} = trainNetwork(cnnX, cnnY, layers, options);
 end
 
 % Store Networks in a structure
-netStr = arrayfun(@(x) sprintf('N%d', x), 1 : pcs, 'UniformOutput', 0);
-znet   = cell2struct(znet, netStr, 2);
+netStr = arrayfun(@(x) sprintf('Net%d', x), 1 : pcs, 'UniformOutput', 0);
+net    = cell2struct(net, netStr, 2);
 
 %% Predictions per PC
 ypre = zeros(size(SCRS));
 for pc = 1 : pcs
-    ypre(:,pc) = znet.(netStr{pc}).predict(IMGS);
+    ypre(:,pc) = net.(netStr{pc}).predict(IMGS);
 end
 
 %
-% predZ_cnn = bsxfun(@plus, (ypre * pz.EigVectors'), pz.MeanVals);
+predZ_cnn = bsxfun(@plus, (ypre * pz.EigVectors'), pz.MeanVals);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structure
-% Input (inputs)
-Din = struct('IMGS', IMGS, 'ZSCRS', SCRS);
+% Input (raw and PCA data) [figure out how to remove this]
+Din  = struct('Xcrd', px.InputData, 'Ycrd', py.InputData, 'Zvec', pz.InputData);
 
 % Output (predictions)
-Splt = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'tstIdx', tstIdx);
+Trng = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'tstIdx', tstIdx, ...
+    'IMGS', IMGS, 'MIDS', SCRS);
+Dout = struct('plsrPredictions', predZ_plsr, 'cnnPredictions', predZ_cnn, ...
+    'PLSR', pr, 'Net', net);
 
 % Full structure
 IN  = struct('DataIn', Din);
-OUT = struct('SplitSets', Splt, 'Predictions', ypre, 'Net', znet);
+OUT = struct('TrainingProcessed', Trng, 'DataOut', Dout);
 
 % Save results in structure
 if sav
-    pnm = sprintf('%s_ZScoreCNN_%dContours_z%dPCs', ...
-        tdate('s'), nCrvs, pcs);
+    pnm = sprintf('%s_PredictionsCNN_%dContours_m%dPCs_x%dPCs_y%dPCs', ...
+        tdate('s'), nCrvs, PCZ, PCX, PCY);
     save(pnm, '-v7.3', 'IN', 'OUT');
     
 end

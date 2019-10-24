@@ -17,6 +17,11 @@ function [V, T] = variance_explained(E, P)
 %
 
 %% Cumulative sum of each variance over the sum of all the variances 
+% Default to 100% variance explained
+if nargin < 2
+    P = 1;
+end
+
 V = cumsum(diag(E) / sum(diag(E)));
 T = numel(find(V <= P)) + 1;
 
