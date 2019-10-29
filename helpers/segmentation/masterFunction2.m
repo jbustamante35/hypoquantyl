@@ -50,12 +50,13 @@ if par
     if ~firstItr
         % Avoid overhead and index targetsPre via cell array
         tpre = arrayfun(@(x) targetsPre(:,1:2,x), ...
-                1:numel(trnIdx), 'UniformOutput', 0);
+                allCrvs, 'UniformOutput', 0);
     else
         tpre = cell(1, nCrvs);
     end
     
-    parfor cIdx = allCrvs
+    [X, Z, Y] = deal(cell(1, nCrvs));
+    parfor cIdx = 1 : nCrvs
         img  = IMG{cIdx};
         cntr = CNTR{cIdx};
         
@@ -69,7 +70,7 @@ if par
         end
         
         % Track progress
-        fprintf('|%d|', cIdx);
+        fprintf('...%d', cIdx);
         
     end
 else

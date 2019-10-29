@@ -26,6 +26,8 @@ if nargin < 5
 end
 
 % Use with parallelization
+% [NOTE 10.24.2019]
+% Parallelization only works sometimes, all of the time
 if par
     pll = 'yes';
 else
@@ -33,8 +35,7 @@ else
 end
 
 %% Fold Patches to PC scores
-% pp    = myPCA(inputs, ppc);
-pp    = PcaJB(inputs, ppc);
+pp    = myPCA(inputs, ppc);
 scrs  = pp.PCAScores;
 evecs = pp.EigVecs;
 mns   = pp.MeanVals;

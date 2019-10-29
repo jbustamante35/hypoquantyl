@@ -73,7 +73,7 @@ Ns = cell2struct(Ns, s, 2);
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
 
-% Load 'em up!
+%% Load 'em up!
     function y = loadFnc(rootdir, datadir, fin, vin)
         %% loadFunction: load dataset and variables with output message
         str = sprintf('%s/%s/%s', rootdir, datadir, fin);

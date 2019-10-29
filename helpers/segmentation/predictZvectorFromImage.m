@@ -30,7 +30,7 @@ ttlSegs = size(pz.InputData,2) / 4;
 Zscrs = struct2array(structfun(@(x) x.predict(img), Nz, 'UniformOutput', 0));
 
 % Unfold and Reshape Z-Vector from prepped to raw form and add normal vectors
-Zprep = pcaProject(Zscrs, pz.EigVectors, pz.MeanVals, 'scr2sim');
+Zprep = pcaProject(Zscrs, pz.EigVecs, pz.MeanVals, 'scr2sim');
 Zrevs = zVectorConversion(Zprep, ttlSegs, numCrvs, 'rev');
 
 % Force Tangent vector to be unit length [10.01.2019]

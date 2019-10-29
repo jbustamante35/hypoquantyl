@@ -36,7 +36,7 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%
+%% Run the pipeline! 
 Znrms = zScrsFromImage(img, Nz, pz);
 zslcs = generateZSlices(img, Znrms, pp);
 Simg  = sScrsFromSlices(zslcs, Ns, px, py);
@@ -61,6 +61,7 @@ function Znrms = zScrsFromImage(img, Nz, pz)
 %   Znrms: predicted Z-Vector slices after unfolding and reshaping
 %
 
+%%
 t       = tic;
 numCrvs = size(pz.InputData,1);
 ttlSegs = size(pz.InputData,2) / 4;
@@ -105,6 +106,7 @@ function Zslcs = generateZSlices(img, Znrms, pp)
 %   Zslcs: vectorized Z-Vector slices + Z-Patch PC score
 %
 
+%%
 t       = tic;
 pcp     = size(pp.EigVectors,2);
 ttlSegs = size(Znrms,1);
@@ -149,6 +151,7 @@ function Simg = sScrsFromSlices(Zslcs, Ns, px, py)
 %   Simg: cell array of segments in the image reference frame
 %
 
+%%
 t       = tic;
 pcx     = size(px.EigVectors,2);
 pcy     = size(py.EigVectors,2);

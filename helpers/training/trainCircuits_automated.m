@@ -31,7 +31,8 @@ G  = Ein.getGenotype(cin(:,1));
 S  = arrayfun(@(x) G(x).getSeedling(cin(x,2)), 1:numel(G), 'UniformOutput', 0);
 H  = cellfun(@(s) s.MyHypocotyl, S, 'UniformOutput', 0);
 I  = arrayfun(@(x) H{x}.getImage(cin(x,3)),  1:numel(H), 'UniformOutput', 0);
-F  = arrayfun(@(x) H{x}.FlipMe(cin(x,3), 0), 1:numel(H), 'UniformOutput', 0);
+F  = arrayfun(@(x) H{x}.FlipMe(cin(x,3), 'gray', 0), ...
+    1 : numel(H), 'UniformOutput', 0);
 X  = [I , F];
 
 % Binarize images

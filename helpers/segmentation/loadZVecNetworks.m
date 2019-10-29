@@ -66,9 +66,14 @@ s   = arrayfun(@(x) sprintf('N%d', x), 1:numel(Nt), 'UniformOutput', 0);
 Nt = cell2struct(Nt, s, 2);
 
 %% Eigenvectors and Means for image patches
-ptp.EigVectors = arrayfun(@(x) x.EigVectors, TN.TN, 'UniformOutput', 0);
-ptp.MeanVals   = arrayfun(@(x) x.Means, TN.TN, 'UniformOutput', 0);
-
+try
+    ptp.EigVecs  = arrayfun(@(x) x.EigVecs, TN.TN, 'UniformOutput', 0);
+    ptp.MeanVals = arrayfun(@(x) x.Means, TN.TN, 'UniformOutput', 0);
+catch
+    ptp.EigVecs  = arrayfun(@(x) x.EigVectors, TN.TN, 'UniformOutput', 0);
+    ptp.MeanVals = arrayfun(@(x) x.Means, TN.TN, 'UniformOutput', 0);
+end
+    
 %% PCA data for folding predictions
 pcatx = 'pcatx.mat';
 pcaty = 'pcaty.mat';

@@ -36,7 +36,7 @@ switch mth
         
     case 2
         % Traditional method that uses stores data into built-in structure
-        mypca = myPCA(rawD, numC);
+        mypca = myPCA(rawD, numC, 'old');
         fname = sprintf('%s_pcaResults_%s_%dPCs', tdate, dName, numC);
         
     otherwise

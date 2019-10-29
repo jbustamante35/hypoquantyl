@@ -84,7 +84,13 @@ function [Cntr, Znrms, Simg] = runMethod2(imgs, par, ptx, pty, pz, ptp, Nz, Nt, 
 %% runMethod2: predict Z-Vector then recursively predict displacement vector
 %
 %
+% Usage:
+%   [Cntr, Znrms, Simg] = runMethod2(imgs, par, ptx, pty, pz, ptp, Nz, Nt, z)
 %
+% Input:
+%
+%
+% Output:
 %
 %
 
@@ -196,7 +202,7 @@ function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
 % Predict S-Vector scores from Z-Vector slices
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, Nz, Ns, px, py, pz, pp)
+%   [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -213,7 +219,6 @@ function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
 %   Znrms: Z-Vector predicted from the image
 %   Cntr: the continous contour generated from the segments [not implemented]
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Prediction pipeline
 tAll = tic;
