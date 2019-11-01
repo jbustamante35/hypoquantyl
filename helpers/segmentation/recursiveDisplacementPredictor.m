@@ -45,10 +45,10 @@ sprB = repmat('-', 1, 80);
 % Constants
 LEN             = 25;
 STP             = 1;
-VIS             = 0;
+VIS             = false;
 dom2Omit        = 1;
-foldPredictions = 0;
-lastFrmFold     = 1;
+foldPredictions = false;
+lastFrmFold     = true;
 npc             = size(ptx.EigVecs,2);
 nItrs           = numel(ptp.EigVecs);
 allItrs         = 1 : nItrs;
@@ -100,7 +100,7 @@ for itr = allItrs
     %% Map and Reshape predictions to image frame
     t = tic;
     fprintf('Reshaping and Mapping back to image frame...');
-    tshp = computeTargets(ypre, z, 0);
+    tshp = computeTargets(ypre, z, false);
     fprintf('DONE [%.02f sec]\n', toc(t));
     
     if foldPredictions

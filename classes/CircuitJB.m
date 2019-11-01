@@ -227,6 +227,14 @@ classdef CircuitJB < handle
             
             obj.setParent(hyp);
             
+            if obj.isFlipped
+                flpMe = 'flp';
+            else
+                flpMe = 'org';
+            end
+            
+            hyp.setCircuit(obj.getFrame, obj, flpMe);
+            
         end
         
         function obj = NormalizeOutline(obj)
