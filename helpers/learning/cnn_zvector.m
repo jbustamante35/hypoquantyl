@@ -135,14 +135,11 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structure
-% Input (inputs)
-Din = struct('IMGS', IMGS, 'ZSCRS', SCRS);
-
-% Output (predictions)
+% Split Set Indices
 Splt = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'tstIdx', tstIdx);
 
 % Full structure
-IN  = struct('DataIn', Din);
+IN  = struct('IMGS', IMGS, 'ZSCRS', SCRS);
 OUT = struct('SplitSets', Splt, 'Predictions', ypre, 'Net', znet);
 
 % Save results in structure

@@ -46,11 +46,11 @@ end
 [X , Z] = deal(cell(1, nCrvs));
 
 if par
-    %% Run with parallelization    
+    %% Run with parallelization
     if ~firstItr
         % Avoid overhead and index targetsPre via cell array
         tpre = arrayfun(@(x) targetsPre(:,1:2,x), ...
-                allCrvs, 'UniformOutput', 0);
+            allCrvs, 'UniformOutput', 0);
     else
         tpre = cell(1, nCrvs);
     end
@@ -64,7 +64,7 @@ if par
         if firstItr
             [X{cIdx} , Z{cIdx} , Y{cIdx}] = runMasterFunction(img, cntr, ...
                 scls, dom, domSize);
-        else            
+        else
             [X{cIdx} , Z{cIdx} , Y{cIdx}] = runMasterFunction(img, cntr, ...
                 scls, dom, domSize, tpre{cIdx});
         end
