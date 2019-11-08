@@ -2,7 +2,8 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 %% hypocotylPredictor: the two-step neural net to predict hypocotyl contours
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z)
+%   [Cntr, Znrms, Simg] = ...
+%       hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -30,11 +31,11 @@ try
                 MFILES  = 'development/HypoQuantyl/datasets/matfiles';
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
-                SIMDIR  = 'simulations';
+                NETOUT  = 'netout';
                 
                 %
                 [px, py, pz, pp, Nz, Ns] = ...
-                    loadNetworkDatasets(ROOTDIR, PCADIR, SIMDIR);
+                    loadNetworkDatasets(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
@@ -55,12 +56,11 @@ try
                 MFILES  = 'development/HypoQuantyl/datasets/matfiles';
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
-                SIMDIR  = 'simulations';
-                TRNDIR  = 'training';
+                NETOUT  = 'netout';
                 
                 %
                 [px, py, pz, pp, Nz, Ns] = ...
-                    loadZVecNetworks(ROOTDIR, PCADIR, SIMDIR, TRNDIR);
+                    loadZVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
@@ -147,7 +147,7 @@ if par
         
     end
     
-    % Run through with parallelization using half cores
+    %% Run through with parallelization using half cores
     parfor cIdx = allCrvs
         t = tic;
         fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);

@@ -3,7 +3,7 @@ function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp)
 % Description
 %
 % Usage:
-%    [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, vis)
+%    [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp)
 %
 % Input:
 %   CRVS array of Curve objects to extract data from

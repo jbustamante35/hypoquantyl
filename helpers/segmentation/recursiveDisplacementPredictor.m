@@ -36,7 +36,6 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, ptx, pty, pz
 %   Simg: placeholder debugging variable
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %% Constants and Parameters
 % Message string separators
 sprA = repmat('=', 1, 80);
@@ -65,7 +64,7 @@ t = tic;
 if isempty(z)
     tt = tic;
     fprintf('Predicting Tangent Bundle from Image...');
-    z  = predictZvectorFromImage(imgs, Nz, pz);
+    z  = predictZvectorFromImage(imgs, Nz, pz, 0);
     fprintf('DONE [%.02f sec]\n', toc(tt));
 end
 
