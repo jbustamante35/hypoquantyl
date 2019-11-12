@@ -3,7 +3,8 @@ function fig = plotSPredictions(idx, img, trnIdx, Sin, Sout, ttlSegs, numCrvs, r
 %
 %
 % Usage:
-%   fig = plotSPredictions(idx, img, trnIdx, Sin, Sout, ttlSegs, numCrvs, req, sav, f)
+%   fig = plotSPredictions( ...
+%       idx, img, trnIdx, Sin, Sout, ttlSegs, numCrvs, req, sav, f)
 %
 % Input:
 %   idx: index in crvs of hypocotyl to show prediction

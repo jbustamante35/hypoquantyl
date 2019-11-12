@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z)
+function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseed)
 %% hypocotylPredictor: the two-step neural net to predict hypocotyl contours
 %
 % Usage:
@@ -8,12 +8,14 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
 %   par: boolean to run single thread (0) or with parallelization (1)
+%   mth: predict with S-Vectors ('snn') or D-Vectors ('dnn')
 %   Nz: neural net model for predicting Z-Vector PC scores from images
 %   Ns: neural net model for predicting S-Vector PC scores from Z-Vector slices
 %   px: X-Coordinate eigenvectors and means
 %   py: Y-Coordinate eigenvectors and means
 %   pz: Z-Vector eigenvectors and means
 %   pp: Z-Patch eigenvectors and means
+%   z: seed prediction with ground-truth Z-Vector (for D-Vector method)
 %
 % Output:
 %   Cntr: the continous contour generated from the segments [not implemented]
@@ -23,7 +25,7 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 %%
 try
     switch mth
-        case 1
+        case 'svec'
             %% Old method that predicts S-Vectors from predicted Z-Vectors
             if nargin < 4
                 % Load required datasets unless given
@@ -42,7 +44,7 @@ try
             %
             [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns);
             
-        case 2
+        case 'dvec'
             %% New method to recursively predict vector displacements from Z-Vector
             % You can replace method1 parameters with method2 parameters:
             %   Nt  --> Ns [NN for D-Vectors --> NN for S-Vectors]
@@ -65,10 +67,11 @@ try
             end
             
             %
-            [Cntr, Znrms, Simg] = runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, z);
+            [Cntr, Znrms, Simg] = ...
+                runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, zseed);
             
         otherwise
-            fprintf('Method must be [1|2]\n');
+            fprintf('Method must be [''svec''|''dvec'']\n');
             [Simg, Znrms, Cntr] = deal([]);
     end
     
@@ -148,6 +151,13 @@ if par
     end
     
     %% Run through with parallelization using half cores
+	% Convert PCA object to struct because parfor loops do weird and unexpected 
+    % nonsense that I don't understand
+    neigs = 0; % input of 0 defaults to all eigenvectors
+    ptx   = struct('InputData', ptx.InputData, 'EigVecs', ptx.EigVecs(neigs), 'MeanVals', ptx.MeanVals);
+    pty   = struct('InputData', pty.InputData, 'EigVecs', pty.EigVecs(neigs), 'MeanVals', pty.MeanVals);
+    pz    = struct('InputData', pz.InputData,  'EigVecs', pz.EigVecs,         'MeanVals', pz.MeanVals);
+
     parfor cIdx = allCrvs
         t = tic;
         fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);

@@ -160,6 +160,9 @@ end
 Cntr  = tshp;
 Znrms = contour2corestructure(Cntr, LEN, STP); % Get skeleton of prediction
 
+% Close the contour
+Cntr = [Cntr ; Cntr(1,:)];
+
 fprintf('\n%s\nDone predicting image from %d iterations! [%.02f sec]\n%s\n', ...
     sprB, nItrs, toc(tCrv), sprB);
 
