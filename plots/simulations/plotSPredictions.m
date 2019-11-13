@@ -31,7 +31,7 @@ fig = figure(f);
 cla;clf;
 
 % Figure data
-row  = 2;
+row  = 1;
 col  = 2;
 pIdx = 1;
 
@@ -66,18 +66,18 @@ tng = 3:4;
 nrm = 5:6;
 
 % Store M-T-N in separate arrays
-revI = Sin.ZVectors(sIdxs,:);
-Min  = revI(:,mid);
-Tin  = arrayfun(@(x) [revI(x,mid) ; revI(x,tng)], allSegs, 'UniformOutput', 0);
-Nin  = arrayfun(@(x) [revI(x,mid) ; revI(x,nrm)], allSegs, 'UniformOutput', 0);
-Hin  = Sin.HalfData(sIdxs,:);
+zI  = Sin.ZVectors(sIdxs,:);
+Min = zI(:,mid);
+Tin = arrayfun(@(x) [zI(x,mid) ; zI(x,tng)], allSegs, 'UniformOutput', 0);
+Nin = arrayfun(@(x) [zI(x,mid) ; zI(x,nrm)], allSegs, 'UniformOutput', 0);
+Hin = Sin.Contour(sIdxs,:);
 
 %
-revO = Sout.ZVectors(sIdxs,:);
-Mout = revO(:,mid);
-Tout = arrayfun(@(x) [revO(x,mid) ; revO(x,tng)], allSegs, 'UniformOutput', 0);
-Nout = arrayfun(@(x) [revO(x,mid) ; revO(x,nrm)], allSegs, 'UniformOutput', 0);
-Hout = Sout.HalfData(sIdxs,:);
+zO   = Sout.ZVectors(sIdxs,:);
+Mout = zO(:,mid);
+Tout = arrayfun(@(x) [zO(x,mid) ; zO(x,tng)], allSegs, 'UniformOutput', 0);
+Nout = arrayfun(@(x) [zO(x,mid) ; zO(x,nrm)], allSegs, 'UniformOutput', 0);
+Hout = Sout.Contour(sIdxs,:);
 
 msg = sprintf('Extracted information: Contour %d of %d [%s] [%d segments]', ...
     idx, numCrvs, tSet, ttlSegs);
@@ -85,53 +85,47 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Show ground truth Z-Vectors and Contours
-t = tic;
-
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(img);
-colormap gray;
-axis image;
-hold on;
-
-plt(Min, 'g.', 3);
-cellfun(@(x) plt(x, 'r-', 1), Tin, 'UniformOutput', 0);
-cellfun(@(x) plt(x, 'b-', 1), Nin, 'UniformOutput', 0);
-plt(Hin, 'g--', 1);
-ttl = sprintf('Contour from Z-Vectors\nTruth\nContour %d [%s]', ...
-    idx, tSet);
-title(ttl);
-
-msg = sprintf('Plotting Ground Truth skeleton and contour');
-fprintf('%s...[%.02f sec]\n', msg, toc(t));
+% t = tic;
+% 
+% subplot(row , col , pIdx); pIdx = pIdx + 1;
+% myimagesc(img);
+% hold on;
+% 
+% plt(Min, 'g.', 3);
+% cellfun(@(x) plt(x, 'r-', 1), Tin, 'UniformOutput', 0);
+% cellfun(@(x) plt(x, 'b-', 1), Nin, 'UniformOutput', 0);
+% plt(Hin, 'g--', 1);
+% ttl = sprintf('Contour from Z-Vectors\nTruth\nContour %d [%s]', ...
+%     idx, tSet);
+% title(ttl);
+% 
+% msg = sprintf('Plotting Ground Truth skeleton and contour');
+% fprintf('%s...[%.02f sec]\n', msg, toc(t));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Show predicted Z-Vectors and Contours
-t = tic;
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(img);
-colormap gray;
-axis image;
-hold on;
-
-plt(Mout, 'g.', 3);
-cellfun(@(x) plt(x, 'r-', 1), Tout, 'UniformOutput', 0);
-cellfun(@(x) plt(x, 'b-', 1), Nout, 'UniformOutput', 0);
-plt(Hout, 'g--', 1);
-ttl = sprintf('Contour from Z-Vectors\nPredicted\nContour %d [%s]', ...
-    idx, tSet);
-title(ttl);
-
-msg = sprintf('Plotting predicted skeleton and contour');
-fprintf('%s...[%.02f sec]\n', msg, toc(t));
+% t = tic;
+% subplot(row , col , pIdx); pIdx = pIdx + 1;
+% myimagesc(img);
+% hold on;
+% 
+% plt(Mout, 'g.', 3);
+% cellfun(@(x) plt(x, 'r-', 1), Tout, 'UniformOutput', 0);
+% cellfun(@(x) plt(x, 'b-', 1), Nout, 'UniformOutput', 0);
+% plt(Hout, 'g--', 1);
+% ttl = sprintf('Contour from Z-Vectors\nPredicted\nContour %d [%s]', ...
+%     idx, tSet);
+% title(ttl);
+% 
+% msg = sprintf('Plotting predicted skeleton and contour');
+% fprintf('%s...[%.02f sec]\n', msg, toc(t));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Overlay Ground Truth Vs Predicted Z-Vector
 t = tic;
 
 subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(img);
-colormap gray;
-axis image;
+myimagesc(img);
 hold on;
 
 plt(Min, 'go', 2);
@@ -143,7 +137,7 @@ cellfun(@(x) plt(x, 'y-', 1), Tout, 'UniformOutput', 0);
 cellfun(@(x) plt(x, 'y-', 1), Nout, 'UniformOutput', 0);
 ttl = sprintf('Z-Vectors only\nTruth Vs. Predicted\nContour %d [%s]', ...
     idx, tSet);
-title(ttl);
+title(ttl, 'FontSize', 8);
 
 msg = sprintf('Plotting ground truth vs predicted overlay [skeletons]');
 fprintf('%s...[%.02f sec]\n', msg, toc(t));
@@ -152,17 +146,15 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 %% Overlay Ground Truth Vs Predicted Contour
 t = tic;
 
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(img);
-colormap gray;
-axis image;
+subplot(row , col , pIdx);
+myimagesc(img);
 hold on;
 
-plt(Hin, 'g--', 1);
-plt(Hout, 'y-', 1);
+plt(Hin, 'g--', 2);
+plt(Hout, 'y-', 2);
 ttl = sprintf('Contour only\nTruth Vs. Predicted\nContour %d [%s]', ...
     idx, tSet);
-title(ttl);
+title(ttl, 'FontSize', 8);
 
 msg = sprintf('Plotting ground truth vs predicted overlay [contour]');
 fprintf('%s...[%.02f sec]\n', msg, toc(t));

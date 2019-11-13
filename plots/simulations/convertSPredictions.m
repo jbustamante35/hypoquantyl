@@ -56,7 +56,8 @@ sIdxs   = 1 : ttlSegs;
 cIdxs   = 1 : numCrvs;
 allSegs = 1 : (ttlSegs * numCrvs);
 lngSegs = size(px.InputData, 2);
-halfIdx = ceil(lngSegs / 2);
+% cntrIdx = ceil(lngSegs / 2);
+cntrIdx = 1; % Get just the first point of each predicted segment
 
 msg = sprintf('Extracting information from %s dataset', req);
 fprintf('%s...[%.02f sec]\n', msg, toc(t));
@@ -116,7 +117,7 @@ cnvS = arrayfun(@(x) reverseMidpointNorm(nrmS{x}, Pm{x}) + U(x,:), ...
     allSegs, 'UniformOutput', 0);
 
 % Get Half-Indices for each segment and fold them using PCA
-midS = cellfun(@(x) x(halfIdx,:), cnvS, 'UniformOutput', 0);
+midS = cellfun(@(x) x(cntrIdx,:), cnvS, 'UniformOutput', 0);
 
 if fldPreds
     %% Smooth predicted S-Vector using PCA 
@@ -124,14 +125,14 @@ if fldPreds
     fprintf('Smoothing %d predictions with %d PCs...', ...
         numel(midS), NPC);
     
-    s = cat(1, midS{:});
+    rawS = cat(1, midS{:});
     
     % Run PCA on X-Coordinates	
-    sx  = reshape(s(:,1), [ttlSegs numCrvs])';
+    sx  = reshape(rawS(:,1), [ttlSegs numCrvs])';
     psx = myPCA(sx, NPC);
     
     % Run PCA on Y-Coordinates
-    sy  = reshape(s(:,2), [ttlSegs numCrvs])';
+    sy  = reshape(rawS(:,2), [ttlSegs numCrvs])';
     psy = myPCA(sy, NPC);
     
     % Back-Project and reshape
@@ -142,7 +143,7 @@ if fldPreds
     fprintf('DONE! [%.02f sec]...', toc(tt));
     
 else
-    midS = cat(1, midS{:});
+    [rawS , midS] = deal(cat(1, midS{:}));
 end
     
 
@@ -171,7 +172,7 @@ t = tic;
 % Sn = struct('SScores', Xdat, 'ExpandSegs', nrmS, 'RevertData', cnvS, ...
 %     'Pmat', Pm, 'HalfData', midS, 'ZVectors', Z);
 
-Sn = struct('RevertData', cnvS, 'HalfData', midS, 'ZVectors', Ynrm);
+Sn = struct('RawContour', rawS, 'Contour', midS, 'ZVectors', Ynrm);
 
 msg = sprintf('Storing data into structure [Save = %d]', sav);
 fprintf('%s...[%.02f sec]...', msg, toc(t));
