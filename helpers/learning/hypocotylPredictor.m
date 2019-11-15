@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseed)
+function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseed, psx, psy)
 %% hypocotylPredictor: the two-step neural net to predict hypocotyl contours
 %
 % Usage:
@@ -24,6 +24,12 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 
 %%
 try
+    % If running method 2 (no folding segments)
+    if nargin < 11
+        [psx , psy] = deal([]);
+    end
+    
+    %%
     switch mth
         case 'svec'
             %% Old method that predicts S-Vectors from predicted Z-Vectors
@@ -36,13 +42,14 @@ try
                 NETOUT  = 'netout';
                 
                 %
-                [px, py, pz, pp, Nz, Ns] = ...
-                    loadNetworkDatasets(ROOTDIR, PCADIR, NETOUT);
+                [px, py, pz, pp, psx, psy, Nz, Ns] = ...
+                    loadSVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
             %
-            [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns);
+            [Cntr, Znrms, Simg] = ...
+                runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns);
             
         case 'dvec'
             %% New method to recursively predict vector displacements from Z-Vector
@@ -193,7 +200,7 @@ fprintf('Finished running recursive displacement predictor...[%.02f sec]\n%s\n',
 
 end
 
-function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
+function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns)
 %% runMethod1: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -281,13 +288,21 @@ if par
     end
     
     % Run through with parallelization using half cores
+    % Convert PCA object to struct because parfor loops do weird and unexpected 
+    % nonsense that I don't understand
+    px   = struct('InputData', px.InputData, 'EigVecs', px.EigVecs, 'MeanVals', px.MeanVals);
+    py   = struct('InputData', py.InputData, 'EigVecs', py.EigVecs, 'MeanVals', py.MeanVals);
+    pz   = struct('InputData', pz.InputData, 'EigVecs', pz.EigVecs, 'MeanVals', pz.MeanVals);
+    pp   = struct('InputData', pp.InputData, 'EigVecs', pp.EigVecs, 'MeanVals', pp.MeanVals);
+    psx  = struct('InputData', psx.InputData, 'EigVecs', psx.EigVecs, 'MeanVals', psx.MeanVals);
+    psy  = struct('InputData', psy.InputData, 'EigVecs', psy.EigVecs, 'MeanVals', psy.MeanVals);
     parfor cIdx = allCrvs
         t = tic;
         fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
         
         img                                   = imgs{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns);
+            twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns);
         
         fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
             cIdx, toc(t), sptB);
@@ -302,7 +317,7 @@ else
         
         img                                   = imgs{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns);
+            twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns);
         
         fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
             cIdx, toc(t), sptB);

@@ -151,7 +151,9 @@ for itr = allItrs
         fprintf('DONE [%.02f sec]...\n', toc(tt));
     end
     
-    %
+    % Store each iteration's contour
+    Simg{itr} = [tshp ; tshp(1,:)];
+    
     fprintf('%s\nFinished iteration %d! [%.02f sec]\n%s\n', ...
         sprB, itr, toc(tItr), sprA);
 end

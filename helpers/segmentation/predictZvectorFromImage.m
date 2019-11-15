@@ -38,13 +38,13 @@ Zrevs = zVectorConversion(Zprep, ttlSegs, numCrvs, 'rev');
 % Force Tangent vector to be unit length [10.01.2019]
 % and determine if Tangent should be subtracted by midpoint [11.06.2019]
 if all(Zrevs(1,3:4) - Zrevs(1,1:2) < 0)
-    tmp = Zrevs(:,3:4);
+    tmptng = Zrevs(:,3:4);
 else
-    tmp = Zrevs(:,3:4) - Zrevs(:,1:2);
+    tmptng = Zrevs(:,3:4) - Zrevs(:,1:2);
 end
-tmpL         = sum(tmp .* tmp, 2) .^ 0.5;
-tmp          = bsxfun(@times, tmp, tmpL .^-1);
-Zrevs(:,3:4) = Zrevs(:,1:2) + tmp;
+tmpL         = sum(tmptng .* tmptng, 2) .^ 0.5;
+tmptng       = bsxfun(@times, tmptng, tmpL .^-1);
+Zrevs(:,3:4) = Zrevs(:,1:2) + tmptng;
 
 %
 Znrms  = [Zrevs , addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid)];

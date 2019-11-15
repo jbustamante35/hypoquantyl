@@ -31,7 +31,7 @@ eIdxs   = double(sort(Shuffle(numCrvs, 'index', numel(allFigs))));
 [net, evecs, mns] = deal(cell(1, nItrs));
 
 % Principal Components for Scaled Patches and Smoothing Predictions
-NPC = 20;
+NPC = 10;
 
 %% Set up figures to check progress
 if vis

@@ -1,8 +1,8 @@
-function [px, py, pz, pp, Nz, Ns] = loadNetworkDatasets(ROOTDIR, PCADIR, SIMDIR)
-%% loadNetworkDatasets: load given PCA datasets and neural net models
+function [px, py, pz, pzp, psx, psy, Nz, Ns] = loadSVecNetworks(ROOTDIR, PCADIR, SIMDIR)
+%% loadSVecNetworks: load datasets models for S-Vector predictions
 %
 % Usage:
-%   [px, py, pz, pp, Nz, Ns] = loadNetworkDatasets(ROOTDIR, PCADIR, SIMDIR)
+%   [px, py, pz, pp, Nz, Ns] = loadSVecNetworks(ROOTDIR, PCADIR, SIMDIR)
 %
 % Input:
 %   ROOTDIR: root directory of datasets and .mat files
@@ -19,7 +19,7 @@ if nargin == 0
     MFILES  = 'development/HypoQuantyl/datasets/matfiles';
     ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
     PCADIR  = 'pca';
-    SIMDIR  = 'simulations';
+    SIMDIR  = 'netoutputs';
 end
 
 %%
@@ -30,33 +30,38 @@ fprintf('\n\n%s\nLoading datasets and neural networks from %s:\n', ...
     sprt, ROOTDIR);
 
 % Load latest PCA data [trim down and move into repository]
-% PCA  = 'PCA_custom';
-PCA  = 'mypca';
-pcax = 'pcax.mat';
-pcay = 'pcay.mat';
-pcaz = 'pcaz.mat';
-pcap = 'pcap.mat';
+PCA   = 'mypca';
+pcax  = 'pcax.mat';
+pcay  = 'pcay.mat';
+pcaz  = 'pcaz.mat';
+pcazp = 'pcazp.mat';
+pcasx = 'pcasx.mat';
+pcasy = 'pcasy.mat';
 
-px = loadFnc(ROOTDIR, PCADIR, pcax, PCA);
-py = loadFnc(ROOTDIR, PCADIR, pcay, PCA);
-pz = loadFnc(ROOTDIR, PCADIR, pcaz, PCA);
-pp = loadFnc(ROOTDIR, PCADIR, pcap, PCA);
+px  = loadFnc(ROOTDIR, PCADIR, pcax,  PCA);
+py  = loadFnc(ROOTDIR, PCADIR, pcay,  PCA);
+pz  = loadFnc(ROOTDIR, PCADIR, pcaz,  PCA);
+pzp = loadFnc(ROOTDIR, PCADIR, pcazp, PCA);
+psx = loadFnc(ROOTDIR, PCADIR, pcasx, PCA);
+psy = loadFnc(ROOTDIR, PCADIR, pcasy, PCA);
 
-px = px.(PCA);
-py = py.(PCA);
-pz = pz.(PCA);
-pp = pp.(PCA);
+px  = px.(PCA);
+py  = py.(PCA);
+pz  = pz.(PCA);
+pzp = pzp.(PCA);
+psx = psx.(PCA);
+psy = psy.(PCA);
 
 % Load latest network models [trim down and move into repository]
 DOUT   = 'OUT';
-znnout = 'zvectors/znnout.mat';
-snnout = 'svectors/snnout.mat';
+znnout = 'znn/znnout.mat';
+snnout = 'snn/snnout.mat';
 
 co = loadFnc(ROOTDIR, SIMDIR, znnout, DOUT);
 so = loadFnc(ROOTDIR, SIMDIR, snnout, DOUT);
 
 ZNN = co.OUT;
-SNN = so.OUT.DataOut;
+SNN = so.OUT;
 
 % Extract the networks
 if isstruct(ZNN.Net)
@@ -67,9 +72,13 @@ else
     Nz = cell2struct(Nz, s, 2);
 end
 
-Ns = arrayfun(@(x) x.Net, SNN, 'UniformOutput', 0);
-s  = arrayfun(@(x) sprintf('N%d', x), 1:numel(Ns), 'UniformOutput', 0);
-Ns = cell2struct(Ns, s, 2);
+if isstruct(SNN.Net)
+    Ns = SNN.Net;
+else
+    Ns = arrayfun(@(x) x.Net, SNN, 'UniformOutput', 0);
+    s  = arrayfun(@(x) sprintf('N%d', x), 1:numel(Ns), 'UniformOutput', 0);
+    Ns = cell2struct(Ns, s, 2);
+end
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
 

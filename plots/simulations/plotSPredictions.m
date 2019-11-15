@@ -34,6 +34,7 @@ cla;clf;
 row  = 1;
 col  = 2;
 pIdx = 1;
+scl  = 3;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Check if data to plot is in training or testing set
@@ -66,59 +67,28 @@ tng = 3:4;
 nrm = 5:6;
 
 % Store M-T-N in separate arrays
-zI  = Sin.ZVectors(sIdxs,:);
-Min = zI(:,mid);
-Tin = arrayfun(@(x) [zI(x,mid) ; zI(x,tng)], allSegs, 'UniformOutput', 0);
-Nin = arrayfun(@(x) [zI(x,mid) ; zI(x,nrm)], allSegs, 'UniformOutput', 0);
-Hin = Sin.Contour(sIdxs,:);
+zI   = Sin.ZVectors(sIdxs,:);
+Min  = zI(:,mid);
+tngs = scaleVector(zI(:,tng), Min, scl);
+nrms = scaleVector(zI(:,nrm), Min, scl);
+
+Tin = arrayfun(@(x) [Min(x,:) ; tngs(x,:)], allSegs, 'UniformOutput', 0);
+Nin = arrayfun(@(x) [Min(x,:) ; nrms(x,:)], allSegs, 'UniformOutput', 0);
+Hin = Sin.RawContour(sIdxs,:);
 
 %
 zO   = Sout.ZVectors(sIdxs,:);
 Mout = zO(:,mid);
-Tout = arrayfun(@(x) [zO(x,mid) ; zO(x,tng)], allSegs, 'UniformOutput', 0);
-Nout = arrayfun(@(x) [zO(x,mid) ; zO(x,nrm)], allSegs, 'UniformOutput', 0);
+tngs = scaleVector(zO(:,tng), Mout, scl);
+nrms = scaleVector(zO(:,nrm), Mout, scl);
+
+Tout = arrayfun(@(x) [Mout(x,:) ; tngs(x,:)], allSegs, 'UniformOutput', 0);
+Nout = arrayfun(@(x) [Mout(x,:) ; nrms(x,:)], allSegs, 'UniformOutput', 0);
 Hout = Sout.Contour(sIdxs,:);
 
 msg = sprintf('Extracted information: Contour %d of %d [%s] [%d segments]', ...
     idx, numCrvs, tSet, ttlSegs);
 fprintf('%s...[%.02f sec]\n', msg, toc(t));
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Show ground truth Z-Vectors and Contours
-% t = tic;
-% 
-% subplot(row , col , pIdx); pIdx = pIdx + 1;
-% myimagesc(img);
-% hold on;
-% 
-% plt(Min, 'g.', 3);
-% cellfun(@(x) plt(x, 'r-', 1), Tin, 'UniformOutput', 0);
-% cellfun(@(x) plt(x, 'b-', 1), Nin, 'UniformOutput', 0);
-% plt(Hin, 'g--', 1);
-% ttl = sprintf('Contour from Z-Vectors\nTruth\nContour %d [%s]', ...
-%     idx, tSet);
-% title(ttl);
-% 
-% msg = sprintf('Plotting Ground Truth skeleton and contour');
-% fprintf('%s...[%.02f sec]\n', msg, toc(t));
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Show predicted Z-Vectors and Contours
-% t = tic;
-% subplot(row , col , pIdx); pIdx = pIdx + 1;
-% myimagesc(img);
-% hold on;
-% 
-% plt(Mout, 'g.', 3);
-% cellfun(@(x) plt(x, 'r-', 1), Tout, 'UniformOutput', 0);
-% cellfun(@(x) plt(x, 'b-', 1), Nout, 'UniformOutput', 0);
-% plt(Hout, 'g--', 1);
-% ttl = sprintf('Contour from Z-Vectors\nPredicted\nContour %d [%s]', ...
-%     idx, tSet);
-% title(ttl);
-% 
-% msg = sprintf('Plotting predicted skeleton and contour');
-% fprintf('%s...[%.02f sec]\n', msg, toc(t));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Overlay Ground Truth Vs Predicted Z-Vector
@@ -128,11 +98,11 @@ subplot(row , col , pIdx); pIdx = pIdx + 1;
 myimagesc(img);
 hold on;
 
-plt(Min, 'go', 2);
-cellfun(@(x) plt(x, 'g--', 1), Tin, 'UniformOutput', 0);
-cellfun(@(x) plt(x, 'g--', 1), Nin, 'UniformOutput', 0);
+plt(Min, 'g.', 3);
+cellfun(@(x) plt(x, 'g-', 2), Tin, 'UniformOutput', 0);
+cellfun(@(x) plt(x, 'g-', 2), Nin, 'UniformOutput', 0);
 
-plt(Mout, 'y.', 3);
+plt(Mout, 'y.', 2);
 cellfun(@(x) plt(x, 'y-', 1), Tout, 'UniformOutput', 0);
 cellfun(@(x) plt(x, 'y-', 1), Nout, 'UniformOutput', 0);
 ttl = sprintf('Z-Vectors only\nTruth Vs. Predicted\nContour %d [%s]', ...
@@ -176,4 +146,13 @@ end
 fprintf('Done!...[%.02f sec]%s', toc(tAll), str);
 
 end
+
+function vout = scaleVector(vin, mid, scl)
+%% scaleVector: zero-center, scale, and add back vector
+% Method to scale tangent and normal vectors that are in the midpoint-frame
+
+vout = (scl * (vin - mid)) + mid;
+
+end
+
 

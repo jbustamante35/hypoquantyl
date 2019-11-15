@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
+function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns)
 %% twoStepNetPredictor: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -28,6 +28,8 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
 %   py: Y-Coordinate eigenvectors and means
 %   pz: Z-Vector eigenvectors and means
 %   pp: Z-Patch eigenvectors and means
+%   psx: X-Coordinate eigenvectors and means for folding the final contour
+%   psy: Y-Coordinate eigenvectors and means for folding the final contour
 %
 % Output:
 %   Simg: cell array of segments predicted from the image
@@ -35,14 +37,11 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
 %   Cntr: the continous contour generated from the segments [not implemented]
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% Run the pipeline! 
-Znrms = zScrsFromImage(img, Nz, pz);
-zslcs = generateZSlices(img, Znrms, pp);
-Simg  = sScrsFromSlices(zslcs, Ns, px, py);
-
-% Generate continous contour from segments [not yet implemented]
-Cntr = [];
+%% Run the pipeline!
+Znrms                 = zScrsFromImage(img, Nz, pz);
+Zslcs                 = generateZSlices(img, double(Znrms), pp);
+[Snrm, Pm, Mid, Simg] = sScrsFromSlices(Zslcs, Ns, px, py);
+Cntr                  = contourFromSegments(Snrm, Pm, Mid, psx, psy, 0);
 
 end
 
@@ -62,28 +61,11 @@ function Znrms = zScrsFromImage(img, Nz, pz)
 %
 
 %%
-t       = tic;
-numCrvs = size(pz.InputData,1);
-ttlSegs = size(pz.InputData,2) / 4;
-pcz     = size(pz.EigVectors,2);
-
+t   = tic;
+pcz = size(pz.EigVecs,2);
 fprintf('Predicting and unfolding %d Z-Vector PC scores from image...', pcz);
 
-% Predict Z-Vector scores from the inputted hypocotyl image
-Zscrs = struct2array(structfun(@(x) x.predict(img), Nz, 'UniformOutput', 0));
-
-% Unfold and Reshape Z-Vector from prepped to raw form and add normal vectors
-Zprep = pcaProject(Zscrs, pz.EigVectors, pz.MeanVals, 'scr2sim');
-Zrevs = zVectorConversion(Zprep, ttlSegs, numCrvs, 'rev');
-
-% Force Tangent vector to be unit length [10.01.2019]
-tmp          = Zrevs(:,3:4) - Zrevs(:,1:2);
-tmpL         = sum(tmp .* tmp, 2) .^ 0.5;
-tmp          = bsxfun(@times, tmp, tmpL .^-1);
-Zrevs(:,3:4) = Zrevs(:,1:2) + tmp;
-
-%
-Znrms = [Zrevs , addNormalVector(Zrevs)];
+Znrms = predictZvectorFromImage(img, Nz, pz, 1);
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
 
@@ -107,33 +89,37 @@ function Zslcs = generateZSlices(img, Znrms, pp)
 %
 
 %%
-t       = tic;
-pcp     = size(pp.EigVectors,2);
+evecs   = pp.EigVecs;
+mns     = pp.MeanVals;
+pcp     = size(pp.EigVecs,2);
 ttlSegs = size(Znrms,1);
+allSegs = 1 : ttlSegs;
+
+%%
+t = tic;
 
 fprintf('Generating and folding Z-Patches to %d PCs...', pcp);
 
-Zslcs = zeros(ttlSegs, size(Znrms,2) + size(pp.EigValues,1));
-zsize = [22 , 22];
-for s = 1 : length(Znrms)
-    % Get Z-Patches from Z-Vector slices and fold into PC scores
-    %     zptch = setZPatch(double(Znrms(s,:)), img);
-    SCL   = 20;
-    zptch = setZPatch(double(Znrms(s,:)), img, SCL, [], 2);
-    
-    % Resize to 22 x 22 because of the tangent vector scaling issue
-    Zptch = imresize(zptch, zsize);
-    
-    % Fold Z-Patch to PC scores then store full Z-Slice
-    Zpscr      = pcaProject(Zptch(:)', pp.EigVectors, pp.MeanVals, 'sim2scr');
-    Zslcs(s,:) = [Znrms(s,:) Zpscr];
-end
+% Subtract off midpoints from Z-Vector
+tmpz = [Znrms(:,1:2) , ...
+    Znrms(:,3:4) - Znrms(:,1:2) , ...
+    Znrms(:,5:6) - Znrms(:,1:2)];
+
+%% Generate and vectorize Z-Patches from Z-Slices
+Zptch = arrayfun(@(x)  setZPatch(Znrms(x,:), img), ...
+    allSegs, 'UniformOutput', 0);
+Zscrs = cellfun(@(x)   pcaProject(x(:)', evecs, mns, 'sim2scr'), ...
+    Zptch, 'UniformOutput', 0);
+Zsubt = arrayfun(@(x)  [tmpz(x,1:2) , tmpz(x,3:4) , tmpz(x,5:6)], ...
+    allSegs, 'UniformOutput', 0);
+Zslcs = cellfun(@(l,s) [l , s], Zsubt, Zscrs, 'UniformOutput', 0);
+Zslcs = cat(1, Zslcs{:});
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
 
 end
 
-function Simg = sScrsFromSlices(Zslcs, Ns, px, py)
+function [Snrm , Pms , Mids, Simg] = sScrsFromSlices(Zslcs, Ns, px, py)
 %% sScrsFromSlices: predict S-Vector scores from Z-Vector slices
 % This function predicts the S-Vector PC scores from each Z-Vector slice using
 % the neural net model. It then unfolds the PC scores into multiple
@@ -148,42 +134,109 @@ function Simg = sScrsFromSlices(Zslcs, Ns, px, py)
 %   py: Y-Coordinate eigenvectors and means
 %
 % Output:
-%   Simg: cell array of segments in the image reference frame
+%   Simg: cell array of segments in the image reference frame [on hold]
+%   Simg: cell array of segments in midpoint-normalized frame
 %
 
-%%
+%% Constants and other misc parameters
 t       = tic;
-pcx     = size(px.EigVectors,2);
-pcy     = size(py.EigVectors,2);
 ttlSegs = size(Zslcs,1);
+allSegs = 1 : ttlSegs;
+xvecs   = px.EigVecs;
+xmns    = px.MeanVals;
+xpcs    = size(xvecs,2);
+yvecs   = py.EigVecs;
+ymns    = py.MeanVals;
+ypcs    = size(yvecs,2);
 
 fprintf('Predicting, unfolding, and re-projecting %dX and %dY PC scores from Z-Vector slices...', ...
-    pcx, pcy);
+    xpcs, ypcs);
 
 % Predict S-Vector scores from the inputted Z-Vector slice
 Sscr = struct2array(structfun(@(x) x(Zslcs')', Ns, 'UniformOutput', 0));
+xIdx = 1 : ceil(size(Sscr,2) / 2);
+yIdx = xIdx(end) + 1 : size(Sscr,2);
+zIdx = 1 : 6;
+mIdx = 1 : 2;
 
-% Unfold and re-project S-Vectors from midpoint-normalized to image frame
-xIdx = 1:3;
-yIdx = 4:6;
+%% Unfold and re-project S-Vectors from midpoint-normalized to image frame
+scrs = arrayfun(@(s) Sscr(s,:), allSegs, 'UniformOutput', 0);
+Mids  = arrayfun(@(m) Zslcs(m, mIdx), allSegs, 'UniformOutput', 0);
+Pms   = arrayfun(@(p) reconstructPmat(Zslcs(p, zIdx), 0), ...
+    allSegs, 'UniformOutput', 0);
+crdX = cellfun(@(x) pcaProject(x(xIdx), xvecs, xmns, 'scr2sim'), ...
+    scrs, 'UniformOutput', 0);
+crdY = cellfun(@(y) pcaProject(y(yIdx), yvecs, ymns, 'scr2sim'), ...
+    scrs, 'UniformOutput', 0);
 
-Simg    = cell(1,ttlSegs);
-allSegs = 1 : ttlSegs;
-for s = allSegs
-    % Reconstruct P-Matrices
-    pm  = reconstructPmat(Zslcs(s,1:6));
-    mid = Zslcs(s,1:2);
-    
-    % Unfold
-    crdX = pcaProject(Sscr(s, xIdx), px.EigVectors, px.MeanVals, 'scr2sim');
-    crdY = pcaProject(Sscr(s, yIdx), py.EigVectors, py.MeanVals, 'scr2sim');
-    Snrm = [crdX' , crdY'];
-    
-    % Re-project to image frame
-    Simg{s} = reverseMidpointNorm(Snrm, pm) + mid;
-end
+% Keep output as midpoint-normalized coordinates [to be folded later]
+Snrm = cellfun(@(x,y) [x ; y]', crdX, crdY, 'UniformOutput', 0);
+Simg = cellfun(@(x,y,p,m) reverseMidpointNorm([x ; y]', p) + m, ...
+    crdX, crdY, Pms, Mids, 'UniformOutput', 0);
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
+
+end
+
+function cntr = contourFromSegments(snrm, pm, mid, psx, psy, mPct)
+%% constructContourFromSegments: generate a contour from segments
+% This function extracts a coordinate from each segment and constructs a
+% connected contour. By default, this function takes the middle coordinate of
+% each segment, where the mIdx parameter is a percentage of where to take the
+% coordinate (middle index defined as mPct = 0.5).
+%
+% To get the first coordinate of each segment, use mPct = 0. I implemented an
+% if-else block to set [mIdx = 1] if [mPct > 0].
+%
+% Input:
+%   snrm: cell array of segments in midpoint-normalized coordinates
+%   psx: x-coordinate eigenvectors and means for smoothing of the contour
+%   psy: y-coordinate eigenvectors and means for smoothing of the contour
+%   mPct: percentage to extract the coordinate from segments (default 0.5)
+%
+% Output:
+%   cntr: fully connected and closed contour
+%
+
+%% Set extraction coordinate if none was inputted
+if nargin < 6
+    mPct = 0.5;
+end
+
+if mPct > 0
+    mIdx = ceil(mPct * size(snrm{1},1));
+else
+    mIdx = 1;
+end
+
+%%
+cnrm = cellfun(@(x) x(mIdx,:), snrm, 'UniformOutput', 0);
+cnrm = cat(1, cnrm{:});
+
+%% Smooth contour
+xvecs = psx.EigVecs;
+xmns  = psx.MeanVals;
+yvecs = psy.EigVecs;
+ymns  = psy.MeanVals;
+
+%
+nx = cnrm(:,1)';
+sx = pcaProject(nx, xvecs, xmns, 'sim2scr');
+rx = pcaProject(sx, xvecs, xmns, 'scr2sim');
+
+%
+ny = cnrm(:,2)';
+sy = pcaProject(ny, yvecs, ymns, 'sim2scr');
+ry = pcaProject(sy, yvecs, ymns, 'scr2sim');
+
+%
+rc = arrayfun(@(s) [rx(s) ; ry(s)]', 1 : length(cnrm), 'UniformOutput', 0);
+
+%% Re-project coordinates back to image reference frame and close the contour
+cntr = cellfun(@(c,p,m) reverseMidpointNorm(c, p) + m, ...
+    rc, pm, mid, 'UniformOutput', 0);
+cntr = cat(1, cntr{:});
+cntr = [cntr ; cntr(1,:)];
 
 end
 

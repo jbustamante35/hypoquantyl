@@ -73,14 +73,11 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structure
-% Input (raw inputs)
-Din  = struct('SSCR', SSCR, 'ZSLC', ZSLC, 'NLAYERS', NLAYERS);
-
-% Output (predictions)
+% Split Datasets
 Splt = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'tstIdx', tstIdx);
 
 % Full structure
-IN  = struct('DataIn', Din);
+IN  = struct('SSCR', SSCR, 'ZSLC', ZSLC, 'NLAYERS', NLAYERS);
 OUT = struct('SplitSets', Splt, 'Predictions', ypre, 'Net', snet);
 
 % Save results in structure
