@@ -1,4 +1,4 @@
-function [Ypre , net, evecs, mns] = nn_dvectors(inputs, targets, szY, ppc, nlayers, trnfn)
+function [Ypre , net, evecs, mns] = nn_dvectors(inputs, targets, szY, par, ppc, nlayers, trnfn)
 %% nn_dvector: CNN to predict contour segments given a Z-Vector slice
 %
 %
@@ -18,21 +18,31 @@ function [Ypre , net, evecs, mns] = nn_dvectors(inputs, targets, szY, ppc, nlaye
 %
 
 %% Setup the net
-if nargin < 4
+if nargin < 5
     ppc     = 10;
     nlayers = 5;
     trnfn   = 'trainlm';
+%     par     = false;
+end
+
+% Use with parallelization
+% [NOTE 10.24.2019]
+% Parallelization only works sometimes, all of the time
+if par
+    pll = 'yes';
+else
+    pll = 'no';
 end
 
 %% Fold Patches to PC scores
 pp    = myPCA(inputs, ppc);
-scrs  = pp.PCAscores;
-evecs = pp.EigVectors;
+scrs  = pp.PCAScores;
+evecs = pp.EigVecs;
 mns   = pp.MeanVals;
 
 %% Run a fitnet to predict displacement vectors from scaled patches
 net = fitnet(nlayers, trnfn);
-net = train(net, scrs', targets');
+net = train(net, scrs', targets', 'UseParallel', pll);
 
 % Predict
 Ypre = net(scrs')';

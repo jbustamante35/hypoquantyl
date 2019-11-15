@@ -1,9 +1,10 @@
-function Sn = convertSPredictions(predS, inptZ, req, px, py, pz, ttlSegs, numCrvs, sav)
+function Sn = convertSPredictions(predS, inptZ, req, px, py, pz, fldPreds, ttlSegs, numCrvs, sav)
 %% convertSPredictions:
 % This
 %
 % Usage:
-%   Sn = convertSPredictions(predS, inptZ, req, px, py, pz, ttlSegs, numCrvs, sav)
+%   Sn = convertSPredictions( ...
+%       predS, inptZ, req, px, py, pz, ttlSegs, numCrvs, sav)
 %
 % Input:
 %   predS: predicted values from NN output
@@ -12,6 +13,7 @@ function Sn = convertSPredictions(predS, inptZ, req, px, py, pz, ttlSegs, numCrv
 %   px: output from PCA of X-coordinates
 %   py: output from PCA of Y-coordinates
 %   pz: output from PCA of Z-vectors
+%   fldPreds: smooth predictions using PCA
 %   ttlSegs: number of segments per Curve
 %   numCrvs: number of Curves in the dataset
 %   sav: boolean to save output in a .mat file
@@ -26,14 +28,15 @@ str  = sprintf('\n%s\n', repmat('-', 1, 80));
 tru  = 'truth';
 sim  = 'sim';
 pre  = 'predicted';
+pcf  = 10;
 
 fprintf('%sConverting predictions for %s data\n', str, req);
 switch req
     case tru
-        Xdat = [px.PCAscores , py.PCAscores];
+        Xdat = [px.PCAScores , py.PCAScores];
         Ydat = pz.InputData;
     case sim
-        Xdat = [px.PCAscores , py.PCAscores];
+        Xdat = [px.PCAScores , py.PCAScores];
         Ydat = pz.SimData;
     case pre
         Xdat = predS;
@@ -50,11 +53,12 @@ end
 %% Extract information about dataset
 t = tic;
 
-sIdxs   = 1 : ttlSegs;
-cIdxs   = 1 : numCrvs;
-allSegs = 1 : (ttlSegs * numCrvs);
-lngSegs = size(px.InputData, 2);
-halfIdx = ceil(lngSegs / 2);
+% sIdxs   = 1 : ttlSegs;
+% cIdxs   = 1 : numCrvs;
+allData = 1 : (ttlSegs * numCrvs);
+% lngSegs = size(px.InputData, 2);
+% cntrIdx = ceil(lngSegs / 2);
+cntrIdx = 1; % Get just the first point of each predicted segment
 
 msg = sprintf('Extracting information from %s dataset', req);
 fprintf('%s...[%.02f sec]\n', msg, toc(t));
@@ -63,10 +67,15 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 %% Revert output to raw form [if using 'truth' or 'sim']
 t = tic;
 if ismember(req, {tru , sim})
-    [~, Ynrm]   = addNormalVector(zVectorConversion(...
-        Ydat, ttlSegs, numCrvs, 'rev'));
+    zcnv      = zVectorConversion(Ydat, ttlSegs, numCrvs, 'rev');
+    mid       = zcnv(:,1:2);
+    tng       = zcnv(:,3:4) + mid;
+    [~, Ynrm] = addNormalVector(mid, tng, 1);
 else
-    Ynrm = Ydat;
+    mid  = Ydat(:,1:2);
+    tng  = Ydat(:,3:4) + mid;
+    nrm  = Ydat(:,5:6) + mid;
+    Ynrm = [mid , tng , nrm];
 end
 
 msg = sprintf('Reverting prepped form [%s] to raw form [%s]', ...
@@ -77,7 +86,7 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 %% Regenerate Pmat from Z-Vector
 t = tic;
 
-Pm = arrayfun(@(x) reconstructPmat(Ynrm(x,:)), allSegs, 'UniformOutput', 0);
+Pm = arrayfun(@(x) reconstructPmat(Ynrm(x,:)), allData, 'UniformOutput', 0);
 
 msg = sprintf('Regenerating [%s] P-matrices for %d segments and %d curves', ...
     num2str([size(Pm,1) size(Pm,2)]), ttlSegs, numCrvs);
@@ -88,15 +97,13 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 t = tic;
 
 % Split X-/Y-Scores and re-project back to midpoint-normalized coordinates
-eX = px.EigVectors;
-mX = px.MeanVals;
-pX = Xdat(:,1:3);
-nX = pX * eX' + mX;
+xIdx = 1 : ceil(size(Xdat,2) / 2);
+pX   = Xdat(:,xIdx);
+nX   = pcaProject(pX, px.EigVecs, px.MeanVals, 'scr2sim');
 
-eY = py.EigVectors;
-mY = py.MeanVals;
-pY = Xdat(:,4:6);
-nY = pY * eY' + mY;
+yIdx = xIdx(end) + 1 : size(Xdat,2);
+pY   = Xdat(:,yIdx);
+nY   = pcaProject(pY, py.EigVecs, py.MeanVals, 'scr2sim');
 
 msg = sprintf('Combining midpoint-normalized x-/y-coordinates to single array');
 fprintf('%s...[%.02f sec]\n', msg, toc(t));
@@ -106,27 +113,56 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 t = tic;
 
 U    = Ynrm(:,1:2);
-nrmS = arrayfun(@(x) [nX(x,:) ; nY(x,:)]', allSegs, 'UniformOutput', 0);
-cnvS = arrayfun(@(x) reverseMidpointNorm(nrmS{x}, Pm{x}) + U(x,:), ...
-    allSegs, 'UniformOutput', 0);
+nrmS = arrayfun(@(x) [nX(x,:) ; nY(x,:)]', allData, 'UniformOutput', 0);
+% cnvS = arrayfun(@(x) reverseMidpointNorm(nrmS{x}, Pm{x}) + U(x,:), ...
+%     allData, 'UniformOutput', 0);
 
-% Get Half-Indices for each segment
-midS = cellfun(@(x) x(halfIdx,:), cnvS, 'UniformOutput', 0);
+% Get Half-Indices for each segment and fold them using PCA
+% midS = cellfun(@(x) x(cntrIdx,:), cnvS, 'UniformOutput', 0);
+midS = cellfun(@(x) x(cntrIdx,:), nrmS, 'UniformOutput', 0);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Define Z-Vector Slices from S-Vector
-[~,~,~,~,~,Z] = ...
-    cellfun(@(x) midpointNorm(x), cnvS, 'UniformOutput', 0);
+if fldPreds
+    %% Smooth predicted S-Vector using PCA
+    % Use midpoint-normalized coordinates
+    tt = tic;
+    fprintf('Smoothing %d predictions with %d PCs...', ...
+        numel(midS), pcf);
+    
+    rawS = cat(1, midS{:});
+    
+    % Run PCA on X-Coordinates
+    sx  = reshape(rawS(:,1), [ttlSegs numCrvs])';
+    xnm = sprintf('FoldSVectorX');
+    psx = pcaAnalysis(sx, pcf, sav, xnm, 0);
+    
+    % Run PCA on Y-Coordinates
+    sy  = reshape(rawS(:,2), [ttlSegs numCrvs])';
+    ynm = sprintf('FoldSVectorY');
+    psy = pcaAnalysis(sy, pcf, sav, ynm, 0);
+    
+    % Back-Project and reshape
+    midX = reshape(psx.SimData', [1 , ttlSegs * numCrvs])';
+    midY = reshape(psy.SimData', [1 , ttlSegs * numCrvs])';
+    midS = [midX , midY];   
+    
+    fprintf('DONE! [%.02f sec]...', toc(tt));
+    
+else
+    [rawS , midS] = deal(cat(1, midS{:}));
+end
 
-msg = sprintf('Extracting Z-Vectors from converted segments');
-fprintf('%s...[%.02f sec]\n', msg, toc(t));
+%% Convert coordinates in the image reference frame and concatenate to arrays
+rawS = arrayfun(@(x) reverseMidpointNorm(rawS(x,:), Pm{x}) + U(x,:), ...
+    allData, 'UniformOutput', 0);
+midS = arrayfun(@(x) reverseMidpointNorm(midS(x,:), Pm{x}) + U(x,:), ...
+    allData, 'UniformOutput', 0);
 
-%% Convert to multiD arrays
-Pm   = cat(3, Pm{:});
-nrmS = cat(3, nrmS{:});
-cnvS = cat(3, cnvS{:});
+rawS = cat(1, rawS{:});
 midS = cat(1, midS{:});
-Z    = cat(1, Z{:});
+
+% Close the contours
+rawS = closeContour(rawS, ttlSegs, numCrvs);
+midS = closeContour(midS, ttlSegs, numCrvs);
 
 msg = sprintf('Converting to coordinates in image reference frame');
 fprintf('%s...[%.02f sec]\n', msg, toc(t));
@@ -135,8 +171,10 @@ fprintf('%s...[%.02f sec]\n', msg, toc(t));
 %% Store output in structure
 t = tic;
 
-Sn = struct('Scores', Xdat, 'ExpandSegs', nrmS, 'RevertData', cnvS, ...
-    'Pmat', Pm, 'HalfData', midS, 'ZVectors', Z);
+% Sn = struct('SScores', Xdat, 'ExpandSegs', nrmS, 'RevertData', cnvS, ...
+%     'Pmat', Pm, 'HalfData', midS, 'ZVectors', Z);
+
+Sn = struct('RawContour', rawS, 'Contour', midS, 'ZVectors', Ynrm);
 
 msg = sprintf('Storing data into structure [Save = %d]', sav);
 fprintf('%s...[%.02f sec]...', msg, toc(t));
@@ -144,10 +182,10 @@ fprintf('%s...[%.02f sec]...', msg, toc(t));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save data
 if sav
-    pcx = length(px.EigValues);
-    pcy = length(py.EigValues);
-    pcz = length(pz.EigValues);
-    fn = sprintf('%s_ConvertedZvector_%dCurves_%dSegments_x%d_y%d_z%d_%s', ...
+    pcx = length(px.EigVals);
+    pcy = length(py.EigVals);
+    pcz = length(pz.EigVals);
+    fn = sprintf('%s_ConvertedSvector_%dCurves_%dSegments_x%d_y%d_z%d_%s', ...
         tdate('s'), numCrvs, ttlSegs, pcx, pcy, pcz, req);
     save(fn, '-v7.3', 'Sn');
     fprintf('...');
@@ -156,3 +194,19 @@ end
 fprintf('Done!...[%.02f sec]%s', toc(tAll), str);
 
 end
+
+function cout = closeContour(cin, ttlSegs, numCrvs)
+%% closeContour: close contour and interpolate back to original size
+sx = reshape(cin(:,1), [ttlSegs numCrvs]);
+sx = [sx ; sx(1,:)];
+
+sy = reshape(cin(:,2), [ttlSegs numCrvs]);
+sy = [sy ; sy(1,:)];
+
+ss = arrayfun(@(x) interpolateOutline( ...
+    [sx(:,x) , sy(:,x)], ttlSegs), 1 : numCrvs, 'UniformOutput', 0);
+
+cout = cat(1, ss{:});
+
+end
+

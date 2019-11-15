@@ -1,4 +1,4 @@
-function [X, Z, Y] = masterFunction2(IMG, CNTR, targetsPre, scls, dom, domSize)
+function [X, Z, Y] = masterFunction2(IMG, CNTR, par, targetsPre, scls, dom, domSize)
 %%
 %
 %
@@ -9,8 +9,8 @@ function [X, Z, Y] = masterFunction2(IMG, CNTR, targetsPre, scls, dom, domSize)
 %   IMG: cell array of grayscale images
 %   CNTR: cell array of contours
 %   targetsPre: displacement vectors predicted by neural net, in tangent frames
-%   Y: 
-%   
+%   Y:
+%
 %
 % Output:
 %   X: vectorize image patches for multiple scales and multiple domains
@@ -19,15 +19,15 @@ function [X, Z, Y] = masterFunction2(IMG, CNTR, targetsPre, scls, dom, domSize)
 %
 
 %% Constants and Parameter setup
-LEN      = 25;
-STP      = 1;
-VIS      = 0;
+% LEN      = 25;
+% STP      = 1;
+% VIS      = 0;
 toRemove = 1;
 nCrvs    = numel(IMG);
 allCrvs  = 1 : nCrvs;
 
 % Check if first iteration
-if nargin < 3
+if nargin < 4
     firstItr = true;
     Y        = cell(1, nCrvs);
 else
@@ -44,33 +44,57 @@ end
 
 %% Get all core patches, tangent bundles, and displacement vectors
 [X , Z] = deal(cell(1, nCrvs));
-for cIdx = allCrvs
-    img = IMG{cIdx};
-    
-    if firstItr
-        % Get ground truth contour and displacement vectors
-        cntr    = CNTR{cIdx};        
-        Y{cIdx} = prepareTargets(cntr, LEN, STP);        
+
+if par
+    %% Run with parallelization
+    if ~firstItr
+        % Avoid overhead and index targetsPre via cell array
+        tpre = arrayfun(@(x) targetsPre(:,1:2,x), ...
+            allCrvs, 'UniformOutput', 0);
+    else
+        tpre = cell(1, nCrvs);
     end
     
-    if firstItr
-        % Get ground truth tangent bundle
-        Z{cIdx} = contour2corestructure(cntr, LEN, STP);
-    else
-        % Compute predicted tangent bundle
-        crv     = targetsPre(:, 1:2, cIdx);
-        Z{cIdx} = curve2framebundle(crv);
+    [X, Z, Y] = deal(cell(1, nCrvs));
+    parfor cIdx = 1 : nCrvs
+        img  = IMG{cIdx};
+        cntr = CNTR{cIdx};
+        
+        % Run through the master function
+        if firstItr
+            [X{cIdx} , Z{cIdx} , Y{cIdx}] = runMasterFunction(img, cntr, ...
+                scls, dom, domSize);
+        else
+            [X{cIdx} , Z{cIdx} , Y{cIdx}] = runMasterFunction(img, cntr, ...
+                scls, dom, domSize, tpre{cIdx});
+        end
+        
+        % Track progress
+        fprintf('...%d', cIdx);
+        
     end
-    
-    % Sample Image from Tangent Bundles
-    X{cIdx} = sampleCorePatches(img, Z{cIdx}, scls, dom, domSize, VIS);
-    %         [X{cIdx} , zd] = setZPatch(Z{cIdx}, img, scls, s, 3, sqr);
-    
-    % Track progress
-    if mod(cIdx, 10)
-        fprintf('.');
-    else
-        fprintf('%d', cIdx);
+else
+    %% Run with single-thread
+    for cIdx = allCrvs
+        img  = IMG{cIdx};
+        cntr = CNTR{cIdx};
+        
+        % Run through the master function
+        if firstItr
+            [X{cIdx} , Z{cIdx} , Y{cIdx}] = runMasterFunction(img, cntr, ...
+                scls, dom, domSize);
+        else
+            [X{cIdx} , Z{cIdx} , Y{cIdx}] = runMasterFunction(img, cntr, ...
+                scls, dom, domSize, targetsPre(:, 1:2, cIdx));
+        end
+        
+        % Track progress
+        if mod(cIdx, 10)
+            fprintf('.');
+        else
+            fprintf('%d', cIdx);
+        end
+        
     end
 end
 
@@ -89,3 +113,70 @@ Z   = cat(3, Z{:});
 
 end
 
+function [X , Z , Y] = runMasterFunction(img, cntr, scls, dom, domSize, targetsPre)
+%% runMasterFunction: obtain the image patches and frame bundle
+%
+%
+%
+
+%% Constants
+LEN = 25;
+STP = 1;
+VIS = 0;
+
+if nargin < 6
+    firstItr = true;
+else
+    firstItr = false;
+end
+
+%%
+if firstItr
+    % Get ground truth contour and displacement vectors
+    Y = prepareTargets(cntr, LEN, STP);
+else
+    Y = [];
+end
+
+if firstItr
+    % Get ground truth tangent bundle
+    Z = contour2corestructure(cntr, LEN, STP);
+else
+    % Compute predicted tangent bundle
+    crv     = targetsPre;
+    Z       = curve2framebundle(crv);
+end
+
+% Sample Image from Tangent Bundles
+X = sampleCorePatches(img, Z, scls, dom, domSize, VIS);
+
+end
+
+
+%{
+        if firstItr
+            % Get ground truth contour and displacement vectors
+            cntr    = CNTR{cIdx};
+            Y{cIdx} = prepareTargets(cntr, LEN, STP);
+        end
+    
+        if firstItr
+            % Get ground truth tangent bundle
+            Z{cIdx} = contour2corestructure(cntr, LEN, STP);
+        else
+            % Compute predicted tangent bundle
+            crv     = targetsPre(:, 1:2, cIdx);
+            Z{cIdx} = curve2framebundle(crv);
+        end
+    
+        % Sample Image from Tangent Bundles
+        X{cIdx} = sampleCorePatches(img, Z{cIdx}, scls, dom, domSize, VIS);
+        %         [X{cIdx} , zd] = setZPatch(Z{cIdx}, img, scls, s, 3, sqr);
+    
+        % Track progress
+        if mod(cIdx, 10)
+            fprintf('.');
+        else
+            fprintf('%d', cIdx);
+        end
+%}

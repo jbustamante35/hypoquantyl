@@ -55,8 +55,10 @@ V         = -F * M';
 % Store Z-Vector with or without midpoint added
 switch mth
     case 'old'
+        % Add back the midpoint
         Z = [M , T+M , N+M];
     case 'new'
+        % Don't add back midpoint
         Z = [M , T , N];
     otherwise
         fprintf(2, 'Method must be [old|new]'\n');

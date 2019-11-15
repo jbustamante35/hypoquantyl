@@ -31,7 +31,8 @@ G  = Ein.getGenotype(cin(:,1));
 S  = arrayfun(@(x) G(x).getSeedling(cin(x,2)), 1:numel(G), 'UniformOutput', 0);
 H  = cellfun(@(s) s.MyHypocotyl, S, 'UniformOutput', 0);
 I  = arrayfun(@(x) H{x}.getImage(cin(x,3)),  1:numel(H), 'UniformOutput', 0);
-F  = arrayfun(@(x) H{x}.FlipMe(cin(x,3), 0), 1:numel(H), 'UniformOutput', 0);
+F  = arrayfun(@(x) H{x}.FlipMe(cin(x,3), 'gray', 0), ...
+    1 : numel(H), 'UniformOutput', 0);
 X  = [I , F];
 
 % Binarize images
@@ -40,7 +41,7 @@ imgsz   = size(X{1});
     X, 'UniformOutput', 0);
 
 % Extract contours for all images and remove all overlapping poings
-CJB = cellfun(@(x) extractContour(x, SEGMENTATION_SIZE, 'alt'), ...
+CJB = cellfun(@(x) extractContour(x, SEGMENTATION_SIZE, 'alt', 'alt'), ...
     BW, 'UniformOutput', 0);
 CNT = cellfun(@(x) unique(x.NormalizedOutline, 'rows', 'stable'), ...
     CJB, 'UniformOutput', 0);
@@ -58,8 +59,8 @@ for t = 1 : tot
     CRCS(t) = CircuitJB;
 end
 
-idxs_o = [cin zeros(length(cin), 1)];
-idxs_f = [cin ones(length(cin), 1)];
+idxs_o = [cin zeros(size(cin,1), 1)];
+idxs_f = [cin ones(size(cin,1), 1)];
 hidxs  = [idxs_o ; idxs_f];
 hyps   = getHypocotylObjects(hidxs, Ein, 'Hypocotyl');
 

@@ -1,4 +1,4 @@
-function [scls, dom, domSize] = setupParams(toRemove, sq, vl, hl, d, s, v, h)
+function [scls, dom, domSize] = setupParams(toRemove, ds, sq, vl, hl, d, s, v, h)
 %% setupParams: get scales, domains, and domain sizes
 %
 %
@@ -28,7 +28,7 @@ end
 
 %% Set Scales
 % Default values
-if nargin >= 1
+if nargin <= 1
     ds = [1  ,  1]; % Disk
     sq = [30 , 30]; % Square
     vl = [50 , 1] ; % Vertical Line

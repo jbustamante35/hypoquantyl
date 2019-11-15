@@ -1,18 +1,21 @@
-function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z)
+function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseed, psx, psy)
 %% hypocotylPredictor: the two-step neural net to predict hypocotyl contours
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z)
+%   [Cntr, Znrms, Simg] = ...
+%       hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
 %   par: boolean to run single thread (0) or with parallelization (1)
+%   mth: predict with S-Vectors ('snn') or D-Vectors ('dnn')
 %   Nz: neural net model for predicting Z-Vector PC scores from images
 %   Ns: neural net model for predicting S-Vector PC scores from Z-Vector slices
 %   px: X-Coordinate eigenvectors and means
 %   py: Y-Coordinate eigenvectors and means
 %   pz: Z-Vector eigenvectors and means
 %   pp: Z-Patch eigenvectors and means
+%   z: seed prediction with ground-truth Z-Vector (for D-Vector method)
 %
 % Output:
 %   Cntr: the continous contour generated from the segments [not implemented]
@@ -21,8 +24,14 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 
 %%
 try
+    % If running method 2 (no folding segments)
+    if nargin < 11
+        [psx , psy] = deal([]);
+    end
+    
+    %%
     switch mth
-        case 1
+        case 'svec'
             %% Old method that predicts S-Vectors from predicted Z-Vectors
             if nargin < 4
                 % Load required datasets unless given
@@ -30,18 +39,19 @@ try
                 MFILES  = 'development/HypoQuantyl/datasets/matfiles';
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
-                SIMDIR  = 'simulations';
+                NETOUT  = 'netout';
                 
                 %
-                [px, py, pz, pp, Nz, Ns] = ...
-                    loadNetworkDatasets(ROOTDIR, PCADIR, SIMDIR);
+                [px, py, pz, pp, psx, psy, Nz, Ns] = ...
+                    loadSVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
             %
-            [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns);
+            [Cntr, Znrms, Simg] = ...
+                runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns);
             
-        case 2
+        case 'dvec'
             %% New method to recursively predict vector displacements from Z-Vector
             % You can replace method1 parameters with method2 parameters:
             %   Nt  --> Ns [NN for D-Vectors --> NN for S-Vectors]
@@ -55,20 +65,20 @@ try
                 MFILES  = 'development/HypoQuantyl/datasets/matfiles';
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
-                SIMDIR  = 'simulations';
-                TRNDIR  = 'training';
+                NETOUT  = 'netout';
                 
                 %
                 [px, py, pz, pp, Nz, Ns] = ...
-                    loadZVecNetworks(ROOTDIR, PCADIR, SIMDIR, TRNDIR);
+                    loadZVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
             %
-            [Cntr, Znrms, Simg] = runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, z);
+            [Cntr, Znrms, Simg] = ...
+                runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, zseed);
             
         otherwise
-            fprintf('Method must be [1|2]\n');
+            fprintf('Method must be [''svec''|''dvec'']\n');
             [Simg, Znrms, Cntr] = deal([]);
     end
     
@@ -84,7 +94,13 @@ function [Cntr, Znrms, Simg] = runMethod2(imgs, par, ptx, pty, pz, ptp, Nz, Nt, 
 %% runMethod2: predict Z-Vector then recursively predict displacement vector
 %
 %
+% Usage:
+%   [Cntr, Znrms, Simg] = runMethod2(imgs, par, ptx, pty, pz, ptp, Nz, Nt, z)
 %
+% Input:
+%
+%
+% Output:
 %
 %
 
@@ -141,7 +157,14 @@ if par
         
     end
     
-    % Run through with parallelization using half cores
+    %% Run through with parallelization using half cores
+	% Convert PCA object to struct because parfor loops do weird and unexpected 
+    % nonsense that I don't understand
+    neigs = 0; % input of 0 defaults to all eigenvectors
+    ptx   = struct('InputData', ptx.InputData, 'EigVecs', ptx.EigVecs(neigs), 'MeanVals', ptx.MeanVals);
+    pty   = struct('InputData', pty.InputData, 'EigVecs', pty.EigVecs(neigs), 'MeanVals', pty.MeanVals);
+    pz    = struct('InputData', pz.InputData,  'EigVecs', pz.EigVecs,         'MeanVals', pz.MeanVals);
+
     parfor cIdx = allCrvs
         t = tic;
         fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
@@ -177,7 +200,7 @@ fprintf('Finished running recursive displacement predictor...[%.02f sec]\n%s\n',
 
 end
 
-function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
+function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns)
 %% runMethod1: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -196,7 +219,7 @@ function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
 % Predict S-Vector scores from Z-Vector slices
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, Nz, Ns, px, py, pz, pp)
+%   [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -213,7 +236,6 @@ function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
 %   Znrms: Z-Vector predicted from the image
 %   Cntr: the continous contour generated from the segments [not implemented]
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Prediction pipeline
 tAll = tic;
@@ -266,13 +288,21 @@ if par
     end
     
     % Run through with parallelization using half cores
+    % Convert PCA object to struct because parfor loops do weird and unexpected 
+    % nonsense that I don't understand
+    px   = struct('InputData', px.InputData, 'EigVecs', px.EigVecs, 'MeanVals', px.MeanVals);
+    py   = struct('InputData', py.InputData, 'EigVecs', py.EigVecs, 'MeanVals', py.MeanVals);
+    pz   = struct('InputData', pz.InputData, 'EigVecs', pz.EigVecs, 'MeanVals', pz.MeanVals);
+    pp   = struct('InputData', pp.InputData, 'EigVecs', pp.EigVecs, 'MeanVals', pp.MeanVals);
+    psx  = struct('InputData', psx.InputData, 'EigVecs', psx.EigVecs, 'MeanVals', psx.MeanVals);
+    psy  = struct('InputData', psy.InputData, 'EigVecs', psy.EigVecs, 'MeanVals', psy.MeanVals);
     parfor cIdx = allCrvs
         t = tic;
         fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
         
         img                                   = imgs{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns);
+            twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns);
         
         fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
             cIdx, toc(t), sptB);
@@ -287,7 +317,7 @@ else
         
         img                                   = imgs{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns);
+            twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns);
         
         fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
             cIdx, toc(t), sptB);

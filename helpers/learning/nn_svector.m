@@ -19,20 +19,16 @@ function [IN, OUT] = nn_svector(SSCR, ZSLC, NLAYERS, sav, par)
 
 %% Extract some info about the dataset
 % Total observations and number of scores used
-[segs , pcs] = size(SSCR);
-trnfn        = 'trainlm';
+[nSegs , pcs] = size(SSCR);
+allSegs       = 1 : nSegs;
+trnfn         = 'trainlm';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Split into training, validation, and testing sets
 trnPct                   = 0.8;
 valPct                   = 0.1;
 tstPct                   = 1 - (trnPct + valPct);
-[trnIdx, valIdx, tstIdx] = divideblock(Shuffle(1:segs), trnPct, valPct, tstPct);
-
-% Sort numerically
-trnIdx = sort(trnIdx);
-valIdx = sort(valIdx);
-tstIdx = sort(tstIdx);
+[trnIdx, valIdx, tstIdx] = splitDataset(allSegs, trnPct, valPct, tstPct);
 
 % Do the split
 X = ZSLC(trnIdx,:);
@@ -40,7 +36,7 @@ Y = SSCR(trnIdx,:);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Start training Convolution Neural Net
-net = cell(1, size(Y,2)); % Iteratively predicts all PCs
+snet = cell(1, size(Y,2)); % Iteratively predicts all PCs
 
 % Determine parallelization
 if par
@@ -58,19 +54,18 @@ for pc = 1 : pcs
     nnY = Y(:,pc)';
     
     % Run CNN
-    net{pc} = fitnet(NLAYERS, trnfn);
-    net{pc} = train(net{pc}, nnX, nnY, 'UseParallel', pll);
+    snet{pc} = fitnet(NLAYERS, trnfn);
+    snet{pc} = train(snet{pc}, nnX, nnY, 'UseParallel', pll);
 end
 
 % Store Networks in a structure
-netStr = arrayfun(@(x) sprintf('Net%d', x), 1 : pcs, 'UniformOutput', 0);
-net    = cell2struct(net, netStr, 2);
+netStr = arrayfun(@(x) sprintf('N%d', x), 1 : pcs, 'UniformOutput', 0);
+snet   = cell2struct(snet, netStr, 2);
 
 %% PC Predictions using network model
 ypre = zeros(size(SSCR));
 for n = 1 : numel(netStr)
-%     ypre(:,pc) = net{pc}(ZSLC');
-    ypre(:,n) = net.(netStr{n})(ZSLC');
+    ypre(:,n) = snet.(netStr{n})(ZSLC');
 end
 
 % Convert from PCs to Midpoint-Normalized Segments
@@ -78,22 +73,18 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structure
-% Input (raw inputs)
-Din  = struct('SSCR', SSCR, 'ZSLC', ZSLC, 'NLAYERS', NLAYERS);
-
-% Output (predictions)
+% Split Datasets
 Splt = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'tstIdx', tstIdx);
 
 % Full structure
-IN  = struct('DataIn', Din);
-OUT = struct('SplitSets', Splt, 'Predictions', ypre, 'Net', net);
+IN  = struct('SSCR', SSCR, 'ZSLC', ZSLC, 'NLAYERS', NLAYERS);
+OUT = struct('SplitSets', Splt, 'Predictions', ypre, 'Net', snet);
 
 % Save results in structure
 if sav
     pnm = sprintf('%s_SScoreNN_%dSegment_s%dPCs', ...
-        tdate('s'), segs, pcs);
-    save(pnm, '-v7.3', 'IN', 'OUT');
-    
+        tdate('s'), nSegs, pcs);
+    save(pnm, '-v7.3', 'IN', 'OUT');    
 end
 
 end

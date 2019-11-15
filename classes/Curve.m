@@ -53,18 +53,18 @@ classdef Curve < handle
             fprintf('\n%s\nRunning Full Pipeline for %s...\n', ...
                 msg, obj.Parent.Origin);
             
-%             tic; fprintf('Splitting full outline...')            ; obj.SegmentOutline         ; fprintf('done [%.02f sec]\n', toc);
-%             tic; fprintf('Midpoint Normalization conversion...') ; obj.NormalizeSegments(par) ; fprintf('done [%.02f sec]\n', toc);
-%             tic; fprintf('Generating S-Patches...')              ; obj.GenerateSPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
-%             tic; fprintf('Generating Z-Patches...')              ; obj.GenerateZPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
-%             tic; fprintf('Envelope coordinates conversion...')   ; obj.Normal2Envelope(par)   ; fprintf('done [%.02f sec]\n', toc);
+            %             tic; fprintf('Splitting full outline...')            ; obj.SegmentOutline         ; fprintf('done [%.02f sec]\n', toc);
+            %             tic; fprintf('Midpoint Normalization conversion...') ; obj.NormalizeSegments(par) ; fprintf('done [%.02f sec]\n', toc);
+            %             tic; fprintf('Generating S-Patches...')              ; obj.GenerateSPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
+            %             tic; fprintf('Generating Z-Patches...')              ; obj.GenerateZPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
+            %             tic; fprintf('Envelope coordinates conversion...')   ; obj.Normal2Envelope(par)   ; fprintf('done [%.02f sec]\n', toc);
             
             fprintf('DONE! [%.02f sec ]\n%s\n', toc(tRun), msg);
             
         end
         
         function trc = getTrace(obj, req)
-            %% Returns the manually-drawn contour            
+            %% Returns the manually-drawn contour
             switch nargin
                 case 1
                     trc = obj.Parent.FullOutline;
@@ -82,54 +82,35 @@ classdef Curve < handle
                     fprintf(2, 'Error getting trace\n');
                     trc = [];
             end
-                        
+            
+        end
+        
+        function Z = getZVector(obj, ndims)
+            %% Compute the Z-Vector skeleton for this contour
+            % This will compute the Z-Vector each time, rather than storing it
+            % in a variable after being run once. This will deprecate the 
+            % ZVector property.
+            
+            if nargin < 2
+                ndims = ':';
+            end
+            
+            % Returns the dimensions from ndims [default to all]
+            Z = contour2corestructure(...
+                obj.getTrace, obj.SEGMENTSIZE, obj.SEGMENTSTEPS);
+            
+            Z = Z(:, ndims);
+            
         end
         
         function segs = getSegmentedOutline(varargin)
-            %% Compute the segmented outline 
+            %% Compute the segmented outline
             % This will segment the outline each time, rather than storing it
             % into the object after being run once. This will deprecate the
-            % SegmentOutline method. 
+            % SegmentOutline method.
             try
                 obj = varargin{1};
-                trc = obj.Trace;
-                
-                switch nargin
-                    case 1                        
-                        len = obj.SEGMENTSIZE;
-                        stp = obj.SEGMENTSTEPS;
-                        
-                    case 3
-                        len = varargin{2};
-                        stp = varargin{3};
-                        
-                    otherwise
-                        len = obj.SEGMENTSIZE;
-                        stp = obj.SEGMENTSTEPS;
-                        msg = sprintf(...
-                            ['Input must be (segment_size, steps_per_segment)\n', ...
-                            'Segmenting with default parameters (%d, %d)\n'], ...
-                            len, stp);
-                        fprintf(2, msg);
-                        
-                end
-                segs                 = split2Segments(trc, len, stp, 1);
-                obj.NumberOfSegments = size(segs,3);
-                
-            catch 
-                fprintf(2, 'Error splitting outline into multiple segments\n');
-            end
-        end
-            
-        function obj = SegmentOutline(varargin)
-            %% Split CircuitJB outline into defined number of segments
-            % This function will generate all individual curves around the
-            % contour to the total defined by the SEGMENTSIZE parameter. Output
-            % will be N curves of length SEGMENTSIZE, where N is the number of
-            % curves around an outline of the CircuitJB object's InterpOutline.
-            
-            try
-                obj = varargin{1};
+                trc = obj.getTrace;
                 
                 switch nargin
                     case 1
@@ -150,58 +131,107 @@ classdef Curve < handle
                         fprintf(2, msg);
                         
                 end
-                
-                obj = loadRawSegmentData(obj, obj.Trace, len, stp);
+                segs                 = split2Segments(trc, len, stp);
+                obj.NumberOfSegments = size(segs,3);
                 
             catch
                 fprintf(2, 'Error splitting outline into multiple segments\n');
             end
+        end
+        
+        %         function obj = SegmentOutline(varargin)
+        %             %% Split CircuitJB outline into defined number of segments
+        %             % This function will generate all individual curves around the
+        %             % contour to the total defined by the SEGMENTSIZE parameter. Output
+        %             % will be N curves of length SEGMENTSIZE, where N is the number of
+        %             % curves around an outline of the CircuitJB object's InterpOutline.
+        %
+        %             try
+        %                 obj = varargin{1};
+        %
+        %                 switch nargin
+        %                     case 1
+        %                         len = obj.SEGMENTSIZE;
+        %                         stp = obj.SEGMENTSTEPS;
+        %
+        %                     case 3
+        %                         len = varargin{2};
+        %                         stp = varargin{3};
+        %
+        %                     otherwise
+        %                         len = obj.SEGMENTSIZE;
+        %                         stp = obj.SEGMENTSTEPS;
+        %                         msg = sprintf(...
+        %                             ['Input must be (segment_size, steps_per_segment)\n', ...
+        %                             'Segmenting with default parameters (%d, %d)\n'], ...
+        %                             len, stp);
+        %                         fprintf(2, msg);
+        %
+        %                 end
+        %
+        %                 obj = loadRawSegmentData(obj, obj.Trace, len, stp);
+        %
+        %             catch
+        %                 fprintf(2, 'Error splitting outline into multiple segments\n');
+        %             end
+        %
+        %         end
+        
+        function nsegs = getNormalizedSegments(obj)
+            %% Generates the segments in the Midpoint-Normalized Frame
+            % This computes the normalized segments from the contour each time,
+            % rather than storing it in the object. This saves disk space, and
+            % will deprecate the NormalizeSegments method.
+            segs = obj.getSegmentedOutline;
+            nsegs = arrayfun(@(x) midpointNorm(segs(:,:,x), 'new'), ...
+                1 : obj.NumberOfSegments, 'UniformOutput', 0);
+            nsegs = cat(3, nsegs{:});
             
         end
         
-        function obj = NormalizeSegments(obj, par)
-            %% Convert RawSegments using Midpoint Normalization Method
-            % Uses the midpoint-normalization method to convert coordinates in
-            % the raw image coordinate frame into the normalized coordinate
-            % frame (see midpointNorm())
-            if isempty(obj.RawSegments)
-                obj.SegmentOutline;
-            elseif isempty(obj.Trace)
-                obj.Trace = obj.Parent.FullOutline;
-                obj.SegmentOutline;
-            end
-            
-            % Run midpoint-normalization on all raw segments
-            allSegs = 1 : obj.NumberOfSegments;
-            segs    = obj.RawSegments;
-            
-            svctr = zeros(size(obj.RawSegments));
-            zvctr = zeros(obj.NumberOfSegments, 6);
-            pmats = zeros(3, 3, obj.NumberOfSegments);
-            if par
-                % Normalization with parallelization
-                parfor s = allSegs
-                    [svctr(:,:,s), pmats(:,:,s), ~, ~, ~, zvctr(s,:)] = ...
-                        midpointNorm(segs(:,:,s));
-                end
-            else
-                % Normalization with normal for loop
-                for s = allSegs
-                    [svctr(:,:,s), pmats(:,:,s), ~, ~, ~, zvctr(s,:)] = ...
-                        midpointNorm(segs(:,:,s));
-                end
-            end
-           
-            obj.SVectors = svctr;
-            obj.Pmats    = pmats;
-            obj.ZVector  = zvctr;
-            
-        end
+        %         function obj = NormalizeSegments(obj, par)
+        %             %% Convert RawSegments using Midpoint Normalization Method
+        %             % Uses the midpoint-normalization method to convert coordinates in
+        %             % the raw image coordinate frame into the normalized coordinate
+        %             % frame (see midpointNorm())
+        %             if isempty(obj.RawSegments)
+        %                 obj.SegmentOutline;
+        %             elseif isempty(obj.Trace)
+        %                 obj.Trace = obj.Parent.FullOutline;
+        %                 obj.SegmentOutline;
+        %             end
+        %
+        %             % Run midpoint-normalization on all raw segments
+        %             allSegs = 1 : obj.NumberOfSegments;
+        %             segs    = obj.RawSegments;
+        %
+        %             svctr = zeros(size(obj.RawSegments));
+        %             zvctr = zeros(obj.NumberOfSegments, 6);
+        %             pmats = zeros(3, 3, obj.NumberOfSegments);
+        %             if par
+        %                 % Normalization with parallelization
+        %                 parfor s = allSegs
+        %                     [svctr(:,:,s), pmats(:,:,s), ~, ~, ~, zvctr(s,:)] = ...
+        %                         midpointNorm(segs(:,:,s));
+        %                 end
+        %             else
+        %                 % Normalization with normal for loop
+        %                 for s = allSegs
+        %                     [svctr(:,:,s), pmats(:,:,s), ~, ~, ~, zvctr(s,:)] = ...
+        %                         midpointNorm(segs(:,:,s));
+        %                 end
+        %             end
+        %
+        %             obj.SVectors = svctr;
+        %             obj.Pmats    = pmats;
+        %             obj.ZVector  = zvctr;
+        %
+        %         end
         
         function obj = Normal2Envelope(obj, par)
             %% Convert SVectors to coordinates within envelope
             % Uses the envelope method to convert normalized coordinates to
-            % coordinates within an envelope structure (see envelopeMethod()).          
+            % coordinates within an envelope structure (see envelopeMethod()).
             
             % Generate S-Patches if haven't already
             if isempty(obj.SPatches)
@@ -217,7 +247,7 @@ classdef Curve < handle
                 obj.SVectors(:,:,x), envMax), allSegs, 'UniformOutput', 0);
             obj.EnvelopeSegments = cat(3, env{:});
             
-        end        
+        end
         
         function [sp , sd] = getSPatch(varargin)
             %% Generates an S-Patch from a segment
@@ -251,47 +281,48 @@ classdef Curve < handle
             end
         end
         
-        function [obj, SP, DS] = GenerateSPatches(obj, par)
-            %% Generates S-Patches from image frame coordinates
-            %
-            %
-            
-            %
-            segs    = obj.RawSegments;
-            img     = obj.getImage('gray');
-            allSegs = 1 : obj.NumberOfSegments;
-            
-            %%
-            if par
-                % Run with parallel processing
-                [SP, DS] = deal(cell(1, obj.NumberOfSegments));
-                parfor p = allSegs
-                    [SP{p}, DS{p}] = setSPatch(segs(:,:,p), img);
-                end
-                
-            else
-                % Run with traditional for loop
-                [SP, DS] = arrayfun(@(p) setSPatch(segs(:,:,p), img), ...
-                    allSegs, 'UniformOutput', 0);
-            end
-            
-            %
-            DS = cat(1, DS{:});
-            
-            %
-            obj.SPatches     = SP;
-            obj.SData        = DS;
-            obj.ENVELOPESIZE = DS(1).OuterData.GridSize(1);
-            
-        end
+        %         function [obj, SP, DS] = GenerateSPatches(obj, par)
+        %             %% Generates S-Patches from image frame coordinates
+        %             %
+        %             %
+        %
+        %             %
+        %             segs    = obj.RawSegments;
+        %             img     = obj.getImage('gray');
+        %             allSegs = 1 : obj.NumberOfSegments;
+        %
+        %             %%
+        %             if par
+        %                 % Run with parallel processing
+        %                 [SP, DS] = deal(cell(1, obj.NumberOfSegments));
+        %                 parfor p = allSegs
+        %                     [SP{p}, DS{p}] = setSPatch(segs(:,:,p), img);
+        %                 end
+        %
+        %             else
+        %                 % Run with traditional for loop
+        %                 [SP, DS] = arrayfun(@(p) setSPatch(segs(:,:,p), img), ...
+        %                     allSegs, 'UniformOutput', 0);
+        %             end
+        %
+        %             %
+        %             DS = cat(1, DS{:});
+        %
+        %             %
+        %             obj.SPatches     = SP;
+        %             obj.SData        = DS;
+        %             obj.ENVELOPESIZE = DS(1).OuterData.GridSize(1);
+        %
+        %         end
+        
         function [zp , zd] = getZPatch(varargin)
             %% Generates an Z-Patch from a segment's Z-Vector
             % This computes the S-Patch from the given segment each time, rather
             % than storing it in the object. This saves disk space, and will
             % deprecate the GenerateSPatches method.
             try
-                obj = varargin{1}; 
-                trc = obj.Trace;
+                obj = varargin{1};
+                trc = obj.getTrace;
                 len = obj.SEGMENTSIZE;
                 stp = obj.SEGMENTSTEPS;
                 z   = contour2corestructure(trc, len, stp);
@@ -330,36 +361,36 @@ classdef Curve < handle
             end
         end
         
-        function [obj, ZP, DZ] = GenerateZPatches(obj, par)
-            %% Generates Z-Patches from image frame coordinates
-            %
-            
-            %
-            zvec    = obj.ZVector;
-            img     = double(obj.getImage('gray'));
-            allSegs = 1 : obj.NumberOfSegments;
-            
-            %%
-            if par
-                % Run with parallel processing
-                [ZP, DZ] = deal(cell(1, obj.NumberOfSegments));
-                parfor p = allSegs
-                    [ZP{p}, DZ{p}] = setZPatch(zvec(p,:), img);
-                end
-            else
-                % Run with traditional for loop
-                [ZP, DZ] = arrayfun(@(p) setZPatch(zvec(p,:), img), ...
-                    allSegs, 'UniformOutput', 0);
-            end
-            
-            %
-            DZ = cat(1, DZ{:});
-            
-            %
-            obj.ZPatches = ZP;
-            obj.ZData    = DZ;
-            
-        end
+        %         function [obj, ZP, DZ] = GenerateZPatches(obj, par)
+        %             %% Generates Z-Patches from image frame coordinates
+        %             %
+        %
+        %             %
+        %             zvec    = obj.ZVector;
+        %             img     = double(obj.getImage('gray'));
+        %             allSegs = 1 : obj.NumberOfSegments;
+        %
+        %             %%
+        %             if par
+        %                 % Run with parallel processing
+        %                 [ZP, DZ] = deal(cell(1, obj.NumberOfSegments));
+        %                 parfor p = allSegs
+        %                     [ZP{p}, DZ{p}] = setZPatch(zvec(p,:), img);
+        %                 end
+        %             else
+        %                 % Run with traditional for loop
+        %                 [ZP, DZ] = arrayfun(@(p) setZPatch(zvec(p,:), img), ...
+        %                     allSegs, 'UniformOutput', 0);
+        %             end
+        %
+        %             %
+        %             DZ = cat(1, DZ{:});
+        %
+        %             %
+        %             obj.ZPatches = ZP;
+        %             obj.ZData    = DZ;
+        %
+        %         end
         
     end
     
@@ -488,33 +519,30 @@ classdef Curve < handle
             
         end
         
-        function [crvsX, crvsY] = rasterizeSegments(obj, req)
+        function [X, Y] = rasterizeSegments(obj)
             %% Rasterize all segments of requested type
             % This method is used to prepare for Principal Components Analysis.
             % The req parameter is the requested segment type to rasterize and
             % should be RawSegments, SVectors, or EnvelopeSegments.
             try
-                %                 segtype = getSegmentType(obj, req);
-                segtype = getSegmentType(req);
-                X       = obj.(segtype)(:,1,:);
-                Y       = obj.(segtype)(:,2,:);
-                crvsX   = rasterizeImagesHQ(X);
-                crvsY   = rasterizeImagesHQ(Y);
+                nsegs = obj.getNormalizedSegments;
+                X     = squeeze(nsegs(:,1,:))';
+                Y     = squeeze(nsegs(:,2,:))';
             catch
-                fprintf(2, 'Select segment type [raw|norm|env]\n');
-                [crvsX, crvsY] = deal([]);
+                fprintf(2, 'Error rasterizing %d segments\n', size(nsegs,3));
+                [X, Y] = deal([]);
             end
             
         end
         
         function img = getImage(varargin)
-            %% Return image data for Curve at desired frame            
+            %% Return image data for Curve at desired frame
             obj = varargin{1};
             switch nargin
                 case 1
                     img = obj.Parent.getImage;
                 case 2
-                    req = varargin{2};            
+                    req = varargin{2};
                     img = obj.Parent.getImage(req);
                 case 3
                     req = varargin{2};
@@ -557,8 +585,8 @@ classdef Curve < handle
             p.addOptional('Trace', []);
             p.addOptional('NumberOfSegments', 0);
             p.addOptional('RawSegments', []);      % Use optimized method [10.02.2019]
-%             p.addOptional('EnvelopeSegments', []); % Remove me! [10.02.2019]
-%             p.addOptional('EndPoints', []);        % Remove me! [10.02.2019]
+            %             p.addOptional('EnvelopeSegments', []); % Remove me! [10.02.2019]
+            %             p.addOptional('EndPoints', []);        % Remove me! [10.02.2019]
             p.addOptional('SVectors', []);
             p.addOptional('ZVector', []);
             p.addOptional('SPatches', []);
@@ -580,7 +608,7 @@ classdef Curve < handle
             %% NOTE [10.02.2019]
             % Splitting methods were optimized, but now makes one more segment
             % than the old method. Run the full dataset through the pipelines
-            % when all the optimizations are done. 
+            % when all the optimizations are done.
             obj.RawSegments      = ...
                 split2Segments(trace, segment_length, step_size, 1);
             obj.NumberOfSegments = size(obj.RawSegments,3);

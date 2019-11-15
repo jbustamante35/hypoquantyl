@@ -1,4 +1,4 @@
-function [N , Z] = addNormalVector(M, T)
+function [N , Z] = addNormalVector(M, T, addMid)
 %% addNormalVector: 
 % 
 %
@@ -6,9 +6,9 @@ function [N , Z] = addNormalVector(M, T)
 %   [N , Z] = addNormalVector(M, T) or [N,Z] = addNormalVector(Z)
 %
 % Input:
-%   M: midpoint vector
+%   M: midpoint vector [or midpoint and normal vector as single matrix]
 %   T: tangent vector
-%   Z: midpoint and normal vector as single matrix
+%   addMid: boolean to add midpoint to place tangent-normal in midpoint's frame
 %
 % Output:
 %   N: normal vector
@@ -18,13 +18,19 @@ function [N , Z] = addNormalVector(M, T)
 %%
 % Combined midpoints and tangents
 if nargin < 2
-    Z = M;
-    M = Z(:,1:2);
-    T = Z(:,3:4);
+    Z      = M;
+    M      = Z(:,1:2);
+    T      = Z(:,3:4);
+    addMid = 0; % Default to not adding back midpoint
 end
 
 % Return Normal vector and combined Z-Vector slices
-N = (Rmat(90) * (T - M)')' + M;
+if addMid
+    N = (Rmat(90) * (T - M)')' + M;
+else
+    N = (Rmat(90) * T')';
+end
+
 Z = [M , T , N];
 
 end

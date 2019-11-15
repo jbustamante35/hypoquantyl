@@ -8,9 +8,9 @@ function fig = plotZPredictions(idx, img, trnIdx, Zin, Zout, req, sav, f)
 % Input:
 %   idx: index in crvs of hypocotyl to show prediction
 %   img: grayscale image corresponding to index in training set
-%   px: PCA data of x-coordinates
-%   py: PCA data of y-coordinates
-%   pz: PCA data of midpoints
+%   trnIdx: training index
+%   Zin:
+%   Zout:
 %   req: set to 'truth', 'sim', or 'predicted' midpoint values
 %   sav: boolean to save figure as .fig and .tiff files
 %   f: select index of figure handle

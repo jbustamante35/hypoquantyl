@@ -159,7 +159,7 @@ classdef CircuitJB < handle
             obj.setImage(1, 'mask', msk);
         end
         
-        function obj = DrawOutline(obj, buf, flp)
+        function obj = DrawOutline(obj, buf)
             %% Draw RawOutline on this object's Image
             % The function crds2mask was changed (see generateMasks method for
             % this class) to include a buffering size parameter. When creating
@@ -173,7 +173,7 @@ classdef CircuitJB < handle
             % called before prompting user to draw contour.
             try
                 % Trace outline and store as RawOutline
-                img = obj.getImage(buf, flp);
+                img = obj.getImage('gray', buf);
                 str = sprintf('Outline\n%s', fixtitle(obj.Origin));
                 c   = drawPoints(img, 'y', str);
                 crd = c.Position;
@@ -183,12 +183,13 @@ classdef CircuitJB < handle
                 % msk = crds2mask(img, crd, buff);
                 % obj.setImage(frm, 'mask', msk);
             catch e
+                frm = obj.getFrame;
                 fprintf(2, 'Error setting outline at frame %d \n%s\n', ...
                     frm, e.getReport);
             end
         end
         
-        function obj = DrawAnchors(obj, buf, flp)
+        function obj = DrawAnchors(obj, buf)
             %% Draw RawPoints on this object's Image
             % If the buf parameter is set to true, then the image returned from
             % the parent Hypocotyl contains a buffered region around the image.
@@ -197,7 +198,7 @@ classdef CircuitJB < handle
             % called before prompting user to draw contour.
             try
                 % Plot anchor points and store as RawPoints
-                img = obj.getImage(buf, flp);
+                img = obj.getImage('gray', buf);
                 str = sprintf('%d AnchorPoints\n%s\n', ...
                     obj.NUMBEROFANCHORS, fixtitle(obj.Origin));
                 p   = drawPoints(img, 'b', str);
@@ -225,6 +226,14 @@ classdef CircuitJB < handle
             hyp = sdl.MyHypocotyl;
             
             obj.setParent(hyp);
+            
+            if obj.isFlipped
+                flpMe = 'flp';
+            else
+                flpMe = 'org';
+            end
+            
+            hyp.setCircuit(obj.getFrame, obj, flpMe);
             
         end
         
@@ -338,7 +347,7 @@ classdef CircuitJB < handle
             
             switch nargin
                 case 1
-                    % Grayscale image
+                    %% Grayscale image
                     frm = obj.getFrame;
                     flp = obj.checkFlipped;
                     
@@ -349,7 +358,7 @@ classdef CircuitJB < handle
                     end
                     
                 case 2
-                    % Returns requested image type
+                    %% Returns requested image type
                     try
                         req = varargin{2};
                         
@@ -368,14 +377,15 @@ classdef CircuitJB < handle
                     end
                     
                 case 3
-                    % Returns buffered image with the option to use the flipped
+                    %% Returns buffered image 
                     % version of the image
                     try
-                        buf = varargin{2};
-                        flp = varargin{3};
+                        req = varargin{2};
+                        buf = varargin{3};
+                        flp = obj.checkFlipped;
                         
                         frm = obj.getFrame;
-                        dat = obj.Parent.getImage(frm, buf, flp);
+                        dat = obj.Parent.getImage(frm, req, flp, buf);
                         
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);

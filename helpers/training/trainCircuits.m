@@ -89,16 +89,17 @@ if vis
     if numel(CRCS) < 8
         N = numel(CRCS);
     else
-        N = 8;
+        N = 8;        
     end
     
+    rows = ceil(N / 2);
+    cols = 2;
     fig1 = figure;
     fig2 = figure;
-    for i = 1 : N
-        
+    for i = 1 : N        
         try
             % Draw Routes on grayscale image
-            showImage(i, fig1, CRCS(i).getImage('gray'));
+            showImage(CRCS(i).getImage('gray'), fig1, rows, cols);
             hold on;
             plt(CRCS(i).getRawOutline, 'm.', 14);
             plt(CRCS(i).getOutline, 'b-', 3);
@@ -106,7 +107,7 @@ if vis
             plt(CRCS(i).getAnchorPoints, 'co', 14);
             
             % Draw Routes bw image
-            showImage(i, fig2, CRCS(i).getImage('bw'));
+            showImage(CRCS(i).getImage('bw'), fig2, rows, colss);
             hold on;
             plt(CRCS(i).getRawOutline, 'm.', 14);
             plt(CRCS(i).getOutline, 'b-', 3);
@@ -195,7 +196,7 @@ else
 end
 
 % Set original orientation of Circuit or Contour for this object
-crc = drawCircuit(obj, org, 0);
+crc = drawCircuit(obj, org);
 if typ
     obj.setCircuit(frm, crc, 'org');
 else
@@ -205,7 +206,7 @@ end
 % Set flipped orientation of Circuit or Contour for this object
 if flipme
     forg = sprintf('flip_%s', org);
-    flp  = drawCircuit(obj, forg, flipme);
+    flp  = drawCircuit(obj, forg);
     
     if typ
         obj.setCircuit(frm, flp, 'flp');
@@ -215,7 +216,7 @@ if flipme
 end
 end
 
-function crc = drawCircuit(obj, org, flipme)
+function crc = drawCircuit(obj, org)
 %% Create CircuitJB and prompt user to draw contour
 % Set image and origin data for CircuitJB
 crc = CircuitJB('Origin', org, 'Parent', obj);
@@ -225,21 +226,19 @@ crc.checkFlipped;
 % Draw Outline and AnchorPoints and normalize coordinates
 % NOTE: At this point, I decided don't want to buffer images anymore. Instead,
 % I will just set out-of-frame coordinates as the median background intensity.
-crc.DrawOutline(0, flipme);
-crc.DrawAnchors(0, flipme);
+crc.DrawOutline(0);
+crc.DrawAnchors(0);
 crc.ConvertRawPoints;
 % crc.CreateRoutes; % Use of Routes is deprecated [01-23-2019]
 
 end
 
-function showImage(fIdx, fHdl, im)
+function showImage(img, fIdx, rows, cols)
 %% Show image on given plot of figure
 % Default expects only 8 subplots [4 rows, 2 columns]
-set(0,'CurrentFigure',fHdl);
-subplot(4,2,fIdx);
-imagesc(im);
-colormap bone;
-axis image;
+set(0, 'CurrentFigure', fIdx);
+subplot(rows, cols, fIdx);
+myimagesc(img);
 
 end
 

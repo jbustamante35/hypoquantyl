@@ -45,7 +45,7 @@ classdef Hypocotyl < handle
             
         end
         
-        function [im, bw] = FlipMe(obj, frm, buf)
+        function img = FlipMe(obj, frm, req, buf)
             %% Store a flipped version of each Hypocotyl
             % Flipped version allows equal representation of all orientations of
             % contours because equality (lolz). If buf is set to true, use the
@@ -56,12 +56,10 @@ classdef Hypocotyl < handle
             %   frm: time point to extract image from
             %   buf: boolean to return buffered region around image
             
-            if buf
-                im = flip(obj.getImage(frm, 'gray', buf), 2);
-                bw = flip(obj.getImage(frm, 'bw',   buf), 2);
+            if buf > 0
+                img = flip(obj.getImage(frm, req, buf), 2);
             else
-                im = flip(obj.getImage(frm, 'gray'), 2);
-                bw = flip(obj.getImage(frm, 'bw'),   2);
+                img = flip(obj.getImage(frm, req), 2);
             end
             
         end
@@ -164,7 +162,7 @@ classdef Hypocotyl < handle
             
             switch nargin
                 case 1
-                    % Return grayscale images at all time points
+                    %% Return grayscale images at all time points
                     try
                         frm = obj.getFrame('b') : obj.getFrame('d');
                         img = obj.Parent.getImage(frm);
@@ -180,7 +178,7 @@ classdef Hypocotyl < handle
                     end
                     
                 case 2
-                    % Return grayscale image(s) at specific time point(s)
+                    %% Return grayscale image(s) at specific time point(s)
                     try
                         frm = varargin{2};
                         
@@ -203,7 +201,7 @@ classdef Hypocotyl < handle
                     end
                     
                 case 3
-                    % Return Specific image type
+                    %% Return Specific image type
                     % Get requested data field [ 'gray' | 'bw' ]
                     try
                         frm = varargin{2};
@@ -230,45 +228,59 @@ classdef Hypocotyl < handle
                     end
                     
                 case 4
-                    % Return frame with cropped and buffered region around image
-                    % Set flp to true to use flipped version of image
+                    %% Return flipped image of specific image type and frame(s)
                     try
                         frm = varargin{2};
-                        buf = varargin{3};
+                        req = varargin{3};
                         flp = varargin{4};
                         
                         if flp
                             % Extract image from parent Seedling
-                            [img, msk] = obj.FlipMe(frm, 0);
+                            dat = obj.FlipMe(frm, req, 0);
                         else
-                            img = obj.Parent.getImage(frm, 'gray');
-                            msk = obj.Parent.getImage(frm, 'bw');
+                            dat = obj.getImage(frm, req);
                         end
                         
-                        % Initial crop and scale to normalized size
-                        bnd = obj.getCropBox(frm);
-                        crp = imcrop(img, bnd);
-                        scl = imresize(crp, sclsz);
+                    catch
+                        fprintf(2, ...
+                            'Requested field must be either: gray | bw\n');
+                        dat = [];
+                        return;
+                    end
+                    
+                case 5
+                    %% Return frame with cropped and buffered region around image
+                    % Set flp to true to use flipped version of image
+                    try
+                        frm = varargin{2};
+                        req = varargin{3};
+                        flp = varargin{4};
+                        buf = varargin{5};
                         
-                        if buf
-                            % Compute median background intensity for buffer
+                        if flp
+                            % Extract image from parent Seedling
+                            img = obj.FlipMe(frm, req, 0);
+                            msk = obj.FlipMe(frm, 'bw',   0);
+                        else
+                            img = obj.getImage(frm, req);
+                            msk = obj.getImage(frm, 'bw');
+                        end
+                        
+                        if buf > 0
+                            % Buffered median background intensity and size
+                            if buf > 1
+                                buffpct = buf;
+                            else
+                                buffpct = obj.BUFF_PCT;
+                            end
+                            
+                            bnd      = obj.getCropBox(frm);
                             medBg    = median(img(msk == 1));
-                            [dat, ~] = cropWithBuffer(scl, bnd, ...
-                                obj.BUFF_PCT, medBg);
+                            [dat, ~] = ...
+                                cropWithBuffer(img, bnd, buffpct, medBg);
                         else
-                            dat = scl;
+                            dat = img;
                         end
-                        
-                        %                         % Prep cropped and rescaled image
-                        %                         img = obj.Parent.getImage(frm, 'gray');
-                        %                         msk = obj.Parent.getImage(frm, 'bw');
-                        %                         bnd = obj.getCropBox(frm);
-                        %                         crp = imcrop(img, bnd);
-                        %                         scl = imresize(crp, sclsz);
-                        %
-                        %                         % Set median background value to buffered region
-                        %                         medBg = median(img(msk == 1));
-                        %                         dat   = cropWithBuffer(scl, bnd, obj.BUFF_PCT, medBg);
                         
                     catch
                         fprintf(2, ...
@@ -278,6 +290,7 @@ classdef Hypocotyl < handle
                     end
                     
                 otherwise
+                    %% Nope
                     fprintf(2, 'Error requesting data.\n');
                     dat = [];
                     return;
@@ -365,7 +378,6 @@ classdef Hypocotyl < handle
                     fprintf(2, 'Error setting %s Circuit\n', req);
             end
         end
-        %   sIdx: index of randomly-selected Seedlings
         
         function crc = getCircuit(obj, frm, req)
             %% Return original or flipped version of CircuitJB object
@@ -421,9 +433,6 @@ classdef Hypocotyl < handle
                 
                 orgs = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'org')), ...
                     frms_all, 'UniformOutput', 0));
-                
-                %                 flps = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'flp')), ...
-                %                     frms_all, 'UniformOutput', 0));
                 
                 trained_frames   = frms_all(orgs);
                 untrained_frames = frms_all(~orgs);
