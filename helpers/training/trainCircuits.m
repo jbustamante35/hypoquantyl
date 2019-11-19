@@ -1,4 +1,4 @@
-function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sav, vis)
+function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sav, vis, fIdxs)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
 % This function takes in a fully-generated Experiment object as input and
 % extracts Hypocotyl objects to use as training data (defined in cin matrix)
@@ -39,6 +39,7 @@ function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sav, vis)
 %   flipme: boolean to inflate dataset with flipped versions of each Hypocotyl
 %   sav: save figures as .fig and .tiff files
 %   vis: boolean to plot figures or not
+%   fIdxs: figure indices to plot onto
 %
 % Output:
 %   CRCS: CircuitJB array of manually-drawn contours from Experiment Ein
@@ -86,36 +87,53 @@ end
 
 %% Show 8 first images and masks, unless < 8 contours drawn
 if vis
-    if numel(CRCS) < 8
-        N = numel(CRCS);
+    % Get figure indices or generate new figures
+    if isempty(fIdxs)
+        fig1 = figure;
+        fig2 = figure;
     else
-        N = 8;        
+        fig1 = figure(fIdxs(1));
+        fig2 = figure(fIdxs(2));
     end
     
-    rows = ceil(N / 2);
-    cols = 2;
-    fig1 = figure;
-    fig2 = figure;
-    for i = 1 : N        
+    set(0, 'CurrentFigure', fig1); cla;clf;
+    set(0, 'CurrentFigure', fig2); cla;clf;
+    
+    %% Gallery of Hypocotyls with contours on image
+    [n , o] = deal(1 : numel(CRCS));
+    p       = deal(horzcat(n,o));
+    tot     = numel(CRCS);
+    rows    = ceil(tot / 10); % Rows of 10
+    cols    = ceil(tot / rows);
+    
+    for slot = 1 : tot
         try
             % Draw Routes on grayscale image
-            showImage(CRCS(i).getImage('gray'), fig1, rows, cols);
+            set(0, 'CurrentFigure', fig1);
+            subplot(rows, cols, slot);
+            myimagesc(CRCS(slot).getImage('gray'));
             hold on;
-            plt(CRCS(i).getRawOutline, 'm.', 14);
-            plt(CRCS(i).getOutline, 'b-', 3);
-            plt(CRCS(i).getRawPoints, 'y+', 14);
-            plt(CRCS(i).getAnchorPoints, 'co', 14);
+            plt(CRCS(slot).getOutline,    'b.', 4);
+            plt(CRCS(slot).getOutline(1), 'r.', 10);
+            ttl = sprintf('%s\nSeedling %d Frame %d', ...
+                fixtitle(CRCS(slot).GenotypeName), ...
+                cin(p(slot),2), cin(p(slot),3));
+            title(ttl, 'FontSize', 6)
             
             % Draw Routes bw image
-            showImage(CRCS(i).getImage('bw'), fig2, rows, colss);
+            set(0, 'CurrentFigure', fig2);
+            subplot(rows, cols, slot);
+            myimagesc(CRCS(slot).getImage('bw'));
             hold on;
-            plt(CRCS(i).getRawOutline, 'm.', 14);
-            plt(CRCS(i).getOutline, 'b-', 3);
-            plt(CRCS(i).getRawPoints, 'y+', 14);
-            plt(CRCS(i).getAnchorPoints, 'co', 14);
+            plt(CRCS(slot).getOutline,    'b.', 4);
+            plt(CRCS(slot).getOutline(1), 'r.', 10);
+            ttl = sprintf('%s\nSeedling %d Frame %d', ...
+                fixtitle(CRCS(slot).GenotypeName), ...
+                cin(p(slot),2), cin(p(slot),3));
+            title(ttl, 'FontSize', 6)
             
         catch e
-            fprintf(2, 'Skipping Circuit %d\n%s\n', i, e.message);
+            fprintf(2, 'Skipping Circuit %d\n%s\n', slot, e.message);
         end
         
     end
@@ -140,7 +158,7 @@ for i = 1 : n
 end
 end
 
-function dout = retrieveDataObjects(din, ex, typ)
+function dout = retrieveDataObjects(cin, ex, typ)
 %% retrieveDataObjects: return data objects defined by [3 3] input matrix
 % Input is in the form of indexed values in an Experiment object. Indices
 % in the cin parameter should map to a frame containing a Seedling or Hypocotyl
@@ -161,11 +179,11 @@ try
         dtyp = 'Seedling';
     end
     
-    dttl = size(din, 1);
+    dttl = size(cin, 1);
     dout = repmat(eval(dtyp), 1, dttl);
     for d = 1 : dttl
-        g = ex.getGenotype(din(d,1));
-        s = g.getSeedling(din(d,2));
+        g = ex.getGenotype(cin(d,1));
+        s = g.getSeedling(cin(d,2));
         
         if typ
             dout(d) = s.MyHypocotyl;
@@ -174,7 +192,7 @@ try
         end
     end
 catch e
-    x = din(d,:);
+    x = cin(d,:);
     fprintf('Error extracting %s [ %d %d %d ]\n%s\n', dtyp, x, e.message);
     dout = [];
 end
@@ -229,22 +247,12 @@ crc.checkFlipped;
 crc.DrawOutline(0);
 crc.DrawAnchors(0);
 crc.ConvertRawPoints;
-% crc.CreateRoutes; % Use of Routes is deprecated [01-23-2019]
-
-end
-
-function showImage(img, fIdx, rows, cols)
-%% Show image on given plot of figure
-% Default expects only 8 subplots [4 rows, 2 columns]
-set(0, 'CurrentFigure', fIdx);
-subplot(rows, cols, fIdx);
-myimagesc(img);
 
 end
 
 function saveFigure(im, N, fig)
 %% Save figure as .fig and .tiff files
-nm = sprintf('%s_%dtrainedCircuits_%s', tdate('s'), N, im);
+nm = sprintf('%s_ManualTraining_%s_%dImages', tdate('s'), im, N);
 set(fig, 'Color', 'w');
 savefig(fig, nm);
 saveas(fig, nm, 'tiffn');

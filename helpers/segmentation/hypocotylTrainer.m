@@ -187,12 +187,12 @@ if sav
     
     %% PCA to fold predictions
     tx  = squeeze((targetsPre(:,1,:)))';
-    xnm = sprintf('FoldPredictionsX');
+    xnm = sprintf('FoldDVectorX');
     pcaAnalysis(tx, NPC, sav, xnm, 0);
     
     % Run PCA on Y-Coordinates
     ty  = squeeze((targetsPre(:,2,:)))';
-    ynm = sprintf('FoldPredictionsY');
+    ynm = sprintf('FoldDVectorY');
     pcaAnalysis(ty, NPC, sav, ynm, 0);
 end
 end

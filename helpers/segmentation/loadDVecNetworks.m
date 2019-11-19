@@ -1,9 +1,9 @@
-function [ptx, pty, pz, ptp, Nz, Nt] = loadZVecNetworks(ROOTDIR, PCADIR, NETOUT)
-%% loadZVecNetworks: load PCA datasets and neural net models for Z-Vectors
+function [ptx, pty, pz, ptp, Nz, Nt] = loadDVecNetworks(ROOTDIR, PCADIR, NETOUT)
+%% loadDVecNetworks: load PCA datasets and neural net models for Z-Vectors
 %
 % Usage:
 %   [ptx, pty, pz, pp, Nz, Nt] = ...
-%           loadZVecNetworks(ROOTDIR, PCADIR, NETOUT)
+%           loadDVecNetworks(ROOTDIR, PCADIR, NETOUT)
 %
 % Input:
 %   ROOTDIR: root directory of datasets and mat-files

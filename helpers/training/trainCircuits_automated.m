@@ -95,85 +95,47 @@ if vis
         fig2 = figure(fIdx(2));
     end
     
-    %% Gallery of selected Hypocotyls with auto-generated contour on image
-    set(0, 'CurrentFigure', fig1);
-    cla;clf;
+    set(0, 'CurrentFigure', fig1); cla;clf;
+    set(0, 'CurrentFigure', fig2); cla;clf;
     
+    %% Gallery of selected Hypocotyls with auto-generated contour on image
     [n , o] = deal(1 : numel(G));
     p       = deal(horzcat(n,o));
     tot     = numel(X);
-%     rows    = ceil(tot / 10);
-    rows = 2;
-    cols    = ceil(tot / ceil(rows / 2));
+    rows    = ceil(tot / 10); % Rows of 10
+    cols    = ceil(tot / rows);
+    
     for slot = 1 : tot
         
         % Grayscale images with contour and start points
+        set(0, 'CurrentFigure', fig1);
         subplot(rows, cols, slot);
-        imagesc(X{slot});
-        colormap gray;
-        axis image;
+        myimagesc(X{slot});
         hold on;
-        plt(CNT{slot}, 'b.', 4);
-        plt(CNT{slot}, 'g-', 1);
-        plt(CNT{slot}(1,:), 'rx', 6);
-        plt(PTS{slot}, 'mo', 3);
-        
+        plt(CNT{slot},      'b.', 4);
+        plt(CNT{slot}(1,:), 'r.', 10);
         ttl = sprintf('%s\nSeedling %d Frame %d', ...
-            fixtitle(G(p(slot)).GenotypeName), cin(p(slot), 2), cin(p(slot), 3));
-        title(ttl);
+            fixtitle(G(p(slot)).GenotypeName), ...
+            cin(p(slot), 2), cin(p(slot), 3));
+        title(ttl, 'FontSize', 6);
         
         % Binarized images with contour and start point
-        subplot(rows, cols, slot + tot);
-        imagesc(BW{slot});
-        colormap gray;
-        axis image;
+        set(0, 'CurrentFigure', fig2);
+        subplot(rows, cols, slot);
+        myimagesc(BW{slot});
         hold on;
-        plt(CNT{slot}, 'b.', 4);
-        plt(CNT{slot}, 'g-', 1);
-        plt(CNT{slot}(1,:), 'rx', 6);
-        plt(PTS{slot}, 'mo', 3);
-        
+        plt(CNT{slot},      'b.', 4);
+        plt(CNT{slot}(1,:), 'r.', 10);
         ttl = sprintf('%s\nSeedling %d Frame %d', ...
-            fixtitle(G(p(slot)).GenotypeName), cin(p(slot), 2), ...
-            cin(p(slot), 3));
-        title(ttl);
-    end
-    
-    %% Gallery of contours on grayscale imagess
-    set(0, 'CurrentFigure', fig2);
-    cla;clf;
-    
-    rows = 2;
-    cols = ceil(tot / rows);
-    for slot = 1 : tot
-        
-        try
-            % Draw contour and anchor points on grayscale image
-            subplot(rows, cols, slot);
-            imagesc(CRCS(slot).getImage('gray'));
-            colormap gray;
-            axis image;
-            hold on;
-            plt(CRCS(slot).getRawOutline, 'm.', 5);
-            plt(CRCS(slot).getOutline, 'b-', 2);
-            plt(CRCS(slot).getRawPoints, 'yo', 3);
-            plt(CRCS(slot).getAnchorPoints, 'cx', 5);
-            
-            ttl = sprintf('%s\nSeedling %d Frame %d', ...
-                fixtitle(G(p(slot)).GenotypeName), cin(p(slot), 2), ...
-                cin(p(slot), 3));
-            title(ttl);
-            
-        catch e
-            fprintf(2, 'Skipping Circuit %d\n%s\n', slot, e.message);
-        end
-        
+            fixtitle(G(p(slot)).GenotypeName), ...
+            cin(p(slot), 2), cin(p(slot), 3));
+        title(ttl, 'FontSize', 6);
     end
     
     figs = [fig1 fig2];
     if sav
-        fnms{1} = sprintf('%s_SegmentationGallery_%dImages', tdate('s'), tot);
-        fnms{2} = sprintf('%s_CircuitJBGallerys_%dImages', tdate('s'), tot);
+        fnms{1} = sprintf('%s_AutoTraining_gray_%dImages', tdate('s'), tot);
+        fnms{2} = sprintf('%s_AutoTraining_bw_%dImages',   tdate('s'), tot);
         for fig = 1 : numel(figs)
             savefig(figs(fig), fnms{fig});
             saveas(figs(fig), fnms{fig}, 'tiffn');
