@@ -139,7 +139,7 @@ if vis
     end
     
     if sav
-        saveFigure('gray', N, fig1);
+        saveFigure('gray', tot, fig1);
     end
     
     figs = [fig1 fig2];
