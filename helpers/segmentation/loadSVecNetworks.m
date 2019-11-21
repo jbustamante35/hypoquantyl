@@ -2,7 +2,8 @@ function [px, py, pz, pzp, psx, psy, Nz, Ns] = loadSVecNetworks(ROOTDIR, PCADIR,
 %% loadSVecNetworks: load datasets models for S-Vector predictions
 %
 % Usage:
-%   [px, py, pz, pp, Nz, Ns] = loadSVecNetworks(ROOTDIR, PCADIR, SIMDIR)
+%   [px, py, pz, pzp, psx, psy, Nz, Ns] = ...
+%       loadSVecNetworks(ROOTDIR, PCADIR, SIMDIR)
 %
 % Input:
 %   ROOTDIR: root directory of datasets and .mat files

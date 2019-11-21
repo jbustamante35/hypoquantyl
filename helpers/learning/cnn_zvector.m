@@ -3,15 +3,11 @@ function [IN, OUT] = cnn_zvector(IMGS, SCRS, sav, par)
 %
 %
 % Usage:
-%   [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, vis, par)
+%   [IN, OUT] = cnn_zvector(SCRS, IMGS, sav, par)
 %
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
 %   IMGS: reshaped and rescaled hypocotyl images [x x 1 N]
-%   px: output from PCA of X-coordinates
-%   py: output from PCA of Y-coordinates
-%   pz: output from PCA of Z-vectors
-%   skp: boolean to skip running PLSR if not needed
 %   sav: boolean to save output in a .mat file
 %   par: boolean to use parallel computing if available
 %

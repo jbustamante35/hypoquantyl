@@ -56,7 +56,7 @@ t = tic;
 % sIdxs   = 1 : ttlSegs;
 % cIdxs   = 1 : numCrvs;
 allData = 1 : (ttlSegs * numCrvs);
-% lngSegs = size(px.InputData, 2);
+lngSegs = size(px.InputData, 2);
 cntrIdx = ceil(lngSegs / 2); % Get the halfway index of each segment
 % cntrIdx = 1; % Get just the first point of each predicted segment
 

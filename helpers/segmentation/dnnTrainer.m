@@ -30,7 +30,6 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, sav, 
 allFigs = 1 : nFigs;
 fnms    = cell(1, nFigs);
 numCrvs = numel(IMG);
-% ttlSegs = 
 sprA    = repmat('=', 1, 80);
 sprB    = repmat('-', 1, 80);
 eIdxs   = double(sort(Shuffle(numCrvs, 'index', numel(allFigs))));
@@ -54,7 +53,7 @@ if vis
         title(ttl);
         drawnow;
         
-        fnms{fIdx} = sprintf('%s_TargetVsPredicted_%dIterations_Contour%d', ...
+        fnms{fIdx} = sprintf('%s_TargetVsPredicted_%dIterations_Contour%03d', ...
             tdate, nItrs, idx);
     end
 else
