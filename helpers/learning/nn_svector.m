@@ -68,9 +68,6 @@ for n = 1 : numel(netStr)
     ypre(:,n) = snet.(netStr{n})(ZSLC');
 end
 
-% Convert from PCs to Midpoint-Normalized Segments
-% predS = bsxfun(@plus, (ypreNet * pz.EigVectors'), pz.MeanVals);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structure
 % Split Datasets

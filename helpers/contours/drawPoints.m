@@ -1,15 +1,15 @@
-function h = drawPoints(im, clr, ttl)
+function h = drawPoints(img, clr, msg)
 %% drawPoints: use impoly to draw points on inputted image
 % This function is used for drawing raw outlines and anchorpoints on CircuitJB
 % objects. User can define the color of the outline with the clr parameter.
 %
 % Usage:
-%   h = drawPoints(im, clr)
+%   h = drawPoints(img, clr, ttl)
 %
 % Input:
-%   im: image to show on figure
+%   img: image to show on figure
 %   clr: color for the plotted points
-%   ttl: string to prompt user of what object to draw
+%   msg: message string to place title
 %
 % Output:
 %   h: object handle for plotted points
@@ -17,10 +17,12 @@ function h = drawPoints(im, clr, ttl)
 
 %% Set-up figure, Show image, Place Points
 plt = subplot(1, 1, 1);
-imagesc(im, 'Parent', plt);
+% myimagesc(img);
+imagesc(img, 'Parent', plt);
 colormap gray;
 axis image;
-title(sprintf('Draw %s', ttl));
+axis off;
+title(sprintf('Draw %s', msg), 'FontSize', 6);
 h = drawpolygon(plt, 'Color', clr);
 end
 

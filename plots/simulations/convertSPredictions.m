@@ -28,7 +28,7 @@ str  = sprintf('\n%s\n', repmat('-', 1, 80));
 tru  = 'truth';
 sim  = 'sim';
 pre  = 'predicted';
-pcf  = 10;
+pcf  = 5;
 
 fprintf('%sConverting predictions for %s data\n', str, req);
 switch req
@@ -56,9 +56,9 @@ t = tic;
 % sIdxs   = 1 : ttlSegs;
 % cIdxs   = 1 : numCrvs;
 allData = 1 : (ttlSegs * numCrvs);
-% lngSegs = size(px.InputData, 2);
-% cntrIdx = ceil(lngSegs / 2);
-cntrIdx = 1; % Get just the first point of each predicted segment
+lngSegs = size(px.InputData, 2);
+cntrIdx = ceil(lngSegs / 2); % Get the halfway index of each segment
+% cntrIdx = 1; % Get just the first point of each predicted segment
 
 msg = sprintf('Extracting information from %s dataset', req);
 fprintf('%s...[%.02f sec]\n', msg, toc(t));

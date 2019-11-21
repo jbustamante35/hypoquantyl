@@ -1,9 +1,8 @@
-function [ptx, pty, pz, ptp, Nz, Nt] = loadZVecNetworks(ROOTDIR, PCADIR, NETOUT)
-%% loadZVecNetworks: load PCA datasets and neural net models for Z-Vectors
+function [pdx, pdy, pz, pdp, Nz, Nd] = loadDVecNetworks(ROOTDIR, PCADIR, NETOUT)
+%% loadDVecNetworks: load PCA datasets and neural net models for Z-Vectors
 %
 % Usage:
-%   [ptx, pty, pz, pp, Nz, Nt] = ...
-%           loadZVecNetworks(ROOTDIR, PCADIR, NETOUT)
+%   [pdx, pdy, pz, pdp, Nz, Nd] = loadDVecNetworks(ROOTDIR, PCADIR, NETOUT)
 %
 % Input:
 %   ROOTDIR: root directory of datasets and mat-files
@@ -60,21 +59,21 @@ dnnout = 'dnn/dnnout.mat';
 TN     = loadFnc(ROOTDIR, NETOUT, dnnout, DOUT);
 
 % Extract the networks
-Nt  = arrayfun(@(x) x.Net, TN.TN, 'UniformOutput', 0);
-s   = arrayfun(@(x) sprintf('N%d', x), 1:numel(Nt), 'UniformOutput', 0);
-Nt = cell2struct(Nt, s, 2);
+Nd  = arrayfun(@(x) x.Net, TN.TN, 'UniformOutput', 0);
+s   = arrayfun(@(x) sprintf('N%d', x), 1:numel(Nd), 'UniformOutput', 0);
+Nd = cell2struct(Nd, s, 2);
 
 %% Eigenvectors and Means for image patches
-ptp.EigVecs  = arrayfun(@(x) x.EigVecs, TN.TN, 'UniformOutput', 0);
-ptp.MeanVals = arrayfun(@(x) x.MeanVals, TN.TN, 'UniformOutput', 0);
+pdp.EigVecs  = arrayfun(@(x) x.EigVecs, TN.TN, 'UniformOutput', 0);
+pdp.MeanVals = arrayfun(@(x) x.MeanVals, TN.TN, 'UniformOutput', 0);
 
-%% PCA data for folding predictions
-pcatx = 'pcatx.mat';
-pcaty = 'pcaty.mat';
-ptx   = loadFnc(ROOTDIR, PCADIR, pcatx, PCA);
-pty   = loadFnc(ROOTDIR, PCADIR, pcaty, PCA);
-ptx   = ptx.(PCA);
-pty   = pty.(PCA);
+%% PCA data for folding D-Vector predictions
+pcatx = 'pcadx.mat';
+pcaty = 'pcady.mat';
+pdx   = loadFnc(ROOTDIR, PCADIR, pcatx, PCA);
+pdy   = loadFnc(ROOTDIR, PCADIR, pcaty, PCA);
+pdx   = pdx.(PCA);
+pdy   = pdy.(PCA);
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
 

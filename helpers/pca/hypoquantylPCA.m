@@ -13,7 +13,6 @@ function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp)
 %   pcz: number of PCs to extract from z-vectors [optional]
 %   pcp: number of PCs to extract from z-patches [optional]
 %
-%
 % Output:
 %   px: PCA object from midpoint-normalized x-coordinates
 %   py: PCA object from midpoint-normalized y-coordinates
@@ -29,9 +28,9 @@ ttlSegs = CRVS(1).NumberOfSegments;
 
 % Get default PCs
 if nargin < 3
-    [pcx , pcy] = deal(3);
-    pcz         = 10;
-    pcp         = 5;
+    [pcx , pcy] = deal(6);
+    pcz         = 20;
+    pcp         = 10;
 end
 
 %% Split and Midpoint-Normalize x-/y-coordinates

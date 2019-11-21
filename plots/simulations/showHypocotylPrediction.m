@@ -58,6 +58,7 @@ plt(mid, 'g.', 3);
 cellfun(@(x) plt(x, 'r-', 1), ttng, 'UniformOutput', 0);
 cellfun(@(x) plt(x, 'b-', 1), tnrm, 'UniformOutput', 0);
 plt(cntr, 'g-', 2);
+plt(cntr(1,:), 'r.', 10);
 
 ttl = sprintf('Neural Net Prediction [%s Method]\nHypocotyl %d [%s set]', ...
     mth, idx, cSet);

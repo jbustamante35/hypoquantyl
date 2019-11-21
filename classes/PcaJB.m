@@ -69,8 +69,8 @@ classdef PcaJB
                 neigs = obj.NumberOfPCs;
             end
             
-            vecs = obj.getEigens;
-            vecs = vecs(:, 1:neigs);
+            vecs = obj.getEigens('vec', neigs);
+            vecs = vecs(:, 1 : neigs);
         end
         
         function vals = EigVals(obj, neigs)
@@ -79,17 +79,20 @@ classdef PcaJB
                 neigs = obj.NumberOfPCs;
             end
             
-            vals = obj.getEigens('val');
+            vals = obj.getEigens('val', neigs);
             vals = vals(1:neigs, 1:neigs);
         end
         
-        function [varX, pctN] = VarExplained(obj, pct)
+        function [varX, pctN] = VarExplained(obj, pct, neigs)
             %% Variance explained
             if nargin < 2
-                pct = 1;
+                pct   = 1;
+                neigs = obj.NumberOfPCs;
+            elseif nargin < 3
+                neigs = obj.NumberOfPCs;
             end
             
-            eigX         = obj.EigVals;
+            eigX         = obj.EigVals(neigs);
             [varX, pctN] = variance_explained(eigX, pct);
         end
         
@@ -140,14 +143,15 @@ classdef PcaJB
             args = p.Results;
         end
         
-        function eigX = getEigens(obj, req)
+        function eigX = getEigens(obj, req, npcs)
             %% Get Eigenvectors or Eigenvalues
             if nargin < 2
-                req = 'vec';
+                req  = 'vec';
+                npcs = obj.NumberOfPCs;
             end
             
             covD             = obj.CovVarMatrix;
-            [eigVec, eigVal] = eigs(covD, obj.NumberOfPCs);
+            [eigVec, eigVal] = eigs(covD, npcs);
             
             switch req
                 case 'vec'

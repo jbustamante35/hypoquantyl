@@ -3,15 +3,11 @@ function [IN, OUT] = cnn_zvector(IMGS, SCRS, sav, par)
 %
 %
 % Usage:
-%   [IN, OUT] = cnn_zvector(SCRS, IMGS, px, py, pz, skp, sav, vis, par)
+%   [IN, OUT] = cnn_zvector(SCRS, IMGS, sav, par)
 %
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
 %   IMGS: reshaped and rescaled hypocotyl images [x x 1 N]
-%   px: output from PCA of X-coordinates
-%   py: output from PCA of Y-coordinates
-%   pz: output from PCA of Z-vectors
-%   skp: boolean to skip running PLSR if not needed
 %   sav: boolean to save output in a .mat file
 %   par: boolean to use parallel computing if available
 %
@@ -107,7 +103,7 @@ for pc = 1 : pcs
         'MaxEpochs',             300, ...
         'InitialLearnRate',      1e-4, ...
         'Shuffle',              'every-epoch', ...
-        'Plots',                'training-progress', ...
+        'Plots',                'none', ...
         'Verbose',              true, ...
         'ExecutionEnvironment', exenv);
     
@@ -115,6 +111,7 @@ for pc = 1 : pcs
     %     'LearnRateSchedule',     'piecewise', ...
     %     'LearnRateDropFactor',   0.1, ...
     %     'LearnRateDropPeriod',   20, ...
+    %     'Plots',                'training-progress', ...
     
     % Run CNN
     znet{pc} = trainNetwork(cnnX, cnnY, layers, options);

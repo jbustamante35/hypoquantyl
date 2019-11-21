@@ -406,20 +406,28 @@ classdef CircuitJB < handle
             end
         end
         
-        function oL = getRawOutline(obj)
+        function oL = getRawOutline(obj, idx)
             %% Return RawOutline at specific frame
             try
-                oL = obj.RawOutline;
+                if nargin < 2
+                    idx = ':';
+                end
+                
+                oL = obj.RawOutline(idx,:);
             catch e
                 fprintf(2, 'Error returning RawOutline\n%s\n', e.getReport);
                 oL = [];
             end
         end
         
-        function iL = getOutline(obj)
+        function iL = getOutline(obj, idx)
             %% Return Interpolated Outline
             try
-                iL = obj.InterpOutline;
+                if nargin < 2
+                    idx = ':';
+                end
+                
+                iL = obj.InterpOutline(idx,:);
             catch e
                 fprintf(2, 'Error returning InterpOutline\n%s\n', e.getReport);
             end
@@ -443,10 +451,14 @@ classdef CircuitJB < handle
             end
         end
         
-        function pts = getRawPoints(obj)
+        function pts = getRawPoints(obj, idx)
             %% Return RawPoints
+            if nargin < 2
+                idx = ':';
+            end
+            
             try
-                pts = obj.RawPoints;
+                pts = obj.RawPoints(idx,:);
             catch e
                 fprintf(2, 'Error returning RawPoints\n%s\n', e.getReport);
             end

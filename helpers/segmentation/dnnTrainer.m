@@ -1,18 +1,26 @@
-function [net, evecs, mns, fnms] = hypocotylTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, sav, vis, par)
-%% hypocotylTrainer
-% Description
+function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, sav, vis, par)
+%% dnnTrainer: training algorithm for recursive displacement learning method
+% This is a description
 %
 % Usage:
-%    [net, evecs, mns, fnms] = ...
-%       hypocotylTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, sav, vis, par)
+%    [DIN, DOUT, fnms] = ...
+%       dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, sav, vis, par)
 %
 % Input:
-%    IN:
-%    sav: boolean to save output as .mat file
-%    vis: boolean to visualize output
+%   IMG: cell array of images to be trained
+%   CNTR: cell array of contours to train from images
+%   nItrs: total recursive interations to train D-Vectors
+%   nFigs: number of figures opened to show progress of training
+%   fldPreds: boolean to fold predictions after each iteration
+%   sav: boolean to save output as .mat file
+%   vis: boolean to visualize output
+%   par: boolean to run with parallelization or with single-thread
 %
 % Output:
-%    OUT:
+%   net: cell array of trained network models for each iteration
+%   evecs: cell array of eigenvectors for each iteration
+%   mns: cell array of means for each iteration
+%   fnms: cell array of file names for the figures generated 
 %
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
@@ -22,7 +30,6 @@ function [net, evecs, mns, fnms] = hypocotylTrainer(IMG, CNTR, nItrs, nFigs, fld
 allFigs = 1 : nFigs;
 fnms    = cell(1, nFigs);
 numCrvs = numel(IMG);
-% ttlSegs = 
 sprA    = repmat('=', 1, 80);
 sprB    = repmat('-', 1, 80);
 eIdxs   = double(sort(Shuffle(numCrvs, 'index', numel(allFigs))));
@@ -46,9 +53,11 @@ if vis
         title(ttl);
         drawnow;
         
-        fnms{fIdx} = sprintf('%s_TargetVsPredicted_%dIterations_Contour%d', ...
+        fnms{fIdx} = sprintf('%s_TargetVsPredicted_%dIterations_Contour%03d', ...
             tdate, nItrs, idx);
     end
+else
+    fnms = [];
 end
 
 %% Run the algorithm!
@@ -171,7 +180,10 @@ for itr = 1 : nItrs
     
 end
 
-% Done with all iterations
+% Store output
+DIN  = struct('IMGS', IMG, 'CNTRS', CNTR);
+DOUT = struct('Net', net, 'EigVecs', evecs, 'MeanVals', mns);
+
 fprintf('\n%s\nFull Run of %d Iterations: %.02f sec\n%s\n', ...
     sprA, nItrs, toc(tAll), sprA);
 
@@ -187,12 +199,12 @@ if sav
     
     %% PCA to fold predictions
     tx  = squeeze((targetsPre(:,1,:)))';
-    xnm = sprintf('FoldPredictionsX');
+    xnm = sprintf('FoldDVectorX');
     pcaAnalysis(tx, NPC, sav, xnm, 0);
     
     % Run PCA on Y-Coordinates
     ty  = squeeze((targetsPre(:,2,:)))';
-    ynm = sprintf('FoldPredictionsY');
+    ynm = sprintf('FoldDVectorY');
     pcaAnalysis(ty, NPC, sav, ynm, 0);
 end
 end
