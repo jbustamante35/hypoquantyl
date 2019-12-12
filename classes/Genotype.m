@@ -18,9 +18,9 @@ classdef Genotype < handle
         ImageStore
         RawSeedlings
         Seedlings
-        CONTOURSIZE  = 2000           % Number of points to normalize Seedling contours
+        CONTOURSIZE  = 200            % Number of points to normalize Seedling contours
         MASKSIZE     = [1000 100000]  % Cut-off area for objects in image
-        PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
+        PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'Centroid', 'WeightedCentroid', 'Orientation'};
     end
     
     %% ------------------------- Primary Methods --------------------------- %%
@@ -58,7 +58,7 @@ classdef Genotype < handle
             % Find raw seedlings from each frame in range
             frm = 1;      % Set first frame for first Seedling
             for r = rng
-                extractSeedlings(obj, obj.getImage(r), ...
+                extractSeedlings(obj, double(obj.getImage(r)), ...
                     frm, obj.MASKSIZE, hypln);
                 frm = frm + 1;
                 
@@ -173,13 +173,12 @@ classdef Genotype < handle
         
         function obj = storeImages(obj, I)
             %% Set ImageDataStore object containing paths to images
-            obj.ImageStore = I;
+            obj.ImageStore  = I;
             obj.TotalImages = I.numpartitions;
         end
         
         function rawImages = getAllImages(obj)
             %% Return all raw images in a cell array
-            %             rawImages = obj.Images;
             rawImages = obj.ImageStore.readall;
         end
         
@@ -339,7 +338,7 @@ classdef Genotype < handle
             
             % Segmentation with Otsu method and the inverted BW image, then
             % filter out small objects [ defined by mskSz parameter ].
-            [dd, msk] = segmentObjectsHQ(im, mskSz);
+            [dd, msk] = segmentObjectsHQ(imcomplement(im), mskSz);
             prp       = regionprops(dd, im, obj.PDPROPERTIES);
             
             % Crop grayscale/bw/contour image of RawSeedling
@@ -356,7 +355,13 @@ classdef Genotype < handle
                 ctrs{s}.setParent(sdl);
                 sdl.increaseLifetime;
                 sdl.setFrame(frm, 'b');
-                sdl.setCoordinates(1, prp(s).WeightedCentroid);
+                
+                if ~all(isnan(prp(s).WeightedCentroid))
+                    sdl.setCoordinates(1, prp(s).WeightedCentroid);
+                else
+                    sdl.setCoordinates(1, prp(s).Centroid);
+                end
+                
                 sdl.setAnchorPoints(1, ...
                     bwAnchorPoints(sdl.getImage(1, 'bw'), hypln));
                 obj.RawSeedlings{s,frm} = sdl;

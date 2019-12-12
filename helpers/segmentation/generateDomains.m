@@ -18,7 +18,7 @@ function [dom , domSize] = generateDomains(dSize, sSize, vSize, hSize, toRemove)
 %   dom: cell array of all domains
 %   domSize: cell array of sizes used for the domains
 
-%%
+%% Set domain properties
 % Disk
 [rho , theta] = ndgrid(linspace(0, 1, dSize(1)), linspace(-pi, pi, dSize(2)));
 d1            = rho .* cos(theta);

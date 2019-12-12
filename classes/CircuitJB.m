@@ -337,6 +337,22 @@ classdef CircuitJB < handle
             end
         end
         
+        function img = getHardImage(varargin)
+            %% Return hard-set image
+            obj = varargin{1};
+            switch nargin
+                case 1
+                    img = obj.Image;
+                case 2
+                    % Return 'gray' or 'bw' image
+                    req = varargin{2};
+                    img = obj.Image.(req);
+                otherwise
+                    img = [];
+                    fprintf(2, 'Error returning hard-set image\n');
+            end
+        end
+        
         function dat = getImage(varargin)
             %% Return image data for ContourJB at desired frame [frm, req]
             % User can specify which image from structure with 3rd parameter
@@ -372,7 +388,7 @@ classdef CircuitJB < handle
                         end
                         
                     catch
-                        % Check if image is stored inside object
+                        % Check if image is hard-set inside object
                         dat = obj.Image.(req);
                     end
                     

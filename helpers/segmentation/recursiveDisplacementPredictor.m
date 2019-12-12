@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, ptx, pty, pz, ptp, Nz, Nt, z)
+function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz, pdp, Nz, Nt, z)
 %% recursiveDisplacementPredictor: recursive predictions of  displacement vector
 % This function runs the full pipeline for the recursive neural net algorithm
 % that returns the contour in the image reference frame from a grayscale image
@@ -22,10 +22,10 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, ptx, pty, pz
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
-%   ptx: X-Coordinate PCA from contour predictions
-%   pty: Y-Coordinate PCA from contour predictions
+%   pdx: X-Coordinate PCA from contour predictions
+%   pdy: Y-Coordinate PCA from contour predictions
 %   pz: Z-Vector PCA from segmented contours
-%   ptp: Z-Patch PCA from image patches of various scales an domain shape/sizes
+%   pdp: Z-Patch PCA from image patches of various scales an domain shape/sizes
 %   Nz: neural net model for predicting Z-Vector PC scores from images
 %   Nt: neural net model for predicting D-Vectors from Z-Patch scores
 %   z: initial Z-Vector to seed the initial predictions
@@ -48,8 +48,8 @@ VIS             = false;
 dom2Omit        = 1;
 foldPredictions = false;
 lastFrmFold     = true;
-npc             = size(ptx.EigVecs,2);
-nItrs           = numel(ptp.EigVecs);
+npc             = size(pdx.EigVecs,2);
+nItrs           = numel(pdp.EigVecs);
 allItrs         = 1 : nItrs;
 
 %
@@ -84,14 +84,14 @@ for itr = allItrs
     % Fold image patches into PC scores
     t = tic;
     fprintf('%s\nFolding Image Patch into %d PC scores...', ...
-        sprB, size(ptp.EigVecs{itr}, 2));
-    vprj = pcaProject(x, ptp.EigVecs{itr}, ptp.MeanVals{itr}, 'sim2scr');
+        sprB, size(pdp.EigVecs{itr}, 2));
+    vprj = pcaProject(x, pdp.EigVecs{itr}, pdp.MeanVals{itr}, 'sim2scr');
     fprintf('DONE [%.02f sec]\n', toc(t));
     
     % Run neural net on PC scores of image patches
     t = tic;
     fprintf('Predicting %d-D vector from Neural Net...', ...
-        size(ptp.EigVecs{itr}, 1));
+        size(pdp.EigVecs{itr}, 1));
     netstr = sprintf('N%d', itr);
     ypre   = (Nt.(netstr)(vprj'))';
     fprintf('DONE [%.02f sec]\n', toc(t));
@@ -110,12 +110,12 @@ for itr = allItrs
         
         % Convert to PC scores, Back-Project, and Reshape for x-/y-coordinates
         tx   = squeeze((tshp(:,1)))';
-        preX = pcaProject(tx,   ptx.EigVecs, ptx.MeanVals, 'sim2scr');
-        preX = pcaProject(preX, ptx.EigVecs, ptx.MeanVals, 'scr2sim')';
+        preX = pcaProject(tx,   pdx.EigVecs, pdx.MeanVals, 'sim2scr');
+        preX = pcaProject(preX, pdx.EigVecs, pdx.MeanVals, 'scr2sim')';
         
         ty   = squeeze((tshp(:,2)))';
-        preY = pcaProject(ty,   pty.EigVecs, pty.MeanVals, 'sim2scr');
-        preY = pcaProject(preY, pty.EigVecs, pty.MeanVals, 'scr2sim')';
+        preY = pcaProject(ty,   pdy.EigVecs, pdy.MeanVals, 'sim2scr');
+        preY = pcaProject(preY, pdy.EigVecs, pdy.MeanVals, 'scr2sim')';
         
         tshp = [preX , preY];
         
@@ -139,31 +139,28 @@ for itr = allItrs
         
         % Convert to PC scores, Back-Project, and Reshape for x-/y-coordinates
         tx   = squeeze((tshp(:,1)))';
-        preX = pcaProject(tx,   ptx.EigVecs, ptx.MeanVals, 'sim2scr');
-        preX = pcaProject(preX, ptx.EigVecs, ptx.MeanVals, 'scr2sim')';
+        preX = pcaProject(tx,   pdx.EigVecs, pdx.MeanVals, 'sim2scr');
+        preX = pcaProject(preX, pdx.EigVecs, pdx.MeanVals, 'scr2sim')';
         
         ty   = squeeze((tshp(:,2)))';
-        preY = pcaProject(ty,   pty.EigVecs, pty.MeanVals, 'sim2scr');
-        preY = pcaProject(preY, pty.EigVecs, pty.MeanVals, 'scr2sim')';
+        preY = pcaProject(ty,   pdy.EigVecs, pdy.MeanVals, 'sim2scr');
+        preY = pcaProject(preY, pdy.EigVecs, pdy.MeanVals, 'scr2sim')';
         
         tshp = [preX , preY];
         
         fprintf('DONE [%.02f sec]...\n', toc(tt));
     end
     
-    % Store each iteration's contour
+    % Store each iteration's contour and close it
     Simg{itr} = [tshp ; tshp(1,:)];
     
     fprintf('%s\nFinished iteration %d! [%.02f sec]\n%s\n', ...
         sprB, itr, toc(tItr), sprA);
 end
 
-%
-Cntr  = tshp;
+% Predicted contour is the final iteration
+Cntr  = Simg{itr};
 Znrms = contour2corestructure(Cntr, LEN, STP); % Get skeleton of prediction
-
-% Close the contour
-Cntr = [Cntr ; Cntr(1,:)];
 
 fprintf('\n%s\nDone predicting image from %d iterations! [%.02f sec]\n%s\n', ...
     sprB, nItrs, toc(tCrv), sprB);

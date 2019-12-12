@@ -51,7 +51,8 @@ numCrvs = numel(C);
 fprintf('Found %d contours of %d segments each...', numCrvs, ttlSegs);
 fprintf('DONE! [%.02f sec]\n', toc(t));
 
-%% Re-Train Neural Net for Z-Vectors
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Train Neural Net for Z-Vectors
 t = tic;
 fprintf('Running contours through PCA...');
 
@@ -67,7 +68,7 @@ t = tic;
 fprintf('Prepping Images and Contours for training %d Z-Vector PC scores...', ...
     pz.NumberOfPCs);
 
-%
+% Get images and Z-Vector PC scores
 IMGS  = arrayfun(@(x) double(x.getImage), C, 'UniformOutput', 0);
 ZMGS  = cat(4, IMGS{:});
 ZSCRS = pz.PCAScores;

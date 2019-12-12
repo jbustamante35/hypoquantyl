@@ -68,10 +68,10 @@ pdp.EigVecs  = arrayfun(@(x) x.EigVecs, TN.TN, 'UniformOutput', 0);
 pdp.MeanVals = arrayfun(@(x) x.MeanVals, TN.TN, 'UniformOutput', 0);
 
 %% PCA data for folding D-Vector predictions
-pcatx = 'pcadx.mat';
-pcaty = 'pcady.mat';
-pdx   = loadFnc(ROOTDIR, PCADIR, pcatx, PCA);
-pdy   = loadFnc(ROOTDIR, PCADIR, pcaty, PCA);
+pcadx = 'pcadx.mat';
+pcady = 'pcady.mat';
+pdx   = loadFnc(ROOTDIR, PCADIR, pcadx, PCA);
+pdy   = loadFnc(ROOTDIR, PCADIR, pcady, PCA);
 pdx   = pdx.(PCA);
 pdy   = pdy.(PCA);
 

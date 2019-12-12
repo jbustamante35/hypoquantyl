@@ -196,7 +196,7 @@ classdef Hypocotyl < handle
                             dat = imresize(crp, sclsz);
                         end
                     catch
-                        fprintf(2, 'Requested field must be either: %s\n', str);
+                        fprintf(2, 'Requested field must be either: [b|d]\n');
                         dat = [];
                     end
                     
@@ -222,8 +222,7 @@ classdef Hypocotyl < handle
                         end
                         
                     catch
-                        fprintf(2, ...
-                            'Requested field must be either: gray | bw\n');
+                        fprintf(2, 'Requested field must be either: [b|d]\n');
                         dat = [];
                     end
                     
@@ -242,10 +241,8 @@ classdef Hypocotyl < handle
                         end
                         
                     catch
-                        fprintf(2, ...
-                            'Requested field must be either: gray | bw\n');
+                        fprintf(2, 'Requested field must be either: [b|d]\n');
                         dat = [];
-                        return;
                     end
                     
                 case 5
@@ -290,10 +287,8 @@ classdef Hypocotyl < handle
                     end
                     
                 otherwise
-                    %% Nope
-                    fprintf(2, 'Error requesting data.\n');
-                    dat = [];
-                    return;
+                    %% Get hard-set image
+                    dat = obj.Image;
             end
         end
         

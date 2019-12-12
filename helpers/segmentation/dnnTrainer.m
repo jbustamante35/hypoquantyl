@@ -115,16 +115,16 @@ for itr = 1 : nItrs
             size(targetsPre,1), NPC);
         
         % Run PCA on X-Coordinates
-        tx  = squeeze((targetsPre(:,1,:)))';
-        ptx = myPCA(tx, NPC);
+        dx  = squeeze((targetsPre(:,1,:)))';
+        pdx = myPCA(dx, NPC);
         
         % Run PCA on Y-Coordinates
-        ty  = squeeze((targetsPre(:,2,:)))';
-        pty = myPCA(ty, NPC);
+        dy  = squeeze((targetsPre(:,2,:)))';
+        pdy = myPCA(dy, NPC);
         
         % Back-Project and reshape
-        preX       = reshape(ptx.SimData', [size(targetsPre,1) , 1 , numCrvs]);
-        preY       = reshape(pty.SimData', [size(targetsPre,1) , 1 , numCrvs]);
+        preX       = reshape(pdx.SimData', [size(targetsPre,1) , 1 , numCrvs]);
+        preY       = reshape(pdy.SimData', [size(targetsPre,1) , 1 , numCrvs]);
         targetsPre = [preX , preY , ones(size(preX))];
         
         fprintf('DONE! [%.02f sec]...', toc(tt));
@@ -198,14 +198,14 @@ if sav
     save(dnm, '-v7.3', 'TN');
     
     %% PCA to fold predictions
-    tx  = squeeze((targetsPre(:,1,:)))';
+    dx  = squeeze((targetsPre(:,1,:)))';
     xnm = sprintf('FoldDVectorX');
-    pcaAnalysis(tx, NPC, sav, xnm, 0);
+    pcaAnalysis(dx, NPC, sav, xnm, 0);
     
     % Run PCA on Y-Coordinates
-    ty  = squeeze((targetsPre(:,2,:)))';
+    dy  = squeeze((targetsPre(:,2,:)))';
     ynm = sprintf('FoldDVectorY');
-    pcaAnalysis(ty, NPC, sav, ynm, 0);
+    pcaAnalysis(dy, NPC, sav, ynm, 0);
 end
 end
 
