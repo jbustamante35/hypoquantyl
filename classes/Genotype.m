@@ -1,5 +1,4 @@
 %% Genotype: class for storing a single image stack from an Experiment
-% This is largely a placeholder class for the real program
 
 classdef Genotype < handle
     properties (Access = public)
@@ -44,7 +43,7 @@ classdef Genotype < handle
             
         end
         
-        function obj = FindSeedlings(obj, rng, hypln, v)
+        function sdls = FindSeedlings(obj, rng, hypln, v)
             %% Function to extract Seedling objects from a range of frames
             % This function searches the large grayscale image for what is
             % expected to be Seedling objects. The threshold size of the
@@ -56,9 +55,10 @@ classdef Genotype < handle
             end
             
             % Find raw seedlings from each frame in range
-            frm = 1;      % Set first frame for first Seedling
+            sdls = cell(1, numel(rng));
+            frm  = 1;      % Set first frame for first Seedling
             for r = rng
-                extractSeedlings(obj, double(obj.getImage(r)), ...
+                sdls{r} = extractSeedlings(obj, double(obj.getImage(r)), ...
                     frm, obj.MASKSIZE, hypln);
                 frm = frm + 1;
                 
@@ -70,11 +70,27 @@ classdef Genotype < handle
             end
             
         end
+
+        function sdls = SortSeedlings(obj)
+            %% 
+            % Aligns each Seedling by their centroid coordinate and then filters
+            % out empty time points [to obtain true lifetime]. This function
+            % calls an assortment of helper functions that filters out empty
+            % frames and aligns Seedling objects through subsequent frames.
+            sdls = obj.filterSeedlings( ...
+                obj.RawSeedlings, size(obj.RawSeedlings, 1));
+            obj.NumberOfSeedlings = numel(sdls);
+            arrayfun(@(x) x.RemoveBadFrames, sdls, 'UniformOutput', 0);
+        end
         
-        function obj = FindHypocotylAllSeedlings(obj, v)
-            %% Extract Hypocotyl from all Seedlings from this Genotype
-            
-            
+        function obj = PruneSeedlings(obj)
+            %% Remove RawSeedlings to decrease size of data object
+            obj.RawSeedlings = [];
+        end
+        
+                
+        function hyps = FindHypocotylAllSeedlings(obj, v)
+            %% Extract Hypocotyl from all Seedlings from this Genotype                        
             try
                 if v
                     fprintf('Extracting Hypocotyls from %s\n', ...
@@ -83,9 +99,9 @@ classdef Genotype < handle
                 end
                 
                 sdls = obj.Seedlings;
-                arrayfun(@(x) x.FindHypocotylAllFrames(v), ...
+                hyps = arrayfun(@(x) x.FindHypocotylAllFrames(v), ...
                     sdls, 'UniformOutput', 0);
-                arrayfun(@(x) x.SortPreHypocotyls, sdls, 'UniformOutput', 0);
+                hyps = arrayfun(@(x) x.SortPreHypocotyls, sdls, 'UniformOutput', 0);
                 
                 if v
                     fprintf('[%.02f sec] Extracted Hypocotyls from %s\n', ...
@@ -102,34 +118,19 @@ classdef Genotype < handle
             end
             
         end
-        
-        function obj = SortSeedlings(obj)
-            %% Align each Seedling by their centroid coordinate and then Filter
-            % out empty time points [to obtain true lifetime]. This function
-            % calls an assortment of helper functions that filters out empty
-            % frames and aligns Seedling objects through subsequent frames.
-            filterSeedlings(obj, obj.RawSeedlings, size(obj.RawSeedlings, 1));
-            obj.NumberOfSeedlings = numel(obj.Seedlings);
-            arrayfun(@(x) x.RemoveBadFrames, obj.Seedlings, 'UniformOutput', 0);
-        end
-        
-        function obj = PruneSeedlings(obj)
-            %% Remove RawSeedlings to decrease data
-            obj.RawSeedlings = [];
-        end
-        
+                
         function DerefParents(obj)
             %% Remove reference to Parent property
             obj.Parent = [];
         end
         
-        function obj = RefChild(obj)
+        function RefChild(obj)
             %% Set reference back to Children [ after use of DerefParents ]
             arrayfun(@(x) x.setParent(obj), obj.Seedlings, 'UniformOutput', 0);
             
         end
         
-        function obj = ChangeStorePaths(obj, p)
+        function fout = ChangeStorePaths(obj, p)
             %% Change base path of each ImageDataStore file
             % I'm an idiot and changed the directory to the base data, and it
             % messed up the entire dataset. This should allow flexibility in
@@ -159,8 +160,7 @@ classdef Genotype < handle
             end
         end
         
-    end
-    
+    end    
     
     %% ------------------------- Helper Methods ---------------------------- %%
     
@@ -177,17 +177,17 @@ classdef Genotype < handle
             obj.TotalImages = I.numpartitions;
         end
         
-        function rawImages = getAllImages(obj)
+        function imgs = getAllImages(obj)
             %% Return all raw images in a cell array
-            rawImages = obj.ImageStore.readall;
+            imgs = obj.ImageStore.readall;
         end
         
-        function rawSeedlings = getAllRawSeedlings(obj)
+        function rs = getAllRawSeedlings(obj)
             %% Return all unindexed seedlings
-            rawSeedlings = obj.RawSeedlings;
+            rs = obj.RawSeedlings;
         end
         
-        function im = getImage(varargin)
+        function img = getImage(varargin)
             %% Return requested image at index
             % This function draws from the ImageStore property that contains an
             % ImageDataStore to read an image into memory from it's path name.
@@ -201,13 +201,13 @@ classdef Genotype < handle
             switch nargin
                 case 1
                     % All grayscale images from this object
-                    im = obj.ImageStore.readall;
+                    img = obj.ImageStore.readall;
                     
                 case 2
                     % Grayscale image at index [can be a range of images]
                     idx = varargin{2};
                     try
-                        im = searchImageStore(obj.ImageStore, idx);
+                        img = searchImageStore(obj.ImageStore, idx);
                     catch
                         fprintf(2, 'No image(s) at index/range %s \n', idx);
                     end
@@ -222,30 +222,30 @@ classdef Genotype < handle
                         
                         switch req
                             case 'gray'
-                                im = imgs;
+                                img = imgs;
                                 
                             case 'bw'
                                 if iscell(imgs)
-                                    [~, im] = cellfun(@(x) ...
+                                    [~, img] = cellfun(@(x) ...
                                         segmentObjectsHQ(x, obj.MASKSIZE),...
                                         imgs, 'UniformOutput', 0);
                                 else
-                                    [~, im] = ...
+                                    [~, img] = ...
                                         segmentObjectsHQ(imgs, obj.MASKSIZE);
                                 end
                                 
                             otherwise
                                 fprintf(2, 'Error requesting %s image\n', req);
-                                im = [];
+                                img = [];
                         end
                     catch
                         fprintf(2, 'No image(s) at index/range %s \n', idx);
-                        im = [];
+                        img = [];
                     end
                     
                 otherwise
                     fprintf(2, 'Error returning images\n');
-                    im = [];
+                    img = [];
             end
             
         end
@@ -322,7 +322,7 @@ classdef Genotype < handle
             args = p.Results;
         end
         
-        function obj = extractSeedlings(obj, im, frm, mskSz, hypln)
+        function sdl = extractSeedlings(obj, img, frm, mskSz, hypln)
             %% Segmentation and Extraction of Seedling objects from raw image
             % This function binarizes a grayscale image at the given frame and
             % extracts features of a specified minimum size. Output is in the
@@ -338,8 +338,8 @@ classdef Genotype < handle
             
             % Segmentation with Otsu method and the inverted BW image, then
             % filter out small objects [ defined by mskSz parameter ].
-            [dd, msk] = segmentObjectsHQ(imcomplement(im), mskSz);
-            prp       = regionprops(dd, im, obj.PDPROPERTIES);
+            [dd, msk] = segmentObjectsHQ(imcomplement(img), mskSz);
+            prp       = regionprops(dd, img, obj.PDPROPERTIES);
             
             % Crop grayscale/bw/contour image of RawSeedling
             bws  = arrayfun(@(x) imcrop(msk, x.BoundingBox), ...
@@ -368,7 +368,7 @@ classdef Genotype < handle
             end
         end
         
-        function obj = filterSeedlings(obj, rs, nSeeds)
+        function sdls = filterSeedlings(obj, rs, nSeeds)
             %% Filter out bad Seedling objects and frames
             % This function iterates through the inputted cell array of
             % RawSeedlings to add only good Seedling objects into this
@@ -377,14 +377,13 @@ classdef Genotype < handle
             % Specifically, it runs the algorithm for checking centroid
             % coordinates of each Seedling to align each Seedling correctly,
             % based on matching centroid coordinates.
+            %
             
             % Store all coordinates in 3-dim matrix
-            rs       = empty2nan(rs, ...
-                Seedling('empty', 'Coordinates', [nan nan]));
-            
-            crdsCell = cellfun(@(x) x.getCoordinates(1), ...
-                rs, 'UniformOutput', 0);
-            
+            rs       = ...
+                empty2nan(rs, Seedling('empty', 'Coordinates', [nan nan]));            
+            crdsCell = ...
+                cellfun(@(x) x.getCoordinates(1), rs, 'UniformOutput', 0);            
             crdsMtrx = zeros(size(crdsCell, 1), 2, size(crdsCell, 2));
             for i = 1 : size(crdsCell, 2)
                 crdsMtrx(:,:,i) = cat(1, crdsCell{:,i});
@@ -428,66 +427,7 @@ classdef Genotype < handle
             
             obj.Seedlings = sdls;
         end
-        
-        %         function obj = alignSeedling(obj, fs, rs)
-        %             %% Compare coordinates of Seedlings at frame and select closest match from previous frame
-        %             % Input:
-        %             %   fs  : current Seedling to sort
-        %             %   rs  : cell array of all RawSeedlings at single frame
-        %
-        %
-        %             % Check for available RawSeedlings to check at this frame
-        %             vFrm(1:length(rs)) = true;
-        %             UNAVAILABLE_MSG    = 'unavailable';
-        %
-        %             for i = 1:length(vFrm)
-        %                 if isempty(rs{i})
-        %                     vFrm(i) = false;
-        %                     break;
-        %                 elseif strcmp(rs{i}.SeedlingName, UNAVAILABLE_MSG)
-        %                     vFrm(i) = false;
-        %                 end
-        %             end
-        %
-        %             if sum(vFrm) <= 0
-        %                 %                 fprintf(2, 'No valid Seedlings at %s [%d, %d] \n', num2str(vFrm), frms(1), frms(2));
-        %                 return;
-        %             else
-        %                 vIdx = find(vFrm == 1);
-        %             end
-        %
-        %
-        %             % Set Data from 1st available RawSeedling if aligning 1st frame
-        %             UNAVAILABLE_MSG = 'unavailable';
-        %             if fs.getLifetime == 0
-        %                 fs.increaseLifetime(1);
-        %                 fs.setCoordinates(fs.getLifetime, rs{vIdx(1)}.getCoordinates(1));
-        %                 fs.setImageData(  fs.getLifetime, rs{vIdx(1)}.getImage(1));
-        %                 fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
-        %                 fs.setFrame(rs{vIdx(1)}.getFrame('b'), 'b');
-        %
-        %                 % Mark RawSeedling as unavailable for next iterations
-        %                 rs{vIdx(1)}.setSeedlingName(UNAVAILABLE_MSG);
-        %
-        %                 % Search coordinates of available index and find closest match
-        %             else
-        %                 closer_idx = compareCoords(fs.getCoordinates(fs.getLifetime), rs(vIdx));
-        %
-        %                 fs.increaseLifetime(1);
-        %
-        %                 % Only set data if closest Seedling is found
-        %                 if ~isnan(closer_idx)
-        %                     fs.setCoordinates(fs.getLifetime, rs{closer_idx}.getCoordinates(1));
-        %                     fs.setImageData(  fs.getLifetime, rs{closer_idx}.getImage(1));
-        %                     fs.setPData(      fs.getLifetime, rs{vIdx(1)}.getPData(1));
-        %                     fs.setFrame(rs{closer_idx}.getFrame('b'), 'd');
-        %
-        %                     % Mark RawSeedling as unavailable for next iterations
-        %                     rs{closer_idx}.setSeedlingName(UNAVAILABLE_MSG);
-        %                 end
-        %             end
-        %
-        %         end
+                
     end
 end
 

@@ -62,7 +62,7 @@ classdef Seedling < handle
             
         end
         
-        function obj = RemoveBadFrames(obj)
+        function good_frames = RemoveBadFrames(obj)
             %% Remove frames with empty data and keep good frames
             % Run through multiple tests to determine good indices
             % This function removes poor frames and stores good frames in gdIdx
@@ -74,14 +74,15 @@ classdef Seedling < handle
             %   5) Out of frame growth
             %   6) Collisions
             
-            %% Get index of good frames, then remove bad frames
-            obj.GoodFrames = runQualityChecks(obj, obj.TESTS2RUN);
-            obj.Lifetime   = numel(obj.GoodFrames);
-            obj.setFrame(min(obj.GoodFrames), 'b');
-            obj.setFrame(max(obj.GoodFrames), 'd');
+            % Get index of good frames, then remove bad frames
+            good_frames    = runQualityChecks(obj, obj.TESTS2RUN);
+            obj.Lifetime   = numel(good_frames);
+            obj.setFrame(min(good_frames), 'b');
+            obj.setFrame(max(good_frames), 'd');
+            obj.GoodFrames = good_frames;
         end
         
-        function obj = FindHypocotylAllFrames(obj, v)
+        function hyp = FindHypocotylAllFrames(obj, v)
             %% Extract Hypocotyl at all frames using the extractHypocotyl
             % method for this Seedling's total Lifetime
             
@@ -93,7 +94,7 @@ classdef Seedling < handle
                 end
                 
                 rng = 1 : obj.Lifetime;
-                arrayfun(@(x) obj.extractHypocotyl(x, v), ...
+                hyp = arrayfun(@(x) obj.extractHypocotyl(x, v), ...
                     rng, 'UniformOutput', 0);
                 
                 if v
@@ -119,7 +120,7 @@ classdef Seedling < handle
             
         end
         
-        function obj = SortPreHypocotyls(obj)
+        function hyp = SortPreHypocotyls(obj)
             %% Compile PreHypocotyls into single Hypocotyl based on frame number
             % My original algorithm instances individual Hypocotyl objects for each
             % frame for each Seedling for each Genotype. This means creating
@@ -195,7 +196,7 @@ classdef Seedling < handle
             obj.ExperimentPath = obj.Host.ExperimentPath;
         end
         
-        function obj = extractHypocotyl(obj, frm, verb)
+        function hyp = extractHypocotyl(obj, frm, verb)
             %% Extract Hypocotyl with defined sizes within Seedling object
             % This function crops the top [h x w] of a Seedling
             % TODO:
@@ -364,7 +365,6 @@ classdef Seedling < handle
             % Extract and process contour from image
             imgs  = cellfun(@(x) double(imcomplement(x)), ...
                 obj.getImage, 'UniformOutput', 0);
-%             imgs  = cellfun(@(x) double(x), obj.getImage, 'UniformOutput', 0);
             frms = obj.getFrame;
             lt   = obj.getLifetime;
             

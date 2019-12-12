@@ -83,7 +83,7 @@ classdef Experiment < handle
             
         end
     
-        function obj = FindHypocotylAllGenotypes(obj, v)
+        function hyps = FindHypocotylAllGenotypes(obj, v)
             %% Extract Hypocotyl from every frame of each Seedling from
             % all Genotypes from this Experiment object
             try
@@ -95,7 +95,7 @@ classdef Experiment < handle
                 end
                 
                 gens = obj.Genotypes;
-                arrayfun(@(x) x.FindHypocotylAllSeedlings(v), ...
+                hyps = arrayfun(@(x) x.FindHypocotylAllSeedlings(v), ...
                     gens, 'UniformOutput', 0);
                 
                 if v
@@ -113,7 +113,7 @@ classdef Experiment < handle
             end
         end
         
-        function obj = FindSeedlingAllGenotypes(obj, v)
+        function sdls = FindSeedlingAllGenotypes(obj, v)
             %% Extract Seedling from every frame of each Genotype
             
             try
@@ -123,9 +123,9 @@ classdef Experiment < handle
                 end
                 
                 gens = obj.Genotypes;
-                arrayfun(@(x) x.FindSeedlings(1:x.TotalImages, ...
+                sdls = arrayfun(@(x) x.FindSeedlings(1:x.TotalImages, ...
                     obj.HYPOCOTYLLENGTH, v), gens, 'UniformOutput', 0);
-                arrayfun(@(x) x.SortSeedlings, gens, 'UniformOutput', 0);
+                sdls = arrayfun(@(x) x.SortSeedlings, gens, 'UniformOutput', 0);
                 
                 if v
                     fprintf('[%.02f sec] Extracted Seedlings from %s\n', ...

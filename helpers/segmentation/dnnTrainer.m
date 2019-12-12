@@ -193,7 +193,7 @@ if sav
     %% Data for predicting validation set
     % Need to save the neural networks, and what else?
     TN  = struct('Net', net, 'EigVecs', evecs, 'MeanVals', mns);
-    dnm = sprintf('%s_HQTrainedData_%dIterations_%dCurves', ...
+    dnm = sprintf('%s_DVecsNN_%dIterations_%dCurves', ...
         tdate, nItrs, numCrvs);
     save(dnm, '-v7.3', 'TN');
     
