@@ -143,40 +143,11 @@ if firstItr
     Z = contour2corestructure(cntr, LEN, STP);
 else
     % Compute predicted tangent bundle
-    crv     = targetsPre;
-    Z       = curve2framebundle(crv);
+    crv = targetsPre;
+    Z   = curve2framebundle(crv);
 end
 
 % Sample Image from Tangent Bundles
 X = sampleCorePatches(img, Z, scls, dom, domSize, VIS);
 
 end
-
-
-%{
-        if firstItr
-            % Get ground truth contour and displacement vectors
-            cntr    = CNTR{cIdx};
-            Y{cIdx} = prepareTargets(cntr, LEN, STP);
-        end
-    
-        if firstItr
-            % Get ground truth tangent bundle
-            Z{cIdx} = contour2corestructure(cntr, LEN, STP);
-        else
-            % Compute predicted tangent bundle
-            crv     = targetsPre(:, 1:2, cIdx);
-            Z{cIdx} = curve2framebundle(crv);
-        end
-    
-        % Sample Image from Tangent Bundles
-        X{cIdx} = sampleCorePatches(img, Z{cIdx}, scls, dom, domSize, VIS);
-        %         [X{cIdx} , zd] = setZPatch(Z{cIdx}, img, scls, s, 3, sqr);
-    
-        % Track progress
-        if mod(cIdx, 10)
-            fprintf('.');
-        else
-            fprintf('%d', cIdx);
-        end
-%}

@@ -11,7 +11,7 @@ function minDistIdx = compareCoords(crdsIn,  crdsNxt, dim)
 % Output:
 %   minDistIdx: index where each crdsIn coordinate is closest in crdsNxt
 
-minDistIdx = nan(length(crdsIn), 1);
+minDistIdx = nan(size(crdsIn,1), 1);
 for i = 1 : numel(minDistIdx)
     [~, y]        = min(abs(bsxfun(@minus, crdsNxt, crdsIn(i,:))));
     minDistIdx(i) = y(dim);

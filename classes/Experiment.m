@@ -38,26 +38,51 @@ classdef Experiment < handle
             
         end
         
-        function obj = AddGenotypes(obj)
-            %% Get all directories (exclude . and ..)
+        function obj = AddGenotypes(varargin)
+            %% Add Genotype to Experiment                        
+            % Get all directories (exclude . and ..)
+            obj   = varargin{1};
             fld   = dir(obj.ExperimentPath);
             fld   = fld(3:end);
             fldrs = fld(cat(1, fld.isdir));
             
-            for f = fldrs'
-                try
-                    obj.Genotypes(obj.NumberOfGenotypes + 1) = ...
-                        initializeGenotype(f.name, 'Parent', obj);
-                    obj.NumberOfGenotypes = obj.NumberOfGenotypes + 1;
-                catch e
-                    fprintf(2, e.getReport);
-                    fprintf(2, '\nError adding Genotype %d\n', ...
-                        obj.NumberOfGenotypes);
-                end
+            %%            
+            switch nargin
+                case 1
+                    for f = fldrs'
+                        try
+                            obj.Genotypes(obj.NumberOfGenotypes + 1) = ...
+                                initializeGenotype(f.name, 'Parent', obj);
+                            obj.NumberOfGenotypes = obj.NumberOfGenotypes + 1;
+                        catch e
+                            fprintf(2, e.getReport);
+                            fprintf(2, '\nError adding Genotype %d\n', ...
+                                obj.NumberOfGenotypes);
+                        end
+                    end
+                    
+                case 2
+                    ext = varargin{2};
+                    for f = fldrs'
+                        try
+                            obj.Genotypes(obj.NumberOfGenotypes + 1) = ...
+                                initializeGenotype(f.name, 'Parent', obj, ...
+                                'image_extension', ext);
+                            obj.NumberOfGenotypes = obj.NumberOfGenotypes + 1;
+                        catch e
+                            fprintf(2, e.getReport);
+                            fprintf(2, '\nError adding Genotype %d\n', ...
+                                obj.NumberOfGenotypes);
+                        end
+                    end
+                    
+                otherwise
+                    fprintf(2, 'Error adding Genotype\n');
+                    return;
             end
             
         end
-        
+    
         function obj = FindHypocotylAllGenotypes(obj, v)
             %% Extract Hypocotyl from every frame of each Seedling from
             % all Genotypes from this Experiment object

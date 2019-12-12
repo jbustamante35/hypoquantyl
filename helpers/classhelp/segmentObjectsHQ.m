@@ -26,12 +26,12 @@ else
     % msk = imbinarize(im, 'adaptive', 'Sensitivity', 0.7, ...
     %   'ForegroundPolarity', 'bright');
     % flt = bwareafilt(imcomplement(msk), sz);
-    sens = 0.4;
-    sz   = [100 10000];
+    sens  = 0.4;
+    fltsz = [100 10000];
     
     msk = imbinarize(im, 'adaptive', 'Sensitivity', sens, ...
-        'ForegroundPolarity', 'dark');
-    flt = bwareafilt(imcomplement(msk), sz);
+        'ForegroundPolarity', 'bright');
+    flt = bwareafilt(msk, fltsz);
     obs = bwconncomp(flt);
     % msk = imcomplement(msk);
 end

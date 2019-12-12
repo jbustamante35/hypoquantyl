@@ -50,7 +50,7 @@ classdef Curve < handle
             % par: 0 to use normal for loop, 1 to use with parallel processing
             tRun = tic;
             msg  = repmat('-', 1, 80);
-            fprintf('\n%s\nRunning Full Pipeline for %s...\n', ...
+            fprintf('\n%s\nRunning Full Pipeline for %s...', ...
                 msg, obj.Parent.Origin);
             
             %             tic; fprintf('Splitting full outline...')            ; obj.SegmentOutline         ; fprintf('done [%.02f sec]\n', toc);
@@ -59,7 +59,7 @@ classdef Curve < handle
             %             tic; fprintf('Generating Z-Patches...')              ; obj.GenerateZPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
             %             tic; fprintf('Envelope coordinates conversion...')   ; obj.Normal2Envelope(par)   ; fprintf('done [%.02f sec]\n', toc);
             
-            fprintf('DONE! [%.02f sec ]\n%s\n', toc(tRun), msg);
+            fprintf('DONE! [%.02f sec ]\n%s', toc(tRun), msg);
             
         end
         
@@ -322,6 +322,10 @@ classdef Curve < handle
             % deprecate the GenerateSPatches method.
             try
                 obj = varargin{1};
+                if obj.NumberOfSegments == 0
+                    obj.getSegmentedOutline;
+                end
+                                
                 trc = obj.getTrace;
                 len = obj.SEGMENTSIZE;
                 stp = obj.SEGMENTSTEPS;
@@ -331,7 +335,7 @@ classdef Curve < handle
                 nrm = z(:,5:6);
                 z   = [mid , tng+mid , nrm+mid];
                 
-                img     = double(obj.getImage);
+                img     = double(obj.getImage('gray'));
                 allSegs = 1 : obj.NumberOfSegments;
                 
                 switch nargin

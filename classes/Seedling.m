@@ -26,7 +26,7 @@ classdef Seedling < handle
         PData
         Contour
         SCALESIZE    = [101 101]
-        PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
+        PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'Centroid', 'WeightedCentroid', 'Orientation'};
         CONTOURSIZE  = 500		% number of points to normalize Hypocotyl contours
         IMAGEBUFFER  = 40		% percentage of image size to extend image for creating Hypocotyl objects
         TESTS2RUN    = [1 1 1 1 0 0];	% manifest to determine which quality checks to run
@@ -177,7 +177,7 @@ classdef Seedling < handle
         end
         
         function si = getSeedlingIndex(obj)
-            %% Return index of the Seedling 
+            %% Return index of the Seedling
             sn = obj.getSeedlingName;
             aa = strfind(sn, '{');
             bb = strfind(sn, '}');
@@ -334,14 +334,14 @@ classdef Seedling < handle
                         else
                             idx = obj.getFrame('b');
                         end
-                                                
+                        
                         if numel(idx) > 1
                             img = obj.Parent.getImage(idx, req);
                             bnd = num2cell(...
                                 obj.getPData(frm, 'BoundingBox'), 2)';
                             dat = cellfun(@(i,b) imcrop(i,b), ...
                                 img, bnd, 'UniformOutput', 0);
-                        else                            
+                        else
                             img = obj.Parent.getImage(idx, req);
                             bnd = obj.getPData(frm, 'BoundingBox');
                             dat = imcrop(img, bnd);
@@ -353,6 +353,41 @@ classdef Seedling < handle
                         dat = [];
                     end
             end
+            
+        end
+        
+        function obj = setAutoHypocotyls(obj)
+            %% Manually set a Hypocotyl child object at a given frame
+            % This crops out this Seedling object's image and resizes it to the
+            % desired patch size for Hypocotyl objects (see SCALESIZE property).
+            
+            % Extract and process contour from image
+            imgs  = cellfun(@(x) double(imcomplement(x)), ...
+                obj.getImage, 'UniformOutput', 0);
+%             imgs  = cellfun(@(x) double(x), obj.getImage, 'UniformOutput', 0);
+            frms = obj.getFrame;
+            lt   = obj.getLifetime;
+            
+            % Set cropboxes for Hypocotyl objects
+            sz   = cellfun(@(x) size(x), imgs, 'UniformOutput', 0);
+            sz   = cat(1, sz{:});
+            bbox = [zeros(numel(imgs), 2) , sz];
+            
+            % Set data for Hypocotyl object
+            hyp = Hypocotyl('Parent', obj, 'Host', obj.Host, 'Frame', frms, ...
+                'Lifetime', lt, 'HypocotylName', 'Hypocotyl_{1}', 'CropBox', bbox);
+            hyp.ExperimentName = obj.ExperimentName;
+            hyp.ExperimentPath = obj.ExperimentPath;
+            hyp.GenotypeName   = obj.GenotypeName;
+            hyp.SeedlingName   = obj.SeedlingName;
+            obj.MyHypocotyl    = hyp;
+            
+            %             % Set ContourJB and use outline for trained CircuitJB
+            %             cjb  = cellfun(@(x) extractContour(x, obj.CONTOURSIZE, ...
+            %                 'default', 0, 'Normalized'), imgs, 'UniformOutput', 0);
+            %             cjb  = cat(1, cjb{:})';
+            %             arrayfun(@(f,c) hyp.setContour(f,c), ...
+            %                 frms(1):frms(2), cjb, 'UniformOutput', 0);
             
         end
         
@@ -450,7 +485,7 @@ classdef Seedling < handle
             switch nargin
                 case 1
                     % Full structure of data at all frames
-                    pd  = obj.PData;
+                    pd = obj.PData;
                     
                 case 2
                     % All data at given frame
