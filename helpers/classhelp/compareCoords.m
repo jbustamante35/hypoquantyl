@@ -1,7 +1,7 @@
 function minDistIdx = compareCoords(crdsIn,  crdsNxt, dim)
-%% Euclidean distance comparison of inputted coordinates with group of coordinates
-% If coordinates are within set error percent, it is added to the
-% next frame of the Seedling. Otherwise the frame is skipped.
+%% Euclidean distance comparison of input coordinates with group of coordinates
+% If coordinates are within set error percent, it is added to the next frame of 
+% the Seedling. Otherwise the frame is skipped.
 %
 % Input:
 %   crdsIn: [n x m] vector of unmatched coordinates 

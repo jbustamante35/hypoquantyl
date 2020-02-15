@@ -169,7 +169,8 @@ classdef Seedling < handle
     methods (Access = public) %% Various methods for this class
         function obj = setSeedlingName(obj, sn)
             %% Set name for Seedling
-            obj.SeedlingName = string(sn);
+%             obj.SeedlingName = string(sn);
+            obj.SeedlingName = char(sn);
         end
         
         function sn = getSeedlingName(obj)
@@ -186,12 +187,12 @@ classdef Seedling < handle
             
         end
         
-        function obj = setParent(obj, p)
+        function obj = setParent(obj, gen)
             %% Set Genotype parent and Experiment host
-            obj.Parent       = p;
-            obj.GenotypeName = p.GenotypeName;
+            obj.Parent       = gen;
+            obj.GenotypeName = gen.GenotypeName;
             
-            obj.Host           = p.Parent;
+            obj.Host           = gen.Parent;
             obj.ExperimentName = obj.Host.ExperimentName;
             obj.ExperimentPath = obj.Host.ExperimentPath;
         end
@@ -350,7 +351,7 @@ classdef Seedling < handle
                     catch
                         fprintf(2, ...
                             'No %s image at frame %d indexed at %d \n', ...
-                            req, frm, idx);
+                            char(req), frm, idx);
                         dat = [];
                     end
             end
@@ -380,14 +381,7 @@ classdef Seedling < handle
             hyp.ExperimentPath = obj.ExperimentPath;
             hyp.GenotypeName   = obj.GenotypeName;
             hyp.SeedlingName   = obj.SeedlingName;
-            obj.MyHypocotyl    = hyp;
-            
-            %             % Set ContourJB and use outline for trained CircuitJB
-            %             cjb  = cellfun(@(x) extractContour(x, obj.CONTOURSIZE, ...
-            %                 'default', 0, 'Normalized'), imgs, 'UniformOutput', 0);
-            %             cjb  = cat(1, cjb{:})';
-            %             arrayfun(@(f,c) hyp.setContour(f,c), ...
-            %                 frms(1):frms(2), cjb, 'UniformOutput', 0);
+            obj.MyHypocotyl    = hyp;            
             
         end
         
@@ -397,7 +391,14 @@ classdef Seedling < handle
             % the given time point. Coordinates come from the WeightedCentroid
             % of the Seedling in a full image.
             try
-                obj.Coordinates(frm, :) = coords;
+                if iscell(frm)
+                    % Set coordinates from a cell array of frames
+                    cellfun(@(f,c) obj.setCoordinates(f,c), ...
+                        frm, coords, 'UniformOutput', 0);
+                else
+                    % Set coordinates for a single frame
+                    obj.Coordinates(frm, :) = coords;
+                end
             catch
                 fprintf('No coordinate found at frame %d \n', frm);
             end
@@ -472,7 +473,14 @@ classdef Seedling < handle
             %% Set extra properties data for Seedling at given frame
             % If first frame, then initialize struct with given fieldnames
             try
-                obj.PData(frm) = pd;
+                if iscell(frm)
+                    % Set PData for a cell array
+                    cellfun(@(f,p) obj.setPData(f,p), ...
+                        frm, pd, 'UniformOutput', 0);
+                else
+                    % Set PData for single frame
+                    obj.PData(frm) = pd;
+                end
             catch
                 fprintf(2, 'No pdata at index %d \n', frm);
             end
@@ -537,6 +545,10 @@ classdef Seedling < handle
         
         function pts = getAnchorPoints(obj, frm)
             %% Returns 4x2 array of 4 anchor points representing Hypocotyl
+            if nargin < 2
+                frm = ':';
+            end
+            
             try
                 pts = obj.AnchorPoints(:, :, frm);
             catch

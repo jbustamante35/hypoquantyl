@@ -1,9 +1,19 @@
 function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseed, psx, psy)
 %% hypocotylPredictor: the two-step neural net to predict hypocotyl contours
+% [ Describe how this works here ]
 %
+% [ Describe the 'svec' method ]
+%
+% [ Describe the 'dvec' method ]
+%
+% Note that the Ns input that contains the neural net model for predicting
+% S-Vector PC scores when using the 'svec' method should be replaced by Nt, the 
+% neural net model for predicting D-Vector PC scores when the 'dvec' method is 
+% used. This allows more flexibility when selecting the different methods. 
+% 
 % Usage:
 %   [Cntr, Znrms, Simg] = ...
-%       hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z)
+%       hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z, psx, psy)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -65,15 +75,15 @@ try
                 MFILES  = 'development/HypoQuantyl/datasets/matfiles';
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
-                NETOUT  = 'netout';
+                NETOUT  = 'netoutputs';
                 
-                %
+                % Note that Ns is actually Nt
                 [px, py, pz, pp, Nz, Ns] = ...
-                    loadZVecNetworks(ROOTDIR, PCADIR, NETOUT);
+                    loadDVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
-            %
+            % Note that Ns is actually Nt
             [Cntr, Znrms, Simg] = ...
                 runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, zseed);
             

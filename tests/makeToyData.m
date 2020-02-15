@@ -1,4 +1,4 @@
-function [C, D, figs] = makeToyData(N, vis, sav)
+function [C, D] = makeToyData(N, sav, par)
 %% makeToyData: generate fake dataset for HypoQuantyl pipeline
 % description
 %
@@ -41,16 +41,32 @@ fprintf('\n%s\nGenerating simulated dataset of %d circles\n%s\n', sprA, N, sprB)
 
 %% Generate the CircuitJB array
 t = tic;
-fprintf('Generating CircuitJB array [ RAD(%d, %d) | XC(%d, %d) | YC(%d, %d) ]...', ...
+fprintf('Generating CircuitJB array [ RAD(%d, %d) | XC(%d, %d) | YC(%d, %d) ]...\n', ...
     min(RAD), max(RAD), min(XC), max(XC), min(YC), max(YC));
 
-C = repmat(CircuitJB, 1, N);
-for n = 1 : N
-    r = M(RAD);
-    x = M(XC);
-    y = M(YC);
-    cnm  = sprintf('FakeCircle_c%d_r%d_x%d_y%d', n, r, x, y);
-    C(n) = makeFakeCircle(cnm, ISZ, BG, FG, r, x, y, ZC, CSZ);
+D = repmat(CircuitJB, 1, N);
+if par
+    % Run with parallel-processing
+    D = num2cell(D);
+    parfor n = 1 : N
+        r = M(RAD);
+        x = M(XC);
+        y = M(YC);
+        cnm  = sprintf('HardCircle_c%d_r%d_x%d_y%d', n, r, x, y);
+        fprintf('Circle %03d | Radius %d | x %d | y %d\n', n, r, x, y);
+        D{n} = makeFakeCircle(cnm, ISZ, BG, FG, r, x, y, ZC, CSZ);
+    end
+    D = cat(1, D{:});
+else
+    % Run on single-thread    
+    for n = 1 : N
+        r = M(RAD);
+        x = M(XC);
+        y = M(YC);
+        cnm  = sprintf('HardCircle_c%d_r%d_x%d_y%d', n, r, x, y);
+        fprintf('Circle %03d | Radius %d | x %d | y %d\n', n, r, x, y);
+        D(n) = makeFakeCircle(cnm, ISZ, BG, FG, r, x, y, ZC, CSZ);
+    end
 end
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
@@ -59,146 +75,21 @@ fprintf('DONE! [%.02f sec]\n', toc(t));
 t = tic;
 fprintf('Creating %d Curve objects from CircuitJB parents...', N);
 
-arrayfun(@(x) x.CreateCurves('redo', 0), C, 'UniformOutput', 0);
-D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
-D = cat(1, D{:});
+arrayfun(@(x) x.CreateCurves('redo', par), D, 'UniformOutput', 0);
+C = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
+C = cat(1, C{:});
 
 fprintf('\nDONE! [%.02f sec]\n', toc(t));
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Visualize data
-if vis
-    t = tic;
-    fprintf('Visualizing dataset...');
-    
-    nf   = 3;
-    figs = 1 : nf;
-    fnms = cell(1, nf);
-    
-    for n = 1 : nf
-        figs(n) = figure(n);
-        fnms{n} = sprintf('%s_blank', tdate('s'));
-    end
-    
-    %% Show randomly-generated circle's grayscale and overlay with contour
-    set(0, 'CurrentFigure', figs(1));
-    cla;clf;
-    
-    cIdx = m(C);
-    c    = C(cIdx);
-    img  = c.getHardImage('gray');
-    crds = c.FullOutline;
-    
-    hold on;
-    myimagesc(img);
-    plt(crds, 'g-', 2);
-    
-    ttl = sprintf('Circle %03d of %03d (image)', cIdx, N);
-    title(ttl, 'FontSize', 8);
-    
-    fnms{1} = sprintf('%s_CircleData_ContourOnMask%03d', tdate, cIdx);
-    
-    %% Show contours with their outlines
-    set(0, 'CurrentFigure', figs(2));
-    cla;clf;
-    
-    try
-        cIdxs = sort(randperm(N, 25));
-    catch
-        cIdxs = 1 : N;
-    end
-    
-    q    = 1;
-    rows = ceil(numel(cIdxs) / 5);
-    cols = ceil(numel(cIdxs) / rows);
-    
-    for ci = cIdxs
-        
-        subplot(rows, cols, q);
-        hold on;
-        myimagesc(C(ci).getHardImage('gray'));
-        plt(C(ci).FullOutline, 'y-', 3);
-        
-        ttl = sprintf('%s', C(ci).Origin);
-        title(fixtitle(ttl), 'FontSize', 8);
-        
-        q = q + 1;
-    end
-    
-    fnms{2} = sprintf('%s_CircleData_%dCircleGallery', tdate, N);
-    
-    %% Run through a single contour's segments and patches
-    if isempty(c.Curves)
-        c.CreateCurves('redo', 0);
-    end
-    
-    % Curve data
-    d    = c.Curves;
-    segs = d.getSegmentedOutline;
-    zp   = d.getZPatch;
-    z    = d.getZVector;
-    
-    % Plotting properties
-    scl   = 8;
-    mid   = z(:,1:2);
-    tng   = scl * z(:,3:4) + mid;
-    nrm   = scl * z(:,5:6) + mid;
-    nSegs = d.NumberOfSegments;
-    skp   = 3;
-    
-    for p = 1 : skp : nSegs
-        set(0, 'CurrentFigure', figs(3));
-        cla;clf;
-        
-        subplot(121);
-        myimagesc(zp{p});
-        ttl = sprintf('Z-Patch Image %03d of %03d\nSegment %03d of %03d', ...
-            cIdx, N, p, nSegs);
-        title(ttl);
-        
-        subplot(122);
-        hold on;
-        myimagesc(c.getHardImage('gray'));
-        plt(segs(:,:,p), 'g-', 3);
-        plt(mid(p,:), 'y.', 8);
-        plt([mid(p,:) ; tng(p,:)], 'r-', 2);
-        plt([mid(p,:) ; nrm(p,:)], 'b-', 2);
-        
-        ttl = sprintf('Z-Patch Overlay %03d of %03d\nSegment %03d of %03d', ...
-            cIdx, N, p, nSegs);
-        title(ttl);
-        
-        drawnow;
-        
-    end
-    
-    fnms{3} = sprintf('%s_CircleData_PatchesAndSegments%03d', tdate, cIdx);
-    
-    %% Save figures as .tiff images
-    if sav
-        for fig = figs
-            saveas(figs(fig), fnms{fig}, 'tiffn');
-        end
-    end
-    
-    fprintf('DONE! [%.02f sec]\n', toc(t));
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save data
 if sav
     t = tic;
     fprintf('Saving data for %d Curves...', N);
-    fnm = sprintf('%s_FakeCircles_%03dCurves', tdate, N);
+    fnm = sprintf('%s_HardCircles_%03dCurves', tdate, N);
     save(fnm, '-v7.3', 'C');
     fprintf('DONE! [%.02f sec]\n', toc(t));
 end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Run contours through PCA pipelines [x-/y-/z-coordinates]
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Run PCA through CNN
 
 %
 fprintf('%s\nFinished generating %d circles [%.02f sec]\n%s\n', ...
@@ -206,7 +97,7 @@ fprintf('%s\nFinished generating %d circles [%.02f sec]\n%s\n', ...
 
 end
 
-function c = makeFakeCircle(cnm, isz, bg, fg, r, x, y, z, csz)
+function d = makeFakeCircle(cnm, isz, bg, fg, r, x, y, z, csz)
 %% makeFakeCircle: generate fake CircuitJB object
 % asdf
 
@@ -247,13 +138,14 @@ maskedImage(~bw) = 0;
 msk              = maskedImage;
 
 %% Make CircuitJB and Curve objects from contours
-cjb        = extractContour(imcomplement(msk), csz);
-ctr        = cjb.InterpOutline;
-ctr(end,:) = [];
-c          = CircuitJB('Origin', cnm, 'RawOutline', ctr);
-c.setImage(1, 'gray', img);
-c.setImage(1, 'bw', msk);
-c.ConvertRawOutlines;
-c.ReconfigInterpOutline;
+cjb              = extractContour(imcomplement(msk), csz);
+ctr              = cjb.InterpOutline;
+ctr(end,:)       = [];
+d                = CircuitJB('Origin', cnm, 'RawOutline', ctr);
+d.ExperimentName = 'HardCircles';
+d.setImage(1, 'gray', img);
+% d.setImage(1, 'bw', msk);
+d.ConvertRawOutlines;
+d.ReconfigInterpOutline;
 
 end

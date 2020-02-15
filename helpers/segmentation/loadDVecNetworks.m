@@ -40,7 +40,7 @@ pz   = pz.(PCA);
 
 %% Neural Net model for predicting Z-Vectors
 ZOUT   = 'OUT';
-znnout = 'znn/znnout.mat';
+znnout = 'znnout.mat';
 co     = loadFnc(ROOTDIR, NETOUT, znnout, ZOUT);
 ZNN    = co.OUT;
 
@@ -55,7 +55,7 @@ end
 
 %% Neural Net model for predicting displacement vectors
 DOUT   = 'TN';
-dnnout = 'dnn/dnnout.mat';
+dnnout = 'dnnout.mat';
 TN     = loadFnc(ROOTDIR, NETOUT, dnnout, DOUT);
 
 % Extract the networks

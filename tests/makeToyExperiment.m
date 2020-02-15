@@ -1,4 +1,4 @@
-function ex = makeToyExperiment(din, N, sav, vis)
+function ex = makeToyExperiment(din, N, sav)
 %% makeToyExperiment: generate fake dataset for HypoQuantyl pipeline
 % description
 %
@@ -23,7 +23,7 @@ function ex = makeToyExperiment(din, N, sav, vis)
 ISZ = [200 500];
 BG  = 90; % average background intensity
 FG  = 42; % average foreground intensity
-RAD = (5 : 25) + (0.1 * ISZ(2)); % range for randomly chosen circle radii
+RAD = (5 : 40) + (0.1 * ISZ(2)); % range for randomly chosen circle radii
 YC  = (0 : 20) + (0.5 * ISZ(1)); % range for y-coordinate centers of circle
 XC  = (0 : 20) + (0.5 * ISZ(2)); % range for x-coordinate centers of circle
 ZC  = 20; % resolution of circle edge
@@ -55,7 +55,7 @@ mkdir(genodir);
 cmd  = digitString(N, 'i');
 ext  = 'tiff';
 
-if isempty(genodir)
+if ~any(size(dir([genodir sprintf('/*.%s', ext)]), 1))
     for i = 1 : N
         % Determine parameters for the circle
         r = M(RAD);
@@ -71,13 +71,21 @@ if isempty(genodir)
         fprintf('%s | Size: [%d , %d] | Radius: %d | X: %d | Y: %d\n', ...
             eval(cmd), ISZ, r, x, y);
     end
+else
+    [~, ddir] = fileparts(din);
+    [~, gdir] = fileparts(genodir);
+    fprintf('%d Images already written in %s...', N, [ddir , '/' , gdir]);
 end
+
 fprintf('DONE! [%.02f sec]\n', toc(t));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Continue HypoQuantyl pipeline go generate sub-classes
 ex.AddGenotypes(sprintf('.%s', ext));
-ex.FindSeedlingAllGenotypes(1);
+
+% Customized algorithm to get Seedling child objects
+g = ex.combineGenotypes;
+arrayfun(@(x) x.setAutoSeedlings, g, 'UniformOutput', 0);
 
 % Customized algorithm to get Hypocotyl child objects
 s = ex.combineSeedlings;
@@ -96,15 +104,16 @@ D   = trainCircuits_automated(ex, cin, fIdx, sav, 0);
 % Generate Curve objects
 arrayfun(@(x) x.ReconfigInterpOutline, D, 'UniformOutput', 0);
 arrayfun(@(x) x.CreateCurves('redo', 0), D, 'UniformOutput', 0);
-C    = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
-C    = cat(1, C{:});
+C       = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
+C       = cat(1, C{:});
+numCrvs = numel(C);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save data
 if sav
-    t = tic;
-    fprintf('Saving data for %d Curves...', N);
-    fnm = sprintf('%s_FakeCircles_%03dCurves', tdate, N);
+    t = tic;    
+    fprintf('Saving data for %d Curves...', numCrvs);   
+    fnm = sprintf('%s_FakeCircles_%03dCurves', tdate, numCrvs);
     save(fnm, '-v7.3', 'C');
     fprintf('DONE! [%.02f sec]\n', toc(t));
 end

@@ -23,10 +23,30 @@ function [ZIN, ZOUT , DIN, DOUT , SIN, SOUT] = hypoquantylTrainer(ex, sav, fIdxs
 sprA = repmat('-', 1, 80);
 sprB = repmat('=', 1, 80);
 
+% Check if input is Experiment class or Curve array
+ex_class = class(ex);
+switch ex_class
+    case 'Experiment'
+        exname = ex.ExperimentName;
+        
+        % Contours
+        D = ex.combineContours;
+        C = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
+        C = cat(1, C{:});
+        
+    case 'Curve'
+        C      = ex;
+        exname = C(1).Parent.ExperimentName;        
+    otherwise
+        fprintf(2, 'Class of input %s not recognized [Experiment|Curve]\n', ...
+            ex_class);
+        return;
+end       
+
 % Timer 
 tAll = tic;
 fprintf('\n%s\nRunning %s through HypoQuantyl Trainer [Save = %s | Figures = %s]\n%s\n', ...
-    sprB, ex.ExperimentName, num2str(sav), num2str(fIdxs), sprA);
+    sprB, exname, num2str(sav), num2str(fIdxs), sprA);
 
 % Figure indices
 t = tic;
@@ -38,11 +58,6 @@ else
     vis   = false;
     nFigs = [];
 end
-
-% Contours
-D = ex.combineContours;
-C = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
-C = cat(1, C{:});
 
 % Information about the dataset
 ttlSegs = C(1).NumberOfSegments;

@@ -44,7 +44,7 @@ classdef CircuitJB < handle
                 % Set default properties for empty object
             end
             
-%             obj.Routes = initializeRoutes(obj);
+            %             obj.Routes = initializeRoutes(obj);
             obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
         end
         
@@ -57,6 +57,12 @@ classdef CircuitJB < handle
             %% Full Outline generates Curve objects around CircuitJB object
             % Generate InterpOutline and NormalOutline if not yet done
             % Set overwrite to 'skip' to skip curves that are already created
+            if nargin < 2
+                overwrite = 'redo';
+                par       = 0;
+                fprintf('Defaulting to parameters %s (overwrite) and %s (par)\n', ...
+                    char(overwrite), num2str(par));
+            end
             
             switch overwrite
                 case 'redo'
@@ -112,7 +118,7 @@ classdef CircuitJB < handle
         end
         
         function obj = DeleteRoutes(obj)
-            %% Delete the Route child objects 
+            %% Delete the Route child objects
             % Because I don't use them and their dum
             obj.Routes        = [];
             obj.NormalOutline = [];
@@ -152,7 +158,7 @@ classdef CircuitJB < handle
             % tl;dr: I might be able to remove the buff parameter from here
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            img = obj.getImage(1, 'gray');
+            img = obj.getImage('gray');
             crd = obj.getNormalOutline; % Use normalized coordinates
             %             crd = obj.FullOutline;
             msk = crds2mask(img, crd, buff);
@@ -189,24 +195,49 @@ classdef CircuitJB < handle
             end
         end
         
-        function obj = DrawAnchors(obj, buf)
+        function obj = DrawAnchors(obj, buf, mth)
             %% Draw RawPoints on this object's Image
             % If the buf parameter is set to true, then the image returned from
             % the parent Hypocotyl contains a buffered region around the image.
             %
             % If the flp parameter is set to true, then the FlipMe method is
             % called before prompting user to draw contour.
-            try
-                % Plot anchor points and store as RawPoints
-                img = obj.getImage('gray', buf);
-                str = sprintf('%d AnchorPoints\n%s\n', ...
-                    obj.NUMBEROFANCHORS, fixtitle(obj.Origin));
-                p   = drawPoints(img, 'b', str);
-                obj.setRawPoints(p.Position);
-            catch e
-                fprintf(2, 'Error setting anchor points at frame %d\n%s', ...
-                    frm, e.getReport);
+            if nargin < 3
+                mth = 'man';
             end
+            
+            switch mth
+                case 'auto'
+                    % Make artificial anchor points by dividing into 7 sections
+                    if isempty(obj.getOutline)
+                        obj.ConvertRawOutlines;
+                    end
+                    
+                    segSz  = obj.INTERPOLATIONSIZE;
+                    ancPts = obj.NUMBEROFANCHORS - 1;
+                    endPts = obj.RawOutline(end,:);
+                    cntr   = obj.getOutline;
+                    pIdx   = [1 : ceil(segSz / ancPts) : segSz , 1];
+                    apts   = [cntr(pIdx,:) ; endPts];
+                    obj.setRawPoints(apts);
+                    
+                case 'man'
+                    % Plot anchor points manually and store as RawPoints
+                    try
+                        img = obj.getImage('gray', buf);
+                        str = sprintf('%d AnchorPoints\n%s\n', ...
+                            obj.NUMBEROFANCHORS, fixtitle(obj.Origin));
+                        p   = drawPoints(img, 'b', str);
+                        obj.setRawPoints(p.Position);
+                    catch e
+                        fprintf(2, 'Error setting anchor points at frame %d\n%s', ...
+                            frm, e.getReport);
+                    end
+                    
+                otherwise
+                    fprintf('No AnchorPoint method selected (%s)\n', mth);
+            end
+            
         end
         
         function obj = DerefParents(obj)
@@ -393,7 +424,7 @@ classdef CircuitJB < handle
                     end
                     
                 case 3
-                    %% Returns buffered image 
+                    %% Returns buffered image [not implemented]
                     % version of the image
                     try
                         req = varargin{2};

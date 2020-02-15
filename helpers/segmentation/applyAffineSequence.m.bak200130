@@ -1,0 +1,16 @@
+function Y = applyAffineSequence(aff, D)
+%% applyAffineSequence: [deprecated 01.30.2020]
+% This function is only used once, so I just moved it into the computeTargets
+% file as a sub-function.
+%
+%
+% Input:
+%   aff:
+
+%%
+for e = 1 : size(aff,1)
+    Y(:,e) = squeeze(aff(e,:,:)) * D(:,e);
+end
+
+end
+

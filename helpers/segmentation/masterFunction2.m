@@ -1,5 +1,5 @@
 function [X, Z, Y] = masterFunction2(IMG, CNTR, par, targetsPre, scls, dom, domSize)
-%%
+%% masterFunction2: 
 %
 %
 % Usage:
@@ -8,14 +8,16 @@ function [X, Z, Y] = masterFunction2(IMG, CNTR, par, targetsPre, scls, dom, domS
 % Input:
 %   IMG: cell array of grayscale images
 %   CNTR: cell array of contours
+%   par:
 %   targetsPre: displacement vectors predicted by neural net, in tangent frames
-%   Y:
-%
+%   scls:
+%   dom:
+%   domSize:
 %
 % Output:
 %   X: vectorize image patches for multiple scales and multiple domains
-%   Y: displacement vectors from the tangent bundle to the contour
 %   Z: tangent bundles of the contour
+%   Y: displacement vectors from the tangent bundle to the contour
 %
 
 %% Constants and Parameter setup

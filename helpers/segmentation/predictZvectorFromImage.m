@@ -47,14 +47,15 @@ tmptng       = bsxfun(@times, tmptng, tmpL .^-1);
 Zrevs(:,3:4) = Zrevs(:,1:2) + tmptng;
 
 %
-Znrms  = [Zrevs , addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid)];
+% Znrms  = [Zrevs , addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid)];
+[~, Znrms]  = addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid);
 
 %% Don't add back midpoints to tangents-normals [10.18.2019]
 % Remove this when I re-do Z-Vector PCA for the ZNN
-if ~addMid
-    Znrms(:,3:4) = Znrms(:,3:4) - Znrms(:,1:2);
-    Znrms(:,5:6) = Znrms(:,5:6) - Znrms(:,1:2);
-end
+% if ~addMid
+%     Znrms(:,3:4) = Znrms(:,3:4) - Znrms(:,1:2);
+%     Znrms(:,5:6) = Znrms(:,5:6) - Znrms(:,1:2);
+% end
 
 end
 

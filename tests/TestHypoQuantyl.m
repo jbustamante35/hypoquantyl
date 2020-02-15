@@ -1,8 +1,12 @@
-function e = TestHypoQuantyl(r, a, z, l, c, v)
+function e = TestHypoQuantyl(p, r, a, z, l, c, v)
 %% TestHypoQuantyl: perform test runs of HypoQuantyl
 % This function
 %
+% Usage:
+%   e = TestHypoQuantyl(r, a, z, l, c, v)
+%   
 % Input:
+%   p: path to directory of time-lapse data
 %   r: number of randomly-selected folders to run
 %   a: first frame to add Seedlings
 %   z: last frame to add Seedlings
@@ -24,8 +28,8 @@ function e = TestHypoQuantyl(r, a, z, l, c, v)
 % v = 1;
 
 %% Create Experiment in current directory
-e      = Experiment(pwd);
-[d, ~] = sortDirectory(pwd);
+e      = Experiment(p);
+[d, ~] = sortDirectory(p);
 d      = table2struct(d);
 dIdx   = randperm(numel(d), r);
 d      = d(dIdx);

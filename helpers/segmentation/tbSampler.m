@@ -4,6 +4,9 @@ function ptch = tbSampler(img, aff, dom, domSize, vis)
 % the affine transformation. This returns the image patches corresponding to the
 % coordinates of the transformation.
 %
+% Usage:
+%   ptch = tbSampler(img, aff, dom, domSize, vis)
+%
 % Input:
 %   img: image to sample on
 %   aff: resulting coordinates of the affine transformation
@@ -19,6 +22,7 @@ ptch   = zeros([size(aff,1) , domSize , size(aff,4)]);
 msk    = img > graythresh(img / 255) * 255;
 bk     = mean(img(msk(:)));
 padVal = size(img,1);
+bak    = img; % backup of image [for debug]
 img    = padarray(img, [padVal , padVal], bk, 'both');
 
 %% Sample image with affines for each segment
@@ -33,9 +37,13 @@ for e = 1 : size(aff,1)
         imgSample     = reshape(imgSample, domSize);
         ptch(e,:,:,s) = imgSample;
         
-        if vis
+        if vis                        
+            set(0, 'CurrentFigure', 1);
+            myimagesc(imgSample);
+            
+            set(0, 'CurrentFigure', 2);
             cla;
-            imagesc(img);
+            myimagesc(img);
             colormap gray;
             axis image;
             axis off;
@@ -43,6 +51,7 @@ for e = 1 : size(aff,1)
             plt(domSample(1:2,:)'+padVal, 'g.', 10);
             
             drawnow;
+
         end
     end
 end
