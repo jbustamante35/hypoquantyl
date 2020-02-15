@@ -28,6 +28,7 @@ end
 if addMid
     N = (Rmat(90) * (T - M)')' + M;
 else
+    T = T - M;
     N = (Rmat(90) * T')';
 end
 

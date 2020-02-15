@@ -39,16 +39,17 @@ classdef Experiment < handle
         end
         
         function obj = AddGenotypes(varargin)
-            %% Add Genotype to Experiment                        
+            %% Add Genotype to Experiment
             % Get all directories (exclude . and ..)
             obj   = varargin{1};
             fld   = dir(obj.ExperimentPath);
             fld   = fld(3:end);
             fldrs = fld(cat(1, fld.isdir));
             
-            %%            
+            %% Create Genotype child objects
             switch nargin
                 case 1
+                    % Default to .TIF image extension
                     for f = fldrs'
                         try
                             obj.Genotypes(obj.NumberOfGenotypes + 1) = ...
@@ -62,6 +63,7 @@ classdef Experiment < handle
                     end
                     
                 case 2
+                    % With custom image file extension
                     ext = varargin{2};
                     for f = fldrs'
                         try
@@ -82,7 +84,7 @@ classdef Experiment < handle
             end
             
         end
-    
+        
         function hyps = FindHypocotylAllGenotypes(obj, v)
             %% Extract Hypocotyl from every frame of each Seedling from
             % all Genotypes from this Experiment object
@@ -91,7 +93,7 @@ classdef Experiment < handle
                 if v
                     fprintf('Extracting Hypocotyls from %s\n', ...
                         obj.ExperimentName);
-                    tic;
+                    t = tic;
                 end
                 
                 gens = obj.Genotypes;
@@ -100,7 +102,7 @@ classdef Experiment < handle
                 
                 if v
                     fprintf('[%.02f sec] Extracting Hypocotyls from %s\n', ...
-                        toc, obj.ExperimentName);
+                        toc(t), obj.ExperimentName);
                 end
                 
             catch e
@@ -108,28 +110,52 @@ classdef Experiment < handle
                     obj.ExperimentName, e.getReport);
                 
                 if v
-                    fprintf('[%.02f sec]\n', toc);
+                    fprintf('[%.02f sec]\n', toc(t));
                 end
             end
         end
         
-        function sdls = FindSeedlingAllGenotypes(obj, v)
+        function sdls = FindSeedlingAllGenotypes(obj, v, par)
             %% Extract Seedling from every frame of each Genotype
+            if nargin < 3
+                par = 0;
+            end
             
             try
+                % Verbose message
                 if v
+                    t = tic;
                     fprintf('Extracting Seedlings from Experiment %s\n', ...
                         obj.ExperimentName);
                 end
                 
-                gens = obj.Genotypes;
-                sdls = arrayfun(@(x) x.FindSeedlings(1:x.TotalImages, ...
-                    obj.HYPOCOTYLLENGTH, v), gens, 'UniformOutput', 0);
-                sdls = arrayfun(@(x) x.SortSeedlings, gens, 'UniformOutput', 0);
+                % Find and Sort Seedlings
+                gens   = obj.Genotypes;
+                hypLen = obj.HYPOCOTYLLENGTH;
+                if par
+                    % Run with parallelization
+                    sdls   = cell(1, numel(gens));
+                    parfor g = 1 : numel(gens)
+                        gen     = gens(g);
+                        sdls{g} = gen.FindSeedlings( ...
+                            1:gen.TotalImages, hypLen, v);
+                    end
+                    
+                    % For some reason parallelization can't set properties
+                    arrayfun(@(x,y) x.setRawSeedlings(y{1}), ...
+                        gens, sdls, 'UniformOutput', 0);
+                else
+                    % Run on single-thread
+                    sdls = arrayfun(@(x) x.FindSeedlings(...
+                        1:x.TotalImages, hypLen, v), gens, 'UniformOutput', 0);
+                end
                 
+                arrayfun(@(x) x.SortSeedlings, gens, 'UniformOutput', 0);
+                
+                % Verbose message
                 if v
                     fprintf('[%.02f sec] Extracted Seedlings from %s\n', ...
-                        toc, obj.ExperimentName);
+                        toc(t), obj.ExperimentName);
                 end
                 
             catch e
@@ -137,7 +163,7 @@ classdef Experiment < handle
                     obj.ExperimentName, e.getReport);
                 
                 if v
-                    fprintf('[%.02f sec]\n', toc);
+                    fprintf('[%.02f sec]\n', toc(t));
                 end
             end
             
@@ -151,13 +177,6 @@ classdef Experiment < handle
             
             s = obj.combineSeedlings;
             arrayfun(@(x) x.PruneHypocotyls, s, 'UniformOutput', 0);
-            
-            % Dereference parent objects [ DEPRECATED ]
-            %h = obj.combineHypocotyls;
-            
-            %X     = {g, s, h};
-            %deref = @(c) arrayfun(@(x) x.DerefParents, c, 'UniformOutput', 0);
-            %cellfun(@(x) deref(x), X, 'UniformOutput', 0);
             
             % Save full Experiment object
             

@@ -55,7 +55,7 @@ num = num + 1;
 
 %% 3) Check for empty image and ContourJB data
 if tests(num)
-    dat      = sdl.getImage(':');
+    dat      = sdl.getImage;
     datFinal = cellfun(@isempty, dat) == false;
     goodFrmIdx(num, datFinal) = 1;
 %     datChk = struct2logical(dat);
@@ -93,7 +93,7 @@ num = num + 1;
 
 %% 4) Check for empty AnchorPoints
 if tests(num)
-    pts    = sdl.getAnchorPoints(':');
+    pts    = sdl.getAnchorPoints;
     ptsSum = sum(sum(permute(pts, [3 1 2]), 2),3);
     ptsIdx = ptsSum > 0;
     
@@ -113,7 +113,6 @@ if tests(num)
 end
 
 num = 1;
-
 
 % Test Assessment: Check number of passing frames
 goodFrmIdx = find(sum(goodFrmIdx,1) == sum(tests));

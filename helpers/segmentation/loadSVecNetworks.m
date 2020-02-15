@@ -1,14 +1,14 @@
-function [px, py, pz, pzp, psx, psy, Nz, Ns] = loadSVecNetworks(ROOTDIR, PCADIR, SIMDIR)
+function [px, py, pz, pzp, psx, psy, Nz, Ns] = loadSVecNetworks(ROOTDIR, PCADIR, NETOUT)
 %% loadSVecNetworks: load datasets models for S-Vector predictions
 %
 % Usage:
 %   [px, py, pz, pzp, psx, psy, Nz, Ns] = ...
-%       loadSVecNetworks(ROOTDIR, PCADIR, SIMDIR)
+%       loadSVecNetworks(ROOTDIR, PCADIR, NETOUT)
 %
 % Input:
 %   ROOTDIR: root directory of datasets and .mat files
 %   PCADIR: directory with PCA datasets
-%   SIMDIR: directory with neural net data
+%   NETOUT: directory with neural net data
 %
 % Output:
 %
@@ -20,7 +20,7 @@ if nargin == 0
     MFILES  = 'development/HypoQuantyl/datasets/matfiles';
     ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
     PCADIR  = 'pca';
-    SIMDIR  = 'netoutputs';
+    NETOUT  = 'netoutputs';
 end
 
 %%
@@ -55,11 +55,11 @@ psy = psy.(PCA);
 
 % Load latest network models [trim down and move into repository]
 DOUT   = 'OUT';
-znnout = 'znn/znnout.mat';
-snnout = 'snn/snnout.mat';
+znnout = 'znnout.mat';
+snnout = 'snnout.mat';
 
-co = loadFnc(ROOTDIR, SIMDIR, znnout, DOUT);
-so = loadFnc(ROOTDIR, SIMDIR, snnout, DOUT);
+co = loadFnc(ROOTDIR, NETOUT, znnout, DOUT);
+so = loadFnc(ROOTDIR, NETOUT, snnout, DOUT);
 
 ZNN = co.OUT;
 SNN = so.OUT;

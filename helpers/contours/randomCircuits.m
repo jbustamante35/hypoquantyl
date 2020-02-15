@@ -167,7 +167,7 @@ else
 end
 
 % Set original orientation of Circuit or Contour for this object
-crc = drawCircuit(rndS, org, 0);
+crc = drawCircuit(rndS, org);
 if typ
     rndS.setCircuit(rFrm, crc, 'org');
 else
@@ -177,7 +177,7 @@ end
 % Set flipped orientation of Circuit or Contour for this object
 if flipme
     forg = sprintf('flip_%s', org);
-    flp  = drawCircuit(rndS, forg, flipme);
+    flp  = drawCircuit(rndS, forg);
     
     if typ
         rndS.setCircuit(rFrm, flp, 'flp');
@@ -197,18 +197,18 @@ untrainedFrames = find(cellfun(@isempty, all_circuits));
 
 end
 
-function crc = drawCircuit(rndS, org, flipme)
+function crc = drawCircuit(rndS, org)
 %% Create CircuitJB and prompt user to draw contour
 % Set image and origin data for CircuitJB
 crc = CircuitJB('Origin', org, 'Parent', rndS);
 crc.setParent(rndS);
 crc.checkFlipped;
-
+% 
 % Draw Outline and AnchorPoints and normalize coordinates
 % NOTE: At this point, I decided don't want to buffer images anymore. Instead,
 % I will just set out-of-frame coordinates as the median background intensity.
-crc.DrawOutline(0, flipme);
-crc.DrawAnchors(0, flipme);
+crc.DrawOutline(0);
+crc.DrawAnchors(0, 'auto'); % Use of AnchorPoints is deprecated [02-05-2020]
 crc.ConvertRawPoints;
 % crc.CreateRoutes; % Use of Routes is deprecated [01-23-2019]
 

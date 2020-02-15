@@ -541,20 +541,25 @@ classdef Curve < handle
         
         function img = getImage(varargin)
             %% Return image data for Curve at desired frame
-            obj = varargin{1};
+            obj = varargin{1};                        
             switch nargin
                 case 1
-                    img = obj.Parent.getImage;
+                    try                        
+                        % Get image from ImageDataStore
+                        img = obj.Parent.getImage;
+                    catch
+                        % Check if there is a hard-set image in the parent object
+                        img = obj.Parent.getHardImage.gray;
+                    end
                 case 2
                     req = varargin{2};
                     img = obj.Parent.getImage(req);
                 case 3
-                    req = varargin{2};
                     flp = varargin{3};
-                    img = obj.Parent.getImage(0, flp);
+                    img = obj.Parent.getImage(0, flp);                
                 otherwise
                     fprintf(2, 'Error getting image\n');
-            end
+            end            
         end
         
         function prp = getProperty(obj, prp)

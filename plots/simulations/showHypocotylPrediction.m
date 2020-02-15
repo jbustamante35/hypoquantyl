@@ -94,7 +94,7 @@ end
 %% Save figures as .fig and .tif images
 if sav
     for fIdx = 1 : numel(fIdxs)
-        savefig(fIdxs(fIdx), fnms{fIdx});
+%         savefig(fIdxs(fIdx), fnms{fIdx});
         saveas(fIdxs(fIdx), fnms{fIdx}, 'tiffn');
     end
 end

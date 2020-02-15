@@ -6,7 +6,7 @@ function [Ypre , net, evecs, mns] = nn_dvectors(inputs, targets, szY, par, ppc, 
 %   [Ypre , net] = nn_dvectors(inputs, targets, PPC, nlayers, trnfn)
 %
 % Input:
-%   inputs: PCA scores of
+%   inputs: vectorized image patches from multiple scales and domains
 %   targets: displacement vectors to place from tangent bundle
 %   szY: size to reshape predictions after running the net
 %   nlayers: number of hidden layers
@@ -14,7 +14,9 @@ function [Ypre , net, evecs, mns] = nn_dvectors(inputs, targets, szY, par, ppc, 
 %
 % Output:
 %   Ypre: predicted target values
-%   net:
+%   net: neural net object after training
+%   evecs: eigenvectors after folding input to PC scores
+%   mns: column means of the input matrix
 %
 
 %% Setup the net
@@ -27,7 +29,8 @@ end
 
 % Use with parallelization
 % [NOTE 10.24.2019]
-% Parallelization only works sometimes, all of the time
+% Parallelization only works sometimes, all of the time, but not always
+% (aka use at your own risk)
 if par
     pll = 'yes';
 else

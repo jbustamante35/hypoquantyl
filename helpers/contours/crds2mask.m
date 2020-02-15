@@ -1,4 +1,4 @@
-function msk = crds2mask(img, crd, buff)
+function msk = crds2mask(img, crd, buff, keep_org_size)
 %% crds2mask: create logical mask with input coordinates set to true
 % This function sets up a probability distribution matrix by creating a logical
 % mask where pixels containing a contour are set to true.
@@ -14,6 +14,12 @@ function msk = crds2mask(img, crd, buff)
 % Output:
 %   msk: logical mask the size of inputted image, with coordinates set to true
 %
+
+%%
+if nargin < 3
+    buff          = 2;
+    keep_org_size = 1;
+end
 
 %% Convert coordinates to integers if needed
 if ~startsWith(class(crd), 'int')
@@ -31,7 +37,8 @@ end
 
 % Setup / initialization.
 % [Update 06.19.2019]
-msk = createMask(size(img), buff);
+orgSize = size(img);
+msk     = createMask(orgSize, buff);
 
 try
     idx = sub2ind(size(msk), crd(:,2), crd(:,1));
@@ -45,6 +52,11 @@ catch
 end
 
 msk(idx) = true;
+
+% Reduce final mask to size of original image
+if keep_org_size
+    msk = msk(1 : orgSize(1) , 1 : orgSize(2));
+end
 end
 
 function m = createMask(sz, buff)

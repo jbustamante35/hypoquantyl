@@ -57,4 +57,24 @@ end
 
 end
 
+function Y = applyAffineSequence(aff, D)
+%% applyAffineSequence:
+%
+%
+% Usage:
+%   Y = applyAffineSequence(aff, D)
+%
+% Input:
+%   aff:
+%   D:
+%
+% Output:
+%   Y:
+%
 
+%%
+for e = 1 : size(aff,1)
+    Y(:,e) = squeeze(aff(e,:,:)) * D(:,e);
+end
+
+end

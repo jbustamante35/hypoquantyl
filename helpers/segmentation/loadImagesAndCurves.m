@@ -18,15 +18,26 @@ function [IMGS, CNTRS, IMG, CNTR] = loadImagesAndCurves(Ein, trnIdx)
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
 %% Extract images and contours from Experiment object
-CRCS  = Ein.combineContours;
-CNTRS = arrayfun(@(x) x.Curves, CRCS, 'UniformOutput', 0);
-IMGS  = cellfun(@(x) double(x.getImage), CNTRS, 'UniformOutput', 0);
+ex_class = class(Ein);
+switch ex_class
+    case 'Experiment'
+        CRCS  = Ein.combineContours;
+        CNTRS = arrayfun(@(x) x.Curves, CRCS, 'UniformOutput', 0);
+        IMGS  = cellfun(@(x) double(x.getImage), CNTRS, 'UniformOutput', 0);
+    case 'Curve'
+        C     = Ein;
+        CNTRS = arrayfun(@(c) c.getTrace, C, 'UniformOutput', 0);
+        IMGS  = arrayfun(@(c) double(c.getImage), C, 'UniformOutput', 0);
+    otherwise
+        fprintf(2, 'Incorrect class %s [Experiment|Curve]\n', ex_class);
+        return;
+end
 
 %% Split training set
 if nargin < 2
     [IMG, CNTR] = deal([]);
 else
-    IMG = IMGS(trnIdx);
+    IMG  = IMGS(trnIdx);
     CNTR = CNTRS(trnIdx);
 end
 

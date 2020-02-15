@@ -20,8 +20,8 @@ function [CRCS, figs] = trainCircuits_automated(Ein, cin, fIdx, sav, vis)
 %
 
 %% Constants
-SEGMENTATION_FACTOR = 0.60;  % Sensitivity factor for binarization
-SEGMENTATION_SIZE   = 65;    % Total coordinates for an auto-generated ContourJB
+SEGMENTATION_FACTOR = 0.60;  % Sensitivity factor for binarization [default 0.6]
+SEGMENTATION_SIZE   = 100;   % Total coordinates for an auto-generated ContourJB
 TOTAL_ANCHORPOINTS  = 1 : 7; % Number of simulated anchor points for CircuitJB
 TRAINING_TYPE       = 1;     % 0 to training Seedlings, 1 to training Hypocotyls
 
