@@ -51,13 +51,13 @@ try
                 PCADIR  = 'pca';
                 NETOUT  = 'netout';
                 
-                %
+                % Load PCA data and neural net models
                 [px, py, pz, pp, psx, psy, Nz, Ns] = ...
                     loadSVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
-            %
+            % Run S-Vector Method
             [Cntr, Znrms, Simg] = ...
                 runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns);
             
@@ -77,12 +77,14 @@ try
                 PCADIR  = 'pca';
                 NETOUT  = 'netoutputs';
                 
+                % Load PCA data and neural net models
                 % Note that Ns is actually Nt
                 [px, py, pz, pp, Nz, Ns] = ...
                     loadDVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
+            % Run D-Vector Method
             % Note that Ns is actually Nt
             [Cntr, Znrms, Simg] = ...
                 runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, zseed);
