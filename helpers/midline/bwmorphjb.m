@@ -29,10 +29,9 @@ if nargin < 3
 else
     % Run with customized parameters
     methd   = varargin{1};
-    getMask = 0;
     if numel(varargin) > 1
         param   = varargin{2};
-%         getMask = varargin{3};
+        getMask = varargin{3};
     else
         param   = [];
         getMask = 0; % Variable cntr assumed to be mask
@@ -55,7 +54,7 @@ end
 
 %
 [by, bx] = find(bmsk);
-crds    = [bx , by];
+crds     = [bx , by];
 
 end
 

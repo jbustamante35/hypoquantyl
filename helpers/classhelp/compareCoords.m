@@ -6,7 +6,7 @@ function minDistIdx = compareCoords(crdsIn,  crdsNxt, dim)
 % Input:
 %   crdsIn: [n x m] vector of unmatched coordinates 
 %   crdsNxt: [n x m] vector of coordinates to compare to crdsIn
-%   d : Euclidean distances between crdsIn and crdsNxt
+%   dim: dimension to return from result
 %
 % Output:
 %   minDistIdx: index where each crdsIn coordinate is closest in crdsNxt
