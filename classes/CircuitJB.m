@@ -7,23 +7,23 @@ classdef CircuitJB < handle
         Parent
         HypocotylName
         ExperimentName
-        GenotypeName
-        AnchorPoints
-        FullOutline
-        NormalOutline
-        Curves
-        Routes
+        GenotypeName        
+        FullOutline        
+        Curves        
         isTrained
+        isFlipped
     end
     
     properties (Access = private)
+        INTERPOLATIONSIZE = 210 % [default 2100 --> gives 10 points per pixel]
         RawPoints
         RawOutline
         Image
-        InterpOutline
-        isFlipped
-        INTERPOLATIONSIZE = 210 % [default 2100 --> gives 10 points per pixel]
-        NUMBEROFANCHORS   = 7
+        InterpOutline                
+        NormalOutline           % DEPRECATED (but I might still have use for it)
+        NUMBEROFANCHORS = 7     % DEPRECATED (but I might still have use for it)
+        Routes                  % DEPRECATED (but I might still have use for it)
+        AnchorPoints            % DEPRECATED (but I might still have use for it)
     end
     
     %%
@@ -31,15 +31,10 @@ classdef CircuitJB < handle
         %% Constructor and primary methods
         function obj = CircuitJB(varargin)
             %% Constructor method for CircuitJB
-            if ~isempty(varargin)
+            if ~isempty(varargin)                
                 % Parse inputs to set properties
-                args = obj.parseConstructorInput(varargin);
-                
-                fn = fieldnames(args);
-                for k = fn'
-                    obj.(cell2mat(k)) = args.(cell2mat(k));
-                end
-                
+                prps = properties(class(obj));
+                obj  = classInputParser(obj, prps, varargin);
             else
                 % Set default properties for empty object
             end
@@ -327,7 +322,7 @@ classdef CircuitJB < handle
         end
     end
     
-    %%
+    %% -------------------------- Helper Methods ---------------------------- %%
     methods (Access = public)
         %% Various helper methods
         function obj = setOrigin(obj, org)
@@ -597,31 +592,9 @@ classdef CircuitJB < handle
         end
     end
     
-    %%
+    %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
-        %% Private helper methods
-        function args = parseConstructorInput(varargin)
-            %% Parse input parameters for Constructor method
-            p = inputParser;
-            p.addOptional('Origin', '');
-            p.addOptional('Parent', []);
-            p.addOptional('RawOutline', {});
-            p.addOptional('InterpOutline', []);
-            p.addOptional('FullOutline', []);
-            p.addOptional('NormalOutline', []);
-            p.addOptional('RawPoints', []);
-            p.addOptional('AnchorPoints', []);
-            p.addOptional('Image', []);
-            p.addOptional('Curves', []);
-            p.addOptional('Routes', []);
-            p.addOptional('isTrained', false);
-            p.addOptional('isFlipped', false);
-            
-            % Parse arguments and output into structure
-            p.parse(varargin{2}{:});
-            args = p.Results;
-        end
-        
+        %% Private helper methods        
         function R = initializeRoutes(obj)
             %% Initialize Route objects for Constructor
             R = repmat(Route, 1, obj.NUMBEROFANCHORS);

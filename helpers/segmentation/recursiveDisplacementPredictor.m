@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz, pdp, Nz, Nt, z)
+function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz, pdp, Nz, Nd, z)
 %% recursiveDisplacementPredictor: recursive predictions of  displacement vector
 % This function runs the full pipeline for the recursive neural net algorithm
 % that returns the contour in the image reference frame from a grayscale image
@@ -18,7 +18,8 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz
 % Recursively use D-Vectors as input for Z-Vector to further predict D-Vectors
 %
 % Usage:
-%   cntr = recursiveDisplacementPredictor(img, ptx, pty, pz, pp, Nz, Nt, z)
+%   [Cntr, Znrms, Simg] = ...
+%       recursiveDisplacementPredictor(imgs, pdx, pdy, pz, pdp, Nz, Nd, z)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -93,7 +94,7 @@ for itr = allItrs
     fprintf('Predicting %d-D vector from Neural Net...', ...
         size(pdp.EigVecs{itr}, 1));
     netstr = sprintf('N%d', itr);
-    ypre   = (Nt.(netstr)(vprj'))';
+    ypre   = (Nd.(netstr)(vprj'))';
     fprintf('DONE [%.02f sec]\n', toc(t));
     
     %% Map and Reshape predictions to image frame

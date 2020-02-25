@@ -7,10 +7,10 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 % [ Describe the 'dvec' method ]
 %
 % Note that the Ns input that contains the neural net model for predicting
-% S-Vector PC scores when using the 'svec' method should be replaced by Nt, the 
-% neural net model for predicting D-Vector PC scores when the 'dvec' method is 
-% used. This allows more flexibility when selecting the different methods. 
-% 
+% S-Vector PC scores when using the 'svec' method should be replaced by Nt, the
+% neural net model for predicting D-Vector PC scores when the 'dvec' method is
+% used. This allows more flexibility when selecting the different methods.
+%
 % Usage:
 %   [Cntr, Znrms, Simg] = ...
 %       hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z, psx, psy)
@@ -20,7 +20,7 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 %   par: boolean to run single thread (0) or with parallelization (1)
 %   mth: predict with S-Vectors ('snn') or D-Vectors ('dnn')
 %   Nz: neural net model for predicting Z-Vector PC scores from images
-%   Ns: neural net model for predicting S-Vector PC scores from Z-Vector slices
+%   Ns: neural net model for predicting PC scores from Z-Vector slices [Ns = Nd]
 %   px: X-Coordinate eigenvectors and means
 %   py: Y-Coordinate eigenvectors and means
 %   pz: Z-Vector eigenvectors and means
@@ -28,18 +28,12 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 %   z: seed prediction with ground-truth Z-Vector (for D-Vector method)
 %
 % Output:
-%   Cntr: the continous contour generated from the segments [not implemented]
+%   Cntr: the continous contour generated from the segments
 %   Znrms: Z-Vector predicted from the image
-%   Simg: cell array of segments predicted from the image
+%   Simg: cell array of segments [svec] or iterative contours [dvec]
 
-%%
 try
-    % If running method 2 (no folding segments)
-    if nargin < 11
-        [psx , psy] = deal([]);
-    end
-    
-    %%
+    %% Select Algorithm
     switch mth
         case 'svec'
             %% Old method that predicts S-Vectors from predicted Z-Vectors
@@ -51,13 +45,13 @@ try
                 PCADIR  = 'pca';
                 NETOUT  = 'netout';
                 
-                %
+                % Load PCA data and neural net models
                 [px, py, pz, pp, psx, psy, Nz, Ns] = ...
                     loadSVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
-            %
+            % Run S-Vector Method
             [Cntr, Znrms, Simg] = ...
                 runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns);
             
@@ -77,13 +71,15 @@ try
                 PCADIR  = 'pca';
                 NETOUT  = 'netoutputs';
                 
-                % Note that Ns is actually Nt
+                % Load PCA data and neural net models
+                % Note that Ns is actually Nd here
                 [px, py, pz, pp, Nz, Ns] = ...
                     loadDVecNetworks(ROOTDIR, PCADIR, NETOUT);
                 
             end
             
-            % Note that Ns is actually Nt
+            % Run D-Vector Method
+            % Note that Ns is actually Nd here
             [Cntr, Znrms, Simg] = ...
                 runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, zseed);
             
@@ -100,19 +96,28 @@ end
 
 end
 
-function [Cntr, Znrms, Simg] = runMethod2(imgs, par, ptx, pty, pz, ptp, Nz, Nt, z)
+function [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, z)
 %% runMethod2: predict Z-Vector then recursively predict displacement vector
 %
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = runMethod2(imgs, par, ptx, pty, pz, ptp, Nz, Nt, z)
+%   [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, z)
 %
 % Input:
-%
+%   imgs: grayscale image or cell array of hypocotyl images
+%   par: boolean to run single thread (0) or with parallelization (1)
+%   pdx: X-Coordinate PCA from contour predictions
+%   pdy: Y-Coordinate PCA from contour predictions
+%   pz: Z-Vector PCA from segmented contours
+%   pdp: Z-Patch PCA from image patches of various scales an domain shape/sizes
+%   Nz: neural net model for predicting Z-Vector PC scores from images
+%   Nd: neural net model for predicting D-Vectors from Z-Patch scores
+%   z: initial Z-Vector to seed the initial predictions
 %
 % Output:
-%
-%
+%   Cntr: the contour predicted by this algorithm
+%   Znrms: Z-Vector of the predicted contour
+%   Simg: all iterations of predictions from Nd neural net model
 
 %% Constants and Parameters
 % Message string separators and
@@ -135,53 +140,30 @@ fprintf('\n%s\nRunning Recursive Displacement Predictor on %d images...\n%s\n', 
 
 [Cntr, Znrms, Simg] = deal(cell(1, numCrvs));
 allCrvs             = 1 : numCrvs;
+
 if par
     %% Run with Parallelization
     % A parellel pool of 6 workers from a total of 12 (24 logical cores) was
     % safest on my remote server, and so I think for general purposes I'll
     % create a pool of (NumCores / 2)
     halfCores = ceil(feature('numcores') / 2);
-    currCores = get(parcluster, 'NumWorkers');
-    
-    if isempty(gcp('nocreate'))
-        % If no pool setup, create one
-        fprintf('\nSetting up parallel pool with %d Workers...', halfCores);
-        p  = parcluster;
-        set(p, 'NumWorkers', halfCores);
-        parpool(p);
-        fprintf('DONE!\n');
-        
-    elseif halfCores < currCores
-        % If current pool has > half cores, delete and setup with half cores
-        fprintf('\nDeleting old pool of %d Workers and setting with %d Workers...', ...
-            currCores, halfCores);
-        delete(gcp);
-        p  = parcluster;
-        set(p, 'NumWorkers', halfCores);
-        parpool(p);
-        fprintf('DONE!\n');
-        
-    else
-        % Pool with half cores already set up
-        fprintf('\nParallel pool with %d Workers already set up!\n', halfCores);
-        
-    end
+    setupParpool(halfCores, 0);
     
     %% Run through with parallelization using half cores
-	% Convert PCA object to struct because parfor loops do weird and unexpected 
+    % Convert PCA object to struct because parfor loops do weird and unexpected
     % nonsense that I don't understand
     neigs = 0; % input of 0 defaults to all eigenvectors
-    ptx   = struct('InputData', ptx.InputData, 'EigVecs', ptx.EigVecs(neigs), 'MeanVals', ptx.MeanVals);
-    pty   = struct('InputData', pty.InputData, 'EigVecs', pty.EigVecs(neigs), 'MeanVals', pty.MeanVals);
+    pdx   = struct('InputData', pdx.InputData, 'EigVecs', pdx.EigVecs(neigs), 'MeanVals', pdx.MeanVals);
+    pdy   = struct('InputData', pdy.InputData, 'EigVecs', pdy.EigVecs(neigs), 'MeanVals', pdy.MeanVals);
     pz    = struct('InputData', pz.InputData,  'EigVecs', pz.EigVecs,         'MeanVals', pz.MeanVals);
-
+    
     parfor cIdx = allCrvs
         t = tic;
         fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
         
         img                                   = imgs{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            recursiveDisplacementPredictor(img, ptx, pty, pz, ptp, Nz, Nt, z);
+            recursiveDisplacementPredictor(img, pdx, pdy, pz, pdp, Nz, Nd, z);
         
         fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
             cIdx, toc(t), sptB);
@@ -196,7 +178,7 @@ else
         
         img                                   = imgs{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            recursiveDisplacementPredictor(img, ptx, pty, pz, ptp, Nz, Nt, z);
+            recursiveDisplacementPredictor(img, pdx, pdy, pz, pdp, Nz, Nd, z);
         
         fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
             cIdx, toc(t), sptB);
@@ -229,22 +211,25 @@ function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, N
 % Predict S-Vector scores from Z-Vector slices
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, Nz, Ns)
+%   [Cntr, Znrms, Simg] = ...
+%       runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
 %   par: boolean to run single thread (0) or with parallelization (1)
-%   Nz: neural net model for predicting Z-Vector PC scores from images
-%   Ns: neural net model for predicting S-Vector PC scores from Z-Vector slices
 %   px: X-Coordinate eigenvectors and means
 %   py: Y-Coordinate eigenvectors and means
 %   pz: Z-Vector eigenvectors and means
 %   pp: Z-Patch eigenvectors and means
+%   psx: X-Coordinate eigenvectors and means for folding the final contour
+%   psy: Y-Coordinate eigenvectors and means for folding the final contour
+%   Nz: neural net model for predicting Z-Vector PC scores from images
+%   Ns: neural net model for predicting S-Vector PC scores from Z-Vector slices
 %
 % Output:
+%   Cntr: the continous contour generated from the half-index of each segment
+%   Znrms: Z-Vector predicted from the image [after predicting the contour]
 %   Simg: cell array of segments predicted from the image
-%   Znrms: Z-Vector predicted from the image
-%   Cntr: the continous contour generated from the segments [not implemented]
 %
 
 %% Prediction pipeline
@@ -271,41 +256,18 @@ if par
     % safest on my remote server, and so I think for general purposes I'll
     % create a pool of (NumCores / 2)
     halfCores = ceil(feature('numcores') / 2);
-    currCores = get(parcluster, 'NumWorkers');
-    
-    if isempty(gcp('nocreate'))
-        % If no pool setup, create one
-        fprintf('\nSetting up parallel pool with %d Workers...', halfCores);
-        p  = parcluster;
-        set(p, 'NumWorkers', halfCores);
-        parpool(p);
-        fprintf('DONE!\n');
-        
-    elseif halfCores < currCores
-        % If current pool has > half cores, delete and setup with half cores
-        fprintf('\nDeleting old pool of %d Workers and setting with %d Workers...', ...
-            currCores, halfCores);
-        delete(gcp);
-        p  = parcluster;
-        set(p, 'NumWorkers', halfCores);
-        parpool(p);
-        fprintf('DONE!\n');
-        
-    else
-        % Pool with half cores already set up
-        fprintf('\nParallel pool with %d Workers already set up!\n', halfCores);
-        
-    end
+    setupParpool(halfCores, 0);
     
     % Run through with parallelization using half cores
-    % Convert PCA object to struct because parfor loops do weird and unexpected 
+    % Convert PCA object to struct because parfor loops do weird and unexpected
     % nonsense that I don't understand
-    px   = struct('InputData', px.InputData, 'EigVecs', px.EigVecs, 'MeanVals', px.MeanVals);
-    py   = struct('InputData', py.InputData, 'EigVecs', py.EigVecs, 'MeanVals', py.MeanVals);
-    pz   = struct('InputData', pz.InputData, 'EigVecs', pz.EigVecs, 'MeanVals', pz.MeanVals);
-    pp   = struct('InputData', pp.InputData, 'EigVecs', pp.EigVecs, 'MeanVals', pp.MeanVals);
+    px   = struct('InputData', px.InputData,  'EigVecs', px.EigVecs,  'MeanVals', px.MeanVals);
+    py   = struct('InputData', py.InputData,  'EigVecs', py.EigVecs,  'MeanVals', py.MeanVals);
+    pz   = struct('InputData', pz.InputData,  'EigVecs', pz.EigVecs,  'MeanVals', pz.MeanVals);
+    pp   = struct('InputData', pp.InputData,  'EigVecs', pp.EigVecs,  'MeanVals', pp.MeanVals);
     psx  = struct('InputData', psx.InputData, 'EigVecs', psx.EigVecs, 'MeanVals', psx.MeanVals);
     psy  = struct('InputData', psy.InputData, 'EigVecs', psy.EigVecs, 'MeanVals', psy.MeanVals);
+    
     parfor cIdx = allCrvs
         t = tic;
         fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);

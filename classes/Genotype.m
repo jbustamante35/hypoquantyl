@@ -30,12 +30,8 @@ classdef Genotype < handle
             %% Constructor method for Genotype
             if ~isempty(varargin)
                 % Parse inputs to set properties
-                args = obj.parseConstructorInput(varargin);
-                
-                fn = fieldnames(args);
-                for k = fn'
-                    obj.(cell2mat(k)) = args.(cell2mat(k));
-                end
+                prps = properties(class(obj));
+                obj  = classInputParser(obj, prps, varargin);
                 
             else
                 % Set default properties for empty object
@@ -360,28 +356,9 @@ classdef Genotype < handle
         
     end
     
-    %% ------------------------- Private Methods --------------------------- %%
-    
+    %% ------------------------- Private Methods --------------------------- %%    
     methods (Access = private)
         %% Helper methods
-        function args = parseConstructorInput(varargin)
-            %% Parse input parameters for Constructor method
-            p = inputParser;
-            p.addRequired('GenotypeName');
-            p.addOptional('Parent', []);
-            p.addOptional('ExperimentName', '');
-            p.addOptional('ExperimentPath', '');
-            p.addOptional('TotalImages', 0);
-            p.addOptional('NumberOfSeedlings', 0);
-            p.addOptional('Images', {});
-            p.addOptional('RawSeedlings', {});
-            p.addOptional('Seedlings', Seedling);
-            
-            % Parse arguments and output into structure
-            p.parse(varargin{2}{:});
-            args = p.Results;
-        end
-        
         function sdls = extractSeedlings(obj, img, frm, mskSz, hypln)
             %% Segmentation and Extraction of Seedling objects from raw image
             % This function binarizes a grayscale image at the given frame and

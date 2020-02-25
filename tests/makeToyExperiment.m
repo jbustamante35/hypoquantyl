@@ -47,7 +47,8 @@ fprintf('Generating Experiment object[ RAD(%d, %d) | XC(%d, %d) | YC(%d, %d) ]..
     min(RAD), max(RAD), min(XC), max(XC), min(YC), max(YC));
 
 % Experiment object with 1 Genotype with 1 Seedling of N frames
-ex      = Experiment(din);
+%ex      = Experiment(din);
+ex      = Experiment('ExperimentPath', din);
 genodir = sprintf('%s/%03dcircles', din, N);
 mkdir(genodir);
 
@@ -61,13 +62,13 @@ if ~any(size(dir([genodir sprintf('/*.%s', ext)]), 1))
         r = M(RAD);
         x = M(XC);
         y = M(YC);
-        
+
         % Generate the circle and save as a tiff image
         img = makeCircleImage(ISZ, BG, FG, r, x, y, CSZ);
         inm = sprintf('%s/%s.%s', genodir, eval(cmd), ext);
         imwrite(img, inm, 'tiff');
-        
-        
+
+
         fprintf('%s | Size: [%d , %d] | Radius: %d | X: %d | Y: %d\n', ...
             eval(cmd), ISZ, r, x, y);
     end
@@ -111,8 +112,8 @@ numCrvs = numel(C);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save data
 if sav
-    t = tic;    
-    fprintf('Saving data for %d Curves...', numCrvs);   
+    t = tic;
+    fprintf('Saving data for %d Curves...', numCrvs);
     fnm = sprintf('%s_FakeCircles_%03dCurves', tdate, numCrvs);
     save(fnm, '-v7.3', 'C');
     fprintf('DONE! [%.02f sec]\n', toc(t));
