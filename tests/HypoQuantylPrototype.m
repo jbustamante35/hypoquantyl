@@ -6,7 +6,7 @@ function [ex, g, s, h] = HypoQuantylPrototype(dataDir, verbose, par)
 %   ex = HypoQuantylPrototype(dataDir, verbose, par)
 % Input:
 %   dataDir:
-%   verbose: 
+%   verbose:
 %   par:
 %
 % Output:
@@ -15,7 +15,8 @@ function [ex, g, s, h] = HypoQuantylPrototype(dataDir, verbose, par)
 
 %% Create Experiment with all Genotypes in data directory
 tExp = tic;
-ex   = Experiment(dataDir);
+%ex   = Experiment(dataDir);
+ex   = Experiment('ExperimentPath', dataDir);
 ex.AddGenotypes;
 fprintf('Added %d genotypes to Experiment %s\n%.02f sec\n', ...
     ex.NumberOfGenotypes, ex.ExperimentName, toc(tExp));

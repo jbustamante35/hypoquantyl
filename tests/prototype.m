@@ -12,7 +12,8 @@ ptime = 0.005;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Create Experiment with all Genotypes in Blue Experiment
 tExp = tic;
-ex   = Experiment(dataDir);
+%ex   = Experiment(dataDir);
+ex   = Experiment('ExperimentPath', dataDir);
 ex.AddGenotypes;
 fprintf('Added %d genotypes to Experiment %s\n%.02f sec\n', ...
     ex.NumberOfGenotypes, ex.ExperimentName, toc(tExp));

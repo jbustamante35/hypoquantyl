@@ -3,26 +3,27 @@
 
 classdef Curve < handle
     properties (Access = public)
-        Parent
-        Trace
-        NumberOfSegments
-        RawSegments
-        EnvelopeSegments
-        EndPoints
-        SVectors
-        ZVector
-        SPatches
-        ZPatches
+        Parent        
+        NumberOfSegments        
+        TraceSize
     end
     
     properties (Access = protected)
         SEGMENTSIZE  = 25;      % Number of coordinates per segment [default 200]
         SEGMENTSTEPS = 1;       % Size of step to next segment [default 50]
         ENVELOPESIZE = 11;      % Hard-coded max distance from original segment to envelope
+        Trace
+        RawSegments
+        SVectors
+        ZVector
+        SPatches
+        ZPatches
         Pmats
         Ppars
         SData
         ZData
+        EnvelopeSegments
+        EndPoints
     end
     
     %%
@@ -32,13 +33,8 @@ classdef Curve < handle
             %% Constructor method for single Cure
             if ~isempty(varargin)
                 % Parse inputs to set properties
-                args = obj.parseConstructorInput(varargin);
-                
-                fn = fieldnames(args);
-                for k = fn'
-                    obj.(cell2mat(k)) = args.(cell2mat(k));
-                end
-                
+                prps = properties(class(obj));
+                obj  = classInputParser(obj, prps, varargin);
             else
                 % Set default properties for empty object
             end
@@ -48,6 +44,10 @@ classdef Curve < handle
         function obj = RunFullPipeline(obj, par)
             %% Runs full pipeline from Parent's Trace to generate ImagePatch
             % par: 0 to use normal for loop, 1 to use with parallel processing
+            if nargin < 2
+                par = 0;
+            end
+            
             tRun = tic;
             msg  = repmat('-', 1, 80);
             fprintf('\n%s\nRunning Full Pipeline for %s...', ...
@@ -83,12 +83,14 @@ classdef Curve < handle
                     trc = [];
             end
             
+            obj.TraceSize = size(trc, 1);
+            
         end
         
         function Z = getZVector(obj, ndims)
             %% Compute the Z-Vector skeleton for this contour
             % This will compute the Z-Vector each time, rather than storing it
-            % in a variable after being run once. This will deprecate the 
+            % in a variable after being run once. This will deprecate the
             % ZVector property.
             
             if nargin < 2
@@ -325,7 +327,7 @@ classdef Curve < handle
                 if obj.NumberOfSegments == 0
                     obj.getSegmentedOutline;
                 end
-                                
+                
                 trc = obj.getTrace;
                 len = obj.SEGMENTSIZE;
                 stp = obj.SEGMENTSTEPS;
@@ -398,7 +400,7 @@ classdef Curve < handle
         
     end
     
-    %%
+    %% -------------------------- Helper Methods ---------------------------- %%
     methods (Access = public)
         %% Various helper methods
         function mid = getMidPoint(varargin)
@@ -426,50 +428,50 @@ classdef Curve < handle
             
         end
         
-        function pts = getEndPoint(varargin)
-            %% Returns all EndPoint values or EndPoint at requested segment
-            % Removed the EndPoints property [10.02.2019]
-            
-            switch nargin
-                case 1
-                    % Returns all segment endpoints
-                    obj = varargin{1};
-                    pts = obj.RawSegments([1 , end],:,:);
-                    
-                case 2
-                    % Arguments are Curve object and segment index
-                    obj = varargin{1};
-                    idx = varargin{2};
-                    try
-                        pts = [obj.RawSegments(1,:,idx) ; ...
-                            obj.RawSegments(end,:,idx)];
-                    catch
-                        r = num2str(idx);
-                        fprintf(2, 'Error requesting EndPoints %s\n', r);
-                    end
-                    
-                case 3
-                    % Arguments are Curve object, segment index, and
-                    % start (0) or endpoint (1)
-                    obj = varargin{1};
-                    idx = varargin{2};
-                    pnt = varargin{3};
-                    if any(pnt == 1:2)
-                        pts = [obj.RawSegments(1,:,idx) ; ...
-                            obj.RawSegments(end,:,idx)];
-                        pts = pts(pnt,:);
-                    else
-                        p = num2str(pnt);
-                        r = num2str(idx);
-                        fprintf(2, ...
-                            'Error requesting EndPoints (pnt%s,seg%s)\n', p, r);
-                    end
-                    
-                otherwise
-                    pts = [];
-            end
-            
-        end
+        %         function pts = getEndPoint(varargin)
+        %             %% Returns all EndPoint values or EndPoint at requested segment
+        %             % Removed the EndPoints property [10.02.2019]
+        %
+        %             switch nargin
+        %                 case 1
+        %                     % Returns all segment endpoints
+        %                     obj = varargin{1};
+        %                     pts = obj.RawSegments([1 , end],:,:);
+        %
+        %                 case 2
+        %                     % Arguments are Curve object and segment index
+        %                     obj = varargin{1};
+        %                     idx = varargin{2};
+        %                     try
+        %                         pts = [obj.RawSegments(1,:,idx) ; ...
+        %                             obj.RawSegments(end,:,idx)];
+        %                     catch
+        %                         r = num2str(idx);
+        %                         fprintf(2, 'Error requesting EndPoints %s\n', r);
+        %                     end
+        %
+        %                 case 3
+        %                     % Arguments are Curve object, segment index, and
+        %                     % start (0) or endpoint (1)
+        %                     obj = varargin{1};
+        %                     idx = varargin{2};
+        %                     pnt = varargin{3};
+        %                     if any(pnt == 1:2)
+        %                         pts = [obj.RawSegments(1,:,idx) ; ...
+        %                             obj.RawSegments(end,:,idx)];
+        %                         pts = pts(pnt,:);
+        %                     else
+        %                         p = num2str(pnt);
+        %                         r = num2str(idx);
+        %                         fprintf(2, ...
+        %                             'Error requesting EndPoints (pnt%s,seg%s)\n', p, r);
+        %                     end
+        %
+        %                 otherwise
+        %                     pts = [];
+        %             end
+        %
+        %         end
         
         function prm = getParameter(varargin)
             %% Return all or single Ppar or Pmat
@@ -541,14 +543,14 @@ classdef Curve < handle
         
         function img = getImage(varargin)
             %% Return image data for Curve at desired frame
-            obj = varargin{1};                        
+            obj = varargin{1};
             switch nargin
                 case 1
-                    try                        
+                    try
                         % Get image from ImageDataStore
                         img = obj.Parent.getImage;
                     catch
-                        % Check if there is a hard-set image in the parent object
+                        % Check if hard-set image in the parent object
                         img = obj.Parent.getHardImage.gray;
                     end
                 case 2
@@ -556,10 +558,10 @@ classdef Curve < handle
                     img = obj.Parent.getImage(req);
                 case 3
                     flp = varargin{3};
-                    img = obj.Parent.getImage(0, flp);                
+                    img = obj.Parent.getImage(0, flp);
                 otherwise
                     fprintf(2, 'Error getting image\n');
-            end            
+            end
         end
         
         function prp = getProperty(obj, prp)
@@ -584,36 +586,12 @@ classdef Curve < handle
         
     end
     
-    %%
+    %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
         %% Private helper methods
-        function args = parseConstructorInput(varargin)
-            %% Parse input parameters for Constructor method
-            p = inputParser;
-            p.addOptional('Parent', CircuitJB);
-            p.addOptional('Trace', []);
-            p.addOptional('NumberOfSegments', 0);
-            p.addOptional('RawSegments', []);      % Use optimized method [10.02.2019]
-            %             p.addOptional('EnvelopeSegments', []); % Remove me! [10.02.2019]
-            %             p.addOptional('EndPoints', []);        % Remove me! [10.02.2019]
-            p.addOptional('SVectors', []);
-            p.addOptional('ZVector', []);
-            p.addOptional('SPatches', []);
-            p.addOptional('ZPatches', []);         % Use optimized method [10.02.2019]
-            p.addOptional('SData', []);
-            p.addOptional('ZData', []);            % Use optimized method [10.02.2019]
-            p.addOptional('Pmats', []);
-            p.addOptional('Ppars', []);
-            
-            % Parse arguments and output into structure
-            p.parse(varargin{2}{:});
-            args = p.Results;
-        end
-        
         function obj = loadRawSegmentData(obj, trace, segment_length, step_size)
             %% Set data for RawSegments, EndPoints, and NumberOfSegments
             %
-            
             %% NOTE [10.02.2019]
             % Splitting methods were optimized, but now makes one more segment
             % than the old method. Run the full dataset through the pipelines

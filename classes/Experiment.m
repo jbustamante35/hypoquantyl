@@ -5,7 +5,6 @@ classdef Experiment < handle
     properties (Access = public)
         %% Experiment properties
         ExperimentName
-        ExperimentDate
         ExperimentPath
         NumberOfGenotypes
     end
@@ -13,6 +12,7 @@ classdef Experiment < handle
     properties (Access = private)
         %% Private data properties
         Genotypes
+        ExperimentDate  = tdate('l')
         HYPOCOTYLLENGTH = 250 % Distance to set cutoff for hypocotyl
     end
     
@@ -22,12 +22,8 @@ classdef Experiment < handle
             %% Constructor method for Genotype
             if ~isempty(varargin)
                 % Parse inputs to set properties
-                args = obj.parseConstructorInput(varargin);
-                
-                fn = fieldnames(args);
-                for k = fn'
-                    obj.(cell2mat(k)) = args.(cell2mat(k));
-                end
+                prps = properties(class(obj));
+                obj  = classInputParser(obj, prps, varargin);
                 
             else
                 % Set default properties for empty object
@@ -347,8 +343,7 @@ classdef Experiment < handle
             bb    = strfind(noflp, '}');
             hyIdx = str2double(noflp(aa + 1 : bb - 1));
             sdl   = gen.getSeedling(hyIdx);
-            hyp   = sdl.MyHypocotyl;
-            
+            hyp   = sdl.MyHypocotyl;            
             
             %             x{numel(x) + abs(numel(x) - numel(y))} = '';
         end
@@ -370,23 +365,20 @@ classdef Experiment < handle
             
         end
         
+        function prp = getProperty(obj, req)
+            %% Return a property from this object
+            try
+                prp = obj.(req);
+            catch
+                fprintf(2, 'Error retrieving %s property\n', req);
+                prp = [];
+            end
+        end
     end
     
+    %% ------------------------- Private Methods --------------------------- %%    
     methods (Access = private)
         %% Private helper methods for this class
-        function args = parseConstructorInput(varargin)
-            %% Parse input parameters for Constructor method
-            p = inputParser;
-            p.addRequired('ExperimentPath');
-            p.addOptional('ExperimentDate', tdate('l'));
-            p.addOptional('ExperimentName', '');
-            p.addOptional('NumberOfGenotypes', 0);
-            p.addOptional('Genotypes', Genotype);
-            
-            % Parse arguments and output into structure
-            p.parse(varargin{2}{:});
-            args = p.Results;
-        end
         
         
     end

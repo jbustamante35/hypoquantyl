@@ -4,7 +4,7 @@ function e = TestHypoQuantyl(p, r, a, z, l, c, v)
 %
 % Usage:
 %   e = TestHypoQuantyl(r, a, z, l, c, v)
-%   
+%
 % Input:
 %   p: path to directory of time-lapse data
 %   r: number of randomly-selected folders to run
@@ -28,7 +28,8 @@ function e = TestHypoQuantyl(p, r, a, z, l, c, v)
 % v = 1;
 
 %% Create Experiment in current directory
-e      = Experiment(p);
+%e      = Experiment(p);
+e      = Experiment('ExperimentPath', p);
 [d, ~] = sortDirectory(p);
 d      = table2struct(d);
 dIdx   = randperm(numel(d), r);
@@ -39,7 +40,7 @@ for i = 1 : length(d)
     tic;
     fprintf('Analyzing %s...', d(i).name);
     e.AddGenotypes(d(i), '*', 'date', 0);
-    
+
     g = e.getGenotype(i);
     fprintf('Loading images...');
     if z < g.TotalImages
@@ -47,11 +48,11 @@ for i = 1 : length(d)
     else
         g.AddSeedlingsFromRange(a:g.TotalImages, l);
     end
-    
+
     fprintf('Loaded %d images. Aligning Seedlings through each frame...', ...
         g.TotalImages);
     g.SortSeedlings;
-    
+
     format shortg;
     fprintf('%.02f sec to analyze %d frames from %d Seedlings \n', ...
         toc,                z,              g.NumberOfSeedlings);
@@ -87,19 +88,19 @@ if v
             colormap gray, axis image;
             txt = 'Genotype %d Frame %d';
             title(sprintf(txt, i, ii));
-            
+
             drawnow;
         end
     end
-    
-    
+
+
     %% View all Seedlings
     for i = 1 : e.NumberOfGenotypes
         figure;
         g    = e.getGenotype(i);
         numS = g.NumberOfSeedlings;
         maxL = max(cat(1,g.getSeedling(':').Lifetime));
-        
+
         for ii = 1 : maxL
             for iii = 1 : numS
                 s = g.getSeedling(iii);
@@ -109,15 +110,15 @@ if v
                     colormap gray, axis image;
                     txt = 'Seedling %d Frame %d';
                     title(sprintf(txt, iii, ii));
-                    
+
                     drawnow;
                 end
             end
         end
     end
-    
+
     %% View all hypocotyls with marked AnchorPoints
-    
+
     figure;
     for i = 1 : e.NumberOfGenotypes
         g = e.getGenotype(i);
@@ -130,20 +131,20 @@ if v
                 colormap gray, axis image;
                 txt = 'Genotype %d Seedling %d Frame %d';
                 title(sprintf(txt, i, ii, iii));
-                
+
                 hold on;
-                
+
                 plot(pts(1,1), pts(1,2), 'bx'); % a
                 plot(pts(2,1), pts(2,2), 'rx'); % b
                 plot(pts(3,1), pts(3,2), 'gx'); % c
                 plot(pts(4,1), pts(4,2), 'mx'); % d
-                
+
                 drawnow;
                 hold off;
             end
         end
     end
-    
+
     %% View All PreHypocotyls
     figure;
     for i = 1 : e.NumberOfGenotypes
@@ -160,7 +161,7 @@ if v
             end
         end
     end
-    
+
 end
 
 end
