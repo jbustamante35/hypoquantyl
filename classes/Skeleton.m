@@ -8,23 +8,26 @@ classdef Skeleton < handle
         Mask
         Coordinates
         Graph
+        BranchChildren
+        TotalBranchChildren
         EndPoints
         BranchPoints
-        KernelEndPoints
-        KernelBranchPoints
+        EndIndex                  % End Point indices along the Skeleton
+        BranchIndex               % Branch Point indices along the Skeleton
         Routes
     end
     
     properties (Access = protected)
         MASKSIZE = [101 , 101]    % Size of mask image
-        THRESH   = sqrt(2) + eps; % Distance threshold between Graph nodes
-        EndIndex                  % End Point indices along the Skeleton
-        BranchIndex               % Branch Point indices along the Skeleton
+        THRESH   = sqrt(2) + eps; % Distance threshold between Graph nodes        
         TotalEndPoints            % Total number of end points
         TotalBranchPoints         % Total number of branch points
+        KernelEndPoints           % EndPoints identified by the Kernel
+        KernelBranchPoints        % BranchPoitns identified by the Kernel
         ENDVALUES    = 1          % EndPoint pixel value from kernel image
         BRANCHVALUES = 3          % BranchPoint pixel value from kernel image
         Kernel                    % Kernel used for convolving through the mask
+        KernelImage               % Colvolution image from kernel on mask
         KernelMidpoint            % Midpoint coordinate of the Kernel
         KERNELSIZE  = 3           % Side length of the square kernel
         KERNELVALUE = 1           % Values within the kernel
@@ -37,15 +40,19 @@ classdef Skeleton < handle
             %% Constructor method to generate a Skeleton object
             if ~isempty(varargin)
                 % Parse inputs to set properties
-                prps = properties(class(obj));
-                obj  = classInputParser(obj, prps, varargin);
-                
+                args = varargin;
             else
                 % Set default properties for empty object
-                obj.Routes = struct('Ends2Branches', [], 'Ends2Ends', [], ...
-                    'Branches2Branches', [], 'Branches2Ends', []);
+                args = {};
             end
             
+            prps   = properties(class(obj));
+            deflts = { ...
+                'BranchChildren', repmat(BranchChild, 0); ...
+                'TotalBranchChildren', 0; ...
+                'Routes', struct('Ends2Branches', [], 'Ends2Ends', [], ...
+                'Branches2Branches', [], 'Branches2Ends', [])};
+            obj = classInputParser(obj, prps, deflts, args);
         end
         
         function obj = Contour2Skeleton(obj, cntr)
@@ -139,8 +146,27 @@ classdef Skeleton < handle
             kepcrds = skltn(epIdxs,:); % End Points identified on kernel
             
             % Store class properties
+            obj.KernelImage        = Kimg;
+            obj.Kernel             = K;
+            obj.KernelMidpoint     = kmid;
             obj.KernelEndPoints    = kepcrds;
             obj.KernelBranchPoints = kbrcrds;
+            
+        end
+        
+        function obj = MakeBranchChildren(obj)
+            %% Convert BranchPoints to BranchChild objects
+            bcrds = obj.BranchPoints;            
+            
+            % Create the children
+            BCH = arrayfun(@(x) BranchChild('Coordinate', bcrds(x,:)), ...
+                1 : obj.TotalBranchPoints, 'UniformOutput', 0);
+            
+            cellfun(@(x) obj.setBranchChild(x), BCH, 'UniformOutput', 0);
+            
+            % Find each child's neighbors
+            cellfun(@(x) x.FindNeighbors, BCH, 'UniformOutput', 0);
+            
             
         end
         
@@ -148,45 +174,116 @@ classdef Skeleton < handle
     
     
     %% -------------------------- Helper Methods ---------------------------- %%
-    methods (Access = public)        
-        function b2b = branch2branches(obj, sIdx)
+    methods (Access = public)
+        function [b2b , B2B] = branch2branches(obj, sIdx)
             %% branches2branches: get paths from branches to other branches
-            s   = obj.BranchIndex(sIdx);
-            e   = obj.BranchIndex;
-            b2b = obj.path2ClosestNode(s, e);
+            s           = obj.BranchIndex(sIdx);
+            e           = obj.BranchIndex;
+            [b2b , B2B] = obj.path2ClosestNode(s, e);
             
         end
         
-        function b2e = branch2ends(obj, sIdx)
+        function [b2e , B2E] = branch2ends(obj, sIdx)
             %% branches2ends: get paths from branches to end points
-            s   = obj.BranchIndex(sIdx);
-            e   = obj.EndIndex;
-            b2e = obj.path2ClosestNode(s, e);
+            s           = obj.BranchIndex(sIdx);
+            e           = obj.EndIndex;
+            [b2e , B2E] = obj.path2ClosestNode(s, e);
             
         end
         
-        function e2b = end2branches(obj, sIdx)
+        function [e2b , E2B] = end2branches(obj, sIdx)
             %% ends2branches: get paths from branches to other branches
-            s   = obj.EndIndex(sIdx);
-            e   = obj.BranchIndex;
-            e2b = obj.path2ClosestNode(s, e);
+            s           = obj.EndIndex(sIdx);
+            e           = obj.BranchIndex;
+            [e2b , E2B] = obj.path2ClosestNode(s, e);
             
         end
         
-        function e2e = end2ends(obj, sIdx)
+        function [e2e , E2E] = end2ends(obj, sIdx)
             %% ends2ends: get paths from branches to end points
-            s   = obj.EndIndex(sIdx);
-            e   = obj.EndIndex;
-            e2e = obj.path2ClosestNode(s, e);
+            s           = obj.EndIndex(sIdx);
+            e           = obj.EndIndex;
+            [e2e , E2E] = obj.path2ClosestNode(s, e);
             
         end
         
+        function [n2e , N2E] = node2ends(obj, nIdx)
+            %% node2ends: get paths from node to end points
+            eIdx        = obj.EndIndex;
+            [n2e , N2E] = obj.path2ClosestNode(nIdx, eIdx);
+        end
+        
+        function [n2b , N2B] = node2branches(obj, nIdx)
+            %% node2ends: get paths from node to end points
+            bIdx        = obj.BranchIndex;
+            [n2b , N2B] = obj.path2ClosestNode(nIdx, bIdx);
+        end
+        
+        function bch = getBranchChild(obj, bIdx)
+            %% Return BranchChild object
+            if nargin < 2
+                bIdx = 1 : obj.TotalBranchChildren;
+            end
+            
+            try
+                bch = obj.BranchChildren(bIdx);
+            catch
+                fprintf(2, 'Error returning BranchChild at index %d\n', bIdx);
+                bch = [];
+            end
+        end
+        
+        function setBranchChild(obj, bch, bIdx)
+            %% Set BranchChild object
+            if nargin < 3
+                bIdx = obj.TotalBranchChildren + 1;
+            end
+            
+            try                                                                
+                % Find Matching index
+                sklIdx = find(pdist2(bch.Coordinate, obj.Coordinates) == 0);
+                bch.Parent               = obj;
+                bch.IndexInSkeleton      = sklIdx;
+                obj.BranchChildren(bIdx) = bch;
+                obj.TotalBranchChildren  = bIdx;
+            catch e
+                fprintf(2, 'Error setting BranchChild at index %d\n%s\n', ...
+                    bIdx, e.getReport);
+            end
+        end
+        
+        function prp = getProperty(obj, req)
+            %% Return any property (for getting private properties)
+            try
+                prp = obj.(req);
+            catch
+                fprintf(2, 'Error returning %s property\n', req);
+                prp = [];
+            end
+        end
+                
+        function setProperty(obj, prp, val)
+            %% Set property for this object
+            try
+                prps = properties(obj);
+                
+                if sum(strcmp(prps, prp))
+                    obj.(prp) = val;
+                else
+                    fprintf('Property %s not found\n', prp);
+                end
+            catch e
+                fprintf(2, 'Can''t set %s to %s\n%s', ...
+                    prp, string(val), e.getReport);
+            end
+            
+        end
     end
     
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
-        function R = path2ClosestNode(obj, s, e)
-            %% findNearestNodes: returns paths to nearest points
+        function [r , R] = path2ClosestNode(obj, s, e)
+            %% path2ClosestNode: returns paths to nearest node
             g   = obj.Graph;
             skl = obj.Coordinates;
             
@@ -207,7 +304,8 @@ classdef Skeleton < handle
             [~, minIdx] = min(dst);
             
             % Identify path to closest branch point
-            R = skl(gma{minIdx},:);
+            R = cellfun(@(x) skl(x,:), gma, 'UniformOutput', 0);
+            r = R{minIdx};
         end
         
         function [K , Kmid] = generateKernel(obj, ksz, vals)
