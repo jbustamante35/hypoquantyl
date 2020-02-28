@@ -5,12 +5,16 @@
 classdef Bone < handle
     properties (Access = public)
         Parent
-        Coordinate
+        Coordinates
+        IndexInSkeleton
+        Length
+        Joints
+        JointIndex
     end
-
+    
     properties (Access = protected)
     end
-
+    
     %% ------------------------ Main Methods -------------------------------- %%
     methods (Access = public)
         function obj = Bone (varargin)
@@ -25,22 +29,76 @@ classdef Bone < handle
             prps   = properties(class(obj));
             deflts = {};
             obj    = classInputParser(obj, prps, deflts, args);
-
+            
         end
-
-
+        
+        function obj = FindIndexInSkeleton(obj)
+            %% Find corresponding Nodes for each coordinate
+            
+        end
+        
     end
-
+    
     %% -------------------------- Helper Methods ---------------------------- %%
     methods (Access = public)
-
+        function j = getJoint(obj, jIdx)
+            %% Return a Joint
+            if nargin < 2
+                jIdx = 1 : 2;
+            end
+            
+            try
+                j = obj.Joints(jIdx);
+            catch
+                fprintf(2, 'Error returning Joint at index %d\n', jIdx);
+                j = [];
+            end
+        end
+        
+        function jprop = getJointProp(obj, jIdx, req)
+            %% Return a property of a Joint
+            switch nargin
+                case 1
+                    jIdx = 1 : 2;
+                    req  = 'all';
+                case 2
+                    req = 'all';
+                case 3
+                otherwise
+                    fprintf(2, 'Too many input arguments [%d]\n', nargin);
+                    jprop = [];
+                    return;
+            end
+            
+            % Get the property (or properties) from the Joint
+            try                
+                if strcmpi(req, 'all')
+                    if numel(jIdx) > 1
+                        jprop = cell2mat(arrayfun(@(x) struct(obj.Joints(x)), ...
+                            jIdx, 'UniformOutput', 0)');
+                    else
+                        jprop = struct(obj.Joints(jIdx));
+                    end
+                else
+                    if numel(jIdx) > 1
+                        jprop = cell2mat(arrayfun(@(x) obj.Joints(x).(req), ...
+                            jIdx, 'UniformOutput', 0)');
+                    else                        
+                        jprop = obj.Joints(jIdx).(req);
+                    end
+                end
+            catch
+                fprintf(2, 'Error retrieving %s from Joint %d\n', req, jIdx);
+                jprop = [];
+            end
+        end
     end
-
+    
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
-
+        
     end
-
+    
 end
 
 
