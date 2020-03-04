@@ -6,7 +6,7 @@ function env = envelopeMethod(crd, seg, maxD)
 % points (x) and normalized the distance from the center line (y).
 %
 % Usage:
-%   env = envelopeMethod(crd, seg, dOut, dInn)
+%   env = envelopeMethod(crd, seg, maxD)
 %
 % Input:
 %   crd: coordinates of the segment to convert to envelope coordinates

@@ -17,12 +17,14 @@ classdef Skeleton < handle
         BranchPoints
         EndIndex                  % End Point indices along the Skeleton
         BranchIndex               % Branch Point indices along the Skeleton
+        StartPoint
         Routes
     end
     
     properties (Access = protected)
         MASKSIZE = [101 , 101]    % Size of mask image
         THRESH   = sqrt(2) + eps; % Distance threshold between Graph nodes
+        ENVELOPEDISTANCE = 10     % Distance to set envelope when sampling image
         TotalEndPoints            % Total number of end points
         TotalBranchPoints         % Total number of branch points
         KernelEndPoints           % EndPoints identified by the Kernel
@@ -54,9 +56,7 @@ classdef Skeleton < handle
                 'Joints', repmat(Joint, 0); ...
                 'TotalJoints', 0; ...
                 'Bones', repmat(Bone, 0); ...
-                'TotalBones', 0; ...
-                'Routes', struct('Ends2Branches', [], 'Ends2Ends', [], ...
-                'Branches2Branches', [], 'Branches2Ends', [])};
+                'TotalBones', 0};
             obj = classInputParser(obj, prps, deflts, args);
         end
         
@@ -69,7 +69,8 @@ classdef Skeleton < handle
             imSz = obj.MASKSIZE;
             
             % Get skeleton, end points, and branch points
-            [skltn, bmrph] = bwmorphjb(cntr, imSz);
+            [~, bmrph]     = bwmorphjb(cntr, imSz);
+            [skltn, bmrph] = bwmorphjb(bmrph, imSz, 'thin', Inf, 0);
             [ecrds , ~]    = bwmorphjb(bmrph, imSz, 'endpoints');
             [bcrds , ~]    = bwmorphjb(bmrph, imSz, 'branchpoints');
             
@@ -104,63 +105,29 @@ classdef Skeleton < handle
             g         = digraph(n1, n2, d);
             obj.Graph = g;
             
-        end
+        end        
         
-        function obj = FindBranchRoutes(obj)
-            %% All routes from BranchPoints
-            b   = 1 : obj.TotalBranchPoints;
-            B2B = arrayfun(@(x) obj.branch2branches(x), b, 'UniformOutput', 0);
-            B2E = arrayfun(@(x) obj.branch2ends(x), b, 'UniformOutput', 0);
+        function obj = FindStartPoint(obj)
+            %% Find initial EndPoint
+            ecrds = cell2mat(arrayfun(@(x) x.Coordinate, ...
+                obj.Joints, 'UniformOutput', 0)');
+            eidx  = getLowestIndex(ecrds);
+            einit = obj.getJoint(eidx);
             
-            % Store class properties
-            obj.Routes.Branches2Branches = B2B;
-            obj.Routes.Branches2Ends     = B2E;
+            obj.StartPoint = einit;
         end
         
-        function obj = FindEndRoutes(obj)
-            %% All routes from EndPoints
-            e   = 1 : obj.TotalEndPoints;
-            E2B = arrayfun(@(x) obj.end2branches(x), e, 'UniformOutput', 0);
-            E2E = arrayfun(@(x) obj.end2ends(x), e, 'UniformOutput', 0);
-            
-            % Store class properties
-            obj.Routes.Ends2Branches = E2B;
-            obj.Routes.Ends2Ends     = E2E;
-        end
-        
-        function obj = ConvolveSkeleton(obj)
-            %% Convolution kernel across the skeleton
-            % Prepare kernel
-            if isempty(obj.Kernel)
-                [K , kmid]    = obj.generateKernel;
-                K(kmid, kmid) = 0;
-            else
-                K    = obj.Kernel;
-                kmid = obj.KernelMidpoint;
+        function obj = FindRoutesFromStartPoint(obj)
+            %% Generate all Routes from starting point to all End Points
+            if isempty(obj.StartPoint)
+                obj.FindStartPoint;
             end
+            startIdx  = obj.StartPoint.IndexInSkeleton == obj.EndIndex;
+            [~ , E2E] = obj.end2ends(startIdx);
             
-            % Get properties
-            bmrph    = obj.Mask;
-            skltn    = obj.Coordinates;
-            epValues = obj.ENDVALUES;
-            brValues = obj.BRANCHVALUES;
+            obj.Routes = E2E;
             
-            % Convolution to identify branch and end points
-            Kimg    = conv2(bmrph, K, 'same');
-            Kvals   = ba_interp2(Kimg, skltn(:,1), skltn(:,2));
-            brIdxs  = Kvals >= brValues;
-            epIdxs  = Kvals == epValues;
-            kbrcrds = skltn(brIdxs,:); % Branch Points identified on kernel
-            kepcrds = skltn(epIdxs,:); % End Points identified on kernel
-            
-            % Store class properties
-            obj.KernelImage        = Kimg;
-            obj.Kernel             = K;
-            obj.KernelMidpoint     = kmid;
-            obj.KernelEndPoints    = kepcrds;
-            obj.KernelBranchPoints = kbrcrds;
-            
-        end
+        end        
         
         function obj = MakeJoints(obj)
             %% Convert BranchPoints to Joint objects
@@ -195,9 +162,9 @@ classdef Skeleton < handle
                     j2 = ii;
                     [JP{i}{ii} , JI{i}{ii}] = obj.checkJointConnection(j1, j2);
                 end
-            end    
+            end
             JP = cat(1, JP{:});
-            JI = cat(1, JI{:});            
+            JI = cat(1, JI{:});
             
             % Get all indices with matching paths and remove duplicates
             jpcat      = ~cellfun(@isempty, JP);
@@ -219,6 +186,40 @@ classdef Skeleton < handle
             obj.Bones          = B;
             obj.TotalBones     = numel(B);
             obj.BoneJointIndex = [(1 : obj.TotalBones)' , u1 , u2];
+            
+        end
+        
+        function obj = ConvolveSkeleton(obj)
+            %% Convolution kernel across the skeleton
+            % Prepare kernel
+            if isempty(obj.Kernel)
+                [K , kmid]    = obj.generateKernel;
+                K(kmid, kmid) = 0;
+            else
+                K    = obj.Kernel;
+                kmid = obj.KernelMidpoint;
+            end
+            
+            % Get properties
+            bmrph    = obj.Mask;
+            skltn    = obj.Coordinates;
+            epValues = obj.ENDVALUES;
+            brValues = obj.BRANCHVALUES;
+            
+            % Convolution to identify branch and end points
+            Kimg    = conv2(bmrph, K, 'same');
+            Kvals   = ba_interp2(Kimg, skltn(:,1), skltn(:,2));
+            brIdxs  = Kvals >= brValues;
+            epIdxs  = Kvals == epValues;
+            kbrcrds = skltn(brIdxs,:); % Branch Points identified on kernel
+            kepcrds = skltn(epIdxs,:); % End Points identified on kernel
+            
+            % Store class properties
+            obj.KernelImage        = Kimg;
+            obj.Kernel             = K;
+            obj.KernelMidpoint     = kmid;
+            obj.KernelEndPoints    = kepcrds;
+            obj.KernelBranchPoints = kbrcrds;
             
         end
     end
@@ -265,6 +266,12 @@ classdef Skeleton < handle
             bIdx          = obj.BranchIndex;
             [n2b, N2B, P] = obj.path2ClosestNode(nIdx, bIdx);
         end
+        
+        function crd = node2skeleton(obj, nidx)
+            %% Convert node index to index in skeleton
+            crd = obj.Coordinates(nidx,:);
+            
+        end        
         
         function j = getJoint(obj, jIdx)
             %% Return Joint object
@@ -342,7 +349,7 @@ classdef Skeleton < handle
             
             %% Get all neighbor paths from both Joints
             j1 = obj.getJoint(jIdx1);
-            N1 = j1.getNeighbor;            
+            N1 = j1.getNeighbor;
             e1 = arrayfun(@(x) x.EndPath, N1, 'UniformOutput', 0);
             b1 = arrayfun(@(x) x.BranchPath, N1, 'UniformOutput', 0);
             i1 = arrayfun(@(x) x.EndIndex, N1, 'UniformOutput', 0);
@@ -392,6 +399,18 @@ classdef Skeleton < handle
             
         end
         
+        function [P , pd] = sampleImage(obj, crds, edst)
+            %% Interpolation of coordinates onto image
+            if nargin < 3
+                edst = obj.ENVELOPEDISTANCE;
+            end
+            
+            img      = obj.Image;
+            bg       = median(img, 'all');
+            [P , pd] = getStraightenedMask(crds, img, 0, edst, bg);
+            P        = flipud(P);
+        end
+        
         function prp = getProperty(obj, req)
             %% Return any property (for getting private properties)
             try
@@ -425,9 +444,9 @@ classdef Skeleton < handle
         function [r , R , P] = path2ClosestNode(obj, s, e)
             %% path2ClosestNode: returns paths to nearest node
             % Implements Dijkstra's algorithm to find the shortest path between
-            % an input node (s) and an array of nodes (e) in the Graph. The 
+            % an input node (s) and an array of nodes (e) in the Graph. The
             % indices of the nodes ought to be those corresponding to EndPoints,
-            % BranchPoints, or Neighbors, since all other intermediate nodes are 
+            % BranchPoints, or Neighbors, since all other intermediate nodes are
             % practically useless.
             %
             % Usage:
@@ -442,10 +461,10 @@ classdef Skeleton < handle
             %   r: the shortest path between s and all of e
             %   R: all shortest paths between s and each e
             %   P: all path indices of nodes
-                        
+            
             %% Iterate through all starting points to find closest Branch Point
             g   = obj.Graph;
-            skl = obj.Coordinates;            
+            skl = obj.Coordinates;
             gsz = numel(e);
             gma = cell(1, gsz);
             dst = zeros(1, gsz);

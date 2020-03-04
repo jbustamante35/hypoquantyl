@@ -27,7 +27,10 @@ classdef Bone < handle
                 args = {};
             end
             prps   = properties(class(obj));
-            deflts = {};
+            deflts = { ...
+                'Coordinates', [0 0] ; ...
+                'IndexInSkeleton', 0 ; ...
+                'Length', 0};
             obj    = classInputParser(obj, prps, deflts, args);
             
         end

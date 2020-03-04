@@ -40,11 +40,19 @@ classdef Seedling < handle
             %% Constructor method for Seedling
             if ~isempty(varargin)
                 % Parse inputs to set properties
-                prps = properties(class(obj));
-                obj  = classInputParser(obj, prps, varargin);
+                vargs = varargin;
             else
                 % Set default properties for empty object
+                vargs = {};
             end
+
+            prps   = properties(class(obj));
+            deflts = {...
+                'Lifetime', 0 ; ...
+                'Coordinates', [0 0] ; ...
+                'Frame' , [0 0]};
+            obj    = classInputParser(obj, prps, deflts, vargs);
+            
             
             if ~isfield(obj.PData, obj.PDPROPERTIES{1})
                 c = cell(1, numel(obj.PDPROPERTIES));

@@ -28,8 +28,12 @@ classdef Joint < handle
                 args = {};
             end
             prps   = properties(class(obj));
-            deflts = {'Neighbors', ...
-                struct('Coordinate', [], 'EndPath', [], 'BranchPath', [])};
+            deflts = {...
+                'Neighbors', ...
+                struct('Coordinate', [], 'EndPath', [], 'BranchPath', []) ; ...
+                'TotalNeighbors', 0 ; ...
+                'Coordinate', [0 0] ; ...
+                'IndexInSkeleton', 0};
             obj    = classInputParser(obj, prps, deflts, args);
             
         end
@@ -171,7 +175,7 @@ classdef Joint < handle
                         end
                         
                     otherwise
-                        fprintf(2, 'Error with number in inputs [%d]\n', nargin);
+                        fprintf(2, 'Error with inputs [%d]\n', nargin);
                         N = [];
                         return;
                 end

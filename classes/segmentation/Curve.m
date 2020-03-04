@@ -33,11 +33,17 @@ classdef Curve < handle
             %% Constructor method for single Cure
             if ~isempty(varargin)
                 % Parse inputs to set properties
-                prps = properties(class(obj));
-                obj  = classInputParser(obj, prps, varargin);
+                vargs = varargin;
             else
                 % Set default properties for empty object
+                vargs = {};
             end
+
+            prps   = properties(class(obj));
+            deflts = {...
+                    'NumberOfSegments', 0 ; ...
+                    'TraceSize', 0};
+            obj    = classInputParser(obj, prps, deflts, vargs);
             
         end
         

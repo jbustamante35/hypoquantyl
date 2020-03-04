@@ -28,7 +28,7 @@ if nargin < 3
     getMask = 1;
 else
     % Run with customized parameters
-    methd   = varargin{1};
+    methd = varargin{1};
     if numel(varargin) > 1
         param   = varargin{2};
         getMask = varargin{3};

@@ -19,16 +19,20 @@ classdef Experiment < handle
     methods (Access = public)
         %% Constructor and main methods
         function obj = Experiment(varargin)
-            %% Constructor method for Genotype
+            %% Constructor method for Experiment
             if ~isempty(varargin)
                 % Parse inputs to set properties
-                prps = properties(class(obj));
-                obj  = classInputParser(obj, prps, varargin);
-                
+                vargs = varargin;
             else
                 % Set default properties for empty object
-                obj.ExperimentPath = pwd;
+                vargs = {};
             end
+
+            prps   = properties(class(obj));
+            deflts = {...
+                'ExperimentPath', pwd ; ...
+                'NumberOfGenotypes', 0};
+            obj    = classInputParser(obj, prps, deflts, vargs);
             
             [obj.ExperimentName, ~] = getDirName(obj.ExperimentPath);
             
