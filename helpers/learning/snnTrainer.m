@@ -1,9 +1,9 @@
-function [IN, OUT] = nn_svector(SSCR, ZSLC, NLAYERS, sav, par)
-%% cnn_svector: CNN to predict contour segments given a Z-Vector slice
+function [IN, OUT] = snnTrainer(SSCR, ZSLC, NLAYERS, sav, par)
+%% snnTrainer: simple fitnet to predict contour segments from Z-Vector slices
 %
 %
 % Usage:
-%   [IN, OUT] = nn_svector(SSCR, ZSLC, NLAYERS, sav, par)
+%   [IN, OUT] = snnTrainer(SSCR, ZSLC, NLAYERS, sav, par)
 %
 % Input:
 %   SSCR: PCA scores of S-Vectors [concatenated X-/Y-coordinates]
@@ -52,7 +52,7 @@ for pc = 1 : pcs
     % for pc = 1 : 1 % Debug by running only 1 PC
     nnX = X';
     nnY = Y(:,pc)';
-    
+
     % Run CNN
     snet{pc} = fitnet(NLAYERS, trnfn);
     snet{pc} = train(snet{pc}, nnX, nnY, 'UseParallel', pll);
@@ -61,12 +61,13 @@ end
 % Store Networks in a structure
 netStr = arrayfun(@(x) sprintf('N%d', x), 1 : pcs, 'UniformOutput', 0);
 snet   = cell2struct(snet, netStr, 2);
+ypre   = struct2array(structfun(@(n) n(ZSLC')', snet, 'UniformOutput', 0)');
 
 %% PC Predictions using network model
-ypre = zeros(size(SSCR));
-for n = 1 : numel(netStr)
-    ypre(:,n) = snet.(netStr{n})(ZSLC');
-end
+% ypre = zeros(size(SSCR));
+% for n = 1 : numel(netStr)
+%     ypre(:,n) = snet.(netStr{n})(ZSLC');
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structure
@@ -81,7 +82,7 @@ OUT = struct('SplitSets', Splt, 'Predictions', ypre, 'Net', snet);
 if sav
     pnm = sprintf('%s_SScoreNN_%dSegment_s%dPCs', ...
         tdate('s'), nSegs, pcs);
-    save(pnm, '-v7.3', 'IN', 'OUT');    
+    save(pnm, '-v7.3', 'IN', 'OUT');
 end
 
 end

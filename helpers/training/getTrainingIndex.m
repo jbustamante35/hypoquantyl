@@ -42,12 +42,11 @@ rIdx = cellfun(@(x) ceil(rng(1) * x.Lifetime) : ceil(rng(2) * x.Lifetime), ...
     s, 'UniformOutput', 0);
 
 % Select a random untrained frame 
-fIdx = cellfun(@(r,h) M(r(ismember(r, h))), ...
-    rIdx, hIdx, 'UniformOutput', 0);
+fIdx = cellfun(@(r,h) M(r(ismember(r, h))), rIdx, hIdx, 'UniformOutput', 0);
 fIdx = cat(1, fIdx{:});
 
 %% Combine indices to get final output matrix
-I = unique(sortrows([gIdx sIdx fIdx]), 'rows', 'stable');
+I = unique(sortrows([gIdx , sIdx , fIdx]), 'rows', 'stable');
 
 end
 

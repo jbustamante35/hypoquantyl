@@ -8,7 +8,7 @@ function mypca = pcaAnalysis(rawD, numC, sv, dName, vis, mth)
 % I removed the built-in PCA results because I'm so much better than them
 %
 % Usage:
-%   mypca = pcaAnalysis(rawD, numC, sv, dName, vis)
+%   mypca = pcaAnalysis(rawD, numC, sv, dName, vis, mth)
 %
 % Input:
 %   rawD: rasterized data set to conduct analysis
@@ -24,8 +24,17 @@ function mypca = pcaAnalysis(rawD, numC, sv, dName, vis, mth)
 
 %% PCA using my custom pca function and MATLAB's built-in pca function
 % Default to Method 1
-if nargin < 6
-    mth = 1;
+switch nargin 
+    case 4
+        vis = 0;
+        mth = 1;
+    case 5
+        mth = 1;
+    case 6
+    otherwise
+        fprintf(2, 'Error with inputs [%d]\n', nargin);
+        mypca = [];
+        return;
 end
 
 switch mth

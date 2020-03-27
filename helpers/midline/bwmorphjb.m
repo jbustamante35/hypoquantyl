@@ -1,4 +1,4 @@
-function [crds, bmsk] = bwmorphjb(cntr, sz, varargin)
+function [crds, bmsk, bws] = bwmorphjb(cntr, sz, varargin)
 %% bwmorphjb: bwmorph wrapper that makes it easier to obtain coordinates
 % Description
 %

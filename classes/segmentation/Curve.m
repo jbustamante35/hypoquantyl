@@ -145,45 +145,7 @@ classdef Curve < handle
             catch
                 fprintf(2, 'Error splitting outline into multiple segments\n');
             end
-        end
-        
-        %         function obj = SegmentOutline(varargin)
-        %             %% Split CircuitJB outline into defined number of segments
-        %             % This function will generate all individual curves around the
-        %             % contour to the total defined by the SEGMENTSIZE parameter. Output
-        %             % will be N curves of length SEGMENTSIZE, where N is the number of
-        %             % curves around an outline of the CircuitJB object's InterpOutline.
-        %
-        %             try
-        %                 obj = varargin{1};
-        %
-        %                 switch nargin
-        %                     case 1
-        %                         len = obj.SEGMENTSIZE;
-        %                         stp = obj.SEGMENTSTEPS;
-        %
-        %                     case 3
-        %                         len = varargin{2};
-        %                         stp = varargin{3};
-        %
-        %                     otherwise
-        %                         len = obj.SEGMENTSIZE;
-        %                         stp = obj.SEGMENTSTEPS;
-        %                         msg = sprintf(...
-        %                             ['Input must be (segment_size, steps_per_segment)\n', ...
-        %                             'Segmenting with default parameters (%d, %d)\n'], ...
-        %                             len, stp);
-        %                         fprintf(2, msg);
-        %
-        %                 end
-        %
-        %                 obj = loadRawSegmentData(obj, obj.Trace, len, stp);
-        %
-        %             catch
-        %                 fprintf(2, 'Error splitting outline into multiple segments\n');
-        %             end
-        %
-        %         end
+        end        
         
         function nsegs = getNormalizedSegments(obj)
             %% Generates the segments in the Midpoint-Normalized Frame
@@ -195,46 +157,7 @@ classdef Curve < handle
                 1 : obj.NumberOfSegments, 'UniformOutput', 0);
             nsegs = cat(3, nsegs{:});
             
-        end
-        
-        %         function obj = NormalizeSegments(obj, par)
-        %             %% Convert RawSegments using Midpoint Normalization Method
-        %             % Uses the midpoint-normalization method to convert coordinates in
-        %             % the raw image coordinate frame into the normalized coordinate
-        %             % frame (see midpointNorm())
-        %             if isempty(obj.RawSegments)
-        %                 obj.SegmentOutline;
-        %             elseif isempty(obj.Trace)
-        %                 obj.Trace = obj.Parent.FullOutline;
-        %                 obj.SegmentOutline;
-        %             end
-        %
-        %             % Run midpoint-normalization on all raw segments
-        %             allSegs = 1 : obj.NumberOfSegments;
-        %             segs    = obj.RawSegments;
-        %
-        %             svctr = zeros(size(obj.RawSegments));
-        %             zvctr = zeros(obj.NumberOfSegments, 6);
-        %             pmats = zeros(3, 3, obj.NumberOfSegments);
-        %             if par
-        %                 % Normalization with parallelization
-        %                 parfor s = allSegs
-        %                     [svctr(:,:,s), pmats(:,:,s), ~, ~, ~, zvctr(s,:)] = ...
-        %                         midpointNorm(segs(:,:,s));
-        %                 end
-        %             else
-        %                 % Normalization with normal for loop
-        %                 for s = allSegs
-        %                     [svctr(:,:,s), pmats(:,:,s), ~, ~, ~, zvctr(s,:)] = ...
-        %                         midpointNorm(segs(:,:,s));
-        %                 end
-        %             end
-        %
-        %             obj.SVectors = svctr;
-        %             obj.Pmats    = pmats;
-        %             obj.ZVector  = zvctr;
-        %
-        %         end
+        end  
         
         function obj = Normal2Envelope(obj, par)
             %% Convert SVectors to coordinates within envelope
@@ -289,40 +212,6 @@ classdef Curve < handle
             end
         end
         
-        %         function [obj, SP, DS] = GenerateSPatches(obj, par)
-        %             %% Generates S-Patches from image frame coordinates
-        %             %
-        %             %
-        %
-        %             %
-        %             segs    = obj.RawSegments;
-        %             img     = obj.getImage('gray');
-        %             allSegs = 1 : obj.NumberOfSegments;
-        %
-        %             %%
-        %             if par
-        %                 % Run with parallel processing
-        %                 [SP, DS] = deal(cell(1, obj.NumberOfSegments));
-        %                 parfor p = allSegs
-        %                     [SP{p}, DS{p}] = setSPatch(segs(:,:,p), img);
-        %                 end
-        %
-        %             else
-        %                 % Run with traditional for loop
-        %                 [SP, DS] = arrayfun(@(p) setSPatch(segs(:,:,p), img), ...
-        %                     allSegs, 'UniformOutput', 0);
-        %             end
-        %
-        %             %
-        %             DS = cat(1, DS{:});
-        %
-        %             %
-        %             obj.SPatches     = SP;
-        %             obj.SData        = DS;
-        %             obj.ENVELOPESIZE = DS(1).OuterData.GridSize(1);
-        %
-        %         end
-        
         function [zp , zd] = getZPatch(varargin)
             %% Generates an Z-Patch from a segment's Z-Vector
             % This computes the S-Patch from the given segment each time, rather
@@ -373,37 +262,6 @@ classdef Curve < handle
             end
         end
         
-        %         function [obj, ZP, DZ] = GenerateZPatches(obj, par)
-        %             %% Generates Z-Patches from image frame coordinates
-        %             %
-        %
-        %             %
-        %             zvec    = obj.ZVector;
-        %             img     = double(obj.getImage('gray'));
-        %             allSegs = 1 : obj.NumberOfSegments;
-        %
-        %             %%
-        %             if par
-        %                 % Run with parallel processing
-        %                 [ZP, DZ] = deal(cell(1, obj.NumberOfSegments));
-        %                 parfor p = allSegs
-        %                     [ZP{p}, DZ{p}] = setZPatch(zvec(p,:), img);
-        %                 end
-        %             else
-        %                 % Run with traditional for loop
-        %                 [ZP, DZ] = arrayfun(@(p) setZPatch(zvec(p,:), img), ...
-        %                     allSegs, 'UniformOutput', 0);
-        %             end
-        %
-        %             %
-        %             DZ = cat(1, DZ{:});
-        %
-        %             %
-        %             obj.ZPatches = ZP;
-        %             obj.ZData    = DZ;
-        %
-        %         end
-        
     end
     
     %% -------------------------- Helper Methods ---------------------------- %%
@@ -433,51 +291,6 @@ classdef Curve < handle
             end
             
         end
-        
-        %         function pts = getEndPoint(varargin)
-        %             %% Returns all EndPoint values or EndPoint at requested segment
-        %             % Removed the EndPoints property [10.02.2019]
-        %
-        %             switch nargin
-        %                 case 1
-        %                     % Returns all segment endpoints
-        %                     obj = varargin{1};
-        %                     pts = obj.RawSegments([1 , end],:,:);
-        %
-        %                 case 2
-        %                     % Arguments are Curve object and segment index
-        %                     obj = varargin{1};
-        %                     idx = varargin{2};
-        %                     try
-        %                         pts = [obj.RawSegments(1,:,idx) ; ...
-        %                             obj.RawSegments(end,:,idx)];
-        %                     catch
-        %                         r = num2str(idx);
-        %                         fprintf(2, 'Error requesting EndPoints %s\n', r);
-        %                     end
-        %
-        %                 case 3
-        %                     % Arguments are Curve object, segment index, and
-        %                     % start (0) or endpoint (1)
-        %                     obj = varargin{1};
-        %                     idx = varargin{2};
-        %                     pnt = varargin{3};
-        %                     if any(pnt == 1:2)
-        %                         pts = [obj.RawSegments(1,:,idx) ; ...
-        %                             obj.RawSegments(end,:,idx)];
-        %                         pts = pts(pnt,:);
-        %                     else
-        %                         p = num2str(pnt);
-        %                         r = num2str(idx);
-        %                         fprintf(2, ...
-        %                             'Error requesting EndPoints (pnt%s,seg%s)\n', p, r);
-        %                     end
-        %
-        %                 otherwise
-        %                     pts = [];
-        %             end
-        %
-        %         end
         
         function prm = getParameter(varargin)
             %% Return all or single Ppar or Pmat

@@ -13,6 +13,7 @@ classdef Bone < handle
     end
     
     properties (Access = protected)
+        SAMPLEDISTANCE = 10 % Distance to spread coordinage sampling of image
     end
     
     %% ------------------------ Main Methods -------------------------------- %%
@@ -37,6 +38,28 @@ classdef Bone < handle
         
         function obj = FindIndexInSkeleton(obj)
             %% Find corresponding Nodes for each coordinate
+            
+        end
+        
+        function [Q , qd] = SampleSegment(obj, interp_length, sample_distance)
+            %%
+            switch nargin 
+                case 1
+                    interp_length   = size(obj.Coordinates, 1);
+                    sample_distance = obj.SAMPLEDISTANCE;
+                case 2
+                    sample_distance = obj.SAMPLEDISTANCE;
+                case 3
+                otherwise
+                    fprintf(2, 'Error with inputs [%d]\n', nargin);
+                    return;
+            end
+            
+            rt       = interpolateOutline(obj.Coordinates, interp_length);
+            img      = obj.Parent.Image;
+            bg       = median(img, 'all');            
+            [Q , qd] = getStraightenedMask(rt, img, 0, sample_distance, bg);
+            Q        = flipud(Q);
             
         end
         

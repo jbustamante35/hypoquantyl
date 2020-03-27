@@ -14,7 +14,6 @@ classdef HypoQuantyl < handle
     properties (Access = private)
         %% Private data for this class
         
-        
     end
     
     
@@ -33,8 +32,10 @@ classdef HypoQuantyl < handle
             deflts = {...
                 'AnalysisName', getDirName(pwd); ...
                 'AnalysisDate', obj.getDateString('long'); ...
-                'Experiments',  obj.LoadExperiment};
+                'Experiments',  repmat(Experiment, 0)
+                'NumExperiments', 0};
             obj    = classInputParser(obj, prps, deflts, vargs);
+            
             %             narginchk(1, 2);
             %
             %             switch nargin
@@ -61,9 +62,9 @@ classdef HypoQuantyl < handle
         %% Main helper methods
         function obj = LoadExperiment(obj, ex)
             %% Loads folders containing different experiment conditions
-            if numel(obj.Experiments) == 0                                
+            if numel(obj.Experiments) == 0
                 obj.Experiments    = dir('*');
-                obj.NumExperiments = 1;                
+                obj.NumExperiments = 1;
             else
                 obj.Experiments(obj.NumExperiments) = ex;
                 obj.NumExperiments                  = obj.NumExperiments + 1;

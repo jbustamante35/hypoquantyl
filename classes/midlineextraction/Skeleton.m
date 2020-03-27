@@ -3,6 +3,7 @@
 
 classdef Skeleton < handle
     properties (Access = public)
+        Parent
         Image
         Contour
         Mask
@@ -25,6 +26,7 @@ classdef Skeleton < handle
         MASKSIZE = [101 , 101]    % Size of mask image
         THRESH   = sqrt(2) + eps; % Distance threshold between Graph nodes
         ENVELOPEDISTANCE = 10     % Distance to set envelope when sampling image
+        SAMPLEDISTANCE   = 10     % Distance to spread coordinage sampling of image
         TotalEndPoints            % Total number of end points
         TotalBranchPoints         % Total number of branch points
         KernelEndPoints           % EndPoints identified by the Kernel
@@ -105,7 +107,7 @@ classdef Skeleton < handle
             g         = digraph(n1, n2, d);
             obj.Graph = g;
             
-        end        
+        end
         
         function obj = FindStartPoint(obj)
             %% Find initial EndPoint
@@ -127,7 +129,7 @@ classdef Skeleton < handle
             
             obj.Routes = E2E;
             
-        end        
+        end
         
         function obj = MakeJoints(obj)
             %% Convert BranchPoints to Joint objects
@@ -142,6 +144,10 @@ classdef Skeleton < handle
             EPT = arrayfun(@(x) ...
                 Joint('Coordinate', ecrds(x,:), 'JointType', 'EndJoint'), ...
                 1 : obj.TotalEndPoints, 'UniformOutput', 0);
+            
+            % Reset Joints
+            obj.Joints      =  repmat(Joint, 0);
+            obj.TotalJoints = 0;
             
             cellfun(@(x) obj.setJoint(x), BCH, 'UniformOutput', 0);
             cellfun(@(x) obj.setJoint(x), EPT, 'UniformOutput', 0);
@@ -183,10 +189,70 @@ classdef Skeleton < handle
                 B(i) = obj.createBone(idx1, idx2, j, k);
             end
             
+            % Reset Joints
+            obj.Bones          = repmat(Bone, 0);
+            obj.TotalBones     = 0;
             obj.Bones          = B;
             obj.TotalBones     = numel(B);
             obj.BoneJointIndex = [(1 : obj.TotalBones)' , u1 , u2];
             
+        end
+        
+        function [Q , qd] = SampleRoute(obj, rtIdx)
+            %%
+            rt       = obj.Routes{rtIdx};
+            img      = obj.Image;
+            edst     = obj.SAMPLEDISTANCE;
+            bg       = median(img, 'all');
+            [Q , qd] = getStraightenedMask(rt, img, 0, edst, bg);
+            Q        = flipud(Q);
+            
+        end
+        
+        function obj = RunPipeline(obj, id)
+            %% Run through main methods
+            % I omitted ConvolveSkeleton because I don't do anything with it
+            if nargin < 2
+                id = '';
+            end
+            
+            sprA = repmat('=', 1, 80);
+            sprB = repmat('-', 1, 80);
+            ellp = @(x) repmat('.', 1, 80 - (length(x) + 13));
+            
+            tAll = tic;
+            fprintf('\n%s\nCreating Skeleton [%s]\n%s\n', sprA, id, sprB);
+            
+            t = tic;
+            obj.Contour2Skeleton;
+            str  = sprintf('Contour2Skeleton');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+            
+            t = tic;
+            obj.CreateGraph;
+            str  = sprintf('CreateGraph');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+            
+            t = tic;
+            obj.MakeJoints;
+            str  = sprintf('MakeJoints ');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+            
+            t = tic;
+            obj.MakeBones;
+            str  = sprintf('MakeBones');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+            
+            t = tic;
+            obj.FindRoutesFromStartPoint;
+            str  = sprintf('FindRoutesFromStartPoint');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+            
+            str = sprintf('DONE | %d Nodes | %d Joints | %d Segments | %d Routes', ...
+                size(obj.Coordinates, 1), obj.TotalJoints, ...
+                obj.TotalBones, numel(obj.Routes));
+            fprintf('%s\n%s%s.[ %.02f sec ]\n%s\n', ...
+                sprB, str, ellp(str), toc(tAll), sprA);
         end
         
         function obj = ConvolveSkeleton(obj)
@@ -271,7 +337,7 @@ classdef Skeleton < handle
             %% Convert node index to index in skeleton
             crd = obj.Coordinates(nidx,:);
             
-        end        
+        end
         
         function j = getJoint(obj, jIdx)
             %% Return Joint object
@@ -374,7 +440,14 @@ classdef Skeleton < handle
             
             % Find matching coordinate, if any, and construct the segment
             [c1 , c2] = find(chk3);
-            jchk      = chk3(c1 , c2);
+            
+            if numel(c1)  > 1
+                % Just choose the first row if more than one matching segment
+                c1 = c1(1);
+                c2 = c2(1);
+            end
+            
+            jchk = chk3(c1 , c2);
             
             if jchk
                 crd2 = p2{c2}(end,:);
@@ -435,7 +508,13 @@ classdef Skeleton < handle
                 fprintf(2, 'Can''t set %s to %s\n%s', ...
                     prp, string(val), e.getReport);
             end
-            
+        end
+        
+        function [pth , pthIdx] = getLongestRoute(obj)
+            %%
+            [~ , pthIdx] = max(cell2mat(cellfun(@(x) ...
+                max(size(x,1)), obj.Routes, 'UniformOutput', 0)));
+            pth          = obj.Routes{pthIdx};
         end
     end
     
@@ -476,7 +555,7 @@ classdef Skeleton < handle
             
             % Replace 0 with Inf (don't find self path)
             zIdx      = dst == 0;
-            dst(zIdx) = Inf;
+            dst(zIdx) = [];
             gma(zIdx) = [];
             
             % Get the minimum distance from the set of paths
@@ -519,7 +598,7 @@ classdef Skeleton < handle
                 if chksum == 2
                     % Check if paths are crossing through another BranchPoint
                     bcrds  = obj.BranchPoints;
-                    minDst = min(min(pdist2(bcrds, p1)));
+                    minDst = min(pdist2(bcrds, p1), [], 'all');
                     
                     if minDst == 0
                         chk = 0;

@@ -46,6 +46,15 @@ function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sav, vis, fIdxs)
 %   figs: handles to figures if vis is set to true
 %
 
+%% Set defaults
+if nargin < 3
+    typ    = 1;     % [0 to train Seedlings     | 1 to train Hypocotyls]
+    flipme = 1;     % [0 to train only original | 1 to train original and flipped]
+    sav    = 1;     % [1 to save trained CircuitJB object]
+    vis    = 1;     % [1 to show trained contour]
+    fIdxs  = 1 : 2; % [figure indices to plot if vis == 1]
+end
+
 %% Initialize object array of Seedlings/Hypocotyl to draw contours for
 % Select [Genotype , Seedling | Hypocotyl , frame]
 nCrcs = size(cin, 1);
@@ -96,8 +105,8 @@ if vis
         fig2 = figure(fIdxs(2));
     end
     
-    set(0, 'CurrentFigure', fig1); cla;clf;
-    set(0, 'CurrentFigure', fig2); cla;clf;
+    figclr(fig1);
+    figclr(fig2);
     
     %% Gallery of Hypocotyls with contours on image
     [n , o] = deal(1 : numel(CRCS));
