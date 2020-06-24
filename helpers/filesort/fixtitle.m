@@ -8,6 +8,7 @@ if nargin > 1 && isequal(ver, 'carrots')
     ttl = strrep(ttl, '^', '\^');
     ttl = strrep(ttl, '{', '|');
     ttl = strrep(ttl, '}', '|');
+    ttl = strrep(ttl, '+', ' ');
 else
     ttl = strrep(str, '_', '|');
     ttl = strrep(ttl, '^', '|');

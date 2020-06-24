@@ -1,4 +1,4 @@
-function [IN, OUT] = snnTrainer(SSCR, ZSLC, NLAYERS, sav, par)
+function [IN, OUT] = snnTrainer(SSCR, ZSLC, NLAYERS, sav, par, isSkls)
 %% snnTrainer: simple fitnet to predict contour segments from Z-Vector slices
 %
 %
@@ -11,11 +11,17 @@ function [IN, OUT] = snnTrainer(SSCR, ZSLC, NLAYERS, sav, par)
 %   NLAYERS: number of hidden layers
 %   sav: boolean to save output structure in a .mat file
 %   par: boolean to use parallel computing if available
+%   isSkls: dataset is from Skeleton Patches
 %
 % Output:
 %   IN: structure containing the inputs used for the neural net run
 %   OUT: structure containing predictions, network objects, and data splits
 %
+
+%% Check if dealing with Skeleton Patches
+if nargin < 6
+    isSkls = false;
+end
 
 %% Extract some info about the dataset
 % Total observations and number of scores used
@@ -52,7 +58,7 @@ for pc = 1 : pcs
     % for pc = 1 : 1 % Debug by running only 1 PC
     nnX = X';
     nnY = Y(:,pc)';
-
+    
     % Run CNN
     snet{pc} = fitnet(NLAYERS, trnfn);
     snet{pc} = train(snet{pc}, nnX, nnY, 'UseParallel', pll);
@@ -80,8 +86,12 @@ OUT = struct('SplitSets', Splt, 'Predictions', ypre, 'Net', snet);
 
 % Save results in structure
 if sav
-    pnm = sprintf('%s_SScoreNN_%dSegment_s%dPCs', ...
-        tdate('s'), nSegs, pcs);
+    if isSkls
+        pnm = sprintf('%s_SklsNN_%dPatches_s%dPCs', tdate, nSegs, pcs);
+    else
+        pnm = sprintf('%s_SScoreNN_%dSegment_s%dPCs', tdate, nSegs, pcs);
+    end
+    
     save(pnm, '-v7.3', 'IN', 'OUT');
 end
 

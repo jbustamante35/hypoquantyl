@@ -20,9 +20,6 @@ function obj = classInputParser(obj, prps, deflts, varargin)
 % Output:
 %   obj: class set with parameters from varargin
 %
-% TODO:
-%   [02.24.2020] Set default properties for empty object (i.e. structs)
-%
 
 % Parse inputs to obtain property values
 args = parseConstructorInput(prps, deflts, varargin);

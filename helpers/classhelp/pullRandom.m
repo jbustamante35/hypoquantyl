@@ -1,4 +1,4 @@
-function [rIdxs , x] = pullRandom(X, n)
+function [rIdxs , rx] = pullRandom(X, n)
 %% pullRandom: pull random number(s) from distribution
 % Description
 %
@@ -16,16 +16,17 @@ function [rIdxs , x] = pullRandom(X, n)
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
 
-%%
+%% Default to take 1 sample
 if nargin < 2
     n = 1;
 end
 
-%%
+%% Return random index and object 
+% If Shuffle function not available
 % rIdxs = randi([1 , length(X)], 1);
-% x     = X(rIdxs);
+% rx    = X(rIdxs);
 rIdxs = sort(Shuffle(length(X), 'index', n));
-x     = X(rIdxs);
+rx    = X(rIdxs);
 
 end
 

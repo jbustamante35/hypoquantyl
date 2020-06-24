@@ -30,5 +30,3 @@ end
 set(figs, 'Color', 'w');
 
 end
-
-
