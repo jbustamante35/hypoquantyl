@@ -33,7 +33,7 @@ end
 % Save figures
 currDir = pwd;
 cd(sav_dir);
-for fig = figs
+for fig = 1 : numel(figs)
     if sav_fig
         savefig(figs(fig), fnms{fig});
     end

@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseed, psx, psy)
+function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseed, psx, psy, v)
 %% hypocotylPredictor: the two-step neural net to predict hypocotyl contours
 % [ Describe how this works here ]
 %
@@ -12,8 +12,8 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 % used. This allows more flexibility when selecting the different methods.
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = ...
-%       hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, z, psx, psy)
+%   [Cntr, Znrms, Simg] = hypocotylPredictor(...
+%       imgs, par, mth, px, py, pz, pp, Nz, Ns, z, psx, psy, v)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -26,11 +26,16 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 %   pz: Z-Vector eigenvectors and means
 %   pp: Z-Patch eigenvectors and means
 %   z: seed prediction with ground-truth Z-Vector (for D-Vector method)
+%   v: booleon for verbosity (defaults to 0)
 %
 % Output:
 %   Cntr: the continous contour generated from the segments
 %   Znrms: Z-Vector predicted from the image
 %   Simg: cell array of segments [svec] or iterative contours [dvec]
+
+if nargin < 13
+    v = 0;
+end
 
 try
     %% Select Algorithm
@@ -53,7 +58,7 @@ try
             
             % Run S-Vector Method
             [Cntr, Znrms, Simg] = ...
-                runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns);
+                runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, v);
             
         case 'dvec'
             %% New method to recursively predict vector displacements from Z-Vector
@@ -81,7 +86,7 @@ try
             % Run D-Vector Method
             % Note that Ns is actually Nd here
             [Cntr, Znrms, Simg] = ...
-                runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, zseed);
+                runMethod2(imgs, par, px, py, pz, pp, Nz, Ns, zseed, v);
             
         otherwise
             fprintf('Method must be [''svec''|''dvec'']\n');
@@ -96,12 +101,12 @@ end
 
 end
 
-function [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, z)
+function [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, z, v)
 %% runMethod2: predict Z-Vector then recursively predict displacement vector
 %
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, z)
+%   [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, z, v)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -113,6 +118,7 @@ function [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, 
 %   Nz: neural net model for predicting Z-Vector PC scores from images
 %   Nd: neural net model for predicting D-Vectors from Z-Patch scores
 %   z: initial Z-Vector to seed the initial predictions
+%   v: boolean for verbosity level (0 or 1)
 %
 % Output:
 %   Cntr: the contour predicted by this algorithm
@@ -158,30 +164,38 @@ if par
     pz    = struct('InputData', pz.InputData,  'EigVecs', pz.EigVecs,         'MeanVals', pz.MeanVals);
     
     parfor cIdx = allCrvs
-        t = tic;
-        fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
+        if v
+            t = tic;
+            fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
+        end
         
         img                                   = imgs{cIdx};
-        [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            recursiveDisplacementPredictor(img, pdx, pdy, pz, pdp, Nz, Nd, z);
+        [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = recursiveDisplacementPredictor(...
+            img, pdx, pdy, pz, pdp, Nz, Nd, z, v);
         
-        fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
-            cIdx, toc(t), sptB);
+        if v
+            fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
+                cIdx, toc(t), sptB);
+        end
         
     end
     
 else
     %% Run with single-thread
     for cIdx = allCrvs
-        t = tic;
-        fprintf('\n%s\nPredicting contour for hypocotyl %d\n', sptB, cIdx);
+        if v
+            t = tic;
+            fprintf('\n%s\nPredicting contour for hypocotyl %d\n', sptB, cIdx);
+        end
         
         img                                   = imgs{cIdx};
-        [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            recursiveDisplacementPredictor(img, pdx, pdy, pz, pdp, Nz, Nd, z);
+        [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = recursiveDisplacementPredictor(...
+            img, pdx, pdy, pz, pdp, Nz, Nd, z, v);
         
-        fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
-            cIdx, toc(t), sptB);
+        if v
+            fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
+                cIdx, toc(t), sptB);
+        end
         
     end
 end
@@ -192,7 +206,7 @@ fprintf('Finished running recursive displacement predictor...[%.02f sec]\n%s\n',
 
 end
 
-function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns)
+function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, v)
 %% runMethod1: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -212,7 +226,7 @@ function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, N
 %
 % Usage:
 %   [Cntr, Znrms, Simg] = ...
-%       runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns)
+%       runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, v)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -225,6 +239,7 @@ function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, N
 %   psy: Y-Coordinate eigenvectors and means for folding the final contour
 %   Nz: neural net model for predicting Z-Vector PC scores from images
 %   Ns: neural net model for predicting S-Vector PC scores from Z-Vector slices
+%   v: boolean for verbosity level (0 or 1)
 %
 % Output:
 %   Cntr: the continous contour generated from the half-index of each segment
@@ -269,30 +284,38 @@ if par
     psy  = struct('InputData', psy.InputData, 'EigVecs', psy.EigVecs, 'MeanVals', psy.MeanVals);
     
     parfor cIdx = allCrvs
-        t = tic;
-        fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
+        if v
+            t = tic;
+            fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
+        end
         
         img                                   = imgs{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns);
+            twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, v);
         
-        fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
-            cIdx, toc(t), sptB);
+        if v
+            fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
+                cIdx, toc(t), sptB);
+        end
         
     end
     
 else
     %% Run with single-thread
     for cIdx = allCrvs
-        t = tic;
-        fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
+        if v
+            t = tic;
+            fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
+        end
         
         img                                   = imgs{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
-            twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns);
+            twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, v);
         
-        fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
-            cIdx, toc(t), sptB);
+        if v
+            fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
+                cIdx, toc(t), sptB);
+        end
         
     end
 end

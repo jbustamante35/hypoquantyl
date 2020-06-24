@@ -84,28 +84,27 @@ MIT license found in [LICENSE](./LICENSE) <br />
 
 ## Class Structure and Main Functions
 ### Main Classes
-| Class | Description
-| --- | ---
-| HypoQuantyl | Initializes program and loads Experiment folders
-| Experiment  | Loads folders containing multiple image stacks
-| Genotype    | Loads image stacks containing growing seedlings
-| Seedling    | Represents a single seedling throughout a time-lapse
-| Hypocotyl   | Represents the hypocotyl portion of a single seedlings
-| CircuitJB   | Main contour of a hypocotyl, segmented by anchor points
-| Route       | Individual segments around a hypocotyl's contour
+| Class        | Description                                              |
+| ---          | ---                                                      |
+| HypoQuantyl  | Initializes program and loads Experiment folders         |
+| Experiment   | Loads folders containing multiple image stacks           |
+| Genotype     | Loads image stacks containing growing seedlings          |
+| Seedling     | Represents a single seedling throughout a time-lapse     |
+| Hypocotyl    | Represents the hypocotyl portion of a single seedlings   |
+| CircuitJB    | Main contour of a hypocotyl, segmented by anchor points  |
+| Route        | Individual segments around a hypocotyl's contour         |
 
 ### Algorithms
-| Algorithm | Description
-| --- | ---
-| FindHypocotyl        | Identifies region on a seedling containing the hypocotyl
-| TrackHypocotyl       | Keeps track of hypocotyl during de-etiolation process
-| FindGoodFrames       | Runs error-checking of each frame for each Seedling
-| IntegrationAlgorithm | Integration method for measuring growing Hypocotyl
+| Algorithm             | Description                                               |
+| ---                   | ---                                                       |
+| FindHypocotyl         | Identifies region on a seedling containing the hypocotyl  |
+| TrackHypocotyl        | Keeps track of hypocotyl during de-etiolation process     |
+| FindGoodFrames        | Runs error-checking of each frame for each Seedling       |
+| IntegrationAlgorithm  | Integration method for measuring growing Hypocotyl        |
 
 ### Implementing to Cyber Infrastructure
-| Infrastructure | Description
-| --- | ---
-| Create accounts     | University Network, CyVerse, HTCondor
-| Set up submit files | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands
-| Run Test Data       | Run HypoQuantyl on Sample data on cloud computing environment
-
+| Infrastructure       | Description                                                    |
+| ---                  | ---                                                            |
+| Create accounts      | University Network, CyVerse, HTCondor                          |
+| Set up submit files  | Holds MATLAB MCR, HypoQuantyl, Data, I-Commands                |
+| Run Test Data        | Run HypoQuantyl on Sample data on cloud computing environment  |

@@ -1,9 +1,9 @@
-function [IN, OUT] = cnn_zvector(IMGS, SCRS, sav, par)
-%% cnn_zvector: CNN to predict Z-Vector slices given grayscale images
+function [IN, OUT] = znnTrainer(IMGS, SCRS, sav, par)
+%% znnTrainer: CNN to predict Z-Vector slices given grayscale images
 %
 %
 % Usage:
-%   [IN, OUT] = cnn_zvector(SCRS, IMGS, sav, par)
+%   [IN, OUT] = znnTrainer(IMGS, SCRS, sav, par)
 %
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
@@ -52,33 +52,33 @@ for pc = 1 : pcs
     % for e = 1 : 1 % Debug by running only 1 PC
     cnnX = X;
     cnnY = Y(:,pc);
-    
+
     % Create CNN Layers
     layers = [
         %         imageInputLayer([size(imgs,1) , size(imgs,2) , 1], ...
         imageInputLayer([size(IMGS,1) , size(IMGS,2) , 1], ...
         'Normalization', 'none');
-        
+
         % Layer 1
         convolution2dLayer(7, 10, 'Padding', 'same');
         batchNormalizationLayer;
         reluLayer;
         maxPooling2dLayer(2,'Stride',2);
-        
+
         %         averagePooling2dLayer(2,'Stride',2);
-        
+
         % Layer 2
         convolution2dLayer(7, 5,'Padding','same');
         batchNormalizationLayer;
         reluLayer;
         maxPooling2dLayer(2,'Stride',2);
-        
+
         % Layer 3
         convolution2dLayer(7, 3,'Padding','same');
         batchNormalizationLayer;
         reluLayer;
         maxPooling2dLayer(2,'Stride',2);
-        
+
         %
         %     averagePooling2dLayer(2,'Stride',2)
         %
@@ -89,12 +89,12 @@ for pc = 1 : pcs
         %     convolution2dLayer(3,32,'Padding','same')
         %     batchNormalizationLayer
         %     reluLayer
-        
+
         dropoutLayer(0.2);
         fullyConnectedLayer(size(cnnY,2));
         regressionLayer;
         ];
-    
+
     % Configure CNN options
     miniBatchSize = 128;
     options = trainingOptions( ...
@@ -106,13 +106,13 @@ for pc = 1 : pcs
         'Plots',                'none', ...
         'Verbose',              true, ...
         'ExecutionEnvironment', exenv);
-    
+
     % Removed [02-18-19]
     %     'LearnRateSchedule',     'piecewise', ...
     %     'LearnRateDropFactor',   0.1, ...
     %     'LearnRateDropPeriod',   20, ...
     %     'Plots',                'training-progress', ...
-    
+
     % Run CNN
     znet{pc} = trainNetwork(cnnX, cnnY, layers, options);
 end
@@ -144,7 +144,7 @@ if sav
     pnm = sprintf('%s_ZScoreCNN_%dContours_z%dPCs', ...
         tdate('s'), nCrvs, pcs);
     save(pnm, '-v7.3', 'IN', 'OUT');
-    
+
 end
 
 end

@@ -50,12 +50,6 @@ stDevs  = std(scrs);
 
 %% PCn (xstp) StDevs above mean
 if pc > 0
-    
-    
-    
-    
-    
-    
     % Compute value for iterative step and iterative PC score
     val    = stDevs(pc) * stp;
     itrUp  = upFn(scoreMn(pc), val);

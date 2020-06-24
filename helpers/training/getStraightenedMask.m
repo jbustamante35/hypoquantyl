@@ -1,11 +1,11 @@
-function [smsk, sdata] = getStraightenedMask(crds, img, BNZ, SCL)
+function [smsk, sdata] = getStraightenedMask(crds, img, BNZ, SCL, BG)
 %% getStraightenedMask: straighten image from midline
 % This is a modified version of the sampleStraighten function that straightens
 % an object in an image by extending normal vectors along each coordinate of a
 % midline.
 %
 % Usage:
-%   smsk = getStraightenedMask(crds, msk, bnz, dscl)
+%   [smsk, sdata] = getStraightenedMask(crds, img, BNZ, SCL)
 %
 % Input:
 %   crds: x-/y-coordinates of curve to map
@@ -25,6 +25,7 @@ try
         % Default binarization on and envelope size to half the width of the image
         BNZ = 1;
         SCL = ceil(size(img,1) / 2);
+        BG  = 0;
     end
     
     tng  = gradient(crds')';
@@ -36,8 +37,8 @@ try
     bndsInn = [getDim(ulng, 2) , -getDim(ulng, 1)] + crds;
     
     %% Map curves to image
-    [envO, datO] = map2img(img, crds, bndsOut, SCL, BNZ);
-    [envI, datI] = map2img(img, crds, bndsInn, SCL, BNZ);
+    [envO, datO] = map2img(img, crds, bndsOut, SCL, BNZ, BG);
+    [envI, datI] = map2img(img, crds, bndsInn, SCL, BNZ, BG);
     
     if BNZ
         %% For CarrotSweeper straightener
@@ -66,14 +67,20 @@ catch
 end
 end
 
-function [env, edata] = map2img(img, crds, ebnds, dscl, bnz)
+function [env, edata] = map2img(img, crds, ebnds, dscl, bnz, bg)
 %% map2img: interpolate pixel intensities from curve coordinates
+
 % Create the envelope structure
 [eCrds, eGrid] = generateFullEnvelope(crds, ebnds, dscl, 'cs');
 
 % Map curves to image
 sz     = [size(eGrid,1), length(crds)];
-mapimg = ba_interp2(double(img), eCrds(:,1), eCrds(:,2));
+
+if bg > 0
+    mapimg = interp2(double(img), eCrds(:,1), eCrds(:,2), 'linear', bg);
+else
+    mapimg = ba_interp2(double(img), eCrds(:,1), eCrds(:,2));
+end
 
 % Binarize if using for CarrotSweeper
 if bnz

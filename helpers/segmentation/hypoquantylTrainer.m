@@ -28,22 +28,22 @@ ex_class = class(ex);
 switch ex_class
     case 'Experiment'
         exname = ex.ExperimentName;
-        
+
         % Contours
         D = ex.combineContours;
         C = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
         C = cat(1, C{:});
-        
+
     case 'Curve'
         C      = ex;
-        exname = C(1).Parent.ExperimentName;        
+        exname = C(1).Parent.ExperimentName;
     otherwise
         fprintf(2, 'Class of input %s not recognized [Experiment|Curve]\n', ...
             ex_class);
         return;
-end       
+end
 
-% Timer 
+% Timer
 tAll = tic;
 fprintf('\n%s\nRunning %s through HypoQuantyl Trainer [Save = %s | Figures = %s]\n%s\n', ...
     sprB, exname, num2str(sav), num2str(fIdxs), sprA);
@@ -99,7 +99,7 @@ fprintf('DONE! [%.02f sec]\n', toc(t));
 t = tic;
 fprintf('Training Z-Vectors from Images...');
 
-[ZIN, ZOUT] = cnn_zvector(ZMGS, ZSCRS, sav, par);
+[ZIN, ZOUT] = znnTrainer(ZMGS, ZSCRS, sav, par);
 
 fprintf('DONE! [%.02f sec]\n%s\n', toc(t), sprA);
 
@@ -123,7 +123,7 @@ CNTR   = CNTRS(trnIdx);
 
 fprintf('DONE! [%.02f sec]\n', toc(t));
 
-%% Run neural net to train D-Vectors 
+%% Run neural net to train D-Vectors
 nItrs    = 15;
 fldPreds = true;
 
@@ -138,10 +138,10 @@ fprintf('Training D-Vectors through %d recursive iterations [Folding = %s]...', 
 for fig = fIdxs
     tt = tic;
     fprintf('Saving %d figures after recursive D-Vector training...', nFigs);
-    
+
     savefig(fIdxs(fig), fnms{fig});
     saveas(fIdxs(fig), fnms{fig}, 'tiffn');
-    
+
     fprintf('DONE! [%.02f sec]\n', toc(tt));
 end
 
@@ -176,7 +176,7 @@ t = tic;
 fprintf('Training S-Vectors using %d-layer neural net...', NLAYERS);
 
 %
-[SIN, SOUT] = nn_svector(SSCR, ZSLC, NLAYERS, sav, par);
+[SIN, SOUT] = snnTrainer(SSCR, ZSLC, NLAYERS, sav, par);
 
 fprintf('DONE! [%.02f sec]\n%s\n', toc(t), sprA);
 

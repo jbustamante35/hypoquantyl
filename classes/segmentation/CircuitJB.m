@@ -31,13 +31,19 @@ classdef CircuitJB < handle
         %% Constructor and primary methods
         function obj = CircuitJB(varargin)
             %% Constructor method for CircuitJB
-            if ~isempty(varargin)                
+            if ~isempty(varargin)
                 % Parse inputs to set properties
-                prps = properties(class(obj));
-                obj  = classInputParser(obj, prps, varargin);
+                vargs = varargin;
             else
                 % Set default properties for empty object
+                vargs = {};
             end
+
+            prps   = properties(class(obj));
+            deflts = {...
+                    'isTrained', false ; ...
+                    'isFlipped', false};
+            obj    = classInputParser(obj, prps, deflts, vargs);
             
             %             obj.Routes = initializeRoutes(obj);
             obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);

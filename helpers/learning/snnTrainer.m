@@ -1,9 +1,9 @@
-function [IN, OUT] = nn_svector(SSCR, ZSLC, NLAYERS, sav, par)
-%% cnn_svector: CNN to predict contour segments given a Z-Vector slice
+function [IN, OUT] = snnTrainer(SSCR, ZSLC, NLAYERS, sav, par, isSkls)
+%% snnTrainer: simple fitnet to predict contour segments from Z-Vector slices
 %
 %
 % Usage:
-%   [IN, OUT] = nn_svector(SSCR, ZSLC, NLAYERS, sav, par)
+%   [IN, OUT] = snnTrainer(SSCR, ZSLC, NLAYERS, sav, par)
 %
 % Input:
 %   SSCR: PCA scores of S-Vectors [concatenated X-/Y-coordinates]
@@ -11,11 +11,17 @@ function [IN, OUT] = nn_svector(SSCR, ZSLC, NLAYERS, sav, par)
 %   NLAYERS: number of hidden layers
 %   sav: boolean to save output structure in a .mat file
 %   par: boolean to use parallel computing if available
+%   isSkls: dataset is from Skeleton Patches
 %
 % Output:
 %   IN: structure containing the inputs used for the neural net run
 %   OUT: structure containing predictions, network objects, and data splits
 %
+
+%% Check if dealing with Skeleton Patches
+if nargin < 6
+    isSkls = false;
+end
 
 %% Extract some info about the dataset
 % Total observations and number of scores used
@@ -61,12 +67,13 @@ end
 % Store Networks in a structure
 netStr = arrayfun(@(x) sprintf('N%d', x), 1 : pcs, 'UniformOutput', 0);
 snet   = cell2struct(snet, netStr, 2);
+ypre   = struct2array(structfun(@(n) n(ZSLC')', snet, 'UniformOutput', 0)');
 
 %% PC Predictions using network model
-ypre = zeros(size(SSCR));
-for n = 1 : numel(netStr)
-    ypre(:,n) = snet.(netStr{n})(ZSLC');
-end
+% ypre = zeros(size(SSCR));
+% for n = 1 : numel(netStr)
+%     ypre(:,n) = snet.(netStr{n})(ZSLC');
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structure
@@ -79,9 +86,13 @@ OUT = struct('SplitSets', Splt, 'Predictions', ypre, 'Net', snet);
 
 % Save results in structure
 if sav
-    pnm = sprintf('%s_SScoreNN_%dSegment_s%dPCs', ...
-        tdate('s'), nSegs, pcs);
-    save(pnm, '-v7.3', 'IN', 'OUT');    
+    if isSkls
+        pnm = sprintf('%s_SklsNN_%dPatches_s%dPCs', tdate, nSegs, pcs);
+    else
+        pnm = sprintf('%s_SScoreNN_%dSegment_s%dPCs', tdate, nSegs, pcs);
+    end
+    
+    save(pnm, '-v7.3', 'IN', 'OUT');
 end
 
 end

@@ -16,39 +16,33 @@ function [crvs, strc] = generateFullEnvelope(crds, dist2env, numCrvs, alg)
 %
 % Output:
 %   crvs: intermediate curves between segment and envelope
-%   strc: envelope structure reshaped as an image 
+%   strc: envelope structure reshaped as an image
 %
 
-try
-    switch alg
-        case 'hq'
-            %% HypoQuantyl Method
-            % Just go to specified distance (need to be updated to go along normal)
-            itr  = dist2env / numCrvs;
-            crvs = arrayfun(@(x) crds + (itr * x), 1 : numCrvs, 'UniformOutput', 0);
-            
-        case 'cs'
-            %% CarrotSweeper Method
-            % Make intermediate segments between two curves
-            pts  = arrayfun(@(x) ...
-                interpolateOutline([crds(x,:) ; dist2env(x,:)], numCrvs), ...
-                1 : length(crds), 'UniformOutput', 0);
-            crvs = cat(1, pts{:});
-            strc = cat(2, pts{:});
-            
-        otherwise
-            % Error
-            fprintf(2, 'Please select appropriate algorithm [hq|cs]\n');
-            crvs = [];
-    end
-    
-catch e
-    %% Default to HypoQuantyl Method if I missed changing it somewhere
-    fprintf('\nDefaulting to HypoQuantyl algorithm\n%s\n', e.getReport);    
-    % Just go to specified distance (need to be updated to go along normal)
-    itr  = dist2env / numCrvs;
-    crvs = arrayfun(@(x) crds + (itr * x), 1 : numCrvs, 'UniformOutput', 0);
-    
+if nargin < 4
+    alg = 'hq';
 end
 
+switch alg
+    case 'hq'
+        %% HypoQuantyl Method
+        % Just go to specified distance (need to be updated to go along normal)
+        itr  = dist2env / numCrvs;
+        crvs = arrayfun(@(x) crds + (itr * x), 1 : numCrvs, 'UniformOutput', 0);
+        strc = [];
+        
+    case 'cs'
+        %% CarrotSweeper Method
+        % Make intermediate segments between two curves
+        pts  = arrayfun(@(x) ...
+            interpolateOutline([crds(x,:) ; dist2env(x,:)], numCrvs), ...
+            1 : length(crds), 'UniformOutput', 0);
+        crvs = cat(1, pts{:});
+        strc = cat(2, pts{:});
+        
+    otherwise
+        % Error
+        fprintf(2, 'Please select appropriate algorithm [hq|cs]\n');
+        crvs = [];
+end
 end

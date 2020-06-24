@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns)
+function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, v)
 %% twoStepNetPredictor: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -30,6 +30,7 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy
 %   pp: Z-Patch eigenvectors and means
 %   psx: X-Coordinate eigenvectors and means for folding the final contour
 %   psy: Y-Coordinate eigenvectors and means for folding the final contour
+%   v: boolean for verbosity (defaults to 0)
 %
 % Output:
 %   Simg: cell array of segments predicted from the image
@@ -37,6 +38,10 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy
 %   Cntr: the continous contour generated from the segments [not implemented]
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if nargin < 10
+    v = 0;
+end
+
 %% Run the pipeline!
 Znrms                 = zScrsFromImage(img, Nz, pz);
 Zslcs                 = generateZSlices(img, double(Znrms), pp);
@@ -61,13 +66,19 @@ function Znrms = zScrsFromImage(img, Nz, pz)
 %
 
 %%
-t   = tic;
 pcz = size(pz.EigVecs,2);
-fprintf('Predicting and unfolding %d Z-Vector PC scores from image...', pcz);
+
+if v
+    t = tic;
+    fprintf('Predicting and unfolding %d Z-Vector PC scores from image...', ...
+        pcz);
+end
 
 Znrms = predictZvectorFromImage(img, Nz, pz, 1);
 
-fprintf('DONE! [%.02f sec]\n', toc(t));
+if v
+    fprintf('DONE! [%.02f sec]\n', toc(t));
+end
 
 end
 
@@ -96,9 +107,10 @@ ttlSegs = size(Znrms,1);
 allSegs = 1 : ttlSegs;
 
 %%
-t = tic;
-
-fprintf('Generating and folding Z-Patches to %d PCs...', pcp);
+if v
+    t = tic;
+    fprintf('Generating and folding Z-Patches to %d PCs...', pcp);
+end
 
 % Subtract off midpoints from Z-Vector
 tmpz = [Znrms(:,1:2) , ...
@@ -115,7 +127,9 @@ Zsubt = arrayfun(@(x)  [tmpz(x,1:2) , tmpz(x,3:4) , tmpz(x,5:6)], ...
 Zslcs = cellfun(@(l,s) [l , s], Zsubt, Zscrs, 'UniformOutput', 0);
 Zslcs = cat(1, Zslcs{:});
 
-fprintf('DONE! [%.02f sec]\n', toc(t));
+if v
+    fprintf('DONE! [%.02f sec]\n', toc(t));
+end
 
 end
 
@@ -139,7 +153,6 @@ function [Snrm , Pms , Mids, Simg] = sScrsFromSlices(Zslcs, Ns, px, py)
 %
 
 %% Constants and other misc parameters
-t       = tic;
 ttlSegs = size(Zslcs,1);
 allSegs = 1 : ttlSegs;
 xvecs   = px.EigVecs;
@@ -149,8 +162,11 @@ yvecs   = py.EigVecs;
 ymns    = py.MeanVals;
 ypcs    = size(yvecs,2);
 
-fprintf('Predicting, unfolding, and re-projecting %dX and %dY PC scores from Z-Vector slices...', ...
-    xpcs, ypcs);
+if v
+    t = tic;
+    fprintf('Predicting, unfolding, and re-projecting %dX and %dY PC scores from Z-Vector slices...', ...
+        xpcs, ypcs);
+end
 
 % Predict S-Vector scores from the inputted Z-Vector slice
 Sscr = struct2array(structfun(@(x) x(Zslcs')', Ns, 'UniformOutput', 0));
@@ -174,7 +190,9 @@ Snrm = cellfun(@(x,y) [x ; y]', crdX, crdY, 'UniformOutput', 0);
 Simg = cellfun(@(x,y,p,m) reverseMidpointNorm([x ; y]', p) + m, ...
     crdX, crdY, Pms, Mids, 'UniformOutput', 0);
 
-fprintf('DONE! [%.02f sec]\n', toc(t));
+if v
+    fprintf('DONE! [%.02f sec]\n', toc(t));
+end
 
 end
 
