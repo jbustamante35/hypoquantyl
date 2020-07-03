@@ -50,7 +50,7 @@ Cntr                  = contourFromSegments(Snrm, Pm, Mid, psx, psy, 0);
 
 end
 
-function Znrms = zScrsFromImage(img, Nz, pz)
+function Znrms = zScrsFromImage(img, Nz, pz, v)
 %% zScrsFromImage: Z-Vector scores from image
 % This function predicts the Z-Vector PC scores from the inputted image using
 % the given neural network model. It then unfolds the PC scores and reshapes the
@@ -60,12 +60,17 @@ function Znrms = zScrsFromImage(img, Nz, pz)
 %   img: image of the hypocotyl
 %   Nz: neural network model for predicting Z-Vector PC scores from images
 %   pz: Z-Vector eigenvectors and means
+%   v: boolean for verbosity [defaults to 0]
 %
 % Output:
 %   Znrms: predicted Z-Vector slices after unfolding and reshaping
 %
 
 %%
+if nargin < 4
+    v = 0;
+end
+
 pcz = size(pz.EigVecs,2);
 
 if v
@@ -82,7 +87,7 @@ end
 
 end
 
-function Zslcs = generateZSlices(img, Znrms, pp)
+function Zslcs = generateZSlices(img, Znrms, pp, v)
 %% generateZSlices: generate dataset of Z-Vector Slices + Z-Patch PC Scores
 % This function generates the input needed to run the neural net model for
 % predicting S-Vector PC scores from Z-Vector slices and Z-Patches. It takes in
@@ -94,12 +99,17 @@ function Zslcs = generateZSlices(img, Znrms, pp)
 %   img: grayscale image of the hypocotyl
 %   Znrms: Z-Vector slices
 %   pp: Z-Patch eigenvectors and means
+%   v: boolean for verbosity [defaults to 0]
 %
 % Output:
 %   Zslcs: vectorized Z-Vector slices + Z-Patch PC score
 %
 
 %%
+if nargin < 4
+    v = 0;
+end
+
 evecs   = pp.EigVecs;
 mns     = pp.MeanVals;
 pcp     = size(pp.EigVecs,2);
@@ -133,7 +143,7 @@ end
 
 end
 
-function [Snrm , Pms , Mids, Simg] = sScrsFromSlices(Zslcs, Ns, px, py)
+function [Snrm , Pms , Mids, Simg] = sScrsFromSlices(Zslcs, Ns, px, py, v)
 %% sScrsFromSlices: predict S-Vector scores from Z-Vector slices
 % This function predicts the S-Vector PC scores from each Z-Vector slice using
 % the neural net model. It then unfolds the PC scores into multiple
@@ -146,6 +156,7 @@ function [Snrm , Pms , Mids, Simg] = sScrsFromSlices(Zslcs, Ns, px, py)
 %   Ns: neural net model to predict S-Vector PC scores from Z-Vector slices
 %   px: X-Coordinate eigenvectors and means
 %   py: Y-Coordinate eigenvectors and means
+%   v: boolean for verbosity [defaults to 0]
 %
 % Output:
 %   Simg: cell array of segments in the image reference frame [on hold]
@@ -153,6 +164,10 @@ function [Snrm , Pms , Mids, Simg] = sScrsFromSlices(Zslcs, Ns, px, py)
 %
 
 %% Constants and other misc parameters
+if nargin < 5
+    v = 0;
+end
+
 ttlSegs = size(Zslcs,1);
 allSegs = 1 : ttlSegs;
 xvecs   = px.EigVecs;
