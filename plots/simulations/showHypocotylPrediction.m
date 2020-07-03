@@ -3,15 +3,18 @@ function showHypocotylPrediction(img, cntr, znrm, simg, idx, trnIdx, mth, sav, f
 %
 %
 % Usage:
-%   showHypocotylPrediction(img, znrms, simg, idx, trnIdx, f)
+%   showHypocotylPrediction(img, cntr, znrm, simg, idx, trnIdx, mth, sav, fIdxs)
 %
 % Input:
 %   img: image used for predictor
+%   cntr: contour predicted from image
 %   znrms: Z-Vector in raw form [1st neural net]
 %   simg: cell array of S-Vectors in image reference frame [2nd neural net]
 %   idx: index in dataset for title purposes
 %   trnIdx: training set indices for title purposes
-%   f: figure handle indices to plot onto
+%   mth: method used for prediction
+%   sav: boolean to save figure
+%   fIdxs: figure handle indices to plot onto [set 2]
 %
 % Output: n/a
 %
@@ -49,8 +52,7 @@ ttng = arrayfun(@(x) [mid(x,:) ; tng(x,:)], 1:length(mid), 'UniformOutput', 0);
 tnrm = arrayfun(@(x) [mid(x,:) ; nrm(x,:)], 1:length(mid), 'UniformOutput', 0);
 
 %% Show Z-Vector and Contour
-set(0, 'CurrentFigure', fIdxs(1));
-cla;clf;
+figclr(fIdxs(1));
 
 myimagesc(img);
 hold on;
@@ -68,8 +70,7 @@ fnms{1} = sprintf('%s_%sMethodPrediction_Hypocotyl%d_%s', ...
     tdate, mth, idx, cSet);
 
 %% Show individual segments or contours through each iteration
-set(0, 'CurrentFigure', fIdxs(2));
-cla;clf;
+figclr(fIdxs(2));
 
 myimagesc(img);
 hold on;

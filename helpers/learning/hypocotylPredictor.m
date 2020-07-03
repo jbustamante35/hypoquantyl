@@ -12,7 +12,7 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 % used. This allows more flexibility when selecting the different methods.
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = hypocotylPredictor(...
+%   [Cntr, Znrms, Simg] = hypocotylPredictor( ...
 %       imgs, par, mth, px, py, pz, pp, Nz, Ns, z, psx, psy, v)
 %
 % Input:
@@ -26,6 +26,8 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 %   pz: Z-Vector eigenvectors and means
 %   pp: Z-Patch eigenvectors and means
 %   z: seed prediction with ground-truth Z-Vector (for D-Vector method)
+%   psx: S-Vector eigenvectors and means for folding x-coordinates
+%   psy: S-Vector eigenvectors and means for folding y-coordinates
 %   v: booleon for verbosity (defaults to 0)
 %
 % Output:

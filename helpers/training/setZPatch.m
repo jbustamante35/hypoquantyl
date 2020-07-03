@@ -164,6 +164,11 @@ end
 
 function [zpatch, patchData] = runVersion2(zSlice, img, SCL)
 %% runNewMethod: faster method for getting Z-Patches
+% Convert image to double if not already done
+if ~isa(img, 'double')
+    img = double(img);
+end
+
 % Set tangent and normal to unit length
 m  = zSlice(1:2);
 t  = zSlice(3:4) - m;
