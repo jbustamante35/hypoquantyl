@@ -1,147 +1,110 @@
-function fig = plotGroundTruthAndPrediction(idx, img, trnIdx, Zin, Zout, sav, f)
+function fnm = plotGroundTruthAndPrediction(img, cpre, zpre, ctru, ztru, mth, idx, trnIdx, fidx, allVectors)
 %% plotGroundTruthAndPrediction: overlay ground truth contour on predicted
 %
 %
 % Usage:
-%   fig = plotGroundTruthAndPrediction(truX, preY, img, idx, numComponents, f)
+%   fnm = plotGroundTruthAndPrediction( ...
+%           img, cpre, zpre, ctru, ztru, mth, idx, trnIdx, fidx)
 %
 % Input:
-%   X: ground truth contour coordinates
-%   Y: predicted contour coordinates
-%   I: grayscale image associated with contour
-%   idx: index in Curve object array for naming figure
-%   numPCs: [3 x 1] array of principal component values used for prediction
-%   sav: boolean to save figure as .fig and .tiff image
-%   f: index of figure handle to plot data onto
+%   img: image corresponding to prediction
+%   cpre: predicted contour
+%   zpre: predicted Z-Vector
+%   ctru: ground truth contour
+%   ztru: ground truth Z-Vector
+%   mth: method used for prediction [svec|dvec]
+%   idx: index in dataset
+%   trnIdx: index of training set
+%   fidx: index of figure handle
+%   allVectors: show variety of Z-Vector points [none|mids|all]
 %
 % Output:
-%   fig: handle to outputted figure
+%   fnm: name of figure generated
 %
 
-%% Plot input vs converted outputs [single, plot only]
-fig = figure(f);
-% set(0, 'CurrentFigure', fig);
-cla;clf;
-
-% Figure data
-row   = 2;
-col   = 4;
-pIdx  = 1;
-
-%% Check if data to plot is in training or testing set
-chk = ismember(idx, trnIdx);
-if chk
-    tSet = 'in training set';
-    fSet = 'training';
-else
-    tSet = 'in testing set';
-    fSet = 'testing';
+if nargin < 10
+    allVectors = 'mids'; % Default to showing just midpoints
 end
 
-%% Extract set-up data
-ttlSegs = size(Zin.FullData, 2) / 6;
-numCrvs = size(Zin.FullData, 1);
-sIdxs   = extractIndices(idx, ttlSegs, Zin.RevertData);
-
-%% Store input and predicted data
-Xin      = Zin.FullData;
-Xin_rev  = Zin.RevertData;
-Xin_n    = Zin.RevertData(sIdxs,:);
-Xout     = Zout.FullData;
-Xout_rev = Zout.RevertData;
-Xout_n   = Zout.RevertData(sIdxs,:);
-
-%% Store input and predicted data
-Min  = Zin.RevertData(sIdxs,1:2);
-Tin  = Zin.RevertData(sIdxs,3:4);
-Nin  = Zin.RevertData(sIdxs,5:6);
-Hin  = Zin.HalfData(:,:,idx)';
-Mout = Zout.RevertData(sIdxs,1:2);
-Tout = Zout.RevertData(sIdxs,3:4);
-Nout = Zout.RevertData(sIdxs,5:6);
-Hout = Zout.HalfData(:,:,idx)';
-
-%% Show CNN Input
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(Xin);
-colormap gray;
-ttl = sprintf('Full Input');
-title(ttl);
-
-%% Show reverted inputed rasterized
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(Xin_rev);
-colormap gray;
-ttl = sprintf('Full Input Reversion');
-title(ttl);
-
-%% Show reverted input for single hypocotyl
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(Xin_n);
-colormap gray;
-ttl = sprintf('Input Reversion\nContour %d [%s]', idx, tSet);
-title(ttl);
-
-%% Overlay Z-Vector on hypocotyl image
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(img);
-colormap gray;
-axis image;
-axis ij;
+%% Show Z-Vector and Contour
+figclr(fidx);
+myimagesc(img);
 hold on;
 
-plt(Min, 'g.', 3);
-plt([Min ; Tin], 'b-', 1);
-plt([Min ; Nin], 'r-', 1);
-ttl = sprintf('Midpoint-Tangent-Normal\nGround Truth\nContour %d [%s]', ...
-    idx, tSet);
-title(ttl);
+% Ground Truth and Predicted Contours
+plt(ctru, 'g--', 2);
+plt(cpre, 'y-', 2);
 
-%% Show CNN Predictions
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(Xout);
-colormap gray;
-ttl = sprintf('Full Predictions');
-title(ttl);
-
-%% Show reverted predictions rasterized
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(Xout_rev);
-colormap gray;
-ttl = sprintf('Full Predictions Reversion');
-title(ttl);
-
-%% Show reverted predictions for single hypocotyl
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(Xout_n);
-colormap gray;
-ttl = sprintf('Predicted Reversion\nContour %d [%s]', idx, tSet);
-title(ttl);
-
-%% Overlay predicted Z-Vector on hypocotyl image
-subplot(row , col , pIdx); pIdx = pIdx + 1;
-imagesc(img);
-colormap gray;
-axis image;
-axis ij;
-hold on;
-
-plt(Mout, 'g.', 3);
-plt([Mout ; Tin], 'b-', 1);
-plt([Mout ; Nin], 'r-', 1);
-hold off;
-ttl = sprintf('Midpoint-Tangent-Normal\nPredicted\nContour %d [%s]', ...
-    idx, tSet);
-title(ttl);
-
-%% Save figure as .fig and .tif
-if sav
-    fnm = sprintf('%s_ReversionPipeline_%dCurves_%dSegments_Contour%d_%s', ...
-        tdate('s'), numCrvs, ttlSegs, idx, fSet);
-    savefig(fig, fnm);
-    saveas(fig, fnm, 'tiffn');
-else
-    pause(1);
+%% Show Tangent and Normal vectors
+switch allVectors
+    case 'none'
+        lgn = {'Expected Contour' , 'Predicted Contour'};
+        legend(lgn, 'Location', 'northeastoutside');
+    case 'mids'
+        plt(ztru(:,1:2), 'g.', 3);
+        plt(zpre(:,1:2), 'y.', 3);
+        lgn = {'Expected Contour' , 'Predicted Contour' , ...
+            'Expected Z-Vector', 'Predicted Z-Vector'};
+        legend(lgn, 'Location', 'northeastoutside');
+    case 'all'
+        % Prepare Z-Vectors
+        scl           = 1;
+        [ttru, ntru]  = prepZVector(ztru, mth, scl);
+        [tpre , npre] = prepZVector(zpre, mth, scl);
+        
+        % Show first coordinates and vectors
+        plt(ctru(1,:), 'b.', 10);
+        plt(cpre(1,:), 'r.', 10);
+        cellfun(@(x) plt(x, 'r-', 1), ttru, 'UniformOutput', 0);
+        cellfun(@(x) plt(x, 'b-', 1), ntru, 'UniformOutput', 0);
+        cellfun(@(x) plt(x, 'm-', 1), tpre, 'UniformOutput', 0);
+        cellfun(@(x) plt(x, 'c-', 1), npre, 'UniformOutput', 0);
+    otherwise
+        fprintf(2, 'Showing vectors should be [none|mids|all]\n');
 end
+
+%% Saving figure
+% Check if in training or validation set
+if ismember(idx, trnIdx)
+    cSet = 'training';
+else
+    cSet = 'validation';
+end
+
+% Title and figure name
+fnm = sprintf('%s_GroundTruthVsPredicted_%sMethod_Hypocotyl%03d_%s', ...
+    tdate, mth, idx, cSet);
+ttl = sprintf('Neural Net Prediction [%s Method]\nHypocotyl %d [%s set]', ...
+    mth, idx, cSet);
+title(ttl);
+
+end
+
+function [ttng , tnrm] = prepZVector(znrm, mth, SCL)
+%% Scale tangent and normal vectors
+if nargin < 3
+    SCL  = 3;
+end
+
+smth = 'svec';
+dmth = 'dvec';
+mid  = znrm(:,1:2);
+tng  = znrm(:,3:4);
+nrm  = znrm(:,5:6);
+
+switch mth
+    case smth
+        tng  = (SCL * (tng - mid)) + mid;
+        nrm  = (SCL * (nrm - mid)) + mid;
+    case dmth
+        tng  = (SCL * (tng)) + mid;
+        nrm  = (SCL * (nrm)) + mid;
+    otherwise
+        fprintf(2, 'Method %s must be [%s|%s]\n', mth, smth, dmth);
+        return;
+end
+
+ttng = arrayfun(@(x) [mid(x,:) ; tng(x,:)], 1:length(mid), 'UniformOutput', 0);
+tnrm = arrayfun(@(x) [mid(x,:) ; nrm(x,:)], 1:length(mid), 'UniformOutput', 0);
 
 end

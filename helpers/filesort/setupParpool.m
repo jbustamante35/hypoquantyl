@@ -41,23 +41,22 @@ elseif nCores > allCores
 elseif poolExists
     %% Decide if pool needs to be reset or not
     currCores = get(parcluster, 'NumWorkers');
-    switch currCores
-        case nCores == currCores
-            %% Pool with desired number cores already set up
-            fprintf('\nParallel pool with %d Workers already set up!\n', ...
-                currCores);
-            P = gcp('nocreate');
-        otherwise
-            %% Delete all open pools if they don't match number to set up
-            fprintf('Shutting down pool of %d Workers and setting with %d Workers...\n', ...
-                currCores, halfCores);
-            delete(gcp('nocreate'));
-            P = startPool(nCores, testOn);
+    if nCores == currCores
+        %% Pool with desired number cores already set up
+        fprintf('\nParallel pool with %d Workers already set up!\n', ...
+            currCores);
+        P = gcp('nocreate');
+    else
+        %% Delete all open pools if they don't match number to set up
+        fprintf('Shutting down pool of %d Workers and setting with %d Workers...\n', ...
+            currCores, halfCores);
+        delete(gcp('nocreate'));
+        P = startPool(nCores, testOn);
     end
-        
-
+    
+    
 else
-    %% Create parallel pool with nCores workers    
+    %% Create parallel pool with nCores workers
     fprintf('Setting up pool of %d Workers...', nCores);
     P = startPool(nCores, testOn);
     

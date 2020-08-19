@@ -94,10 +94,7 @@ end
 
 %% Save figures as .fig and .tif images
 if sav
-    for fIdx = 1 : numel(fIdxs)
-%         savefig(fIdxs(fIdx), fnms{fIdx});
-        saveas(fIdxs(fIdx), fnms{fIdx}, 'tiffn');
-    end
+    saveFiguresJB(fIdxs, fnms, 0);
 end
 
 end

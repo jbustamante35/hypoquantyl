@@ -93,7 +93,7 @@ classdef Curve < handle
             
         end
         
-        function Z = getZVector(obj, ndims)
+        function Z = getZVector(obj, ndims, addMid)
             %% Compute the Z-Vector skeleton for this contour
             % This will compute the Z-Vector each time, rather than storing it
             % in a variable after being run once. This will deprecate the
@@ -103,12 +103,21 @@ classdef Curve < handle
                 ndims = ':';
             end
             
+            if nargin < 3
+                addMid = 0;
+            end    
+            
             % Returns the dimensions from ndims [default to all]
             Z = contour2corestructure(...
                 obj.getTrace, obj.SEGMENTSIZE, obj.SEGMENTSTEPS);
+                        
+            if addMid
+                mid = Z(:,1:2);
+                Z   = [mid , Z(:,3:4) + mid , Z(:,5:6) + mid];
+            end
             
             Z = Z(:, ndims);
-            
+
         end
         
         function segs = getSegmentedOutline(varargin)

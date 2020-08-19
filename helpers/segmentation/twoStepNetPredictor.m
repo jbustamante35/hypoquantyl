@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, v)
+function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, zseed, v)
 %% twoStepNetPredictor: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -17,7 +17,8 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy
 % Predict S-Vector scores from Z-Vector slices
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, Nz, Ns)
+%   [Cntr, Znrms, Simg] = twoStepNetPredictor( ...
+%                           img, px, py, pz, pp, Nz, Ns, zseed, v)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -30,6 +31,7 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy
 %   pp: Z-Patch eigenvectors and means
 %   psx: X-Coordinate eigenvectors and means for folding the final contour
 %   psy: Y-Coordinate eigenvectors and means for folding the final contour
+%   zseed: feed in Z-Vector instead of predicting it
 %   v: boolean for verbosity (defaults to 0)
 %
 % Output:
@@ -38,12 +40,25 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy
 %   Cntr: the continous contour generated from the segments [not implemented]
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if nargin < 10
+if nargin < 11
     v = 0;
 end
 
 %% Run the pipeline!
-Znrms                 = zScrsFromImage(img, Nz, pz);
+if isempty(zseed)
+    if v
+        tt = tic;
+        fprintf('Predicting Z-Vector from Image...');
+    end
+    
+    Znrms                 = zScrsFromImage(img, Nz, pz);
+
+    if v
+        fprintf('DONE [%.02f sec]\n', toc(tt));
+    end
+else
+    Znrms = zseed;
+end
 Zslcs                 = generateZSlices(img, double(Znrms), pp);
 [Snrm, Pm, Mid, Simg] = sScrsFromSlices(Zslcs, Ns, px, py);
 Cntr                  = contourFromSegments(Snrm, Pm, Mid, psx, psy, 0);
@@ -201,6 +216,7 @@ crdY = cellfun(@(y) pcaProject(y(yIdx), yvecs, ymns, 'scr2sim'), ...
     scrs, 'UniformOutput', 0);
 
 % Keep output as midpoint-normalized coordinates [to be folded later]
+%% TODO: I think there's something wrong here with adding back midpoints
 Snrm = cellfun(@(x,y) [x ; y]', crdX, crdY, 'UniformOutput', 0);
 Simg = cellfun(@(x,y,p,m) reverseMidpointNorm([x ; y]', p) + m, ...
     crdX, crdY, Pms, Mids, 'UniformOutput', 0);
