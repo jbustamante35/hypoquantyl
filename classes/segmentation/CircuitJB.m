@@ -172,9 +172,10 @@ classdef CircuitJB < handle
                 fidx         = 1;
                 interp_fixer = 40;
             end
+            
             img  = obj.getImage;
             trc  = obj.getOutline;
-            ofix = FixOutline('Circuit', obj, 'Image', img, 'Contour', trc, ...
+            ofix = OutlineFixer('Circuit', obj, 'Image', img, 'Contour', trc, ...
                 'FigureIndex', fidx, 'InterpFix', interp_fixer);
             
         end
