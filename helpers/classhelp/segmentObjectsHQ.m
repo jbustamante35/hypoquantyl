@@ -1,4 +1,4 @@
-function [obs, msk] = segmentObjectsHQ(img, sz, sens, mth)
+function [msk , obs] = segmentObjectsHQ(img, smth, sz, sens, mth)
 %% segmentObjectsHQ: segment image to bw and filter out small objects
 % This function takes a grayscale image, uses a simple Otsu method to segment
 % into a bw image, then filters out smaller objects between the pixel range
@@ -6,24 +6,42 @@ function [obs, msk] = segmentObjectsHQ(img, sz, sens, mth)
 % bwconncomp function and the binary mask.
 %
 % Usage:
-%  [obs, msk] = segmentObjectsHQ(im, sz, sens, mth)
+%  [msk , obs] = segmentObjectsHQ(img, smth, sz, sens, mth)
 %
 % Input:
 %	img: grayscale image
+%   smth: smooth binary image with convolution filter
 %	sz: [2 x 1] array defining minimum and maximum range to search for objects
 %	sens: sensitivity for alternative algorithm [recommended 0.6]
 %	mth: method to use [default to method 1]
 %
 % Output:
-%	obs: structure containing information about objects extracted from im
 %	msk: binarized bw image
+%	obs: structure containing information about objects extracted from im
 %
 % This version is for HypoQuantyl
 
 %% Use alternative function below [for automated training]
-if nargin < 3
-    sens = 0.4;
-    mth  = 2;
+switch nargin
+    case 1       
+        smth = 0;
+        sz   = size(img);
+        sens = 0.6;
+        mth  = 3;        
+    case 2
+        sz   = size(img);
+        sens = 0.6;
+        mth  = 3;
+    case 3
+        sens = 0.6;
+        mth = 3;
+    case 4
+        mth = 3;
+    case 5
+    otherwise
+        fprintf(2, 'Error with inputs. Expected 4 [%d]\n', nargin);
+        [msk , obs] = deal([]);
+        return;
 end
 
 switch mth
@@ -31,24 +49,32 @@ switch mth
         %
         % The sz parameter should be property data
         pdps        = sz;
-        [obs , msk] = runMethod1(img, pdps);
+        [msk , obs] = runMethod1(img, pdps);
         
     case 2
         %
-        [obs , msk] = runMethod2(img, sz);
+        [msk , obs] = runMethod2(img, sz);
         
     case 3
         %
-        [obs, msk] = runMethod3(img , sz, sens);
+        [msk , obs] = runMethod3(img, sz, sens);
         
     otherwise
         fprintf(2, 'Incorrect method %s\nShould be [1|2|3]\n', string(mth));
         
 end
 
+%% Run smoothing kernel
+if smth
+    ksz  = ceil(size(img,1) / 10);
+    krnl = ones(ksz) / ksz^2;
+    blr  = conv2(msk, krnl, 'same');
+    msk  = blr > 0.5;
 end
 
-function [prps , msk] = runMethod1(img, pdps)
+end
+
+function [msk , prps] = runMethod1(img, pdps)
 %% runMethod1: dirt simple method for binary circle data
 msk  = imbinarize(img);
 flt  = bwareafilt(msk, 1);
@@ -57,7 +83,7 @@ prps = regionprops(obs, img, pdps);
 
 end
 
-function [obs , msk] = runMethod2(img, fltsz, sensFix)
+function [msk , obs] = runMethod2(img, fltsz, sensFix)
 %% runMethod2: deprecated method to segment grayscale images
 %
 % Some constants to play around with
@@ -78,8 +104,8 @@ if gt >= 0.5
 else
     % Foreground is brighter; raise sensitivity parameter
     sens = 0.5 + sensFix;
-%     fg   = 'bright';
-    fg   = 'dark'; % I guess just always use dark foreground? 
+    %     fg   = 'bright';
+    fg   = 'dark'; % I guess just always use dark foreground?
 end
 
 %
@@ -91,12 +117,12 @@ obs  = bwconncomp(flt);
 % Recursive fix to calibrate sensitivity
 if obs.NumObjects == 0
     sensFix     = sensFix + 0.1;
-    [obs , msk] = runMethod2(img, fltsz, sensFix);
+    [msk , obs] = runMethod2(img, fltsz, sensFix);
 end
 
 end
 
-function [maxArea, bw] = runMethod3(img, sz, sens)
+function [msk , maxArea] = runMethod3(img, sz, sens)
 %% runMethod3: alternative segmentation method for auto-training hypocotyls
 % Find best parameters to segment hypocotyls with traditional methods
 %
@@ -120,11 +146,7 @@ msk = imcomplement(imbinarize(adt, 'adaptive', 'Sensitivity', sens, ...
 prp                          = regionprops(msk, 'Area', 'PixelIdxList');
 [maxArea , maxIdx]           = max(cell2mat(arrayfun(@(x) x.Area, ...
     prp, 'UniformOutput', 0)));
-bw                           = zeros(sz);
-cla;clf;
-myimagesc(bw);
-
-%%
-bw(prp(maxIdx).PixelIdxList) = 1;
+msk                           = zeros(sz);
+msk(prp(maxIdx).PixelIdxList) = 1;
 
 end

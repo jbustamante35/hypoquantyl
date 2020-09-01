@@ -20,7 +20,8 @@ function [CRCS, figs] = trainCircuits_automated(Ein, cin, fIdx, sav, vis)
 %
 
 %% Constants
-SEGMENTATION_FACTOR = 0.60;  % Sensitivity factor for binarization [default 0.6]
+% SEGMENTATION_FACTOR = 0.60;  % Sensitivity factor for binarization [default 0.6]
+SMOOTH_MASK         = 1;     % Kernel smoothing of binary mask
 SEGMENTATION_SIZE   = 100;   % Total coordinates for an auto-generated ContourJB
 TOTAL_ANCHORPOINTS  = 1 : 7; % Number of simulated anchor points for CircuitJB
 TRAINING_TYPE       = 1;     % 0 to training Seedlings, 1 to training Hypocotyls
@@ -36,15 +37,13 @@ F  = arrayfun(@(x) H{x}.FlipMe(cin(x,3), 'gray', 0), ...
 X  = [I , F];
 
 % Binarize images
-imgsz   = size(X{1});
-[~, BW] = cellfun(@(x) segmentObjectsHQ(x, imgsz, SEGMENTATION_FACTOR), ...
-    X, 'UniformOutput', 0);
+% imgsz = size(X{1});
+BW = cellfun(@(x) segmentObjectsHQ(x, SMOOTH_MASK), X, 'UniformOutput', 0);
 
 % Extract contours for all images and remove all overlapping poings
-CJB = cellfun(@(x) extractContour(x, SEGMENTATION_SIZE, 'alt', 'alt'), ...
-    BW, 'UniformOutput', 0);
-CNT = cellfun(@(x) unique(x.NormalizedOutline, 'rows', 'stable'), ...
-    CJB, 'UniformOutput', 0);
+CJB = cellfun(@(x) extractContour( ...
+    x, SEGMENTATION_SIZE, 'alt', 'alt', 'Normalized'), BW, 'UniformOutput', 0);
+CNT = cellfun(@(x) unique(x, 'rows', 'stable'), CJB, 'UniformOutput', 0);
 
 % Make artificial anchor points by dividing into 7 sections
 pIdx = [1 : ceil(SEGMENTATION_SIZE / numel(TOTAL_ANCHORPOINTS)) : ...

@@ -18,7 +18,12 @@ function I = getTrainingIndex(Ein, N, rng, minf)
 %   I: [N x 3] matrix representing [Genotype Seedling frame] to train
 %
 
-%% Function handles to get random index
+%% Convert range to decimals first
+if sum(rng >= 2)
+    rng = rng / 10;
+end
+
+% Function handles to get random index
 m = @(x) randi([1 length(x)], 1);
 M = @(x) x(m(x));
 

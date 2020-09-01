@@ -25,13 +25,13 @@ end
 
 %% Initialize with parent Experiment object
 Ein      = Parent;
-genotype = Genotype(gName, 'Parent', Ein);
+genotype = Genotype('GenotypeName', gName, 'Parent', Ein);
 genotype.ExperimentName = Ein.ExperimentName;
 genotype.ExperimentPath = Ein.ExperimentPath;
 
 %% Create image data store from path to images
-Imgs = imageDatastore([Ein.ExperimentPath , '/',  gName], ...
-    'FileExtensions', image_extension);
+Imgs = imageDatastore([Ein.ExperimentPath , filesep,  gName], ...
+    'IncludeSubfolders', add_sub_dirs, 'FileExtensions', image_extension);
 genotype.storeImages(Imgs);
 
 end
@@ -44,6 +44,7 @@ p.addRequired('gName');
 p.addOptional('Parent', Experiment);
 p.addOptional('image_extension', '.TIF');
 p.addOptional('sort_method', 'name');
+p.addOptional('add_sub_dirs', 0);
 
 p.parse(varargin{1}{:});
 args = p.Results;
