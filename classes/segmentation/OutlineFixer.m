@@ -99,8 +99,9 @@ classdef OutlineFixer < handle
             %% ============ Start of  Primary functions for MainButtons Callback ================ %%
             function ConfirmFix(hObject, ~)
                 %% ConfirmFix: confirm contour fix and send back to CircuitJB
-                obj.Contour = ...
-                    interpolateOutline(obj.Polygon.Position, obj.ContourSize);
+                trc         = obj.Polygon.Position;
+                intr        = interpolateOutline(trc, obj.ContourSize);
+                obj.Contour = unique(intr, 'rows', 'stable');                
                 
                 cfix = obj.Contour;
                 crc  = obj.Circuit;
