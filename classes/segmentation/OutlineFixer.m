@@ -7,12 +7,13 @@ classdef OutlineFixer < handle
         Image
         Contour
         InterpFix   % Interpolation size for fixing polygon
+        SegSmooth
     end
     
     properties (Access = private)
-        JBunits    = get(0, 'ScreenPixelsPerInch'); % Normalized units for individual screen sizes
-        YFactor    = 2.5;                           % Relative y-position for top of figure
-        YStep      = 0.3;                           % Recommended step size between job panels
+        JBunits = get(0, 'ScreenPixelsPerInch'); % Normalized units for individual screen sizes
+        YFactor = 2.5;                           % Relative y-position for top of figure
+        YStep   = 0.3;                           % Recommended step size between job panels
         MainText
         MainButtons
         SubPlot
@@ -37,7 +38,8 @@ classdef OutlineFixer < handle
             prps   = properties(class(obj));
             deflts = {...
                 'FigureIndex' , 1 ; ...
-                'InterpFix'   , 40};
+                'InterpFix'   , 40 ; ...
+                'SegSmooth'   , 10};
             obj    = classInputParser(obj, prps, deflts, vargs);
             
             [obj.Polygon , obj.SubPlot] = initializeFigure(obj);
@@ -69,8 +71,14 @@ classdef OutlineFixer < handle
         function obj = setupMainButtons(obj)
             %% Function to set up Main Buttons objects
             u           = obj.JBunits;
-            yPos        = obj.YFactor - (obj.YStep * 7);
-            fullButtons = [u*03.00 , u*yPos  , u*3.50 , u*0.30];
+            
+             % Full screen, Half page
+%             yPos        = obj.YFactor - (obj.YStep * 5);            
+%             fullButtons = [u*03.00 , u*yPos  , u*3.50 , u*0.30];            
+            
+            % Half screen, Half page
+            yPos        = obj.YFactor - (obj.YStep * 5);        
+            fullButtons = [u*00.50 , u*yPos  , u*3.50 , u*0.30];
             setSizeL    = [u*00.05 , u*01.00 , u*00.25];
             
             % Main Buttons Panel
@@ -113,8 +121,9 @@ classdef OutlineFixer < handle
             
             function AutoSegment(hObject, ~)
                 %% segmentButton: auto-segmentation when fixing outline
-                msk  = segmentObjectsHQ(obj.Image, 1);
-                trc  = extractContour(msk);
+                msk = segmentObjectsHQ(obj.Image, obj.SegSmooth);
+                trc = extractContour(msk, 300);
+                
                 intr = interpolateOutline(trc, obj.InterpFix);
                 intr = unique(intr, 'rows', 'stable');
                 

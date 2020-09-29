@@ -14,7 +14,7 @@ function pm = reconstructPmat(zVec, addMid)
 
 %% Determine if midpoint should be subtracted
 if nargin < 2
-    addMid = 1; % Default to subtracting off midpoint
+    addMid = 0; % Default to not subtract off midpoint
 end
 
 %% Main components of a Z-Vector: Midpoint-Tangent-Normal

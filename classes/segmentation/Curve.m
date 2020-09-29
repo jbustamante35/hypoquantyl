@@ -3,15 +3,15 @@
 
 classdef Curve < handle
     properties (Access = public)
-        Parent        
-        NumberOfSegments        
+        Parent
+        NumberOfSegments
         TraceSize
     end
     
     properties (Access = protected)
-        SEGMENTSIZE  = 25;      % Number of coordinates per segment [default 200]
-        SEGMENTSTEPS = 1;       % Size of step to next segment [default 50]
-        ENVELOPESIZE = 11;      % Hard-coded max distance from original segment to envelope
+        SEGMENTSIZE  = 25; % Number of coordinates per segment [default 200]
+        SEGMENTSTEPS = 1;  % Size of step to next segment [default 50]
+        ENVELOPESIZE = 11; % Hard-coded max distance from original segment to envelope
         Trace
         RawSegments
         SVectors
@@ -38,11 +38,11 @@ classdef Curve < handle
                 % Set default properties for empty object
                 vargs = {};
             end
-
+            
             prps   = properties(class(obj));
             deflts = {...
-                    'NumberOfSegments', 0 ; ...
-                    'TraceSize', 0};
+                'NumberOfSegments', 0 ; ...
+                'TraceSize', 0};
             obj    = classInputParser(obj, prps, deflts, vargs);
             
         end
@@ -59,11 +59,11 @@ classdef Curve < handle
             fprintf('\n%s\nRunning Full Pipeline for %s...', ...
                 msg, obj.Parent.Origin);
             
-            %             tic; fprintf('Splitting full outline...')            ; obj.SegmentOutline         ; fprintf('done [%.02f sec]\n', toc);
-            %             tic; fprintf('Midpoint Normalization conversion...') ; obj.NormalizeSegments(par) ; fprintf('done [%.02f sec]\n', toc);
-            %             tic; fprintf('Generating S-Patches...')              ; obj.GenerateSPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
-            %             tic; fprintf('Generating Z-Patches...')              ; obj.GenerateZPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
-            %             tic; fprintf('Envelope coordinates conversion...')   ; obj.Normal2Envelope(par)   ; fprintf('done [%.02f sec]\n', toc);
+            % tic; fprintf('Splitting full outline...')            ; obj.SegmentOutline         ; fprintf('done [%.02f sec]\n', toc);
+            % tic; fprintf('Midpoint Normalization conversion...') ; obj.NormalizeSegments(par) ; fprintf('done [%.02f sec]\n', toc);
+            % tic; fprintf('Generating S-Patches...')              ; obj.GenerateSPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
+            % tic; fprintf('Generating Z-Patches...')              ; obj.GenerateZPatches(par)  ; fprintf('done [%.02f sec]\n', toc);
+            % tic; fprintf('Envelope coordinates conversion...')   ; obj.Normal2Envelope(par)   ; fprintf('done [%.02f sec]\n', toc);
             
             fprintf('DONE! [%.02f sec ]\n%s', toc(tRun), msg);
             
@@ -79,6 +79,7 @@ classdef Curve < handle
                         case 'int'
                             trc = obj.Parent.FullOutline;
                         case 'raw'
+                            % Used for manually-traced contours (I think)
                             trc = obj.Parent.RawOutline;
                         otherwise
                             fprintf(2, 'Trace %s must be [int|raw]\n', req);
@@ -99,25 +100,25 @@ classdef Curve < handle
             % in a variable after being run once. This will deprecate the
             % ZVector property.
             
-            if nargin < 2
-                ndims = ':';
+            switch nargin
+                case 1
+                    ndims  = ':';
+                    addMid = 0;
+                case 2
+                    addMid = 0;
             end
-            
-            if nargin < 3
-                addMid = 0;
-            end    
             
             % Returns the dimensions from ndims [default to all]
             Z = contour2corestructure(...
                 obj.getTrace, obj.SEGMENTSIZE, obj.SEGMENTSTEPS);
-                        
+            
             if addMid
                 mid = Z(:,1:2);
                 Z   = [mid , Z(:,3:4) + mid , Z(:,5:6) + mid];
             end
             
             Z = Z(:, ndims);
-
+            
         end
         
         function segs = getSegmentedOutline(varargin)
@@ -137,6 +138,8 @@ classdef Curve < handle
                     case 3
                         len = varargin{2};
                         stp = varargin{3};
+                        obj.setProperty('SEGMENTSIZE', len);
+                        obj.setProperty('SEGMENTSTEPS', stp);
                         
                     otherwise
                         len = obj.SEGMENTSIZE;
@@ -154,7 +157,7 @@ classdef Curve < handle
             catch
                 fprintf(2, 'Error splitting outline into multiple segments\n');
             end
-        end        
+        end
         
         function nsegs = getNormalizedSegments(obj)
             %% Generates the segments in the Midpoint-Normalized Frame
@@ -166,7 +169,7 @@ classdef Curve < handle
                 1 : obj.NumberOfSegments, 'UniformOutput', 0);
             nsegs = cat(3, nsegs{:});
             
-        end  
+        end
         
         function obj = Normal2Envelope(obj, par)
             %% Convert SVectors to coordinates within envelope
@@ -232,17 +235,9 @@ classdef Curve < handle
                     obj.getSegmentedOutline;
                 end
                 
-                trc = obj.getTrace;
-                len = obj.SEGMENTSIZE;
-                stp = obj.SEGMENTSTEPS;
-                z   = contour2corestructure(trc, len, stp);
-                mid = z(:,1:2);
-                tng = z(:,3:4);
-                nrm = z(:,5:6);
-                z   = [mid , tng+mid , nrm+mid];
-                
                 img     = double(obj.getImage('gray'));
                 allSegs = 1 : obj.NumberOfSegments;
+                z       = obj.getZVector(':', 1);
                 
                 switch nargin
                     case 1
@@ -402,7 +397,6 @@ classdef Curve < handle
             end
         end
         
-        
         function obj = setProperty(obj, req, val)
             %% Set requested property if it exists [for private properties]
             try
@@ -410,6 +404,19 @@ classdef Curve < handle
             catch e
                 fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
             end
+        end
+        
+        function obj = resetProperty(obj, req)
+            %% Reset property back to original value
+            try
+                cpy = Curve;
+                val = cpy.getProperty(req);
+                obj.setProperty(req, val);
+            catch
+                fprintf(2, 'Error resetting property %s\n', req);
+                return;
+            end
+            
         end
         
     end

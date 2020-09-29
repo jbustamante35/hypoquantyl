@@ -10,7 +10,7 @@ function [msk , obs] = segmentObjectsHQ(img, smth, sz, sens, mth)
 %
 % Input:
 %	img: grayscale image
-%   smth: smooth binary image with convolution filter
+%   smth: filter size to smooth binary image with convolution filter
 %	sz: [2 x 1] array defining minimum and maximum range to search for objects
 %	sens: sensitivity for alternative algorithm [recommended 0.6]
 %	mth: method to use [default to method 1]
@@ -66,7 +66,7 @@ end
 
 %% Run smoothing kernel
 if smth
-    ksz  = ceil(size(img,1) / 10);
+    ksz  = ceil(size(img,1) / smth);
     krnl = ones(ksz) / ksz^2;
     blr  = conv2(msk, krnl, 'same');
     msk  = blr > 0.5;

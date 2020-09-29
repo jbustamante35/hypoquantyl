@@ -51,7 +51,7 @@ if isempty(zseed)
         fprintf('Predicting Z-Vector from Image...');
     end
     
-    Znrms                 = zScrsFromImage(img, Nz, pz);
+    Znrms = zScrsFromImage(img, Nz, pz);
 
     if v
         fprintf('DONE [%.02f sec]\n', toc(tt));
@@ -59,6 +59,7 @@ if isempty(zseed)
 else
     Znrms = zseed;
 end
+
 Zslcs                 = generateZSlices(img, double(Znrms), pp);
 [Snrm, Pm, Mid, Simg] = sScrsFromSlices(Zslcs, Ns, px, py);
 Cntr                  = contourFromSegments(Snrm, Pm, Mid, psx, psy, 0);
@@ -94,7 +95,7 @@ if v
         pcz);
 end
 
-Znrms = predictZvectorFromImage(img, Nz, pz, 1);
+Znrms = predictZvectorFromImage(img, Nz, pz);
 
 if v
     fprintf('DONE! [%.02f sec]\n', toc(t));
@@ -137,19 +138,14 @@ if v
     fprintf('Generating and folding Z-Patches to %d PCs...', pcp);
 end
 
-% Subtract off midpoints from Z-Vector
-tmpz = [Znrms(:,1:2) , ...
-    Znrms(:,3:4) - Znrms(:,1:2) , ...
-    Znrms(:,5:6) - Znrms(:,1:2)];
-
 %% Generate and vectorize Z-Patches from Z-Slices
-Zptch = arrayfun(@(x)  setZPatch(Znrms(x,:), img), ...
+Zptch = arrayfun(@(x) setZPatch(Znrms(x,:), img), ...
     allSegs, 'UniformOutput', 0);
-Zscrs = cellfun(@(x)   pcaProject(x(:)', evecs, mns, 'sim2scr'), ...
+Zscrs = cellfun(@(x)  pcaProject(x(:)', evecs, mns, 'sim2scr'), ...
     Zptch, 'UniformOutput', 0);
-Zsubt = arrayfun(@(x)  [tmpz(x,1:2) , tmpz(x,3:4) , tmpz(x,5:6)], ...
+Zcell = arrayfun(@(x) [Znrms(x,1:2) , Znrms(x,3:4)], ...
     allSegs, 'UniformOutput', 0);
-Zslcs = cellfun(@(l,s) [l , s], Zsubt, Zscrs, 'UniformOutput', 0);
+Zslcs = cellfun(@(l,s) [l , s], Zcell, Zscrs, 'UniformOutput', 0);
 Zslcs = cat(1, Zslcs{:});
 
 if v
@@ -202,13 +198,18 @@ end
 Sscr = struct2array(structfun(@(x) x(Zslcs')', Ns, 'UniformOutput', 0));
 xIdx = 1 : ceil(size(Sscr,2) / 2);
 yIdx = xIdx(end) + 1 : size(Sscr,2);
-zIdx = 1 : 6;
+zIdx = 1 : 6; % Z-Vector slice is midpoint - tangent - normal
+% zIdx = 1 : 4;   % Z-Vector slice is midpoint - tangent only
 mIdx = 1 : 2;
+
+%% Add back Z-Vector normals and force to unit length
+[~ , Znrms] = cellfun(@(z) addNormalVector(z(:,1:2), z(:,3:4)), ...
+    Zslcs, 'UniformOutput', 0);
 
 %% Unfold and re-project S-Vectors from midpoint-normalized to image frame
 scrs = arrayfun(@(s) Sscr(s,:), allSegs, 'UniformOutput', 0);
-Mids  = arrayfun(@(m) Zslcs(m, mIdx), allSegs, 'UniformOutput', 0);
-Pms   = arrayfun(@(p) reconstructPmat(Zslcs(p, zIdx), 0), ...
+Mids = arrayfun(@(m) Znrms(m, mIdx), allSegs, 'UniformOutput', 0);
+Pms  = arrayfun(@(p) reconstructPmat(Znrms(p, zIdx)), ...
     allSegs, 'UniformOutput', 0);
 crdX = cellfun(@(x) pcaProject(x(xIdx), xvecs, xmns, 'scr2sim'), ...
     scrs, 'UniformOutput', 0);

@@ -10,7 +10,7 @@ function [trnIdx, valIdx, tstIdx] = splitDataset(rngIdx, trnPct, valPct, tstPct,
 %   trnPct: percentage to split into training set
 %   valPct: percentage to split into validation set
 %   tstPct: percentage to split into testing set
-%   D: dataset to do the split (optional)
+%   D: cell array dataset to do the split (optional)
 %
 % Output:
 %   trnIdx: indices of the training set
@@ -34,6 +34,9 @@ if nargin > 4
     tstIdx = arrayfun(@(x) D{x}, tstIdx, 'UniformOutput', 0);
 end
 
+% Output as structure or individual vectors
+switch nargout
+    case 1
+        trnIdx = struct('trnIdx', trnIdx, 'valIdx', valIdx, 'tstIdx', tstIdx);
 end
-
-
+end
