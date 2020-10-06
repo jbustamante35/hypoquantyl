@@ -1,10 +1,10 @@
-function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, sav, vis, par)
+function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, NPC, sav, vis, par)
 %% dnnTrainer: training algorithm for recursive displacement learning method
 % This is a description
 %
 % Usage:
 %    [DIN, DOUT, fnms] = ...
-%       dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, sav, vis, par)
+%       dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, NPC, sav, vis, par)
 %
 % Input:
 %   IMG: cell array of images to be trained
@@ -12,6 +12,7 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, sav, 
 %   nItrs: total recursive interations to train D-Vectors
 %   nFigs: number of figures opened to show progress of training
 %   fldPreds: boolean to fold predictions after each iteration
+%   NPC: principal components for to smooth predictions
 %   sav: boolean to save output as .mat file
 %   vis: boolean to visualize output
 %   par: boolean to run with parallelization or with single-thread
@@ -38,22 +39,21 @@ eIdxs   = double(sort(Shuffle(numCrvs, 'index', numel(allFigs))));
 [net, evecs, mns] = deal(cell(1, nItrs));
 
 % Principal Components for Scaled Patches and Smoothing Predictions
-NPC = 10;
+% npc = 10;
 
 %% Set up figures to check progress
 if vis
-    for fIdx = allFigs
-        set(0, 'CurrentFigure', allFigs(fIdx));
-        cla;clf;
+    for fidx = allFigs
+        figclr(fidx);
         
-        idx = eIdxs(fIdx);
+        idx = eIdxs(fidx);
         myimagesc(IMG{idx});
         hold all;
         ttl = sprintf('Target vs Predicted\nContour %d', idx);
         title(ttl);
         drawnow;
         
-        fnms{fIdx} = sprintf('%s_TargetVsPredicted_%dIterations_Contour%03d', ...
+        fnms{fidx} = sprintf('%s_TargetVsPredicted_%dIterations_Contour%03d', ...
             tdate, nItrs, idx);
     end
 else
@@ -136,12 +136,12 @@ for itr = 1 : nItrs
     %% Show iterative curves predicted
     t = tic;
     if vis
-        for fIdx = allFigs
-            set(0, 'CurrentFigure', allFigs(fIdx));
+        for fidx = allFigs
+            set(0, 'CurrentFigure', allFigs(fidx));
             fprintf('Showing results from Iteration %d for Contour %d...\n', ...
-                itr, eIdxs(fIdx));
+                itr, eIdxs(fidx));
             % Iteratively show predicted d-vectors and tangent bundles
-            idx = eIdxs(fIdx);
+            idx = eIdxs(fidx);
             imagesc(IMG{idx});
             colormap gray;
             axis image;
@@ -200,12 +200,12 @@ if sav
     %% PCA to fold predictions
     dx  = squeeze((targetsPre(:,1,:)))';
     xnm = sprintf('FoldDVectorX');
-    pcaAnalysis(dx, NPC, sav, xnm, 0);
+    pcaAnalysis(dx, NPC, sav, xnm);
     
     % Run PCA on Y-Coordinates
     dy  = squeeze((targetsPre(:,2,:)))';
     ynm = sprintf('FoldDVectorY');
-    pcaAnalysis(dy, NPC, sav, ynm, 0);
+    pcaAnalysis(dy, NPC, sav, ynm);
 end
 end
 

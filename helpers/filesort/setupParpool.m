@@ -21,9 +21,17 @@ poolExists = ~isempty(gcp('nocreate'));
 allCores   = feature('numcores');
 halfCores  = ceil(allCores / 2);
 
-if nargin < 1
-    nCores = halfCores;
-    testOn = 1;
+switch nargin
+    case 0
+        nCores = halfCores;
+        testOn = 0;
+    case 1
+        testOn = 0;
+    case 2
+    otherwise
+        fprintf(2, 'Error with inputs [%d | 2 Expected]\n', nargin);
+        [P, allCores, nCores] = deal([]);
+        return;
 end
 
 %% Light it Up or Shut it Down
@@ -53,8 +61,7 @@ elseif poolExists
         delete(gcp('nocreate'));
         P = startPool(nCores, testOn);
     end
-    
-    
+        
 else
     %% Create parallel pool with nCores workers
     fprintf('Setting up pool of %d Workers...', nCores);

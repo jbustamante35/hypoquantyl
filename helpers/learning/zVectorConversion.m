@@ -26,17 +26,16 @@ try
             nDims = size(z, 2);
             Z     = zeros(numCrvs , (ttlSegs * nDims));
             rSz   = size(Z, 1);
-            cSz   = size(Z, 2) / nDims;
-            
-            rZ    = arrayfun(@(x) reshape(z(:,x), [cSz rSz])', ...
+            cSz   = size(Z, 2) / nDims;            
+            rZ    = arrayfun(@(x) reshape(z(:,x), [cSz , rSz])', ...
                 1:nDims, 'UniformOutput', 0);
             
             if nDims == 6
                 % Concat all Z-Vector dimensions
-                Z = cat(2, rZ{[1 3 5 2 4 6]});
+                Z = cat(2, rZ{[1 3 5 , 2 4 6]});
             else
                 % If omitting Normal vectors
-                Z = cat(2, rZ{[1 3 2 4]});
+                Z = cat(2, rZ{[1 3 , 2 4]});
             end
             
         case 'rev'

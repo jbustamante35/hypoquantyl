@@ -18,6 +18,10 @@ function [IMGS, CNTRS, IMG, CNTR] = loadImagesAndCurves(Ein, trnIdx)
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
 %% Extract images and contours from Experiment object
+if nargin < 2
+    trnIdx = ':';
+end
+
 ex_class = class(Ein);
 switch ex_class
     case 'Experiment'

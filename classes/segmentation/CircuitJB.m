@@ -7,9 +7,9 @@ classdef CircuitJB < handle
         Parent
         HypocotylName
         ExperimentName
-        GenotypeName        
-        FullOutline        
-        Curves        
+        GenotypeName
+        FullOutline
+        Curves
         isTrained
         isFlipped
     end
@@ -19,7 +19,7 @@ classdef CircuitJB < handle
         RawPoints
         RawOutline
         Image
-        InterpOutline                
+        InterpOutline
         NormalOutline           % DEPRECATED (but I might still have use for it)
         NUMBEROFANCHORS = 7     % DEPRECATED (but I might still have use for it)
         Routes                  % DEPRECATED (but I might still have use for it)
@@ -38,11 +38,11 @@ classdef CircuitJB < handle
                 % Set default properties for empty object
                 vargs = {};
             end
-
+            
             prps   = properties(class(obj));
             deflts = {...
-                    'isTrained', false ; ...
-                    'isFlipped', false};
+                'isTrained', false ; ...
+                'isFlipped', false};
             obj    = classInputParser(obj, prps, deflts, vargs);
             
             %             obj.Routes = initializeRoutes(obj);
@@ -165,6 +165,23 @@ classdef CircuitJB < handle
             msk = crds2mask(img, crd, buff);
             obj.setImage(1, 'mask', msk);
         end
+        
+        function [obj , ofix] = FixContour(obj, fidx, interp_fixer, seg_smooth)
+            %% Fix the original contour
+            if nargin < 2
+                fidx         = 1;
+                interp_fixer = 40;
+                seg_smooth   = 10;
+            end
+            
+            img  = obj.getImage;
+            trc  = obj.getOutline;
+            ofix = OutlineFixer('Circuit', obj, 'Image', img, ...
+                'Contour', trc, 'FigureIndex', fidx, ...
+                'InterpFix', interp_fixer, 'SegSmooth', seg_smooth);
+            
+        end
+        
         
         function obj = DrawOutline(obj, buf)
             %% Draw RawOutline on this object's Image
@@ -600,7 +617,7 @@ classdef CircuitJB < handle
     
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
-        %% Private helper methods        
+        %% Private helper methods
         function R = initializeRoutes(obj)
             %% Initialize Route objects for Constructor
             R = repmat(Route, 1, obj.NUMBEROFANCHORS);

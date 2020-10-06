@@ -53,7 +53,7 @@ switch mth
         out  = im2colF(stk, [len , wid], [stp , 1]);
         
         % Pull out segments
-        kp   = out((len - 1) / 2 , :) == 1; % Keep 2nd layers containing segments
+        kp   = out((len - 1) / 2 , :) == 1; % Keep 2nd layers that contain segments
         out  = out((len + 1) : end, kp);
         segs = reshape(out, [len , wid-1 , size(trc,1)]);
         
