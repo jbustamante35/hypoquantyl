@@ -299,12 +299,15 @@ classdef Experiment < handle
 
         end
 
-        function [C, org, flp] = combineContours(obj)
+        function [D, org, flp] = combineContours(obj, getCrvs)
             %% Return all Hypocotyls with manually-drawn CircuitJB objects
             % Returns both original and flipped versions of each. I'm not sure
             % if it would work if some don't have flipped versions.
+            if nargin < 2
+                getCrvs = 1;
+            end
+            
             H   = obj.combineHypocotyls;
-
             org = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'org'),  ...
                 1:x.Lifetime, 'UniformOutput', 0), H, 'UniformOutput', 0);
             org = cat(2, org{:});
@@ -315,9 +318,15 @@ classdef Experiment < handle
             flp = cat(2, flp{:});
             flp = cat(1, flp{:});
 
-            C   = [org ; flp];
+            D = [org ; flp];
             
-            obj.CurvesTraced = numel(C);
+            obj.CurvesTraced = numel(D);
+            
+            % Return Curves only
+            if getCrvs
+                D  = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
+                D  = cat(1, D{:});
+            end
         end
 
         function [noflp, hyp] = findMissingContours(obj)
