@@ -9,9 +9,10 @@ classdef Curve < handle
     end
     
     properties (Access = protected)
-        SEGMENTSIZE  = 25; % Number of coordinates per segment [default 200]
-        SEGMENTSTEPS = 1;  % Size of step to next segment [default 50]
-        ENVELOPESIZE = 11; % Hard-coded max distance from original segment to envelope
+        SEGMENTSIZE       = 25; % Number of coordinates per segment [default 200]
+        SEGMENTSTEPS      = 1;  % Size of step to next segment [default 50]
+        ENVELOPESIZE      = 11; % Hard-coded max distance from original segment to envelope
+        INTERPMIDLINESIZE = 50; % Default size to interpolate midline
         Trace
         RawSegments
         SVectors
@@ -24,6 +25,8 @@ classdef Curve < handle
         ZData
         EnvelopeSegments
         EndPoints
+        RawMidline
+        InterpMidline
     end
     
     %%
@@ -169,6 +172,108 @@ classdef Curve < handle
                 1 : obj.NumberOfSegments, 'UniformOutput', 0);
             nsegs = cat(3, nsegs{:});
             
+        end
+        
+        function obj = DrawMidline(obj, interp_size, fidx, showcnt)
+            %% Draw RawMidline on this object's Image
+            % This method is effectively DrawOutline from the CircuitJB class,
+            % I literally just changed the name from Outline to Midline.
+            
+            switch nargin
+                case 1
+                    interp_size = obj.INTERPMIDLINESIZE;
+                    fidx        = 1;
+                    showcnt     = 1;
+                case 2
+                    fidx    = 1;
+                    showcnt = 1;
+                case 3
+                    showcnt = 1;
+                case 4
+                otherwise
+                    fprintf(2, 'Error with inputs (%d)\n', nargin);
+                    return;
+            end
+            
+            if isempty(interp_size) || interp_size == 0
+                interp_size = obj.INTERPMIDLINESIZE;
+            end
+            
+            try
+                % Trace outline and store as RawOutline
+                figclr(fidx);
+                img = obj.getImage;
+                cnt = obj.getTrace;
+                str = sprintf('Midline\n%s', fixtitle(obj.Parent.Origin));
+                
+                if showcnt
+                    c = drawPoints(img, 'y', str, cnt);
+                else
+                    c = drawPoints(img, 'y', str);
+                end
+                
+                crd = c.Position;
+                obj.setRawMidline(crd, interp_size);
+                
+            catch e
+                frm = obj.Parent.getFrame;
+                fprintf(2, 'Error setting outline at frame %d \n%s\n', ...
+                    frm, e.getReport);
+            end
+        end
+        
+        function obj = setRawMidline(obj, mline, interp_size)
+            %% Set coordinates for RawOutline at specific frame
+            if nargin < 3
+                interp_size = obj.INTERPMIDLINESIZE;
+            end
+            
+            try
+                obj.RawMidline = mline;
+                
+                % Anchor first coordinate to base of contour
+                cnt   = obj.getTrace;
+                npts  = snap2curve(mline(1,:), cnt);
+                mline = [npts ; mline(2:end,:)];
+                
+                % Interpolate to given size
+                obj.InterpMidline = interpolateOutline(mline, interp_size);
+                
+            catch e
+                fprintf(2, 'Error setting RawMidline\n%s\n', e.getReport);
+            end
+        end
+        
+        function mline = getMidline(obj, typ)
+            %% Return raw or interpolated midline
+            if nargin < 2
+                typ = 'Interp';
+            end
+            
+            mtype = sprintf('%sMidline', typ);
+            
+            try
+                mline = obj.(mtype);
+            catch
+                fprintf(2, 'Midline type %s not found [Raw|Interp]\n', typ);
+                mline = [];
+            end
+        end
+        
+        function obj = reconfigMidline(obj, interp_size)
+            %% Reconfigure interpolation size of raw midlines
+            if nargin < 2
+                interp_size = obj.INTERPMIDLINESIZE;
+            end
+            
+            mline = obj.getMidline('Raw');
+            
+            if ~isempty(mline)
+                obj.setRawMidline(mline, interp_size);
+            else
+%                 fprintf('No midline set\n');
+                return;
+            end
         end
         
         function obj = Normal2Envelope(obj, par)
@@ -348,7 +453,7 @@ classdef Curve < handle
             
         end
         
-        function [X, Y] = rasterizeSegments(obj)
+        function [X , Y , XY] = rasterizeSegments(obj)
             %% Rasterize all segments of requested type
             % This method is used to prepare for Principal Components Analysis.
             % The req parameter is the requested segment type to rasterize and
@@ -357,10 +462,31 @@ classdef Curve < handle
                 nsegs = obj.getNormalizedSegments;
                 X     = squeeze(nsegs(:,1,:))';
                 Y     = squeeze(nsegs(:,2,:))';
+                XY    = [X , Y];
             catch
                 fprintf(2, 'Error rasterizing %d segments\n', size(nsegs,3));
                 [X, Y] = deal([]);
             end
+            
+        end
+        
+        function [XY , X , Y] = rasterizeCurve(obj, mth)
+            %% Rasterize contour or midline coordinates
+            switch mth
+                case 'contour'
+                    crv = obj.getTrace;
+                case 'midline'
+                    crv = obj.getMidline;
+                otherwise
+                    fprintf(2, 'Selected curve should be [contour|midline] %s\n', ...
+                        mth);
+                    [XY , X , Y] = deal([]);
+                    return;
+            end
+            
+            X     = crv(:,1)';
+            Y     = crv(:,2)';
+            XY    = [X , Y];
             
         end
         

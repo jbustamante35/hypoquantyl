@@ -2,7 +2,7 @@ function [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, varargin)
 %% znnTrainer: CNN to predict Z-Vector slices given grayscale images
 %
 % Usage:
-%   [IN, OUT] = znnTrainer(IMGS, ZSCRS, spltsb)
+%   [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts)
 %
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
@@ -28,9 +28,8 @@ end
 
 %% Setup and Extract some info about the datase
 % Image input scale
-% SCALE = 1;
-NCRVS   = size(ZSCRS,1);
-PCZ     = size(ZSCRS,2);
+NCRVS = size(ZSCRS,1);
+PCZ   = size(ZSCRS,2);
 
 tAll              = tic;
 [~ , sepA , sepB] = jprintf('', 0, 0);
@@ -48,7 +47,7 @@ if isempty(splts)
     valPct = 1 - trnPct;
     tstPct = 0;
     splts  = splitDataset(1 : NCRVS, trnPct, valPct, tstPct);
-
+    
     X = IMGS(:, :, :, splts.trnIdx); % For CNN
     Y = ZSCRS(splts.trnIdx, :);
 else
@@ -101,29 +100,29 @@ end
 % Generate multiple layers from range of filters
 LAYERS = generateLayers(FltRng, NumFltRng, FltLayers);
 
-% Run CNN to predict all 6 parts of the Z-vector
+% Run CNN to predict all Z-vector PCs
 for pc = 1 : PCZ
     % for e = 1 : 1 % Debug by running only 1 PC
     cnnY = Y(:,pc);
     csz  = size(cnnY,2);
-
+    
     % Create CNN Layers
     imgnm  = sprintf('imgin_%d_imgs%d', pc, size(IMGS,4));
     drpnm  = sprintf('drp_%d', pc);
     connnm = sprintf('conn_%d_sz%d', pc, csz);
     regnm  = sprintf('reg_%d', pc);
-
+    
     layers = [
         imageInputLayer([size(IMGS,1) , size(IMGS,2) , 1], ...
         'Name', imgnm, 'Normalization', 'none');
-
+        
         LAYERS ;
-
+        
         dropoutLayer(Dropout, 'Name', drpnm);
         fullyConnectedLayer(csz, 'Name', connnm);
         regressionLayer('Name', regnm);
         ];
-
+    
     % Configure CNN options
     options = trainingOptions( ...
         'sgdm', ...
@@ -134,10 +133,15 @@ for pc = 1 : PCZ
         'Plots',                vis, ...
         'Verbose',              Verbose, ...
         'ExecutionEnvironment', exenv);
+    
+    if ~isempty(Vimgs)
+        options.ValidationData      = {Vimgs , Vscrs};
+        options.ValidationFrequency = floor(NCRVS / MBSize);
+    end
 
     % Run CNN
     znet{pc} = trainNetwork(X, cnnY, layers, options);
-
+    
     n(pc+1) = fprintf(' %d |', pc);
 end
 
@@ -149,14 +153,27 @@ jprintf(' ', toc(t), 1, 80 -sum(n));
 
 %% Predictions per PC
 t = tic;
-n = fprintf('Making predictions from %d-layer model', PCZ);
+n = fprintf('Making predictions from %d-layer model [Validation %d]', ...
+    PCZ, ~isempty(Vimgs));
 
+% Predictions of full dataset
 ypre = zeros(size(ZSCRS));
 for pc = 1 : PCZ
-    ypre(:,pc) = znet.(netStr{pc}).predict(IMGS);
+    ypre(:,pc) = double(znet.(netStr{pc}).predict(IMGS));
+    yerr       = meansqr(diag(pdist2(ypre, Vscrs)) ./ Vscrs);
 end
 
-% accuracy = sum((Y - ypre) ./ Y) / size(Y,1);
+% Compute error of validation set (if given)
+if ~isempty(Vimgs)
+    valPre = zeros(size(ZSCRS));
+    for pc = 1 : PCZ
+        valPre(:,pc) = znet.(netStr{pc}).predict(IMGS);
+    end
+    
+    valErr = meansqr(diag(pdist2(valPre, Vscrs)) ./ Vscrs);
+else
+    valErr = [];
+end
 
 jprintf(' ', toc(t), 1, 80 - n);
 
@@ -166,7 +183,8 @@ t = tic;
 n = fprintf('Saving outputs');
 
 IN  = struct('IMGS', IMGS, 'ZSCRS', ZSCRS);
-OUT = struct('SplitSets', splts, 'Predictions', ypre, 'Net', znet);
+OUT = struct('SplitSets', splts, 'Predictions', ypre, 'Error', yerr, ...
+    'Net', znet, 'ValErr', valErr);
 
 % Save results in structure
 if Save
@@ -188,13 +206,15 @@ function args = parseInputs(varargin)
 % pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 
 p = inputParser;
-p.addOptional('FltRng', 8 : -1 : 6);
+p.addOptional('FltRng', [7 , 8]);
 p.addOptional('NumFltRng', [10 , 5 , 3]);
 p.addOptional('FltLayers', 1);
 p.addOptional('Dropout', 0.2);
 p.addOptional('MBSize', 128);
 p.addOptional('MaxEps', 300);
 p.addOptional('ILRate', 1e-4);
+p.addOptional('Vimgs', []);
+p.addOptional('Vscrs', []);
 p.addOptional('Save', 0);
 p.addOptional('Parallel', 0);
 p.addOptional('Verbose', 0);

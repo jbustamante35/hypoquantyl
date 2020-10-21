@@ -53,8 +53,8 @@ classdef HypocotylTrainer < handle
         Splits
         PCA
         ZVectors
-        ObjFn
-        ObjBay
+        ZFnc
+        ZBay
         DVectors
         SVectors
         FigNames
@@ -92,8 +92,8 @@ classdef HypocotylTrainer < handle
                 'AddMid'              , 0 ; ...
                 
                 % Z-Vector CNN
-                'FilterRange'         , 6 : 2 : 10 ; ...
-                'NumFilterRange'      , 3 : 2 : 10 ; ...
+                'FilterRange'         , 7 ; ...
+                'NumFilterRange'      , [10 , 5 , 3] ; ...
                 'FilterLayers'        , 1 ; ...
                 'DropoutLayer'        , 0.2 ; ...
                 'MiniBatchSize'       , 128 ; ...
@@ -267,73 +267,172 @@ classdef HypocotylTrainer < handle
             
         end
         
-        function [obj , params] = OptimizeParameters(obj, mth)
+        function obj = OptimizeParameters(obj, mth, pc)
             %% Optimize parameters if given a range of values
             % Input:
             %   obj: this object
             %   mth: which learning method to train [znn|dnn|snn]
+            %   pc: continue from most recent PC (0) or redo from 1st PC (1)
             %
             % Output:
             %   params: optimized values from range of parameters
+            if nargin < 3
+                pc = 0; % Default to picking up from last PC
+            end
             
             switch mth
                 case 'znn'
+                    %% Run metaparameter optimization for Z-Vector CNN
                     flt    = obj.FilterRange;
-                    nflt   = obj.NumFilterRange;
+                    nflt   = cellfun(@(x) num2str(x), obj.NumFilterRange, 'UniformOutput', 0);
                     nlay   = obj.FilterLayers;
                     mbsize = obj.MiniBatchSize;
                     drp    = obj.DropoutLayer;
                     ilrate = obj.InitialLearningRate;
                     maxeps = obj.MaxEpochs;
                     
-                    %
+                    % Define optimizable variables
                     params = [
-                        optimizableVariable('FilterSize'     , flt, 'Type', 'integer')
-                        optimizableVariable('SectionDepth'    , nflt, 'Type', 'integer')
+                        optimizableVariable('FilterSize'      , flt, 'Type', 'integer')
+                        optimizableVariable('NumFilters'      , nflt, 'Type', 'categorical')
                         optimizableVariable('FilterLayers'    , nlay, 'Type', 'integer')
                         optimizableVariable('MiniBatchSize'   , mbsize, 'Type', 'integer')
                         optimizableVariable('DropoutLayer'    , drp)
                         optimizableVariable('InitialLearnRate', ilrate, 'Transform', 'log')
                         optimizableVariable('MaxEpochs'       , maxeps, 'Type', 'integer')];
                     
-                    %
+                    % Get training and validation images and scores
                     Timgs = obj.getZVector.IN.training.IMGS;
                     Tscrs = obj.getZVector.IN.training.ZSCRS;
                     Vimgs = obj.getZVector.IN.validation.IMGS;
                     Vscrs = obj.getZVector.IN.validation.ZSCRS;
                     
-                    % Run Bayes Optimization on all Z-Vector PCs
-                    [objfn , bay] = deal(cell(size(Tscrs,2), 1));
-                    for pc = 1 : size(Tscrs, 2)
-                        objfn{pc} = obj.makeObjFn( ...
+                    % Determine which PC to start from
+                    try
+                        switch pc
+                            case 0
+                                % Start from last available PC
+                                [bay , fnc] = obj.getOptimizer;
+                                pci         = sum(~cellfun(@isempty, bay)) + 1;
+                                pcf         = size(Tscrs, 2);
+                                pcrng       = pci : pcf;
+                                
+                            case 'redo'
+                                % Restart from beginning
+                                [bay , fnc] = deal(cell(size(Tscrs,2), 1));
+                                obj.ZFnc    = fnc;
+                                obj.ZBay    = bay;
+                                pci         = 1;
+                                pcf         = size(Tscrs, 2);
+                                pcrng       = pci : pcf;
+                                
+                            otherwise
+                                % Optimize selected PC or range of PCs
+                                [bay , fnc] = obj.getOptimizer;
+                                pcrng       = pc;
+                        end
+                    catch
+                        fprintf(2, 'Error determining selected pc %s\n', pc);
+                        return;
+                    end
+                    
+                    %% Run Bayes Optimization on all Z-Vector PCs
+                    for pc = pcrng
+                        fnc{pc} = obj.makeZFnc( ...
                             Timgs, Tscrs(:,pc), Vimgs, Vscrs(:,pc), pc);
                         
                         % Bayes optimization
-                        bay{pc} = bayesopt(objfn{pc}, params, ...
-                            'MaxTime', 14*60*60, 'IsObjectiveDeterministic', 0, ...
-                            'UseParallel', 0);
+                        bay{pc} = bayesopt(fnc{pc}, params, ...
+                            'MaxTime', 1*60*60, 'IsObjectiveDeterministic', 0, ...
+                            'UseParallel', 0, 'Verbose', obj.Verbose);
+                        
+                        % Store into this object for debugging
+                        obj.ZFnc{pc}    = fnc{pc};
+                        obj.ZBay{pc}    = bay{pc};
+                        obj.ZParams{pc} = params;
                     end
-                    
-                    obj.ObjFn  = objfn;
-                    obj.ObjBay = bay;
                     
                 case 'dnn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
-                    params = [];
                     return;
                     
                 case 'snn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
-                    params = [];
                     return;
                     
                 otherwise
                     fprintf(2, 'Incorrect method %s [znn|dnn|snn]\n', mth);
-                    params = [];
                     return;
             end
             
         end
+        
+        function P = SetOptimizedParameters(obj, mth, pc, mpath)
+            %% Set parameters to best values after optimization
+            %
+            % Input:
+            %   mth: algorithm to get parameters for [znn|dnn|snn]
+            %   pc: principal component to set optimized parameters for
+            %   mpath: path to directory of mat-files after optimization
+            
+            %% Parse inputs
+            switch nargin
+                case 1
+                    mth   = 'znn';
+                    pc    = 1;
+                    mpath = sprintf('%s%soptimization%spc%02d', ...
+                        pwd, filesep, filesep, pc);
+                case 2
+                    pc    = 1;
+                    mpath = sprintf('%s%soptimization%spc%d', ...
+                        pwd, filesep, filesep, pc);
+                case 3
+                    mpath = sprintf('%s%soptimization%spc%d', ...
+                        pwd, filesep, filesep, pc);
+                case 4
+                otherwise
+                    fprintf(2, 'Error with inputs [%d]\n', nargin);
+                    return;
+            end
+            
+            %% Set parameters
+            switch mth
+                case 'znn'
+                    %% Set parameters for Z-Vector training
+                    % Extract directory of datasets
+                    exp = 'n_*.*e';
+                    d   = dir2(mpath);
+                    m   = arrayfun(@(x) x.name, d, 'UniformOutput', 0);
+                    
+                    [a , b] = cellfun(@(x) regexpi(x, exp), ...
+                        m, 'UniformOutput', 0);
+                    val     = cell2mat(cellfun(@(mm,aa,bb) str2double( ...
+                        mm(aa+2:bb-1)), m, a, b, 'UniformOutput', 0));
+                    
+                    % Get data with minimum error
+                    minVal = min(val(val > 0));
+                    minIdx = find(val == minVal);
+                    minFnm = sprintf('%s%s%s', ...
+                        d(minIdx).folder , filesep , d(minIdx).name);
+                    
+                    % Load data and extract values
+                    P       = load(minFnm);
+                    P       = P.BAYES;
+                    %                     net     = P.Net;
+                    %                     layers  = P.Net.Layers;
+                    %                     options = P.Options;
+                    %                     params  = P.Params;
+                    
+                    
+                case 'dnn'
+                case 'snn'
+                otherwise
+                    fprintf(2, 'Method %s not recognized [znn|dnn|snn]\n', mth);
+                    return;
+            end
+            
+        end
+        
     end
     
     %% -------------------------- Helper Methods ---------------------------- %%
@@ -374,6 +473,12 @@ classdef HypocotylTrainer < handle
         function s = getSVector(obj)
             %% Return S-Vector training results
             s = obj.SVectors;
+        end
+        
+        function [bay , objfn] = getOptimizer(obj)
+            %% Return optimization components
+            bay   = obj.ZBay;
+            objfn = obj.ZFnc;
         end
         
         function fnms = getFigNames(obj)
@@ -454,92 +559,45 @@ classdef HypocotylTrainer < handle
             jprintf(' ', toc(t), 1, 80 - n);
         end
         
-        function ObjFn = makeObjFn(obj, Timgs, Tscrs, Vimgs, Vscrs, pc)
+        function ZFnc = makeZFnc(obj, Timgs, Tscrs, Vimgs, Vscrs, pc)
             %% Create objective function for optimization
-            ObjFn = @valErrorFun;
-            isz   = [size(Timgs,1) , size(Timgs,2) , 1];
+            ZFnc = @valErrorFun;
             
             function [valErr , cons , fnm] = valErrorFun(params)
-                %%
-                nout = size(Tscrs,2);
-                %                 nflt = round(16 / sqrt(params.SectionDepth));
+                %% Train network with parameters and evaluate validation error
+                % Load parameters
+                flt    = params.FilterSize;
+                nflt   = str2num(char(params.NumFilters)); %#ok<ST2NM>
+                nlay   = params.FilterLayers;
+                mbsize = params.MiniBatchSize;
+                drp    = params.DropoutLayer;
+                ilrate = params.InitialLearnRate;
+                maxeps = params.MaxEpochs;
                 
                 %% Misc properties
-                % Determine parallelization
-                switch obj.Parallel
-                    case 0
-                        % Run with basic for loop [slower]
-                        exenv = 'cpu';
-                    case 1
-                        % Run with parallel processing [less stable]
-                        exenv = 'parallel';
-                    case 2
-                        % Run with multiple GPU cores [only tested on Nathan's]
-                        exenv = 'multi-gpu';
-                    otherwise
-                        fprintf(2, 'Incorrect Option %d [0|1|2]\n', par);
-                        [valErr , cons , fnm] = deal([]);
-                        return;
-                end
-                
-                % Plot Type
-                switch obj.Visualize
-                    case 0
-                        vis = 'none';
-                    case 1
-                        vis = 'none';
-                    case 2
-                        vis = 'training-progress';
-                    otherwise
-                        fprintf(2, 'Incorrect Option %d [0|1|2]\n', par);
-                        [valErr , cons , fnm] = deal([]);
-                        return;
-                end
+                sav = 0; % Don't save output
+                par = obj.Parallel;
+                vis = obj.Visualize;
+                vrb = obj.Verbose;
                 
                 %%
-                flts    = params.FilterSize;
-                nflts   = params.SectionDepth;
-                fltlyrs = params.FilterLayers;
-                LAYERS  = generateLayers(flts, nflts, fltlyrs);
+                [~, ZOUT] = znnTrainer(Timgs, Tscrs, obj.Splits, ...
+                    'FltRng', flt, 'NumFltRng', nflt, 'FltLayers', nlay, ...
+                    'MBSize', mbsize, 'Dropout', drp, 'ILRate', ilrate, ...
+                    'MaxEps', maxeps, 'Vimgs', Vimgs, 'Vscrs', Vscrs, ...
+                    'Save', sav, 'Parallel', par, ...
+                    'Verbose', vrb, 'Visualize', vis);
                 
-                layers = [
-                    imageInputLayer(isz, 'Name', 'imgin', ...
-                    'Normalization', 'none');
-                    
-                    LAYERS ;
-                    
-                    dropoutLayer(params.DropoutLayer, 'Name', 'dropout');
-                    fullyConnectedLayer(nout, 'Name', 'conn');
-                    regressionLayer('Name', 'reg');
-                    ];
+                %% Get data from output
+                net    = ZOUT.Net;
+                valErr = ZOUT.ValErr;
                 
-                % Configure CNN options
-                Vfreq   = floor(numel(Tscrs) / params.MiniBatchSize);
-                options = trainingOptions( ...
-                    'sgdm', ...
-                    'MiniBatchSize',        params.MiniBatchSize, ...
-                    'MaxEpochs',            params.MaxEpochs, ...
-                    'InitialLearnRate',     params.InitialLearnRate, ...
-                    'Shuffle',              'every-epoch', ...
-                    'Plots',                vis, ...
-                    'Verbose',              obj.Verbose, ...
-                    'ExecutionEnvironment', exenv, ...
-                    'ValidationData',       {Vimgs , Vscrs}, ...
-                    'ValidationFrequency',  Vfreq ...
-                    );
-                
-                %% Run training and get error from validation set
-                net    = trainNetwork(Timgs, Tscrs, layers, options);
-                ypre   = net.predict(Vimgs);
-                %                 valErr     = meansqr(diag(pdist2(ypre, Vscrs)));
-                valErr = meansqr(diag(pdist2(ypre, Vscrs)) ./ Vscrs);
-                
-                %%
+                %% Save results in a .mat file
                 outdir = sprintf('optimization%spc%d', filesep, pc);
                 fnm    = sprintf('%s%s%s_optimization_%0.02ferror.mat', ...
                     outdir, filesep, tdate, valErr);
                 BAYES  = struct('Net', net, 'Error', valErr, ...
-                    'Options', options);
+                    'Options', options, 'Params', table2struct(params));
                 
                 if ~isfolder(outdir)
                     mkdir(outdir);

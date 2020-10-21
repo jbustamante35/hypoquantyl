@@ -39,7 +39,7 @@ else
     % No Shuffle function found
     rIdxs = sort(randi(length(X), [1 , n]));
 end
-rx    = X(rIdxs);
+rx = X(rIdxs);
 
 if getrx
     rIdxs = rx;
