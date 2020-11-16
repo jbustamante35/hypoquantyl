@@ -69,14 +69,13 @@ if v
 end
 
 % Predict skeleton if input is empty
-
 if isempty(z)
     if v
         tt = tic;
         fprintf('Predicting Tangent Bundle from Image...');
     end
     
-    z = predictZvectorFromImage(imgs, Nz, pz, 0);
+    z = predictZvectorFromImage(imgs, Nz, pz);
     
     if v
         fprintf('DONE [%.02f sec]\n', toc(tt));

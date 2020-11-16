@@ -50,6 +50,7 @@ try
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
                 NETOUT  = 'netout';
+                zseed   = [];
                 
                 % Load PCA data and neural net models
                 [px, py, pz, pp, psx, psy, Nz, Ns] = ...
@@ -76,6 +77,7 @@ try
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
                 NETOUT  = 'netoutputs';
+                zseed   = [];
                 
                 % Load PCA data and neural net models
                 % Note that Ns is actually Nd here

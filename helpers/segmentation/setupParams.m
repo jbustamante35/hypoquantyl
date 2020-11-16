@@ -3,10 +3,11 @@ function [scls, dom, domSize] = setupParams(toRemove, ds, sq, vl, hl, d, s, v, h
 %
 %
 % Usage:
-%   [scls, dom, domSize] = setupParams(toRemove, sq, vl, hl, d, s, v, h)
+%   [scls, dom, domSize] = setupParams(toRemove, ds, sq, vl, hl, d, s, v, h)
 %
 % Input:
 %   toRemove: index to remove unneeded domains and domain sizes
+%   ds: scale sizes for disk patch
 %   sq: scale sizes for square patch
 %   vl: scale sizes for vertical line
 %   hl: scale sizes for horizontal line

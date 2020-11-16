@@ -23,10 +23,14 @@ function Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen)
 %
 
 %% Load datasets if none given
-if nargin < 3
-    [~, ~, pz, ~, Nz, ~] = loadZVecNetworks;
-    addMid               = 0;
-    uLen                 = 1;
+switch nargin
+    case 1
+        [~, ~, pz, ~, Nz, ~] = loadZVecNetworks;
+        addMid               = 0;
+        uLen                 = 1;
+    case 3
+        addMid = 0;
+        uLen   = 1;
 end
 
 %%
