@@ -4,7 +4,7 @@ function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid
 %
 %
 % Usage:
-%    [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp)
+%    [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid)
 %
 % Input:
 %   CRVS array of Curve objects to extract data from
@@ -13,7 +13,7 @@ function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid
 %   pcy: number of PCs to extract from y-coordinates [optional]
 %   pcz: number of PCs to extract from z-vectors [optional]
 %   pcp: number of PCs to extract from z-patches [optional]
-%   addMid: add midpoint vector to tangent and normal vectors
+%   addMid: add midpoint vector to tangent and normal vectors (default 0)
 %
 % Output:
 %   px: PCA object from midpoint-normalized x-coordinates
@@ -32,11 +32,25 @@ ttlSegs = CRVS(1).NumberOfSegments;
 [~ , sepA , sepB] = jprintf('', 0, 0);
 
 % Get default PCs
-if nargin < 3
-    [pcx , pcy] = deal(6);
-    pcz         = 20;
-    pcp         = 10;
-    addMid      = 0;
+switch nargin
+    case 1
+        sav         = 0;
+        [pcx , pcy] = deal(6);
+        pcz         = 20;
+        pcp         = 10;
+        addMid      = 0;
+    case 2
+        [pcx , pcy] = deal(6);
+        pcz         = 20;
+        pcp         = 10;
+        addMid      = 0;
+    case 6
+        addMid      = 0;
+    case 7        
+    otherwise
+        fprintf(2, 'Error with inputs (%d)\n', nargin);
+        [px, py, pz, pp] = deal([]);
+        return;
 end
 
 %

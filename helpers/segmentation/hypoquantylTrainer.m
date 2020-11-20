@@ -80,35 +80,34 @@ jprintf(' ', toc(t), 1, 80 - sum(n));
 t = tic;
 n = fprintf('Splitting into training,validation,testing sets');
 
-TRNPCT  = 0.8;
-VALPCT  = 1 - TRNPCT;
-TSTPCT  = 0;
-SPLTS   = splitDataset(1 : numCrvs, TRNPCT, VALPCT, TSTPCT);
-
+SPLTS = splitDataset(1 : numCrvs, trnPct, valPct, tstPct);
 T     = C(SPLTS.trnIdx);
 ntrn  = numel(T);
-IMGS  = arrayfun(@(x) double(x.getImage), T, 'UniformOutput', 0);
-CNTRS = arrayfun(@(x) x.getTrace, T, 'UniformOutput', 0);
+Timgs = arrayfun(@(x) double(x.getImage), T, 'UniformOutput', 0);
+Tcntr = arrayfun(@(x) x.getTrace, T, 'UniformOutput', 0);
 
 jprintf(' ', toc(t), 1, 80 - n);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Train Neural Net for Z-Vectors
-% Increase number of PCs because this is getting frustrating
 [px, py, pz, pp] = hypoquantylPCA(T, sav, pcx, pcy, pcz, pcp);
 
-% Get number of PCs
-pcx = px.NumberOfPCs;
-pcy = py.NumberOfPCs;
-pcz = pz.NumberOfPCs;
-pcp = pp.NumberOfPCs;
+% Re-do PCA on all data to get ground truth scores
+[ax, ay, az, ap] = hypoquantylPCA(C, sav, pcx, pcy, pcz, pcp);
 
 %% Run convolution neural net to train Z-Vector PC Scores and Images
 % Get images and Z-Vector PC scores
-ZMGS  = cat(4, IMGS{:});
-ZSCRS = pz.PCAScores;
+Zimgs = cat(4, Timgs{:});
+Zscrs = pz.PCAScores;
 
-[ZIN, ZOUT] = znnTrainer(ZMGS, ZSCRS, SPLTS, sav, par);
+% Get validation data
+V     = C(SPLTS.valIdx);
+Vimgs = arrayfun(@(x) double(x.getImage), V, 'UniformOutput', 0);
+Vimgs = cat(4, Vimgs{:});
+Vscrs = az.PCAScores(SPLTS.valIdx);
+
+[ZIN, ZOUT] = znnTrainer(Zimgs, Zscrs, SPLTS, 'Vimgs', Vimgs, 'Vscrs', Vscrs, ...
+    'Save', sav, 'Parallel', par);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Train the D-Vectors
@@ -121,7 +120,7 @@ n = fprintf('Training D-Vectors through %d recursive iterations [Folding = %s]',
     nitrs, num2str(foldpreds));
 
 [DIN, DOUT, fnms] = ...
-    dnnTrainer(IMGS, CNTRS, nitrs, nfigs, foldpreds, npc, sav, vis, par);
+    dnnTrainer(Timgs, Tcntr, nitrs, nfigs, foldpreds, npc, sav, vis, par);
 
 jprintf(' ', toc(t), 1, 80 - n);
 
@@ -187,18 +186,17 @@ function args = parseInputs(varargin)
 % pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 
 p = inputParser;
-p.addOptional('Curves', Experiment);
-p.addOptional('PCX', 10);
-p.addOptional('PCY', 3);
-p.addOptional('PCZ', 3);
-p.addOptional('PCP', 10);
-p.addOptional('TrainingPct', 0.8);
-p.addOptional('ValidationPct', 0.2);
-p.addOptional('TestingPct', 0);
-p.addOptional('Save', 0);
-p.addOptional('Parallel', 0);
-p.addOptional('Figures', 1 : 4);
-
+p.addOptional('ex', Experiment);
+p.addOptional('pcx', 3);
+p.addOptional('pcy', 3);
+p.addOptional('pcz', 8);
+p.addOptional('pcp', 5);
+p.addOptional('trnPct', 0.8);
+p.addOptional('valPct', 0.1);
+p.addOptional('tstPct', 0.1);
+p.addOptional('sav', 0);
+p.addOptional('par', 0);
+p.addOptional('figs', 1 : 4);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

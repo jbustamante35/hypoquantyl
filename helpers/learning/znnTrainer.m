@@ -2,7 +2,7 @@ function [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, varargin)
 %% znnTrainer: CNN to predict Z-Vector slices given grayscale images
 %
 % Usage:
-%   [IN, OUT] = znnTrainer(IMGS, ZSCRS, spltsb)
+%   [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts)
 %
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
@@ -28,9 +28,8 @@ end
 
 %% Setup and Extract some info about the datase
 % Image input scale
-% SCALE = 1;
-NCRVS   = size(ZSCRS,1);
-PCZ     = size(ZSCRS,2);
+NCRVS = size(ZSCRS,1);
+PCZ   = size(ZSCRS,2);
 
 tAll              = tic;
 [~ , sepA , sepB] = jprintf('', 0, 0);
@@ -45,8 +44,8 @@ if isempty(splts)
     % Do the split
     n      = fprintf('Splitting data into training/validation/testing sets');
     trnPct = 0.8;
-    valPct = 1 - trnPct;
-    tstPct = 0;
+    valPct = 0.1;
+    tstPct = 0.1;
     splts  = splitDataset(1 : NCRVS, trnPct, valPct, tstPct);
 
     X = IMGS(:, :, :, splts.trnIdx); % For CNN
@@ -101,7 +100,7 @@ end
 % Generate multiple layers from range of filters
 LAYERS = generateLayers(FltRng, NumFltRng, FltLayers);
 
-% Run CNN to predict all 6 parts of the Z-vector
+% Run CNN to predict all Z-vector PCs
 for pc = 1 : PCZ
     % for e = 1 : 1 % Debug by running only 1 PC
     cnnY = Y(:,pc);
@@ -135,6 +134,11 @@ for pc = 1 : PCZ
         'Verbose',              Verbose, ...
         'ExecutionEnvironment', exenv);
 
+    if ~isempty(Vimgs)
+        options.ValidationData      = {Vimgs , Vscrs(:,pc)};
+        options.ValidationFrequency = floor(NCRVS / MBSize);
+    end
+
     % Run CNN
     znet{pc} = trainNetwork(X, cnnY, layers, options);
 
@@ -147,26 +151,61 @@ znet   = cell2struct(znet, netStr, 2);
 
 jprintf(' ', toc(t), 1, 80 -sum(n));
 
-%% Predictions per PC
+%% Save it before making predictions, then save it again
+% Avoid errors after the hours it takes to run the training
 t = tic;
-n = fprintf('Making predictions from %d-layer model', PCZ);
+n = fprintf('Saving initial training');
 
-ypre = zeros(size(ZSCRS));
-for pc = 1 : PCZ
-    ypre(:,pc) = znet.(netStr{pc}).predict(IMGS);
+IN  = struct('IMGS', IMGS, 'ZSCRS', ZSCRS);
+OUT = struct('SplitSets', splts, 'Net', znet);
+
+% Save results in structure
+if Save
+    pnm = sprintf('%s_ZScoreCNN_%dContours_z%dPCs', ...
+        tdate('s'), NCRVS, PCZ);
+    save(pnm, '-v7.3', 'IN', 'OUT');
 end
 
-% accuracy = sum((Y - ypre) ./ Y) / size(Y,1);
+jprintf(' ', toc(t), 1, 80 - n);
+
+%% Predictions per PC
+t = tic;
+n = fprintf('Making predictions from %d-layer model [Validation %d]', ...
+    PCZ, ~isempty(Vimgs));
+
+% Predictions of full dataset
+ypre = zeros(size(ZSCRS));
+yerr = zeros(1, size(ZSCRS,2));
+for pc = 1 : PCZ
+    ypre(:,pc) = double(znet.(netStr{pc}).predict(IMGS));
+    yerr(pc)   = meansqr(diag(pdist2(ypre(:,pc), ZSCRS(:,pc))) ./ ZSCRS(:,pc));
+end
+
+% Compute error of validation set (if given)
+if ~isempty(Vimgs)
+    valPre = zeros(size(Vscrs));
+    valErr = zeros(1, size(Vscrs,2));
+    for pc = 1 : PCZ
+        valPre(:,pc) = znet.(netStr{pc}).predict(Vimgs);
+        valErr(pc)   = meansqr(diag(pdist2( ...
+            valPre(:,pc), Vscrs(:,pc))) ./ Vscrs(:,pc));
+    end
+
+else
+    valErr = [];
+end
 
 jprintf(' ', toc(t), 1, 80 - n);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Save Output Structures
+% Overwrites initial file
 t = tic;
-n = fprintf('Saving outputs');
+n = fprintf('Saving final outputs');
 
 IN  = struct('IMGS', IMGS, 'ZSCRS', ZSCRS);
-OUT = struct('SplitSets', splts, 'Predictions', ypre, 'Net', znet);
+OUT = struct('SplitSets', splts, 'Predictions', ypre, 'Error', yerr, ...
+    'Net', znet, 'ValErr', valErr);
 
 % Save results in structure
 if Save
@@ -188,13 +227,15 @@ function args = parseInputs(varargin)
 % pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 
 p = inputParser;
-p.addOptional('FltRng', 8 : -1 : 6);
+p.addOptional('FltRng', 7);
 p.addOptional('NumFltRng', [10 , 5 , 3]);
 p.addOptional('FltLayers', 1);
 p.addOptional('Dropout', 0.2);
 p.addOptional('MBSize', 128);
 p.addOptional('MaxEps', 300);
 p.addOptional('ILRate', 1e-4);
+p.addOptional('Vimgs', []);
+p.addOptional('Vscrs', []);
 p.addOptional('Save', 0);
 p.addOptional('Parallel', 0);
 p.addOptional('Verbose', 0);
