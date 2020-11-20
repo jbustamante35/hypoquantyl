@@ -1,9 +1,9 @@
-function [src , excrd] = extendCurve(src, trg, ang, maxscl, npts, rot)
+function [src , excrd] = extendCurve(src, trg, angc, maxscl, npts, rot)
 %% extendCurve: extend curve along angle to reach target curve
 % Description
 %
 % Usage:
-%   [src , excrd] = extendCurve(src, trg, ang, maxscl, npts)
+%   [src , excrd] = extendCurve(src, trg, angc, maxscl, npts)
 %
 % Input:
 %   src: source curve
@@ -25,24 +25,25 @@ switch nargin
     case 3
         maxscl = 100;
         npts   = 100;
-        rot    = -30;
+        rot    = 30;
     case 4
         npts = 100;
-        rot  = -30;
+        rot  = 30;
     case 5
-        rot = -30;
+        rot = 30;
 end
 
 %% Extend end of midline from angle
 % Get extension point and compute 45-degree angle
 excrd = src(end,:);
-angl  = ang;
-angr  = Rmat(rot) * angl;
+angr  = Rmat(rot) * angc;
+angl  = Rmat(-rot) * angc;
 
 % Extend along angle to contour and append to the input curve
-extl = extend2contour(excrd, trg, angl, maxscl, npts);
+extc = extend2contour(excrd, trg, angc, maxscl, npts);
 extr = extend2contour(excrd, trg, angr, maxscl, npts);
-ext  = [extl ; extr];
+extl = extend2contour(excrd, trg, angl, maxscl, npts);
+ext  = [extl ; extc ; extr];
 src  = [src ; ext];
 
 end

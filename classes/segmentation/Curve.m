@@ -15,7 +15,7 @@ classdef Curve < handle
         ENVELOPESIZE      = 11; % Hard-coded max distance from original segment to envelope
         INTERPMIDLINESIZE = 50; % Default size to interpolate midline
         Trace
-%         NormalTrace
+        %         NormalTrace
         BackTrace
         RawSegments
         SVectors
@@ -29,8 +29,8 @@ classdef Curve < handle
         EnvelopeSegments
         EndPoints
         RawMidline
-%         InterpMidline
-%         NormalMidline
+        %         InterpMidline
+        %         NormalMidline
     end
     
     %%
@@ -105,7 +105,7 @@ classdef Curve < handle
                 fprintf(2, 'Error getting trace\n');
                 trc = [];
         end
-                
+        
         
         end
         
@@ -193,8 +193,8 @@ classdef Curve < handle
         
         switch nargin
             case 1
-                fidx        = 1;
-                showcnt     = 1;
+                fidx    = 1;
+                showcnt = 1;
             case 2
                 showcnt = 1;
             case 3
@@ -202,7 +202,7 @@ classdef Curve < handle
                 fprintf(2, 'Error with inputs (%d)\n', nargin);
                 return;
         end
-                
+        
         try
             % Trace outline and store as RawOutline
             figclr(fidx);
@@ -276,6 +276,24 @@ classdef Curve < handle
         
         end
         
+        function [obj , mfix] = FixMidline(obj, fidx, interp_fixer)
+        %% Fix the original midline
+        switch nargin
+                case 1
+                    fidx         = 1;
+                    interp_fixer = 40;
+                case 2
+                    interp_fixer = 40;
+        end
+        
+        img   = obj.getImage;
+        mline = obj.getMidline;
+        cntr  = obj.getTrace;
+        mfix  = OutlineFixer('Object', obj, 'Image', img, 'Curve', mline, ...
+            'Curve2', cntr, 'FigureIndex', fidx, 'InterpFix', interp_fixer);
+        
+        end
+        
         function [trc , bcrd] = normalizeCurve(obj, mth)
         %% Reconfigure interpolation size of raw midlines
         switch mth
@@ -296,7 +314,7 @@ classdef Curve < handle
         end
         
         function obj = reconfigMidline(obj)
-        %% Reset 1st midline coordinates to base of contours        
+        %% Reset 1st midline coordinates to base of contours
         mline = obj.getMidline('raw');
         
         if ~isempty(mline)

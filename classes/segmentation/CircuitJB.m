@@ -168,16 +168,22 @@ classdef CircuitJB < handle
         
         function [obj , ofix] = FixContour(obj, fidx, interp_fixer, seg_smooth)
             %% Fix the original contour
-            if nargin < 2
-                fidx         = 1;
-                interp_fixer = 40;
-                seg_smooth   = 10;
+            switch nargin
+                case 1
+                    fidx         = 1;
+                    interp_fixer = 40;
+                    seg_smooth   = 10;
+                case 2
+                    interp_fixer = 40;
+                    seg_smooth   = 10;
+                case 3
+                    seg_smooth = 10;
             end
             
             img  = obj.getImage;
             trc  = obj.getOutline;
-            ofix = OutlineFixer('Circuit', obj, 'Image', img, ...
-                'Contour', trc, 'FigureIndex', fidx, ...
+            ofix = OutlineFixer('Object', obj, 'Image', img, ...
+                'Curve', trc, 'FigureIndex', fidx, ...
                 'InterpFix', interp_fixer, 'SegSmooth', seg_smooth);
             
         end

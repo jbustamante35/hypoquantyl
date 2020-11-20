@@ -89,7 +89,7 @@ switch mth
         
         % Define point of extension
         if rot
-            ept = 2 * esz;
+            ept = 3 * esz;
         else
             ept = esz;
         end
