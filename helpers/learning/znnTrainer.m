@@ -8,12 +8,14 @@ function [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, varargin)
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
 %   IMGS: reshaped and rescaled hypocotyl images [x x 1 N]
 %   splts: dataset splits of training, validation, testing indices
-%   MBSize: mini batch size parameter
-%   MaxEpochs: maximum number of epochs
-%   ILRate: initial learning rate
-%   Save: boolean to save output in a .mat file
-%   Parallel: boolean to use parallel computing if available
-%   Verbose: boolean to determine verbosity level
+%
+%   Miscellaneous Inputs
+%       MBSize: mini batch size parameter
+%       MaxEpochs: maximum number of epochs
+%       ILRate: initial learning rate
+%       Save: boolean to save output in a .mat file
+%       Parallel: boolean to use parallel computing if available
+%       Verbose: boolean to determine verbosity level
 %
 % Output:
 %   IN: structure containing the inputs used for the neural net run

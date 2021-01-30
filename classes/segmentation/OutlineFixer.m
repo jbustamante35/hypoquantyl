@@ -108,12 +108,12 @@ classdef OutlineFixer < handle
         %% ============ Start of  Primary functions for MainButtons Callback ================ %%
             function ConfirmFix(hObject, ~)
             %% ConfirmFix: confirm contour fix and send back to CircuitJB
-            trc         = obj.Polygon.Position;
-            intr        = interpolateOutline(trc, obj.CurveSize);
+            trc       = obj.Polygon.Position;
+            intr      = interpolateOutline(trc, obj.CurveSize);
             obj.Curve = unique(intr, 'rows', 'stable');
             
             switch class(obj.Object)
-                case 'CircuitjB'
+                case 'CircuitJB'
                     cfix = obj.Curve;
                     crc  = obj.Object;
                     crc.setRawOutline(cfix);
@@ -124,6 +124,10 @@ classdef OutlineFixer < handle
                     cfix = obj.Curve;
                     crv  = obj.Object;
                     crv.setRawMidline(cfix);
+                otherwise
+                    fprintf(2, 'Class %s not found [CircuitJB|Curve]\n', ...
+                        class(obj.Object));
+                    return;
             end
             end
         
@@ -139,9 +143,9 @@ classdef OutlineFixer < handle
                     % Get distance transform
                     img   = obj.Image;
                     cntr  = obj.Curve2;
-                    skltn = Skeleton('Image', img, 'Contour', cntr);
-                    skltn.RunPipeline;
-                    trc   = skltn.getLongestRoute('branches');
+                    
+                    % Generate the inital midline
+                    trc = primeMidline(img, cntr);
             end
             
             % Interpolate curve
@@ -157,10 +161,12 @@ classdef OutlineFixer < handle
             function Reset(hObject, ~)
             %% Reset: reset curve back to original input
             obj.Curve = obj.ResetCurve;
-            intr        = interpolateOutline(obj.Curve, obj.InterpFix);
+            intr      = interpolateOutline(obj.Curve, obj.InterpFix);
+            intr      = unique(intr, 'rows', 'stable');
             
             % Update Polygon
             obj.Polygon.Position = intr;
+            
             end
         %% ====== End of Primary functions for MainButtons Callback ====== %%
         

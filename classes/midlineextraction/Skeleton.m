@@ -68,7 +68,12 @@ classdef Skeleton < handle
             cntr = obj.Contour;
         end
         
-        imSz = obj.MASKSIZE;
+        % Use size of image if available
+        if isempty(obj.Image)
+            imSz = obj.MASKSIZE;
+        else
+            imSz = size(obj.Image);
+        end
         
         % Get skeleton, end points, and branch points
         [~, bmrph]     = bwmorphjb(cntr, imSz);
@@ -216,47 +221,83 @@ classdef Skeleton < handle
         function obj = RunPipeline(obj, id)
         %% Run through main methods
         % I omitted ConvolveSkeleton because I don't do anything with it
+        
+        %% Setup
         if nargin < 2
             id = '';
         end
         
+        % Verbosity level
+        if isempty(id)
+            v = 0;
+        else
+            v = 1;
+        end
+        
+        % Misc
         sprA = repmat('=', 1, 80);
         sprB = repmat('-', 1, 80);
         ellp = @(x) repmat('.', 1, 80 - (length(x) + 13));
         
-        tAll = tic;
-        fprintf('\n%s\nCreating Skeleton [%s]\n%s\n', sprA, id, sprB);
+        %% Begin!
+        if v
+            tAll = tic;
+            fprintf('\n%s\nCreating Skeleton [%s]\n%s\n', sprA, id, sprB);
+        end
         
+        % Distance transform to generate skeleton
         t = tic;
         obj.Contour2Skeleton;
-        str  = sprintf('Contour2Skeleton');
-        fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
         
+        if v
+            str = sprintf('Contour2Skeleton');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+        end
+        
+        % Generate directed graph of skeleton coordinates
         t = tic;
         obj.CreateGraph;
-        str  = sprintf('CreateGraph');
-        fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
         
+        if v
+            str = sprintf('CreateGraph');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+        end
+        
+        % Create Branch and End joints
         t = tic;
         obj.MakeJoints;
-        str  = sprintf('MakeJoints ');
-        fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
         
+        if v
+            str = sprintf('MakeJoints ');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+        end
+        
+        % Creat paths between joints
         t = tic;
         obj.MakeBones;
-        str  = sprintf('MakeBones');
-        fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
         
+        if v
+            str = sprintf('MakeBones');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+        end
+        
+        % Compute shortest paths from start joint to all joints
         t = tic;
         obj.FindRoutesFromStartPoint;
-        str  = sprintf('FindRoutesFromStartPoint');
-        fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
         
-        str = sprintf('DONE | %d Nodes | %d Joints | %d Segments | %d Routes', ...
-            size(obj.Coordinates, 1), obj.TotalJoints, ...
-            obj.TotalBones, numel(obj.Routes));
-        fprintf('%s\n%s%s.[ %.02f sec ]\n%s\n', ...
-            sprB, str, ellp(str), toc(tAll), sprA);
+        if v
+            str = sprintf('FindRoutesFromStartPoint');
+            fprintf('%s%s [ %.02f sec ]\n', str, ellp(str), toc(t));
+        end
+        
+        % Finished!
+        if v
+            str = sprintf('DONE | %d Nodes | %d Joints | %d Segments | %d Routes', ...
+                size(obj.Coordinates, 1), obj.TotalJoints, ...
+                obj.TotalBones, numel(obj.Routes));
+            fprintf('%s\n%s%s.[ %.02f sec ]\n%s\n', ...
+                sprB, str, ellp(str), toc(tAll), sprA);
+        end
         end
         
         function obj = ConvolveSkeleton(obj)
@@ -562,7 +603,7 @@ classdef Skeleton < handle
     
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
-        function [r , R , P] = path2ClosestNode(obj, s, e, remInt)
+        function [r , R , P] = path2ClosestNode(obj, s, e, rmIntr)
         %% path2ClosestNode: returns paths to nearest node
         % Implements Dijkstra's algorithm to find the shortest path between
         % an input node (s) and an array of nodes (e) in the Graph. The
@@ -571,13 +612,13 @@ classdef Skeleton < handle
         % practically useless.
         %
         % Usage:
-        %   [r , R , P] = path2ClosestNode(obj, s, e, remInt)
+        %   [r , R , P] = path2ClosestNode(obj, s, e, rmIntr)
         %
         % Input:
         %   obj: This Skeleton object
         %   s: node to start searching through paths
         %   e: 1 or more indices to serve as the target node
-        %   remInt: omit paths that intersect contour (default 0)
+        %   rmIntr: omit paths that intersect contour (default 0)
         %
         % Output:
         %   r: the shortest path between s and all of e
@@ -586,7 +627,7 @@ classdef Skeleton < handle
         
         %% Iterate through all starting points to find closest Branch Point
         if nargin < 4
-            remInt = 0;
+            rmIntr = 0;
         end
         
         g   = obj.Graph;
@@ -601,21 +642,43 @@ classdef Skeleton < handle
             [gma{b}, dst(b)] = g.shortestpath(s, e(b));
             
             %% Remove intersecting path through contour
-            if remInt
+            if rmIntr
                 gtmp         = g;
                 pth          = skl(gma{b},:);
                 [~ , ~ , ni] = polyxpoly( ...
                     cnt(:,1), cnt(:,2), pth(:,1), pth(:,2));
                 
-                while ~isempty(ni)
-                    RWEIGHT = 1000; % Weight to set edge to
+                RWEIGHT      = 1000; % Weight to set edge to
+                MAX_ATTEMPTS = 50;   % Chances to check new paths
+                ATTEMPT      = 1;
+                while ~isempty(ni) && ATTEMPT <= MAX_ATTEMPTS                                        
+                    try
+                        % Find edges connected to intersecting nodes
+                        nidx = arrayfun(@(n) gma{b}(ni(n,2)), ...
+                            1 : size(ni,1), 'UniformOutput', 0);
+                        neig = cellfun(@(x) gtmp.nearest(x, 2), ...
+                            nidx, 'UniformOutput', 0);
+                        edgs = cellfun(@(i,n) gtmp.findedge(i,n), ...
+                            nidx, neig, 'UniformOutput', 0);
+                        edgs = cat(1, edgs{:});
+                        
+                    catch
+                        %% Check if neighbors are already at max weight
+                        nidx = arrayfun(@(n) gma{b}(ni(n,2)), ...
+                            1 : size(ni,1), 'UniformOutput', 0);
+                        neig = cellfun(@(x) gtmp.nearest(x, RWEIGHT), ...
+                            nidx, 'UniformOutput', 0);
+                        edgs = cellfun(@(i,n) gtmp.findedge(i,n), ...
+                            nidx, neig, 'UniformOutput', 0);
+                        edgs = cat(1, edgs{:});
+                        
+                    end
                     
-                    % Set max weight of intersecting edge
-                    nidx = gma{b}(ni(1,2));
-                    neig = gtmp.nearest(nidx,2);
-                    edgs = gtmp.findedge(nidx, neig);
-                    gtmp = gtmp.rmedge(edgs(edgs > 0));
-                    gtmp = gtmp.addedge(nidx, neig, RWEIGHT);
+                    % Set max weight of intersecting edges
+                    gtmp = gtmp.rmedge(edgs(edgs > 0));                    
+                    for n = 1 : numel(nidx)
+                        gtmp = gtmp.addedge(nidx{n}, neig{n}, RWEIGHT);
+                    end
                     
                     % Re-compute shortest path to target
                     [gma{b}, dst(b)] = gtmp.shortestpath(s, e(b));
@@ -625,6 +688,15 @@ classdef Skeleton < handle
                     [~ , ~ , ni] = polyxpoly( ...
                         cnt(:,1), cnt(:,2), pth(:,1), pth(:,2));
                     
+                    ATTEMPT = ATTEMPT +1;
+                                        
+                end
+                
+                %% Force change in branch point
+                if ATTEMPT >= MAX_ATTEMPTS
+                    % This occurs when the branch point is inside the
+                    % intersecting region, leading to an infinite loop
+                    dst(b) = Inf;
                 end
             end
         end
@@ -632,24 +704,26 @@ classdef Skeleton < handle
         % Replace 0 with Inf (don't find self path)
         zIdx      = dst == 0;
         dst(zIdx) = [];
-        gma(zIdx) = [];
+        gma(zIdx) = [];        
         
-        %         %% Remove paths that pass through the contour [may not be best check]
-        %         skls = cellfun(@(midx) skl(midx,:), gma, 'UniformOutput', 0);
-        %         cntr = obj.Contour;
-        %         iIdx = cell2mat(cellfun(@(skl) ~isempty(polyxpoly(cntr(:,1), cntr(:,2), ...
-        %             skl(:,1), skl(:,2))), skls, 'UniformOutput', 0));
-        %
-        %         dst(iIdx) = [];
-        %         gma(iIdx) = [];
-        
-        %% Get the minimum distance from the set of paths
+        %% Get the minimum distance from the set of paths        
         [~, minIdx] = min(dst);
         
-        % Identify path to closest branch point
-        P = gma;
-        R = cellfun(@(x) skl(x,:), gma, 'UniformOutput', 0);
-        r = R{minIdx};
+        if ~isempty(dst)
+            % Identify path to closest branch point
+            P = gma;
+            R = cellfun(@(x) skl(x,:), gma, 'UniformOutput', 0);
+            r = R{minIdx};
+        else
+            % If 1 BranchPoint, then get path to highest EndPoint [lowest value]
+            eidx    = obj.EndIndex;
+            epts    = obj.EndPoints;
+            hidx    = getLowestIndex(epts, 1);
+            highIdx = eidx(hidx);
+            pth     = g.shortestpath(s, highIdx);
+            r       = obj.Coordinates(pth,:);
+            [R , P] = deal({r});
+        end                        
         
         end
         

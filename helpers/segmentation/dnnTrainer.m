@@ -1,10 +1,10 @@
-function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, NPC, sav, vis, par)
+function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, NPF, NPD, NLAYERS, TRNFN, sav, vis, par)
 %% dnnTrainer: training algorithm for recursive displacement learning method
 % This is a description
 %
 % Usage:
-%    [DIN, DOUT, fnms] = ...
-%       dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, NPC, sav, vis, par)
+%   [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, ...
+%       fldPreds, NPF, NPD, NLAYERS, TRNFN, sav, vis, par)
 %
 % Input:
 %   IMG: cell array of images to be trained
@@ -12,7 +12,10 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, NPC, 
 %   nItrs: total recursive interations to train D-Vectors
 %   nFigs: number of figures opened to show progress of training
 %   fldPreds: boolean to fold predictions after each iteration
-%   NPC: principal components for to smooth predictions
+%   NPF: principal components to smooth predictions
+%   NPD: principal components for sampling core patches (default 5)
+%   NLAYERS: number of layers to use with fitnet (default 5)
+%   TRNFN: training function fitnet (default 'trainlm')
 %   sav: boolean to save output as .mat file
 %   vis: boolean to visualize output
 %   par: boolean to run with parallelization or with single-thread
@@ -21,7 +24,7 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, NPC, 
 %   net: cell array of trained network models for each iteration
 %   evecs: cell array of eigenvectors for each iteration
 %   mns: cell array of means for each iteration
-%   fnms: cell array of file names for the figures generated 
+%   fnms: cell array of file names for the figures generated
 %
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
@@ -37,9 +40,6 @@ eIdxs   = double(sort(Shuffle(numCrvs, 'index', numel(allFigs))));
 
 % Trained Neural Networks and Eigen Vectors for each iteration
 [net, evecs, mns] = deal(cell(1, nItrs));
-
-% Principal Components for Scaled Patches and Smoothing Predictions
-% npc = 10;
 
 %% Set up figures to check progress
 if vis
@@ -72,10 +72,9 @@ for itr = 1 : nItrs
     fprintf('Extracting data from %d Curves', numCrvs);
     
     if itr == 1
-        [X, Z, Y] = masterFunction2(IMG, CNTR, par);
-        
+        [SCLS , ZVECS , TRGS] = masterFunction2(IMG, CNTR, par);
     else
-        [X, Z] = masterFunction2(IMG, CNTR, par, targetsPre);
+        [SCLS , ZVECS] = masterFunction2(IMG, CNTR, par, trgpre);
     end
     
     fprintf('...DONE! [%.02f sec]\n', toc(t));
@@ -84,49 +83,49 @@ for itr = 1 : nItrs
     %% Compute target displacements
     t = tic;
     fprintf('Computing target values for %d segments of %d curves...', ...
-        size(Y,1), size(Y,3));
+        size(TRGS,1), size(TRGS,3));
     
-    [targets, szY] = computeTargets(Y, Z, 1, par);
+    [DVECS, dsz] = computeTargets(TRGS, ZVECS, 1, par);
     
     fprintf('DONE! [%.02f sec]\n', toc(t));
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Run a fitnet to predict displacement vectors from scaled patches
     t = tic;
-    fprintf('Using neural net to train %d targets...', size(X,1));
+    fprintf('Using neural net to train %d targets...', size(SCLS,1));
     
     % Parallelization doesn't seem to work sometimes
-    [Ypre , net{itr}, evecs{itr}, mns{itr}] = nn_dvectors(X, targets, szY, 0);
-    
+    dpar = 0; % Don't run this with parallelization [causes too many problems]
+    [dpre , net{itr}, evecs{itr}, mns{itr}] = nn_dvectors( ...
+        SCLS, DVECS, dsz, dpar, NPD, NLAYERS, TRNFN);
     fprintf('DONE! [%.02f sec]\n', toc(t));
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Project displacements onto image frame
     t = tic;
     fprintf('Computing target values for %d segments of %d curves...', ...
-        size(Ypre,1), size(Ypre,3));
+        size(dpre,1), size(dpre,3));
     
-    targetsPre = computeTargets(Ypre, Z, 0, par);
+    trgpre = computeTargets(dpre, ZVECS, 0, par);
     
     if fldPreds
         %% Smooth predicted targets using PCA on predicted displacement vectors
         tt = tic;
         fprintf('Smoothing %d predictions with %d PCs...', ...
-            size(targetsPre,1), NPC);
+            size(trgpre,1), NPF);
         
         % Run PCA on X-Coordinates
-        dx  = squeeze((targetsPre(:,1,:)))';
-        pdx = myPCA(dx, NPC);
+        dx  = squeeze((trgpre(:,1,:)))';
+        pdx = myPCA(dx, NPF);
         
         % Run PCA on Y-Coordinates
-        dy  = squeeze((targetsPre(:,2,:)))';
-        pdy = myPCA(dy, NPC);
+        dy  = squeeze((trgpre(:,2,:)))';
+        pdy = myPCA(dy, NPF);
         
         % Back-Project and reshape
-        preX       = reshape(pdx.SimData', [size(targetsPre,1) , 1 , numCrvs]);
-        preY       = reshape(pdy.SimData', [size(targetsPre,1) , 1 , numCrvs]);
-        targetsPre = [preX , preY , ones(size(preX))];
-        
+        dprex  = reshape(pdx.SimData', [size(trgpre,1) , 1 , numCrvs]);
+        dprey  = reshape(pdy.SimData', [size(trgpre,1) , 1 , numCrvs]);
+        trgpre = [dprex , dprey , ones(size(dprex))];
         fprintf('DONE! [%.02f sec]...', toc(tt));
         
     end
@@ -142,22 +141,19 @@ for itr = 1 : nItrs
                 itr, eIdxs(fidx));
             % Iteratively show predicted d-vectors and tangent bundles
             idx = eIdxs(fidx);
-            imagesc(IMG{idx});
-            colormap gray;
-            axis image;
-            axis off;
+            myimagesc(IMG{idx});
             hold on;
             
             % Show ground truth contour/displacement vector
-            toplot = [Y(:,1:2,idx) ; Y(1,1:2,idx)];
+            toplot = [TRGS(:,1:2,idx) ; TRGS(1,1:2,idx)];
             plt(toplot, 'g--', 2);
             
             % Show predicted displacement vector
-            toplot = [targetsPre(:,1:2,idx) ; targetsPre(1,1:2,idx)];
+            toplot = [trgpre(:,1:2,idx) ; trgpre(1,1:2,idx)];
             plt(toplot, 'y-', 2);
             
             % Show tangent bundle with tangents and normals pointing in direction
-            toplot = [Z(:,:,idx) ; Z(1,:,idx)];
+            toplot = [ZVECS(:,:,idx) ; ZVECS(1,:,idx)];
             qmag = 10;
             plt(toplot(:,1:2), 'm-', 2);
             quiver(toplot(:,1), toplot(:,2), toplot(:,3)*qmag, toplot(:,4)*qmag, ...
@@ -197,15 +193,15 @@ if sav
         tdate, nItrs, numCrvs);
     save(dnm, '-v7.3', 'TN');
     
-    %% PCA to fold predictions
-    dx  = squeeze((targetsPre(:,1,:)))';
+    %% PCA to fold final iteration of predictions
+    dx  = squeeze((trgpre(:,1,:)))';
     xnm = sprintf('FoldDVectorX');
-    pcaAnalysis(dx, NPC, sav, xnm);
+    pcaAnalysis(dx, NPF, sav, xnm);
     
     % Run PCA on Y-Coordinates
-    dy  = squeeze((targetsPre(:,2,:)))';
+    dy  = squeeze((trgpre(:,2,:)))';
     ynm = sprintf('FoldDVectorY');
-    pcaAnalysis(dy, NPC, sav, ynm);
+    pcaAnalysis(dy, NPF, sav, ynm);
 end
 end
 

@@ -1,5 +1,6 @@
 function figclr(fIdx)
 %% figclr: clear figure
+
 if nargin == 1
     if numel(fIdx) > 1
         for f = 1 : numel(fIdx)

@@ -1,12 +1,13 @@
-function [scls, dom, domSize] = setupParams(toRemove, ds, sq, vl, hl, d, s, v, h)
+function [scls, doms, domSizes] = setupParams(varargin)
 %% setupParams: get scales, domains, and domain sizes
 %
 %
 % Usage:
-%   [scls, dom, domSize] = setupParams(toRemove, ds, sq, vl, hl, d, s, v, h)
+%   [scls, doms, domSizes] = setupParams(toRemove, zoomLvl, ds, sq, vl, hl, d, s, v, h)
 %
 % Input:
 %   toRemove: index to remove unneeded domains and domain sizes
+%   zoomLvl: zoom levels for each domain
 %   ds: scale sizes for disk patch
 %   sq: scale sizes for square patch
 %   vl: scale sizes for vertical line
@@ -18,37 +19,48 @@ function [scls, dom, domSize] = setupParams(toRemove, ds, sq, vl, hl, d, s, v, h
 %
 % Output:
 %   scls: sizes to scale patches up or down
-%   dom: domain coordinates of various shapes
-%   domSize: sizes for the generated domains
+%   doms: domain coordinates of various shapes
+%   domSizes: sizes for the generated domains
 %
 
-%% Select indices to remove
-if nargin == 0
-    toRemove = [];
+%% Parse inputs
+args = parseInputs(varargin);
+for fn = fieldnames(args)'
+    feval(@() assignin('caller', cell2mat(fn), args.(cell2mat(fn))));
 end
 
 %% Set Scales
-% Default values
-if nargin <= 1
-    ds = [1  ,  1]; % Disk
-    sq = [30 , 30]; % Square
-    vl = [50 , 1] ; % Vertical Line
-    hl = [1  , 50]; % Horizontal Line
-end
-
-scls           = {ds ; sq ; vl ; hl};
+scls           = {diskScale , squareScale , vertScale , horzScale};
 scls(toRemove) = [];
 
+% Append additional scaling if given
+scls = cellfun(@(scl) [scl ; cell2mat(arrayfun(@(zl) scl * zl, ...
+    zoomLvl, 'UniformOutput', false)')], scls, 'UniformOutput', 0);
+
 %% Generate domains
-% Default values
-if nargin < 5
-    d = [1   , 1];
-    s = [30  , 30];
-    v = [3   , 100];
-    h = [100 , 3];
-end
-
-[dom , domSize] = generateDomains(d, s, v, h, toRemove);
+[doms , domSizes] = generateDomains( ...
+    diskDomain, squareDomain, vertDomain, horzDomain, toRemove);
 
 end
 
+function args = parseInputs(varargin)
+%% Parse input parameters for Constructor method
+% Need descriptions for all these parameters
+% pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
+
+p = inputParser;
+p.addParameter('toRemove', []);
+p.addParameter('zoomLvl', []);
+p.addParameter('diskScale', [30 , 30]);
+p.addParameter('squareScale', [30 , 30]);
+p.addParameter('vertScale', [50 , 1]);
+p.addParameter('horzScale', [1 , 50]);
+p.addParameter('diskDomain', [30 , 30]);
+p.addParameter('squareDomain', [30 , 30]);
+p.addParameter('vertDomain', [3 , 100]);
+p.addParameter('horzDomain', [100 , 3]);
+
+% Parse arguments and output into structure
+p.parse(varargin{1}{:});
+args = p.Results;
+end

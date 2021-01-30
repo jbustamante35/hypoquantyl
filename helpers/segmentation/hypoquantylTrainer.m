@@ -90,10 +90,9 @@ jprintf(' ', toc(t), 1, 80 - n);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Train Neural Net for Z-Vectors
-[px, py, pz, pp] = hypoquantylPCA(T, sav, pcx, pcy, pcz, pcp);
-
-% Re-do PCA on all data to get ground truth scores
-[ax, ay, az, ap] = hypoquantylPCA(C, sav, pcx, pcy, pcz, pcp);
+% And re-do PCA on all data to get ground truth scores
+[px, py, pz, pp] = hypoquantylPCA(T, sav, npx, npy, npz, nzp);
+[ax, ay, az, ap] = hypoquantylPCA(C, sav, npx, npy, npz, nzp);
 
 %% Run convolution neural net to train Z-Vector PC Scores and Images
 % Get images and Z-Vector PC scores
@@ -113,14 +112,13 @@ Vscrs = az.PCAScores(SPLTS.valIdx);
 %% Train the D-Vectors
 nitrs     = 15;
 foldpreds = 1;
-npc       = 10;
 
 t = tic;
 n = fprintf('Training D-Vectors through %d recursive iterations [Folding = %s]', ...
     nitrs, num2str(foldpreds));
 
-[DIN, DOUT, fnms] = ...
-    dnnTrainer(Timgs, Tcntr, nitrs, nfigs, foldpreds, npc, sav, vis, par);
+[DIN, DOUT, fnms] = dnnTrainer( Timgs, Tcntr, nitrs, nfigs, ...
+    foldpreds, npf, npc, dlayers, trnfn, sav, vis, par);
 
 jprintf(' ', toc(t), 1, 80 - n);
 
@@ -142,12 +140,10 @@ ZSLC = [ZSLC , pp.PCAScores];
 jprintf(' ', toc(t), 1, 80 - n);
 
 %% Run Neural net to train S-Vector PC Scores from Z-Vector slices
-NLAYERS = 5;
-
 t = tic;
-n = fprintf('Training S-Vectors using %d-layer neural net', NLAYERS);
+n = fprintf('Training S-Vectors using %d-layer neural net', slayers);
 
-[SIN, SOUT] = snnTrainer(SSCR, ZSLC, NLAYERS, splts, sav, par);
+[SIN, SOUT] = snnTrainer(SSCR, ZSLC, slayers, splts, sav, par);
 
 jprintf(' ', toc(t), 1, 80 - n);
 
@@ -186,17 +182,22 @@ function args = parseInputs(varargin)
 % pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 
 p = inputParser;
-p.addOptional('ex', Experiment);
-p.addOptional('pcx', 3);
-p.addOptional('pcy', 3);
-p.addOptional('pcz', 8);
-p.addOptional('pcp', 5);
-p.addOptional('trnPct', 0.8);
-p.addOptional('valPct', 0.1);
-p.addOptional('tstPct', 0.1);
-p.addOptional('sav', 0);
-p.addOptional('par', 0);
-p.addOptional('figs', 1 : 4);
+p.addOptional('ex', Experiment); % Experiment containing Curves
+p.addOptional('npx', 6);         % PCs for x-coordinates of S-Vectors
+p.addOptional('npy', 6);         % PCs for y-coordinates of S-Vectors
+p.addOptional('npz', 20);        % PCs for Z-Vectors
+p.addOptional('nzp', 10);        % PCs for patches of Z-Vector slices
+p.addOptional('npf', 10);        % PCs for folding D-Vectors
+p.addOptional('npc', 10);        % PCs for sampling core patches (D-Vectors)
+p.addOptional('dlayers', 5);    % Fitnet layers for D-Vectors
+p.addOptional('slayers', 5);    % Fitnet layers for S-Vectors
+p.addOptional('trnfn', 'trnlm'); % Training algorithm for D-Vector fitnet
+p.addOptional('trnPct', 0.8);    % Percentage to split training data
+p.addOptional('valPct', 0.1);    % Percentage to split validation data
+p.addOptional('tstPct', 0.1);    % Percentage to split testing data
+p.addOptional('sav', 0);         % Save all outputs into .mat files
+p.addOptional('par', 0);         % Run with parallelization where applicable
+p.addOptional('figs', 1 : 4);    % Figure handle indices to show results
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});
