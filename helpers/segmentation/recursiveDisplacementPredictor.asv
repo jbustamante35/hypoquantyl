@@ -18,8 +18,8 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz
 % Recursively use D-Vectors as input for Z-Vector to further predict D-Vectors
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, ...
-%       pdx, pdy, pz, pdp, Nz, Nd, z, v, varargin)
+%   [Cntr, Znrms, Simg] = ...
+%       recursiveDisplacementPredictor(imgs, pdx, pdy, pz, pdp, Nz, Nd, z, v)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -31,7 +31,6 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz
 %   Nt: neural net model for predicting D-Vectors from Z-Patch scores
 %   z: initial Z-Vector to seed the initial predictions (default [])
 %   v: boolean for verbosity level (defaults to 0)
-%   varargin: misc inputs
 %
 % Output:
 %   Cntr: the contour predicted by this algorithm
@@ -40,7 +39,7 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% Determine inputs
+%%
 switch nargin
     case 7
         z = [];
@@ -55,27 +54,27 @@ if nargin > 8
     for fn = fieldnames(args)'
         feval(@() assignin('caller', cell2mat(fn), args.(cell2mat(fn))));
     end
-    
-else
-    LEN             = 25;
-    STP             = 1;
-    DVIS            = false; % Visualize image patches (you don't want this)
-    toRemove        = 1;
-    % zoomLvl         = [0.5 , 1.5];
-    zoomLvl         = [];
-    foldPredictions = 1; % PCA folding at each iteration
-    lastFrmFold     = 1; % PCA folding at final interation
 end
 
 %% Constants and Parameters
 % Message string separators
-sprA    = repmat('=', 1, 80);
-sprB    = repmat('-', 1, 80);
-npc     = size(pdx.EigVecs,2);
-nItrs   = numel(pdp.EigVecs);
-allItrs = 1 : nItrs;
+sprA = repmat('=', 1, 80);
+sprB = repmat('-', 1, 80);
 
-% Domains
+% Constants
+LEN             = 25;
+STP             = 1;
+DVIS            = false; % Visualize image patches (you don't want this)
+toRemove        = 1;
+% zoomLvl         = [0.5 , 1.5];
+zoomLvl         = [];
+foldPredictions = 1; % PCA folding at each iteration
+lastFrmFold     = 1; % PCA folding at final interation
+npc             = size(pdx.EigVecs,2);
+nItrs           = numel(pdp.EigVecs);
+allItrs         = 1 : nItrs;
+
+%
 [scls, dom, domSize] = setupParams('toRemove', toRemove, 'zoomLvl', zoomLvl);
 
 %% Get initial frame bundle and image patches
@@ -237,23 +236,4 @@ preY = pcaProject(preY, pdy.EigVecs, pdy.MeanVals, 'scr2sim')';
 
 tshp = [preX , preY];
 
-end
-
-function args = parseInputs(varargin)
-%% Parse input parameters for Constructor method
-% Need descriptions for all these parameters
-% pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
-
-p = inputParser;
-p.addParameter('LEN', 25);
-p.addParameter('STP', 1);
-p.addParameter('DVIS', false);
-p.addParameter('toRemove', 1);
-p.addParameter('zoomLvl', []);
-p.addParameter('foldPredictions', 1);
-p.addParameter('lastFrmFold', 1);
-
-% Parse arguments and output into structure
-p.parse(varargin{1}{:});
-args = p.Results;
 end

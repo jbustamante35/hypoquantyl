@@ -6,10 +6,10 @@ function [Z, L, segs, lbl] = contour2corestructure(cntr, len, stp)
 %   [Z, L, segs, lbl] = contour2corestructure(cntr, len, step)
 %
 % Input:
-%   cntr: x-/y-coordinates of a closed contour 
+%   cntr: x-/y-coordinates of a closed contour
 %   len: length of the segments to split the contour
 %   stp: step size to skip per segment
-%   
+%
 % Output:
 %   Z: tangent bundle for each of the contour's segments
 %   L: distance of the labeled points of the contour
@@ -17,6 +17,20 @@ function [Z, L, segs, lbl] = contour2corestructure(cntr, len, stp)
 %   lbl: labeled width of the base of the contour
 %
 %
+
+%% Set default segment length and step sizes
+switch nargin
+    case 1
+        len = 25;
+        stp = 1;
+    case 2
+        stp = 1;
+    case 3
+    otherwise
+        fprintf(2, 'Incorrect number of inputs (%d)\n', nargin);
+        [Z, L, segs, lbl] = deal([]);
+        return;
+end
 
 %% Label the base of the contour
 lbl = labelContour(cntr);
@@ -29,7 +43,7 @@ lbl  = split2Segments(lbl, len, stp, 1);
 %
 coref1  = squeeze(segs(end,:,:) - segs(1,:,:));
 mid     = squeeze(segs(1,:,:)) + 0.5 * coref1;
-coremag = sum(coref1 .* coref1, 1).^-0.5;
+coremag = sum(coref1 .* coref1, 1) .^ -0.5;
 
 %
 coref1  = bsxfun(@times, coref1, coremag)';

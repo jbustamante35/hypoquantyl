@@ -27,6 +27,5 @@ fb = [tmp , dc , dn];
 %
 fb = fb(len+1 : 2*len, :);
 
-
 end
 

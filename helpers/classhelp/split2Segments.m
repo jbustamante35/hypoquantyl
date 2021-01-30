@@ -43,6 +43,9 @@ switch mth
         cls  = class(trc);
         segs = eval(sprintf('%s(%s)', cls, 'segs'));
         
+        %% TODO %%
+        % Re-index so start point is center of base        
+        
     case 2
         %% Nathan's method that labels stacked curves
         % Note that this only works if stp = 1

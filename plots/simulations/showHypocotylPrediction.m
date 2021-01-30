@@ -76,14 +76,14 @@ myimagesc(img);
 hold on;
 cellfun(@(x) plt(x, '-', 1), simg, 'UniformOutput', 0);
 
-if strcmpi(mth, smth)    
+if strcmpi(mth, smth)
     ttl = sprintf('%d Segments [%s Method]\nHypocotyl %d [%s set]', ...
         numel(simg), mth, idx, cSet);
     title(ttl);
     
     fnms{2} = sprintf('%s_%dSegments_%sMethod_Hypocotyl%d_%s', ...
         tdate, numel(simg), mth, idx, cSet);
-else    
+else
     ttl = sprintf('%d Iterations [%s Method]\nHypocotyl %d [%s set]', ...
         numel(simg), mth, idx, cSet);
     title(ttl);

@@ -1,40 +1,29 @@
-function X = sampleCorePatches(img, Z, scls, dom, domSize, vis)
+function smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, vis)
 %% sampleCorePatches: sample image from tangent bundle points
 %
 %
 % Usage:
-%   X = sampleCorePatches(img, Z, scls, dom, domSize, vis)
+%   smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, vis)
 %
 % Input:
 %   img:
-%   Z:
+%   zvec:
 %   scls:
-%   dom:
-%   domSize:
+%   doms:
+%   domSizes:
 %   vis:
 %
 % Output:
-%   X:
+%   smpl: concatenation of image patches sampled at all domains of each scale
 %
 
 %%
 if vis
-    cla;clf;
+    figclr;
 end
 
-X = [];
-for d = 1 : numel(dom)
-    % Affine transform of Tangent Bundles
-    aff = tb2affine(Z, scls{d});
-    
-    % Sample image at affines
-    smpl = tbSampler(double(img), double(aff), dom{d}, domSize{d}, vis);
-    
-    % Return Patches sampled from the Core and Displacements along the Core
-    szS  = size(smpl);
-    tmpX = reshape(smpl, [szS(1) , prod(szS(2:end))]);
-    X    = [X , tmpX];
-end
+smpl = cellfun(@(s,d,ds) sampleAtDomain(img, zvec, s, d, ds, vis), ...
+    scls, doms, domSizes, 'UniformOutput', 0);
+smpl = cat(2, smpl{:});
 
 end
-
