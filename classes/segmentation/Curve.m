@@ -20,7 +20,7 @@ classdef Curve < handle
         ManMidline
         AutoMidline
         SVectors          % TO BE REMOVED [but still needs method to compute]
-        RawMidline        % TO BE REMOVED
+%         RawMidline        % TO BE REMOVED
 %         ZVector           % TO BE REMOVED
 %         BackTrace         % TO BE REMOVED
 %         RawSegments       % TO BE REMOVED
@@ -357,8 +357,8 @@ classdef Curve < handle
             % Generate square domains to use for sampling image
             toRemove            = [1 , 3 , 4]; % Omit domains for disk and lines
             [sq , s]            = deal(psz);
-            sq                  = [10 , 10];
-            s                  = [20 , 20];
+%             sq                  = [10 , 10]; % Can't set dot density
+%             s                  = [20 , 20];
             [scls , doms , dsz] = setupParams( ...
                 'toRemove', toRemove, 'squareScale', sq, 'squareDomain', s);
             
