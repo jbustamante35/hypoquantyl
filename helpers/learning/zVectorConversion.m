@@ -16,6 +16,10 @@ function Z = zVectorConversion(z, ttlSegs, numCrvs, method)
 % Output:
 %   Z: converted Z-Vector
 %
+% NOTE:
+%   The hard-coded column orders will need to change when I replace the
+%   tangent-normal vectors with a rotation vector
+
 
 %% Determine method and reshape appropriately
 try
