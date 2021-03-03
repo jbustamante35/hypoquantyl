@@ -89,7 +89,7 @@ classdef Curve < handle
             
         end
         
-        function Z = getZVector(obj, ndims, addMid)
+        function Z = getZVector(obj, ndims, addMid, rot)
             %% Compute the Z-Vector skeleton for this contour
             % This will compute the Z-Vector each time, rather than storing it
             % in a variable after being run once. This will deprecate the
@@ -99,8 +99,12 @@ classdef Curve < handle
                 case 1
                     ndims  = ':';
                     addMid = 0;
+                    rot    = 0;
                 case 2
                     addMid = 0;
+                    rot    = 0;
+                case 3
+                    rot = 0;
             end
             
             % Returns the dimensions from ndims [default to all]
@@ -113,6 +117,10 @@ classdef Curve < handle
             end
             
             Z = Z(:, ndims);
+            
+            if rot
+                Z = zVectorConversion(Z, [], [], 'rot');
+            end
             
         end
         

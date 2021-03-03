@@ -1,11 +1,11 @@
-function Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen)
+function Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen, rot)
 %% predictZvectorFromImage:
 % This function predicts the Z-Vector PC scores from the inputted image using
 % the given neural network model. It then unfolds the PC scores and reshapes the
 % Z-Vector into stacked Z-Vector slices.
 %
 % Usage:
-%   Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen)
+%   Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen, rot)
 %
 % Input:
 %   img: image of the hypocotyl
@@ -13,6 +13,7 @@ function Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen)
 %   pz: Z-Vector eigenvectors and means
 %   addMid: add back midpoint to Z-Vector's tangent-normal (default 0)
 %   uLen: force tangent and normal to be unit length (default 1)
+%   rot: replace tangent-normal vectors with rotation vector (default 0)
 %
 % Output:
 %   Znrms: predicted Z-Vector slices after unfolding and reshaping
@@ -24,25 +25,37 @@ switch nargin
         [pz , Nz] = loadZVecNetworks;
         addMid    = 0;
         uLen      = 1;
+        rot       = 0;
     case 3
         addMid = 0;
         uLen   = 1;
+        rot    = 0;
 end
 
 %%
+% Determine size of dataset and number of segments
 numCrvs = size(pz.InputData,1);
-ttlSegs = size(pz.InputData,2) / 4; % Change when I implement rotation vector
+
+if rot
+    ttlSegs = size(pz.InputData,2) / 3; % Change when I implement rotation vector
+else
+    ttlSegs = size(pz.InputData,2) / 4; % Change when I implement rotation vector
+end
 
 % Predict Z-Vector scores from the inputted hypocotyl image
 Zscrs = struct2array(structfun(@(x) x.predict(img), Nz, 'UniformOutput', 0));
 
 % Unfold and Reshape Z-Vector from prepped to raw form and add normal vectors
 Zprep = pcaProject(Zscrs, pz.EigVecs, pz.MeanVals, 'scr2sim');
+
 Zrevs = zVectorConversion(Zprep, ttlSegs, numCrvs, 'rev');
 
-% Force Tangent vector to be unit length                [10.01.2019]
-% Don't add back midpoints to tangents-normals          [10.18.2019]
-% Determine if Tangent should be subtracted by midpoint [11.06.2019]
-[~, Znrms] = addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid, uLen);
-
+if rot
+    Znrms = zVectorConversion(Zrevs, ttlSegs, numCrvs, 'rot');
+else
+    % Force Tangent vector to be unit length                [10.01.2019]
+    % Don't add back midpoints to tangents-normals          [10.18.2019]
+    % Determine if Tangent should be subtracted by midpoint [11.06.2019]
+    [~, Znrms] = addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid, uLen);
+end
 end

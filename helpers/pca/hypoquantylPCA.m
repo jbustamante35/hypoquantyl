@@ -1,10 +1,11 @@
-function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid)
+function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid, rot)
 %% hypoquantylPCA: run PCA on x-/y-coordinates and z-vectors
 % Description
 %
 %
 % Usage:
-%    [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid)
+%    [px, py, pz, pp] = hypoquantylPCA( ...
+%                   CRVS, sav, pcx, pcy, pcz, pcp, addMid, rot)
 %
 % Input:
 %   CRVS array of Curve objects to extract data from
@@ -14,6 +15,7 @@ function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid
 %   pcz: number of PCs to extract from z-vectors [optional]
 %   pcp: number of PCs to extract from z-patches [optional]
 %   addMid: add midpoint vector to tangent and normal vectors (default 0)
+%   rot: use rotation vector instead of tangent-noraml vectors
 %
 % Output:
 %   px: PCA object from midpoint-normalized x-coordinates
@@ -39,14 +41,19 @@ switch nargin
         pcz         = 20;
         pcp         = 10;
         addMid      = 0;
+        rot         = 1;
     case 2
         [pcx , pcy] = deal(6);
         pcz         = 20;
         pcp         = 10;
         addMid      = 0;
+        rot         = 1;
     case 6
         addMid      = 0;
+        rot         = 1;
     case 7        
+        rot         = 1;
+    case 8
     otherwise
         fprintf(2, 'Error with inputs (%d)\n', nargin);
         [px, py, pz, pp] = deal([]);
@@ -76,10 +83,11 @@ jprintf(' ', toc(t), 1, 80 - n);
 t = tic;
 n = fprintf('Preparing and Processing Z-Vectors');
 
-if pcz > 0
-    rZ = arrayfun(@(c) c.getZVector(1:4, addMid), CRVS, 'UniformOutput', 0);
+if pcz > 0    
+    rZ = arrayfun(@(c) c.getZVector(1:4, addMid, rot), ...
+        CRVS, 'UniformOutput', 0);
     rZ = cellfun(@(z) zVectorConversion(z, ttlSegs, 1, 'prep'), ...
-        rZ, 'UniformOutput', 0);
+    rZ, 'UniformOutput', 0);
     rZ = cat(1, rZ{:});
 end
 

@@ -54,3 +54,4 @@ Z       = [mid' , coref1 , coref2];
 L = (coremag.^-1)';
 
 end
+
