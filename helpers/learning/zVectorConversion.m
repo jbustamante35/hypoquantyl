@@ -121,35 +121,68 @@ end
 
 end
 
-function r = tangent2rotation(tng, typ)
+function r = tangent2rotation(tng, typ, deg, pos)
 %% tangent2rotation: convert tangent vector to rotation, or vice versa
 % Inputs:
 %   tng: tangent vector
 %   deg: rotation in degrees to rotate tangent
 %   typ: conversion direction [t2r|r2t] (default t2r)
-%   rot: keep rotation in degrees or radians [deg|rad] (default deg)
+%   deg: keep rotation in degrees or radians [deg|rad] (default rad)
+%   pos: convert negative degrees to positive [only if deg = 'deg'] (default 1)
 
-if nargin < 2
-    typ = 't2r';
+switch nargin
+    case 1
+        typ = 't2r';
+        deg = 'rad';
+        pos = 1;
+    case 2
+        deg = 'rad';
+        pos = 1;
+    case 3
+        pos = 1;
+    case 4
 end
 
 switch typ
     case 't2r'
-        r = rad2deg(atan2(tng(2), tng(1)));
-        
-        % Convert negative rotations to >180
-        if r < 0
-            r = 360 + r;
+        switch deg
+            case 'rad'
+                % Keep in radians
+                r = atan2(tng(2), tng(1));
+                
+            case 'deg'
+                % Convert to degrees [0 to +/- 180]
+                r = rad2deg(atan2(tng(2), tng(1)));
+                
+                if pos
+                    % Convert negative rotations to >180
+                    if r < 0
+                        r = 360 + r;
+                    end
+                end
+                
+            otherwise
+                fprintf(2, 'Error with conversion type %s [rad|deg]\n', deg);
+                r = [];
+                return;
         end
         
     case 'r2t'
-        % Convert rotations > 180 to negative rotations
-        if tng >= 180
-            tng = tng - 360;
+        switch deg
+            case 'rad'
+                % Nothing to do here?
+                
+            case 'deg'
+                % Convert rotations > 180 to negative rotations
+                if tng >= 180
+                    tng = tng - 360;
+                end
         end
         
-        r = arrayfun(@(x) [1 , 0] * Rmat(tng(x,:)), 1 : size(tng,1), 'UniformOutput', 0);
+        r = arrayfun(@(x) [1 , 0] * Rmat(tng(x,:)), ...
+            1 : size(tng,1), 'UniformOutput', 0);
         r = cat(1, r{:});
+        
     otherwise
         fprintf(2, 'Error with conversion direction %s [t2r|r2t]\n', typ);
         r = [];

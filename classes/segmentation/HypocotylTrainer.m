@@ -147,7 +147,7 @@ classdef HypocotylTrainer < handle
         
         function obj = SplitDataset(obj)
         %% Split Curves into training, validation, and testing sets
-        % Validation and Testing sets shouldn't be seen by any training algorithms
+        % Validation and Testing sets shouldn't be seen by training algorithm
         t = tic;
         n = fprintf('Splitting into training,validation,testing sets');
         
@@ -297,7 +297,8 @@ classdef HypocotylTrainer < handle
             case 'znn'
                 %% Run metaparameter optimization for Z-Vector CNN
                 flt    = obj.FilterRange;
-                nflt   = cellfun(@(x) num2str(x), obj.NumFilterRange, 'UniformOutput', 0);
+                nflt   = cellfun(@(x) num2str(x), ...
+                    obj.NumFilterRange, 'UniformOutput', 0);
                 nlay   = obj.FilterLayers;
                 mbsize = obj.MiniBatchSize;
                 drp    = obj.DropoutLayer;
@@ -506,11 +507,32 @@ classdef HypocotylTrainer < handle
         s = obj.SVectors;
         end
         
-        function [bay , objfn , params] = getOptimizer(obj)
+        function [bay , objfn , params] = getOptimizer(obj, req)
         %% Return optimization components
-        bay    = obj.ZBay;
-        objfn  = obj.ZFnc;
-        params = obj.ZParams;
+        if nargin < 2
+            req = 'all';
+        end
+        
+        switch req
+            case 'znn'
+                % Return parameters for Z-Vector training
+                bay    = obj.ZBay;
+                objfn  = obj.ZFnc;
+                params = obj.ZParams;
+                
+            case 'dnn'
+                % Return parameters for D-Vector training                
+            case 'snn'
+                % Return parameters for S-Vector training                
+            case 'all'
+                % Return all parameters
+                [bay , objfn , params] = deal([]);                
+            otherwise
+                fprintf(2, 'Error requesting optimization parameters %s\n', ...
+                    req);
+                [bay , objfn , params] = deal([]);
+        end
+                
         end
         
         function fnms = getFigNames(obj)
@@ -541,12 +563,14 @@ classdef HypocotylTrainer < handle
                 
             case 'testing'
                 % Not yet implemented
-                fprintf(2, 'Type (%s) not yet implemented [training|validation]\n', typ);
+                fprintf(2, 'Type (%s) not implemented [training|validation]\n', ...
+                    typ);
                 [din , dout] = deal([]);
                 return;
                 
             otherwise
-                fprintf(2, 'Type (%s) should be [training|validation|testing]\n', typ);
+                fprintf(2, 'Type (%s) should be [training|validation|testing]\n', ...
+                    typ);
                 [din , dout] = deal([]);
                 return;
         end
