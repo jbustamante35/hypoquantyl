@@ -92,7 +92,7 @@ if isempty(z)
         fprintf('Predicting Tangent Bundle from Image...');
     end
     
-    z = predictZvectorFromImage(imgs, Nz, pz);
+    z = predictZvectorFromImage(imgs, Nz, pz, rot);
     
     if v
         fprintf('DONE [%.02f sec]\n', toc(tt));
@@ -252,6 +252,7 @@ p.addParameter('toRemove', 1);
 p.addParameter('zoomLvl', []);
 p.addParameter('foldPredictions', 1);
 p.addParameter('lastFrmFold', 1);
+p.addParameter('rot', 1);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

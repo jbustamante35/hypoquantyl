@@ -221,8 +221,11 @@ for itr = 1 : nItrs
 end
 
 % Store output
-DIN  = struct('IMGS', IMG, 'CNTRS', CNTR);
-DOUT = struct('Net', net, 'EigVecs', evecs, 'MeanVals', mns);
+% DOUT = struct('Net', net, 'EigVecs', evecs, 'MeanVals', mns);
+DIN           = struct('IMGS', IMG, 'CNTRS', CNTR);
+DOUT.Net      = net;
+DOUT.EigVecs  = evecs;
+DOUT.MeanVals = mns;
 
 fprintf('\n%s\nFull Run of %d Iterations: %.02f sec\n%s\n', ...
     sprA, nItrs, toc(tAll), sprA);
@@ -240,12 +243,14 @@ if sav
     %% PCA to fold final iteration of predictions
     dx  = squeeze((trgpre(:,1,:)))';
     xnm = sprintf('FoldDVectorX');
-    pcaAnalysis(dx, NPF, sav, xnm);
+    pdx = pcaAnalysis(dx, NPF, sav, xnm);
     
     % Run PCA on Y-Coordinates
     dy  = squeeze((trgpre(:,2,:)))';
     ynm = sprintf('FoldDVectorY');
-    pcaAnalysis(dy, NPF, sav, ynm);
+    pdy = pcaAnalysis(dy, NPF, sav, ynm);
+    
+    DOUT.pdf = struct('pdx', pdx, 'pdy', pdy);
 end
 end
 

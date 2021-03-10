@@ -1,4 +1,4 @@
-function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid, rot)
+function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid, zrotate, rtyp)
 %% hypoquantylPCA: run PCA on x-/y-coordinates and z-vectors
 % Description
 %
@@ -15,7 +15,8 @@ function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, pcx, pcy, pcz, pcp, addMid
 %   pcz: number of PCs to extract from z-vectors [optional]
 %   pcp: number of PCs to extract from z-patches [optional]
 %   addMid: add midpoint vector to tangent and normal vectors (default 0)
-%   rot: use rotation vector instead of tangent-noraml vectors
+%   zrotate: use rotation vector instead of tangent-noraml vectors
+%   rtyp: rotation vector units in degrees or radians [deg|rad] (default rad)
 %
 % Output:
 %   px: PCA object from midpoint-normalized x-coordinates
@@ -41,19 +42,25 @@ switch nargin
         pcz         = 20;
         pcp         = 10;
         addMid      = 0;
-        rot         = 1;
+        zrotate     = 1;
+        rtyp        = 'rad';
     case 2
         [pcx , pcy] = deal(6);
         pcz         = 20;
         pcp         = 10;
         addMid      = 0;
-        rot         = 1;
+        zrotate     = 1;
+        rtyp        = 'rad';
     case 6
         addMid      = 0;
-        rot         = 1;
+        zrotate     = 1;
+        rtyp        = 'rad';
     case 7        
-        rot         = 1;
+        zrotate     = 1;
+        rtyp        = 'rad';
     case 8
+        rtyp        = 'rad';
+    case 9
     otherwise
         fprintf(2, 'Error with inputs (%d)\n', nargin);
         [px, py, pz, pp] = deal([]);
@@ -84,9 +91,9 @@ t = tic;
 n = fprintf('Preparing and Processing Z-Vectors');
 
 if pcz > 0    
-    rZ = arrayfun(@(c) c.getZVector(1:4, addMid, rot), ...
+    rZ = arrayfun(@(c) c.getZVector(1:4, addMid, zrotate, rtyp), ...
         CRVS, 'UniformOutput', 0);
-    rZ = cellfun(@(z) zVectorConversion(z, ttlSegs, 1, 'prep'), ...
+    rZ = cellfun(@(z) zVectorConversion(z, ttlSegs, 1, 'prep', rtyp), ...
     rZ, 'UniformOutput', 0);
     rZ = cat(1, rZ{:});
 end

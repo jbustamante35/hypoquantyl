@@ -1,19 +1,19 @@
-function Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen, rot)
+function Znrms = predictZvectorFromImage(img, Nz, pz, rot, addMid, uLen)
 %% predictZvectorFromImage:
 % This function predicts the Z-Vector PC scores from the inputted image using
 % the given neural network model. It then unfolds the PC scores and reshapes the
 % Z-Vector into stacked Z-Vector slices.
 %
 % Usage:
-%   Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen, rot)
+%   Znrms = predictZvectorFromImage(img, Nz, pz, rot, addMid, uLen)
 %
 % Input:
 %   img: image of the hypocotyl
 %   Nz: neural network model for predicting Z-Vector PC scores from images
 %   pz: Z-Vector eigenvectors and means
+%   rot: replace tangent-normal vectors with rotation vector (default 0)
 %   addMid: add back midpoint to Z-Vector's tangent-normal (default 0)
 %   uLen: force tangent and normal to be unit length (default 1)
-%   rot: replace tangent-normal vectors with rotation vector (default 0)
 %
 % Output:
 %   Znrms: predicted Z-Vector slices after unfolding and reshaping
@@ -23,13 +23,13 @@ function Znrms = predictZvectorFromImage(img, Nz, pz, addMid, uLen, rot)
 switch nargin
     case 1
         [pz , Nz] = loadZVecNetworks;
-        addMid    = 0;
-        uLen      = 1;
         rot       = 0;
+        addMid    = 0;
+        uLen      = 1;        
     case 3
-        addMid = 0;
-        uLen   = 1;
         rot    = 0;
+        addMid = 0;
+        uLen   = 1;        
 end
 
 %%
@@ -37,9 +37,9 @@ end
 numCrvs = size(pz.InputData,1);
 
 if rot
-    ttlSegs = size(pz.InputData,2) / 3; % Change when I implement rotation vector
+    ttlSegs = size(pz.InputData,2) / 3;
 else
-    ttlSegs = size(pz.InputData,2) / 4; % Change when I implement rotation vector
+    ttlSegs = size(pz.InputData,2) / 4;
 end
 
 % Predict Z-Vector scores from the inputted hypocotyl image

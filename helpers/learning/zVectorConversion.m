@@ -1,17 +1,19 @@
-function Z = zVectorConversion(z, ttlSegs, numCrvs, method)
+function Z = zVectorConversion(z, ttlSegs, numCrvs, method, rtyp, rpos)
 %% zVectorConversion: prep Z-Vector for PCA or reconstruct from CNN output
 % This function reshapes and transposes the Z-Vector into the proper shape for
 % PCA, or reconstructs the original Z-Vector shape. The reshaping method is
 % determined by the 'method' parameter.
 %
 % Usage:
-%   Z = zVectorConversion(z, ttlSegs, numCrvs, method)
+%   Z = zVectorConversion(z, ttlSegs, numCrvs, method, rtyp, rpos)
 %
 % Input:
 %   z: Z-Vector shaped for either conversion or reconstruction
 %   ttlSegs: number of segments per object
 %   numCrvs: total number of objects in the dataset
 %   method: (see below)
+%   rtyp: convert rotation to degrees or radians [deg|rad] (default 'rad')
+%   rpos: convert rotations to positive values (default 1)
 %
 %       arguments for method:
 %           [prep] prepare for PCA by vectorizing slices
@@ -24,7 +26,6 @@ function Z = zVectorConversion(z, ttlSegs, numCrvs, method)
 % NOTE:
 %   The hard-coded column orders will need to change when I replace the
 %   tangent-normal vectors with a rotation vector
-
 
 %% Determine method and reshape appropriately
 try
@@ -88,17 +89,26 @@ try
             
         case 'rot'
             %% Convert tangent vector to rotation vector, or vice versa
+            switch nargin
+                case 4
+                    rtyp = 'rad';
+                    rpos = 1;
+                case 5
+                    rpos = 1;
+            end
+            
             if size(z,2) >= 4
                 m = z(:,1:2);
                 t = z(:,3:4);
-                r = arrayfun(@(x) tangent2rotation(t(x,:), 't2r'), ...
+                r = arrayfun(@(x) tangent2rotation(t(x,:), 't2r', rtyp, rpos), ...
                     1 : size(t,1), 'UniformOutput', 0);
                 r = cat(1, r{:});
                 Z = [m , r];
+                
             else
                 m = z(:,1:2);
                 r = z(:,3);
-                t = arrayfun(@(x) tangent2rotation(r(x,:), 'r2t'), ...
+                t = arrayfun(@(x) tangent2rotation(r(x,:), 'r2t', rtyp, rpos), ...
                     1 : size(r,1), 'UniformOutput', 0);
                 t = cat(1, t{:});
                 
@@ -121,31 +131,30 @@ end
 
 end
 
-function r = tangent2rotation(tng, typ, deg, pos)
+function r = tangent2rotation(tng, drc, rtyp, rpos)
 %% tangent2rotation: convert tangent vector to rotation, or vice versa
 % Inputs:
-%   tng: tangent vector
-%   deg: rotation in degrees to rotate tangent
-%   typ: conversion direction [t2r|r2t] (default t2r)
-%   deg: keep rotation in degrees or radians [deg|rad] (default rad)
-%   pos: convert negative degrees to positive [only if deg = 'deg'] (default 1)
+%   tng: tangent or rotation vector
+%   drc: conversion direction [t2r|r2t] (default t2r)
+%   rtyp: keep rotation in degrees or radians [deg|rad] (default rad)
+%   rpos: convert negative degrees to positive [only if deg = 'deg'] (default 1)
 
 switch nargin
     case 1
-        typ = 't2r';
-        deg = 'rad';
-        pos = 1;
+        drc  = 't2r';
+        rtyp = 'rad';
+        rpos = 1;
     case 2
-        deg = 'rad';
-        pos = 1;
+        rtyp = 'rad';
+        rpos = 1;
     case 3
-        pos = 1;
+        rpos = 1;
     case 4
 end
 
-switch typ
+switch drc
     case 't2r'
-        switch deg
+        switch rtyp
             case 'rad'
                 % Keep in radians
                 r = atan2(tng(2), tng(1));
@@ -154,7 +163,7 @@ switch typ
                 % Convert to degrees [0 to +/- 180]
                 r = rad2deg(atan2(tng(2), tng(1)));
                 
-                if pos
+                if rpos
                     % Convert negative rotations to >180
                     if r < 0
                         r = 360 + r;
@@ -162,29 +171,31 @@ switch typ
                 end
                 
             otherwise
-                fprintf(2, 'Error with conversion type %s [rad|deg]\n', deg);
+                fprintf(2, 'Error with conversion type %s [rad|deg]\n', rtyp);
                 r = [];
                 return;
         end
         
     case 'r2t'
-        switch deg
+        switch rtyp
             case 'rad'
-                % Nothing to do here?
-                
+                % Keep rotation matrix operation in radians
+                rad = 1;
             case 'deg'
+                rad = 0;
+                
                 % Convert rotations > 180 to negative rotations
                 if tng >= 180
                     tng = tng - 360;
                 end
         end
         
-        r = arrayfun(@(x) [1 , 0] * Rmat(tng(x,:)), ...
+        r = arrayfun(@(x) [1 , 0] * Rmat(tng(x,:), rad), ...
             1 : size(tng,1), 'UniformOutput', 0);
         r = cat(1, r{:});
         
     otherwise
-        fprintf(2, 'Error with conversion direction %s [t2r|r2t]\n', typ);
+        fprintf(2, 'Error with conversion direction %s [t2r|r2t]\n', drc);
         r = [];
 end
 

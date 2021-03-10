@@ -89,7 +89,7 @@ classdef Curve < handle
             
         end
         
-        function Z = getZVector(obj, ndims, addMid, rot)
+        function Z = getZVector(obj, ndims, addMid, rot, deg, pos)
             %% Compute the Z-Vector skeleton for this contour
             % This will compute the Z-Vector each time, rather than storing it
             % in a variable after being run once. This will deprecate the
@@ -118,8 +118,18 @@ classdef Curve < handle
             
             Z = Z(:, ndims);
             
+            % Convert tangent-normal to rotation vector
             if rot
-                Z = zVectorConversion(Z, [], [], 'rot');
+                % Convert to radians (default) or degrees
+                switch nargin
+                    case 4
+                        deg = 'rad'; 
+                        pos = 1;
+                    case 5
+                        pos = 1;
+                end
+                
+                Z = zVectorConversion(Z, [], [], 'rot', deg, pos);
             end
             
         end
