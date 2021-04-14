@@ -5,11 +5,12 @@ classdef HypocotylTrainer < handle
     properties (Access = public)        
         Curves
         HTName
+        SaveDirectory
         
         % Curve Segment Properties
         SegmentSize
         SegmentSteps
-        
+        ;
         % Dataset Splitting
         TrainingPct
         ValidationPct
@@ -86,6 +87,7 @@ classdef HypocotylTrainer < handle
         deflts = { ...
             % Curve Properties
             'HTName'              , [] ; ...
+            'SaveDirectory'       , pwd ; ...
             'SegmentSize'         , 25 ; ...
             'SegmentSteps'        , 1 ; ...
             
@@ -200,10 +202,11 @@ classdef HypocotylTrainer < handle
             otherwise
                 fprintf(2, 'Method %d not implemented [trn|withval]\n', mth);
                 return;
-        end
+        end                
         
         [px, py, pz, pp] = hypoquantylPCA(C, obj.Save, ...
-            obj.NPX, obj.NPY, obj.NPZ, obj.NZP, obj.AddMid);
+            obj.NPX, obj.NPY, obj.NPZ, obj.NZP, ...
+            obj.AddMid, obj.ZRotate, obj.ZRotateType);
         obj.PCA          = struct('px', px, 'py', py, 'pz', pz, 'pp', pp);
         
         end
@@ -283,6 +286,17 @@ classdef HypocotylTrainer < handle
             training2run = [1 , 1 , 0];
         end
         
+        if obj.Save
+            currDir = pwd;
+            saveDir = obj.SaveDirectory;
+            
+            if ~isfolder(saveDir)
+                mkdir(saveDir);
+            end
+            
+            cd(saveDir);
+        end
+        
         obj.ProcessCurves;
         obj.SplitDataset;
         obj.RunPCA;
@@ -290,6 +304,23 @@ classdef HypocotylTrainer < handle
         if training2run(1); obj.TrainZVectors; end
         if training2run(2); obj.TrainDVectors; end
         if training2run(3); obj.TrainSVectors; end
+        
+        if obj.Save
+            cd(currDir);
+            obj.SaveTrainer(saveDir);
+        end
+        
+        end
+        
+        function obj = SaveTrainer(obj, dnm)
+        %% Save this object into a .mat file
+        if ~isfolder(dnm)
+            mkdir(dnm);
+        end
+        
+        HT  = obj;
+        fnm = sprintf('%s%s%s', dnm, filesep, obj.HTName);
+        save(fnm, '-v7.3', 'HT');
         
         end
         
@@ -644,7 +675,7 @@ classdef HypocotylTrainer < handle
         rtyp  = obj.ZRotateType;
         itrs  = obj.Iterations;
         
-        if isempty(obj.Splits)
+        if ~isempty(obj.Splits)
             ntrnd = numel(obj.getSplits('trnIdx'));
         else
             ntrnd = 0;

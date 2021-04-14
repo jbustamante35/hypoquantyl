@@ -1,4 +1,4 @@
-function trc = primeMidline(img, cntr, INTRP, TERMPCT, PADLENGTH)
+function [trc , skltn] = primeMidline(img, cntr, INTRP, TERMPCT, PADLENGTH)
 %% primeMidline
 % Description
 %

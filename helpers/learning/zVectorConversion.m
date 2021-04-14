@@ -41,6 +41,12 @@ try
                 1 : nDims, 'UniformOutput', 0);
             
             switch nDims
+                case 1
+                    % Only rotations
+                    Z = cat(2, rZ{:});
+                case 2
+                    % Only midpoints or tangents
+                    Z = cat(2, rZ{[1 , 2]});
                 case 3
                     % Using rotation vector instead of tangent-normal
                     Z = cat(2, rZ{[1 , 2 , 3]});
@@ -60,9 +66,15 @@ try
             
             ndims = size(z,2) / ttlSegs;
             switch ndims
+                case 1
+                    % Only rotations
+                    zOrder = 1;
+                case 2
+                    % Only midpoints or tangents
+                    zOrder = [1 , 2];
                 case 3
                     % Rotation vectors
-                    zOrder = [1 , 2  , 3];
+                    zOrder = [1 , 2 , 3];
                 case 4
                     % If omitting Normal vectors
                     zOrder = [1 3 , 2 4];

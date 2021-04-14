@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseed, psx, psy, v, varargin)
+function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp, Nz, Ns, zseeds, psx, psy, v, varargin)
 %% hypocotylPredictor: the two-step neural net to predict hypocotyl contours
 % [ Describe how this works here ]
 %
@@ -53,7 +53,7 @@ try
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
                 NETOUT  = 'netout';
-                zseed   = [];
+                zseeds  = [];
                 
                 % Load PCA data and neural net models
                 [px, py, pz, pp, psx, psy, Nz, Ns] = ...
@@ -63,7 +63,7 @@ try
             
             % Run S-Vector Method
             [Cntr, Znrms, Simg] = runMethod1( ...
-                imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, zseed, v);
+                imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, zseeds, v);
             
         case 'dvec'
             %% New method to recursively predict vector displacements from Z-Vector
@@ -80,7 +80,7 @@ try
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
                 NETOUT  = 'netoutputs';
-                zseed   = [];
+                zseeds  = [];
                 
                 % Load PCA data and neural net models
                 % Note that Ns is actually Nd here
@@ -93,7 +93,7 @@ try
             % Note that Ns is actually Nd here
             %   varargin: misc input [PCA folding per frame/last frame
             [Cntr, Znrms, Simg] = runMethod2( ...
-                imgs, par, px, py, pz, pp, Nz, Ns, zseed, v, varargin{:});
+                imgs, par, px, py, pz, pp, Nz, Ns, zseeds, v, varargin{:});
             
             case 'cmvec'
             %% This method predicts contour-midline complexes 
@@ -104,7 +104,7 @@ try
                 ROOTDIR = sprintf('%s/%s', DATADIR, MFILES);
                 PCADIR  = 'pca';
                 NETOUT  = 'netout';
-                zseed   = [];
+                zseeds  = [];
                 
                 % Load PCA data and neural net models
                 [px, py, pz, pp, psx, psy, Nz, Ns] = ...
@@ -113,8 +113,8 @@ try
             end
             
             % Run S-Vector Method
-            [Cntr, Znrms, Simg] = ...
-                runMethod3(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, zseed, v);
+            [Cntr, Znrms, Simg] = runMethod3( ...
+                imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, zseeds, v);
             
         otherwise
             fprintf('Method must be [''svec''|''dvec''|''cmvec'']\n');
@@ -129,7 +129,7 @@ end
 
 end
 
-function [Cntr, Znrms, Simg] = runMethod3(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, z, v)
+function [Cntr, Znrms, Simg] = runMethod3(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, zseeds, v)
 %% runMethod3: predict contour-midline complexes
 % Description
 %
@@ -159,21 +159,23 @@ sptA = repmat('=', 1, 80);
 sptB = repmat('-', 1, 80);
 
 if iscell(imgs)
-    numCrvs = numel(imgs);
+    ncrvs = numel(imgs);
 else
-    numCrvs = 1;
-    I       = imgs;
-    clear imgs;
-    imgs{1} = I;
+    ncrvs = 1;
+    I     = imgs;
+    Z     = zeeds;
+    clear imgs zseeds;
+    imgs{1}   = I;
+    zseeds{1} = Z;
 end
 
 %%
 tAll = tic;
 fprintf('\n%s\nRunning Contour-Midline Predictor on %d images...\n%s\n', ...
-    sptA, numCrvs, sptB);
+    sptA, ncrvs, sptB);
 
-[Cntr, Znrms, Simg] = deal(cell(1, numCrvs));
-allCrvs             = 1 : numCrvs;
+[Cntr, Znrms, Simg] = deal(cell(1, ncrvs));
+allCrvs             = 1 : ncrvs;
 
 if par
     %% Run with Parallelization
@@ -198,8 +200,9 @@ if par
         end
         
         img                                   = imgs{cIdx};
+        zseed                                 = zseeds{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = recursiveDisplacementPredictor(...
-            img, pdx, pdy, pz, pdp, Nz, Nd, z, v);
+            img, pdx, pdy, pz, pdp, Nz, Nd, zseed, v);
         
         if v
 %             fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
@@ -218,8 +221,9 @@ else
         end
         
         img                                   = imgs{cIdx};
+        zseed                                 = zseeds{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = recursiveDisplacementPredictor(...
-            img, pdx, pdy, pz, pdp, Nz, Nd, z, v);
+            img, pdx, pdy, pz, pdp, Nz, Nd, zseed, v);
         
         if v
             fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
@@ -235,13 +239,13 @@ fprintf('Finished running recursive displacement predictor...[%.02f sec]\n%s\n',
 
 end
 
-function [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, z, v, varargin)
+function [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, zseeds, v, varargin)
 %% runMethod2: predict Z-Vector then recursively predict displacement vector
 %
 %
 % Usage:
 %   [Cntr, Znrms, Simg] = runMethod2(imgs, par, ...
-%       pdx, pdy, pz, pdp, Nz, Nd, z, v, varargin)
+%       pdx, pdy, pz, pdp, Nz, Nd, zseeds, v, varargin)
 %
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
@@ -252,7 +256,7 @@ function [Cntr, Znrms, Simg] = runMethod2(imgs, par, pdx, pdy, pz, pdp, Nz, Nd, 
 %   pdp: Z-Patch PCA from image patches of various scales an domain shape/sizes
 %   Nz: neural net model for predicting Z-Vector PC scores from images
 %   Nd: neural net model for predicting D-Vectors from Z-Patch scores
-%   z: initial Z-Vector to seed the initial predictions
+%   zseeds: Z-Vector to seed the initial predictions
 %   v: boolean for verbosity level (0 or 1)
 %   varargin: miscellaneous inputs [PCA folding per frame/last frame]
 %
@@ -267,21 +271,28 @@ sptA = repmat('=', 1, 80);
 sptB = repmat('-', 1, 80);
 
 if iscell(imgs)
-    numCrvs = numel(imgs);
+    ncrvs = numel(imgs);
+    
+    if isempty(zseeds)
+        zseeds = cell(ncrvs, 1);
+    end
+        
 else
-    numCrvs = 1;
-    I       = imgs;
-    clear imgs;
-    imgs{1} = I;
+    ncrvs = 1;
+    I     = imgs;
+    Z     = zseeds;
+    clear imgs zseeds;
+    imgs{1}   = I;
+    zseeds{1} = Z;
 end
 
 %%
 tAll = tic;
 fprintf('\n%s\nRunning Recursive Displacement Predictor on %d images...\n%s\n', ...
-    sptA, numCrvs, sptB);
+    sptA, ncrvs, sptB);
 
-[Cntr, Znrms, Simg] = deal(cell(1, numCrvs));
-allCrvs             = 1 : numCrvs;
+[Cntr, Znrms, Simg] = deal(cell(ncrvs, 1));
+allCrvs             = 1 : ncrvs;
 
 if par
     %% Run with Parallelization
@@ -306,8 +317,9 @@ if par
         end
         
         img                                   = imgs{cIdx};
+        zseed                                 = zseeds{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = recursiveDisplacementPredictor(...
-            img, pdx, pdy, pz, pdp, Nz, Nd, z, v, varargin{:});
+            img, pdx, pdy, pz, pdp, Nz, Nd, zseed, v, varargin{:});
         
         if v
 %             fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
@@ -326,8 +338,9 @@ else
         end
         
         img                                   = imgs{cIdx};
+        zseed                                 = zseeds{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = recursiveDisplacementPredictor(...
-            img, pdx, pdy, pz, pdp, Nz, Nd, z, v, varargin{:});
+            img, pdx, pdy, pz, pdp, Nz, Nd, zseed, v, varargin{:});
         
         if v
             fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
@@ -343,7 +356,7 @@ fprintf('Finished running recursive displacement predictor...[%.02f sec]\n%s\n',
 
 end
 
-function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, zseed, v)
+function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, Nz, Ns, zseeds, v)
 %% runMethod1: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -388,19 +401,27 @@ function [Cntr, Znrms, Simg] = runMethod1(imgs, par, px, py, pz, pp, psx, psy, N
 tAll = tic;
 sptA = repmat('=', 1, 80);
 sptB = repmat('-', 1, 80);
+
 if iscell(imgs)
-    numCrvs = numel(imgs);
+    ncrvs = numel(imgs);
+    
+    if isempty(zseeds)
+        zseeds{1} = [];
+    end
 else
-    numCrvs = 1;
-    I       = imgs;
-    clear imgs;
-    imgs{1} = I;
+    ncrvs = 1;
+    I     = imgs;
+    Z     = zeeds;
+    clear imgs zseeds;
+    imgs{1}   = I;
+    zseeds{1} = Z;
 end
-fprintf('\n\n%s\nRunning 2-Step Neural Net on %d image(s)', sptA, numCrvs);
+
+fprintf('\n\n%s\nRunning 2-Step Neural Net on %d image(s)', sptA, ncrvs);
 
 %%
-[Cntr, Znrms, Simg] = deal(cell(1, numCrvs));
-allCrvs             = 1 : numCrvs;
+[Cntr, Znrms, Simg] = deal(cell(1, ncrvs));
+allCrvs             = 1 : ncrvs;
 
 if par
     %% Run with Parallelization
@@ -427,6 +448,7 @@ if par
         end
         
         img                                   = imgs{cIdx};
+        zseed                                 = zseeds{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
             twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, zseed, v);
         
@@ -447,6 +469,7 @@ else
         end
         
         img                                   = imgs{cIdx};
+        zseed                                 = zseeds{cIdx};
         [Cntr{cIdx}, Znrms{cIdx}, Simg{cIdx}] = ...
             twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, zseed, v);
         

@@ -220,7 +220,7 @@ fprintf('%s\nFinished training Z-Vector CNN [%.03f sec]\n%s', ...
 end
 
 function args = parseInputs(varargin)
-%% Parse input parameters for Constructor method
+%% Parse input parameters 
 % Need descriptions for all these parameters
 % pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 

@@ -35,7 +35,7 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz
 %
 % Output:
 %   Cntr: the contour predicted by this algorithm
-%   Znrms: Z-Vector of the predicted contour
+%   Znrms: Z-Vector of the predicted contour [note: not from final iteration]
 %   Simg: placeholder debugging variable
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -92,7 +92,8 @@ if isempty(z)
         fprintf('Predicting Tangent Bundle from Image...');
     end
     
-    z = predictZvectorFromImage(imgs, Nz, pz, rot);
+    z             = predictZvectorFromImage(imgs, Nz, pz, rot);
+    Znrms.initial = z; % Initial Z-Vector prediction from image
     
     if v
         fprintf('DONE [%.02f sec]\n', toc(tt));
@@ -214,8 +215,8 @@ for itr = allItrs
 end
 
 % Predicted contour is the final iteration
-Cntr  = Simg{itr};
-Znrms = contour2corestructure(Cntr, LEN, STP); % Get Z-Vector of prediction
+Cntr        = Simg{itr};
+Znrms.final = contour2corestructure(Cntr, LEN, STP); % Get Z-Vector of prediction
 
 if v
     fprintf('\n%s\nDone predicting image from %d iterations! [%.02f sec]\n%s\n', ...
@@ -252,7 +253,7 @@ p.addParameter('toRemove', 1);
 p.addParameter('zoomLvl', []);
 p.addParameter('foldPredictions', 1);
 p.addParameter('lastFrmFold', 1);
-p.addParameter('rot', 1);
+p.addParameter('rot', 0);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

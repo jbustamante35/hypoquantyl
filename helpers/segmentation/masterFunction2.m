@@ -33,12 +33,12 @@ allCrvs  = 1 : nCrvs;
 % Check if first iteration
 if nargin < 4
     firstItr = true;
-    TRGS        = cell(1, nCrvs);
+    TRGS     = cell(1, nCrvs);
 else
     % [NOTE]
     % Be sure to not assign Y output if running through multiple iterations
     firstItr = false;
-    TRGS        = [];
+    TRGS     = [];
 end
 
 % Get parameters for patch scaling and domain shapes and sizes
@@ -114,9 +114,9 @@ end
 PTCHS = cat(3, PTCHS{:});
 PTCHS = permute(PTCHS, [1 , 3 , 2]);
 
-szX = size(PTCHS);
-PTCHS   = reshape(PTCHS, [prod(szX(1:2)) , prod(szX(3))]);
-ZVECS   = cat(3, ZVECS{:});
+szX   = size(PTCHS);
+PTCHS = reshape(PTCHS, [prod(szX(1:2)) , prod(szX(3))]);
+ZVECS = cat(3, ZVECS{:});
 
 end
 

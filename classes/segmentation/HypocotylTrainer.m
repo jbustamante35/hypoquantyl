@@ -1,8 +1,12 @@
 %% HypocotylTrainer: class for sections of contours for a CircuitJB object
 % Descriptions
+%
+% Example:
+%   
+%
 
 classdef HypocotylTrainer < handle
-    properties (Access = public)        
+    properties (Access = public)
         Curves
         HTName
         SaveDirectory
@@ -21,11 +25,14 @@ classdef HypocotylTrainer < handle
         NPY
         NPZ
         NZP
+        ZNorm
+        ZShape
         
         % Z-Vector Attributes
+        AddMid
         ZRotate
         ZRotateType
-        AddMid
+        Split2Stitch
         
         % Z-Vector CNN
         FilterRange
@@ -101,11 +108,14 @@ classdef HypocotylTrainer < handle
             'NPY'                 , 6 ; ...
             'NPZ'                 , 10 ; ...
             'NZP'                 , 10 ; ...
+            'ZNorm'               , struct('ps', 0, 'pz', 0, 'pp', 0) ; ...
+            'ZShape'              , struct('ps', 0, 'pz', 0, 'pp', 0) ; ...
             
             % Z-Vector Attributes
             'AddMid'              , 0 ; ...
-            'ZRotate'             , 1 ; ...
-            'ZRotateType'         , 'rad' ; ...
+            'ZRotate'             , 0 ; ...
+            'ZRotateType'         , 'na' ; ...
+            'Split2Stitch'        , 0 ; ...
             
             % Z-Vector CNN
             'FilterRange'         , 7 ; ...
@@ -202,11 +212,17 @@ classdef HypocotylTrainer < handle
             otherwise
                 fprintf(2, 'Method %d not implemented [trn|withval]\n', mth);
                 return;
-        end                
+        end
         
         [px, py, pz, pp] = hypoquantylPCA(C, obj.Save, ...
-            obj.NPX, obj.NPY, obj.NPZ, obj.NZP, ...
-            obj.AddMid, obj.ZRotate, obj.ZRotateType);
+            'pcx', obj.NPX, 'pcy', obj.NPY, 'pcz', obj.NPZ, 'pcp', obj.NZP, ...
+            'addMid', obj.AddMid, 'zrotate', obj.ZRotate, ...
+            'rtyp', obj.ZRotateType, 'znorm', obj.ZNorm, ...
+            'zshp', obj.ZShape, 'split2stitch', obj.Split2Stitch);
+        
+        %             [px, py, pz, pp] = hypoquantylPCA(C, obj.Save, ...
+        %                 obj.NPX, obj.NPY, obj.NPZ, obj.NZP, ...
+        %                 obj.AddMid, obj.ZRotate, obj.ZRotateType);
         obj.PCA          = struct('px', px, 'py', py, 'pz', pz, 'pp', pp);
         
         end
@@ -214,19 +230,34 @@ classdef HypocotylTrainer < handle
         function obj = TrainZVectors(obj)
         %% Train Z-Vectors
         t = tic;
-        n = fprintf('Preparing %d images and %d Z-Vectors PC scores', ...
-            numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ);
+        
+        if obj.Split2Stitch
+            n    = fprintf('Preparing %d images and [%d|%d] Z-Vectors PC scores', ...
+                numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ{1}, obj.NPZ{2});
+            flds = fieldnames(obj.PCA.pz);
+            vtyp = flds{end};
+        else
+            n = fprintf('Preparing %d images and %d Z-Vectors PC scores', ...
+                numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ);
+        end
         
         IMGS  = arrayfun(@(c) c.getImage, ...
             obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
         IMGS  = cat(4, IMGS{:});
-        ZSCRS = obj.PCA.pz.PCAScores(1 : size(IMGS,4));
+        
+        % Stitch midpoints-tangents
+        if obj.Split2Stitch
+            ZSCRS = [obj.PCA.pz.mids.PCAScores(1 : size(IMGS,4)) , ...
+                obj.PCA.pz.(vtyp).PCAScores(1 : size(IMGS,4))];
+        else
+            ZSCRS = obj.PCA.pz.PCAScores(1 : size(IMGS,4));
+        end
         
         jprintf(' ', toc(t), 1, 80 - n);
         
         % TODO: Need the neural net parmeters optimized for each PC
-        [IN , OUT] = deal(cell(1, obj.NPZ));
-        for pc = 1 : obj.NPZ
+        [IN , OUT] = deal(cell(1, size(ZSCRS,2)));
+        for pc = 1 : size(ZSCRS,2)
             [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
                 'Save', obj.Save, 'FltRng', obj.FilterRange, ...
                 'NumFltRng', obj.NumFilterRange, ...
@@ -533,7 +564,7 @@ classdef HypocotylTrainer < handle
             case 1
                 pca = obj.PCA;
             case 2
-            	pca = obj.PCA.(req);
+                pca = obj.PCA.(req);
         end
         
         end
@@ -583,18 +614,18 @@ classdef HypocotylTrainer < handle
                 params = obj.ZParams;
                 
             case 'dnn'
-                % Return parameters for D-Vector training                
+                % Return parameters for D-Vector training
             case 'snn'
-                % Return parameters for S-Vector training                
+                % Return parameters for S-Vector training
             case 'all'
                 % Return all parameters
-                [bay , objfn , params] = deal([]);                
+                [bay , objfn , params] = deal([]);
             otherwise
                 fprintf(2, 'Error requesting optimization parameters %s\n', ...
                     req);
                 [bay , objfn , params] = deal([]);
         end
-                
+        
         end
         
         function fnms = getFigNames(obj)
@@ -664,7 +695,7 @@ classdef HypocotylTrainer < handle
         %% Private helper methods
         function htname = makeName(obj)
         %% Auto-Generate a name for this object
-        ncrvs = numel(obj.Curves);        
+        ncrvs = numel(obj.Curves);
         npx   = obj.NPX;
         npy   = obj.NPY;
         npz   = obj.NPZ;
@@ -681,8 +712,13 @@ classdef HypocotylTrainer < handle
             ntrnd = 0;
         end
         
-        htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
-            tdate, ncrvs, ntrnd, npx, npy, npz, nzp, npf, npd, rot, rtyp, itrs);
+        if obj.Split2Stitch
+            htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02-%02ddpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
+                tdate, ncrvs, ntrnd, npx, npy, npz{1}, npz{2}, nzp, nzp, npf, npd, rot, rtyp, itrs);
+        else
+            htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
+                tdate, ncrvs, ntrnd, npx, npy, npz, nzp, npf, npd, rot, rtyp, itrs);
+        end
         
         end
         
