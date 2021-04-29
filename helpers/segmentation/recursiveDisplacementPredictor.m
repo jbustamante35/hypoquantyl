@@ -92,7 +92,8 @@ if isempty(z)
         fprintf('Predicting Tangent Bundle from Image...');
     end
     
-    z             = predictZvectorFromImage(imgs, Nz, pz, rot);
+    z             = predictZvectorFromImage(imgs, Nz, pz, ...
+        rot, split2stitch, addMid, uLen);
     Znrms.initial = z; % Initial Z-Vector prediction from image
     
     if v
@@ -254,6 +255,9 @@ p.addParameter('zoomLvl', []);
 p.addParameter('foldPredictions', 1);
 p.addParameter('lastFrmFold', 1);
 p.addParameter('rot', 0);
+p.addParameter('split2stitch', 0);
+p.addParameter('addMid', 0);
+p.addParameter('uLen', 0);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

@@ -250,13 +250,13 @@ end
 %         batchNormalizationLayer;
 %         reluLayer;
 %         maxPooling2dLayer(2,'Stride',2);
-%
+% 
 %         % Layer 2
 %         convolution2dLayer(7, 5,'Padding','same');
 %         batchNormalizationLayer;
 %         reluLayer;
 %         maxPooling2dLayer(2,'Stride',2);
-%
+% 
 %         % Layer 3
 %         convolution2dLayer(7, 3,'Padding','same');
 %         batchNormalizationLayer;

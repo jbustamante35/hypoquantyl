@@ -38,7 +38,7 @@ function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, varargin)
 %       znorm = struct('ps', 0, 'pz', 1,       'pp', 0);
 %       zshp  = struct('ps', 0, 'pz', [n , d], 'pp', 0);
 %
-%   If performing PCA with splt2stch, there should be 2 separate values for
+%   If performing PCA with split2stitch, there should be 2 separate values for
 %   'pz' indicated by a cell array.
 %       n     = CRVS(1).NumberOfSegments * numel(CRVS);
 %       dmid  = 2; % MidpointX , MidpointY
