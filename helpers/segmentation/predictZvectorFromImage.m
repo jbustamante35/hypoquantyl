@@ -28,7 +28,8 @@ switch nargin
         rot          = 0;
         addMid       = 0;
         uLen         = 1;
-    case 3        
+    case 3
+        split2stitch = 0;
         rot          = 0;
         addMid       = 0;
         uLen         = 1;
@@ -103,8 +104,8 @@ end
 %% Determine if final Z-Vector should be in rotations or tangent-normals
 if rot
     % Prediction should already be in rotations
-    %         Znrms = zVectorConversion(Zrevs, nsegs, ncrvs, 'rot');
-    Znrms = Zrevs;
+    Znrms = zVectorConversion(Zrevs, nsegs, ncrvs, 'rot');
+%     Znrms = Zrevs;
 else
     % Add normal vector
     [~ , Znrms] = addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid, uLen);

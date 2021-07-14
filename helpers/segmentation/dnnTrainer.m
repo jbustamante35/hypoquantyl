@@ -5,11 +5,11 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, fldPreds, NPF, 
 % UPDATE [01-29-2021]
 %   PCA folding now occurs BEFORE computing target D-Vectors, rather than after
 %   computing them. This reduces the noise in input data that is fed to the
-%   neural nets at each iteration. 
-% 
+%   neural nets at each iteration.
+%
 %   The old method had D-Vectors folded AFTER being fed to the neural net, which
-%   meant the input to these neural net models were jagged and noisy. The PCA 
-%   folding at the final iteration remains the same. 
+%   meant the input to these neural net models were jagged and noisy. The PCA
+%   folding at the final iteration remains the same.
 %
 % Usage:
 %   [DIN, DOUT, fnms] = dnnTrainer(IMG, CNTR, nItrs, nFigs, ...
@@ -52,6 +52,8 @@ eIdxs   = double(sort(Shuffle(numCrvs, 'index', numel(allFigs))));
 
 %% Set up figures to check progress
 if vis
+    [~ , fnms] = makeBlankFigures(nFigs, 1);
+    
     for fidx = allFigs
         figclr(fidx);
         
@@ -65,8 +67,6 @@ if vis
         fnms{fidx} = sprintf('%s_TargetVsPredicted_%dIterations_Contour%03d', ...
             tdate, nItrs, idx);
     end
-else
-    fnms = [];
 end
 
 %% Run the algorithm!
@@ -95,17 +95,18 @@ for itr = 1 : nItrs
         size(TRGS,1), size(TRGS,3));
     
     %%
+    [pdx , pdy] = deal([]);
     if fldPreds
         %% Backup for debugging
         tbak = TRGS;
         
         %% Smooth predicted targets using PCA on predicted displacement vectors
         % NOTE: This now occurs before computing targets, to ensure the data
-        % being inputted to the neural net is smooth rather than noisy.        
+        % being inputted to the neural net is smooth rather than noisy.
         
         tt = tic;
         fprintf('Smoothing %d predictions with %d PCs...', ...
-            size(TRGS,1), NPF);                
+            size(TRGS,1), NPF);
         
         % Run PCA on X-Coordinates
         dx  = squeeze((TRGS(:,1,:)))';
@@ -119,8 +120,7 @@ for itr = 1 : nItrs
         dprex  = reshape(pdx.SimData', [size(TRGS,1) , 1 , numCrvs]);
         dprey  = reshape(pdy.SimData', [size(TRGS,1) , 1 , numCrvs]);
         TRGS   = [dprex , dprey , ones(size(dprex))];
-        fprintf('DONE! [%.02f sec]...', toc(tt));        
-        
+        fprintf('DONE! [%.02f sec]...', toc(tt));
     end
     
     %%
@@ -130,6 +130,9 @@ for itr = 1 : nItrs
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Run a fitnet to predict displacement vectors from scaled patches
+    % [NOTE 06.14.2021]
+    % This neural net only uses image patches as inputs! I thought this was
+    % taking the Z-Vector slices AND the image patches. Is this correct?!?!
     t = tic;
     fprintf('Using neural net to train %d targets...', size(SCLS,1));
     
@@ -146,7 +149,7 @@ for itr = 1 : nItrs
         size(dpre,1), size(dpre,3));
     
     trgpre = computeTargets(dpre, ZVECS, 0, par);
-        
+    
     if fldPreds
         %% Back-up predicted targets for debugging
         pbak = trgpre;
@@ -159,12 +162,12 @@ for itr = 1 : nItrs
         % Smooth X-Coordinates
         fxi = squeeze((trgpre(:,1,:)))';
         fxs = pcaProject(fxi, pdx.EigVecs, pdx.MeanVals, 'sim2scr');
-        fxf = pcaProject(fxs, pdx.EigVecs, pdx.MeanVals, 'scr2sim');        
+        fxf = pcaProject(fxs, pdx.EigVecs, pdx.MeanVals, 'scr2sim');
         
         % Smooth  Y-Coordinates
         fyi = squeeze((trgpre(:,2,:)))';
         fys = pcaProject(fyi, pdy.EigVecs, pdy.MeanVals, 'sim2scr');
-        fyf = pcaProject(fys, pdy.EigVecs, pdy.MeanVals, 'scr2sim');                
+        fyf = pcaProject(fys, pdy.EigVecs, pdy.MeanVals, 'scr2sim');
         
         % Back-Project and reshape
         fx     = reshape(fxf', [size(trgpre,1), 1, numCrvs]);
@@ -213,6 +216,7 @@ for itr = 1 : nItrs
             drawnow;
         end
     end
+    
     % Done with the iteration
     fprintf('DONE! [%.02f sec]\n%s\n', toc(t), sprB);
     fprintf('Ran Iteration %d of %d: %.02f sec\n%s\n', ...
@@ -221,7 +225,6 @@ for itr = 1 : nItrs
 end
 
 % Store output
-% DOUT = struct('Net', net, 'EigVecs', evecs, 'MeanVals', mns);
 DIN           = struct('IMGS', IMG, 'CNTRS', CNTR);
 DOUT.Net      = net;
 DOUT.EigVecs  = evecs;
@@ -236,8 +239,7 @@ if sav
     %% Data for predicting validation set
     % Need to save the neural networks, and what else?
     TN  = struct('Net', net, 'EigVecs', evecs, 'MeanVals', mns);
-    dnm = sprintf('%s_DVecsNN_%dIterations_%dCurves', ...
-        tdate, nItrs, numCrvs);
+    dnm = sprintf('%s_DVecsNN_%dIterations_%dCurves', tdate, nItrs, numCrvs);
     save(dnm, '-v7.3', 'TN');
     
     %% PCA to fold final iteration of predictions
@@ -250,8 +252,8 @@ if sav
     ynm = sprintf('FoldDVectorY');
     pdy = pcaAnalysis(dy, NPF, sav, ynm);
     
-    DOUT.pdf = struct('pdx', pdx, 'pdy', pdy);
-end
 end
 
+DOUT.pdf = struct('pdx', pdx, 'pdy', pdy);
 
+end

@@ -9,11 +9,11 @@ function [PTCHS , ZVECS , TRGS] = masterFunction2(IMG, CNTR, par, trgs, scls, do
 % Input:
 %   IMG: cell array of grayscale images
 %   CNTR: cell array of contours
-%   par:
+%   par: run on single-thread (0) or with parallelization (1)
 %   trgs: displacement vectors predicted by neural net, in tangent frames
-%   scls:
-%   dom:
-%   dsz:
+%   scls: zoom scales for image patches
+%   dom: domain vectors defining shape of image patches
+%   dsz: domain sizes for image patches
 %
 % Output:
 %   PTCHS: vectorized image patches for multiple scales and multiple domains

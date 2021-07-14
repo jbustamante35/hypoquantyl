@@ -25,8 +25,9 @@ classdef Seedling < handle
         Image
         PData
         Contour
-        SCALESIZE    = [101 101]
-        PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'Centroid', 'WeightedCentroid', 'Orientation'};
+        SCALESIZE    = [101 , 101]
+        %         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'Centroid', 'WeightedCentroid', 'Orientation'};
+        PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
         CONTOURSIZE  = 500		% number of points to normalize Hypocotyl contours
         IMAGEBUFFER  = 40		% percentage of image size to extend image for creating Hypocotyl objects
         TESTS2RUN    = [1 1 1 1 0 0];	% manifest to determine which quality checks to run
@@ -45,7 +46,7 @@ classdef Seedling < handle
                 % Set default properties for empty object
                 vargs = {};
             end
-
+            
             prps   = properties(class(obj));
             deflts = {...
                 'Lifetime', 0 ; ...
@@ -140,7 +141,7 @@ classdef Seedling < handle
             aa  = strfind(sn, '{');
             bb  = strfind(sn, '}');
             nm  = sprintf('Hypocotyl_{%s}', sn(aa + 1 : bb - 1));
-            hyp = Hypocotyl(nm, 'Frame', rng);
+            hyp = Hypocotyl('HypocotylName', nm, 'Frame', rng);
             hyp.setParent(obj);
             hyp.Lifetime = max(rng);
             
@@ -149,6 +150,7 @@ classdef Seedling < handle
             
             % Set this object's Hypocotyl property
             obj.MyHypocotyl = hyp;
+            
         end
         
         function obj = DerefParents(obj)
@@ -172,7 +174,7 @@ classdef Seedling < handle
     methods (Access = public) %% Various methods for this class
         function obj = setSeedlingName(obj, sn)
             %% Set name for Seedling
-%             obj.SeedlingName = string(sn);
+            %             obj.SeedlingName = string(sn);
             obj.SeedlingName = char(sn);
         end
         
@@ -200,7 +202,7 @@ classdef Seedling < handle
             obj.ExperimentPath = obj.Host.ExperimentPath;
         end
         
-        function hyp = extractHypocotyl(obj, frm, verb)
+        function hyp = extractHypocotyl(obj, frm, vrb)
             %% Extract Hypocotyl with defined sizes within Seedling object
             % This function crops the top [h x w] of a Seedling
             % TODO:
@@ -211,27 +213,24 @@ classdef Seedling < handle
             %
             % (update 9/29/18) I have no clue what I meant by the above note
             % (update 10/23/18) I still have no clue what this means
+            % (update 05/28/21) I can't believe I haven't addressed this yet
             %
             % Input:
             %   obj  : this Seedling object
-            %   frm  : frame in which to search for Hypocotyl
-            %   sclsz: [2 x 1] array defining the scaled size of each Hypocotyl
-            %	verb: verbosity
+            %   frm  : frame to search for Hypocotyl
+            %	vrb: verbosity
             %
             % Output:
-            %   obj  : function sets AnchorPoints and PreHypocotyl
+            %   hyp  : Hypocotyl object
             %
             
             try
                 % Use this Seedling's AnchorPoints coordinates
-                ap = obj.getAnchorPoints(frm);
+                apts = obj.getAnchorPoints(frm);
                 
                 % Crop out and resize PreHypocotyl for use as training data
-                % Store grayscale, bw, and contour in Hypocotyl object
-                [msk, bbox] = cropFromAnchorPoints(obj.getImage(frm, 'bw'),...
-                    ap, obj.SCALESIZE);
-                ctr         = extractContour(imcomplement(msk), ...
-                    obj.CONTOURSIZE);
+                [~, tbox , ~ , lbox] = cropFromAnchorPoints( ...
+                    obj.getImage(frm, 'bw'), apts, obj.SCALESIZE);
                 
                 % Instance new Hypocotyl at frame
                 sn  = obj.getSeedlingName;
@@ -239,7 +238,7 @@ classdef Seedling < handle
                 bb  = strfind(sn, '}');
                 nm  = sprintf('PreHypocotyl_Sdl{%s}_Frm{%d}', ...
                     sn(aa + 1 : bb - 1), frm);
-                hyp = makeNewHypocotyl(obj, nm, frm, ctr, bbox);
+                hyp = makeNewHypocotyl(obj, nm, frm, tbox, lbox);
                 
                 % Set this Seedlings AnchorPoints and PreHypocotyl
                 if isempty(obj.PreHypocotyl)
@@ -248,13 +247,13 @@ classdef Seedling < handle
                     obj.PreHypocotyl(frm) = hyp;
                 end
                 
-                if verb
+                if vrb
                     fprintf('Extracted hypocotyl from %s frame %d\n', ...
                         obj.SeedlingName, frm);
                 end
                 
             catch e
-                fprintf('No data %s Frame %d \n%s\n', ...
+                fprintf(2, 'No data %s Frame %d \n%s\n', ...
                     obj.getSeedlingName, frm, e.getReport);
             end
         end
@@ -377,15 +376,14 @@ classdef Seedling < handle
             sz   = cat(1, sz{:});
             bbox = [zeros(numel(imgs), 2) , sz];
             
-            % Set data for Hypocotyl object
+            % Set data for Hypocotyl object and Stem
             hyp = Hypocotyl('Parent', obj, 'Host', obj.Host, 'Frame', frms, ...
                 'Lifetime', lt, 'HypocotylName', 'Hypocotyl_{1}', 'CropBox', bbox);
             hyp.ExperimentName = obj.ExperimentName;
             hyp.ExperimentPath = obj.ExperimentPath;
             hyp.GenotypeName   = obj.GenotypeName;
             hyp.SeedlingName   = obj.SeedlingName;
-            obj.MyHypocotyl    = hyp;            
-            
+            obj.MyHypocotyl    = hyp;
         end
         
         function obj = setCoordinates(obj, frm, coords)
@@ -411,10 +409,14 @@ classdef Seedling < handle
             %% Returns coordinates at specified frame
             % Make sure to check for nan (no coordinate found at frame)
             try
+                if nargin < 2
+                    frm = ':';
+                end
+                
                 coords = obj.Coordinates(frm, :);
             catch
                 fprintf('No coordinate found at frame %d \n', frm);
-                %                 coords = [nan nan];
+                coords = [nan , nan];
             end
         end
         
@@ -426,6 +428,7 @@ classdef Seedling < handle
                     
                 case 'd'
                     obj.Frame(2) = frm;
+                    
                 otherwise
                     fprintf(2, 'Error: input must be ''b'' or ''d''\n');
                     return;
@@ -434,18 +437,27 @@ classdef Seedling < handle
         
         function frm = getFrame(obj, req)
             %% Return birth or death Frame number for Seedling
+            if nargin < 2
+                req = 'a';
+            end
+            
             try
                 switch req
                     case 'b'
                         frm = obj.Frame(1);
                     case 'd'
                         frm = obj.Frame(2);
+                    case 'a'
+                        frm = obj.Frame;
                     otherwise
                         fprintf(2, 'Error: input must be ''b'' or ''d''\n');
+                        frm = [];
                         return;
                 end
             catch
-                frm = obj.Frame;
+                fprintf(2, 'Error: input must be ''b'' or ''d''\n');
+                frm = [];
+                return;
             end
         end
         
@@ -485,7 +497,7 @@ classdef Seedling < handle
                     obj.PData(frm) = pd;
                 end
             catch
-                fprintf(2, 'No pdata at index %d \n', frm);
+                fprintf(2, 'No PData at index %d \n', frm);
             end
         end
         
@@ -503,9 +515,9 @@ classdef Seedling < handle
                     try
                         frm = varargin{2};
                         pd  = obj.PData(frm);
-                    catch e
+                    catch
                         fprintf(2, 'No pdata at frame %d \n', frm);
-                        fprintf(2, '%s\n', e.getReport);
+                        pd = [];
                     end
                     
                 case 3
@@ -515,9 +527,8 @@ classdef Seedling < handle
                         frm = varargin{2};
                         req = varargin{3};
                         pd  = obj.PData(frm);
-                    catch e
+                    catch
                         fprintf(2, 'No pdata at frame %d \n', frm);
-                        fprintf(2, '%s\n', e.getReport);
                     end
                     
                     % Get requested data field
@@ -532,12 +543,13 @@ classdef Seedling < handle
                     
                 otherwise
                     fprintf(2, 'Error requesting data.\n');
+                    pd = [];
                     return;
             end
             
         end
         
-        function pts = setAnchorPoints(obj, frm, pts)
+        function obj = setAnchorPoints(obj, frm, pts)
             %% Returns 4x2 array of 4 anchor points representing Hypocotyl
             try
                 obj.AnchorPoints(:, :, frm) = pts;
@@ -555,7 +567,8 @@ classdef Seedling < handle
             try
                 pts = obj.AnchorPoints(:, :, frm);
             catch
-                fprintf(2, 'No data at index %s \n', frm);
+                fprintf(2, 'No data at index %d \n', frm);
+                pts = [];
             end
         end
         
@@ -571,11 +584,19 @@ classdef Seedling < handle
         
         function obj = setContour(obj, frm, crc)
             %% Set manually-drawn CircuitJB object at given frame
+            if isempty(obj.Contour)
+                obj.Contour = ContourJB;
+            end
+            
             obj.Contour(frm) = crc;
         end
         
         function crc = getContour(obj, frm)
             %% Return CircuitJB object at given frame
+            if nargin < 2
+                frm = ':';
+            end
+            
             crc = obj.Contour(frm);
         end
         
@@ -585,7 +606,7 @@ classdef Seedling < handle
         end
         
         function hyp = getPreHypocotyl(obj, frm)
-            %% Return PreHypocotyl at desired frame
+            %% Return PreHypocotyl from frame
             try
                 hyp = obj.PreHypocotyl(frm);
             catch
@@ -594,7 +615,52 @@ classdef Seedling < handle
         end
         
         function sclsz = getScaleSize(obj)
+            %% Return image rescale dimensions
             sclsz = obj.SCALESIZE;
+        end
+        
+        function [tbox , lbox] = setHypocotylCropBox(obj, frms, v)
+            %% Set CropBox for upper and lower region
+            switch nargin
+                case 1
+                    frms = 1 : obj.getLifetime;
+                    v    = 0;
+                case 2
+                    v = 0;
+            end
+            
+            h    = obj.MyHypocotyl;
+            apts = obj.getAnchorPoints(frms);
+            imgs = obj.getImage(frms);
+            
+            try
+                % Set for single or multiple frames
+                if ~ismatrix(apts)
+                    % Convert to cell arrays
+                    imgs = {imgs};
+                    apts = arrayfun(@(x) apts(:,:,x), ...
+                        1 : size(apts,3), 'UniformOutput', 0);
+                    [~ , tbox , ~ , lbox] = cellfun(@(img,apt) ...
+                        cropFromAnchorPoints(img, apt, obj.SCALESIZE), ...
+                        imgs, apts, 'UniformOutput', 0);
+                    tbox = cat(1, tbox{:});
+                    lbox = cat(1, lbox{:});
+                else
+                    [~ , tbox , ~ , lbox] = cropFromAnchorPoints( ...
+                        imgs, apts, obj.SCALESIZE);
+                end
+                % Set CropBoxes
+                h.setCropBox(frms, tbox, 'upper');
+                h.setCropBox(frms, lbox, 'lower');
+            catch
+                fprintf(2, 'Error setting CropBox');
+                [tbox , lbox] = deal([0 , 0 , 0 , 0]);
+            end
+        end
+        
+        function setHypocotylLength(obj, frms, hypln)
+            %% Set cut-off length for upper hypocotyl region
+            
         end
         
         function prp = getProperty(obj, req)
@@ -611,49 +677,39 @@ classdef Seedling < handle
     
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
-        %% Private helper methods        
-        function h = makeNewHypocotyl(obj, nm, frm, ctr, bbox)
+        %% Private helper methods
+        function h = makeNewHypocotyl(obj, nm, frm, tbox, lbox)
             %% Set data into new Hypocotyl
             % Input:
             %   nm: name for new Hypocotyl
-            %   frm: birth frame to set
-            %   ctr: ContourJB object
-            %   bbox: coordinates for bounding box to crop from parent image
+            %   frm: Hypocotyl's birth frame
+            %   tbox: coordinates to crop upper region from parent image
+            %   lbox: coordinates to crop lower region from parent image
             %
             % Output:
-            %   h: new Hypocotyl object set with inputted data
-            h = Hypocotyl(nm);
+            %   h: new Hypocotyl object
+            
+            h = Hypocotyl('HypocotylName', nm);
             h.setParent(obj);
             h.setFrame('b', frm);
-            h.setContour(1, ctr);
-            h.setCropBox(1, bbox);
+            h.setCropBox(1, tbox, 'upper');
+            h.setCropBox(1, lbox, 'lower');
         end
         
         function hyp = compileHypocotyl(obj, hyp, pre)
             %% Compile data from multiple PreHypocotyl objects
-            % Properties to store as multi-dimensional data:
-            % - Contour
-            % - Circuit
-            % - CropBox
-            % * Midline [ might not be needed ]
-            % * Coordinates [ might not be needed ]
-            %
             % Input:
             %     obj: this Seedling object
-            %     hyp: compiled Hypocotyl object before compiling data
+            %     hyp: Hypocotyl object
             %     pre: multiple PreHypocotyl objects to draw data from
             %
             % Ouput:
-            %     hyp: compiled Hypocotyl object after compiling data
+            %     hyp: Hypocotyl object after cleaning up data
             
             %% [TODO] Change Hypocotyl methods to include Frame number
             for frm = 1 : numel(pre)
                 hyp.setCropBox(frm, pre(frm).getCropBox(':'));
                 hyp.setContour(frm, pre(frm).getContour(':'));
-                %                 hyp.setCircuit(frm, pre(frm).getCircuit(1, 'org'), 'org');
-                %                 hyp.setCircuit(frm, pre(frm).getCircuit(1, 'flp'), 'flp');
-                %                 hyp.setMidline(frm, pre(frm).getMidline);
-                %                 hyp.setCoordinates(frm, pre(frm).getCoordinates);
             end
             
         end

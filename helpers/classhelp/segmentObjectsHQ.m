@@ -23,11 +23,11 @@ function [msk , obs] = segmentObjectsHQ(img, smth, sz, sens, mth)
 
 %% Use alternative function below [for automated training]
 switch nargin
-    case 1       
+    case 1
         smth = 0;
         sz   = size(img);
         sens = 0.6;
-        mth  = 3;        
+        mth  = 3;
     case 2
         sz   = size(img);
         sens = 0.6;
@@ -100,7 +100,8 @@ gt = graythresh(img);
 if gt >= 0.5
     % Foreground is darker; lower sensitivity parameter
     sens = 0.5 - sensFix;
-    fg   = 'dark';
+    %     fg   = 'dark';
+    fg   = 'bright';
 else
     % Foreground is brighter; raise sensitivity parameter
     sens = 0.5 + sensFix;
@@ -109,9 +110,10 @@ else
 end
 
 %
-msk  = imbinarize(img, 'adaptive', ...
-    'Sensitivity', sens, 'ForegroundPolarity', fg);
-flt  = bwareafilt(imcomplement(msk), fltsz);
+msk  = imcomplement(imbinarize(img, 'adaptive', ...
+    'Sensitivity', sens, 'ForegroundPolarity', fg));
+% flt  = bwareafilt(imcomplement(msk), fltsz);
+flt  = bwareafilt(msk, fltsz);
 obs  = bwconncomp(flt);
 
 % Recursive fix to calibrate sensitivity

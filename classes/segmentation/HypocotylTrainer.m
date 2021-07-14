@@ -68,10 +68,12 @@ classdef HypocotylTrainer < handle
         SplitCurves
         Splits
         PCA
+        isOptimized
         ZVectors
         ZFnc
         ZBay
         ZParams
+        ZParams_bak
         DVectors
         SVectors
         FigNames
@@ -242,9 +244,14 @@ classdef HypocotylTrainer < handle
                     numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ);
             end
             
-            IMGS = arrayfun(@(c) c.getImage, ...
-                obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
-            IMGS = cat(4, IMGS{:});
+            if ~isempty(obj.Images)
+                IMGS = obj.Images(obj.Splits.trnIdx);
+                IMGS = cat(4, IMGS{:});
+            else
+                IMGS = arrayfun(@(c) c.getImage, ...
+                    obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
+                IMGS = cat(4, IMGS{:});
+            end
             
             % Stitch midpoints-tangents
             if obj.Split2Stitch
@@ -258,13 +265,34 @@ classdef HypocotylTrainer < handle
             
             % TODO: Need the neural net parmeters optimized for each PC
             [IN , OUT] = deal(cell(1, size(ZSCRS,2)));
-            for pc = 1 : size(ZSCRS,2)
-                [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
-                    'Save', obj.Save, 'FltRng', obj.FilterRange, ...
-                    'NumFltRng', obj.NumFilterRange, ...
-                    'MBSize', obj.MiniBatchSize, 'Dropout', obj.DropoutLayer, ...
-                    'ILRate', obj.InitialLearningRate, 'MaxEps', obj.MaxEpochs, ...
-                    'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+            
+            if obj.isOptimized.znn
+                % Set PC-optimized parameters if not already
+                if ~iscell(obj.FilterRange)
+                    obj.SetOptimizedParameters('znn');
+                end
+                
+                % Loop through optimized parameters
+                for pc = 1 : size(ZSCRS,2)
+                    [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
+                        'Save', obj.Save, 'FltRng', obj.FilterRange{pc}, ...
+                        'NumFltRng', obj.NumFilterRange{pc}, ...
+                        'MBSize', obj.MiniBatchSize, ...
+                        'Dropout', obj.DropoutLayer{pc}, ...
+                        'ILRate', obj.InitialLearningRate{pc}, ...
+                        'MaxEps', obj.MaxEpochs, ...
+                        'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+                end
+            else
+                % Use same parameters for each PC [old method]
+                for pc = 1 : size(ZSCRS,2)
+                    [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
+                        'Save', obj.Save, 'FltRng', obj.FilterRange, ...
+                        'NumFltRng', obj.NumFilterRange, ...
+                        'MBSize', obj.MiniBatchSize, 'Dropout', obj.DropoutLayer, ...
+                        'ILRate', obj.InitialLearningRate, 'MaxEps', obj.MaxEpochs, ...
+                        'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+                end
             end
             
             obj.ZVectors = struct('ZIN', IN, 'ZOUT', OUT);
@@ -350,9 +378,18 @@ classdef HypocotylTrainer < handle
                 mkdir(dnm);
             end
             
+            % Remove Curves
+            crvs  = obj.Curves;
+            csplt = obj.SplitCurves;
+            [obj.Curves , obj.SplitCurves] = deal([]);
+            
             HT  = obj;
             fnm = sprintf('%s%s%s', dnm, filesep, obj.HTName);
             save(fnm, '-v7.3', 'HT');
+            
+            % Replace Curves after saving
+            obj.Curves      = crvs;
+            obj.SplitCurves = csplt;
             
         end
         
@@ -373,27 +410,29 @@ classdef HypocotylTrainer < handle
                 case 'znn'
                     %% Run metaparameter optimization for Z-Vector CNN
                     flt    = obj.FilterRange;
-                    nflt   = cellfun(@(x) num2str(x), ...
-                        obj.NumFilterRange, 'UniformOutput', 0);
-%                     nlay   = obj.FilterLayers;
-                    mbsize = obj.MiniBatchSize;
+                    nflt   = obj.NumFilterRange;
                     drp    = obj.DropoutLayer;
                     ilrate = obj.InitialLearningRate;
-                    maxeps = obj.MaxEpochs;
+                    %                     nlay   = obj.FilterLayers;
+                    %                     mbsize = obj.MiniBatchSize;
+                    %                     maxeps = obj.MaxEpochs;
                     
                     % Define optimizable variables
                     params = [
                         optimizableVariable('FilterSize'      , flt,    'Type', 'integer')
-                        optimizableVariable('NumFilters'      , nflt,   'Type', 'categorical')
-%                         optimizableVariable('FilterLayers'    , nlay,   'Type', 'integer')
-                        optimizableVariable('MiniBatchSize'   , mbsize, 'Type', 'integer')
+                        optimizableVariable('NumFilters1'      , nflt{1},   'Type', 'integer')
+                        optimizableVariable('NumFilters2'      , nflt{2},   'Type', 'integer')
+                        optimizableVariable('NumFilters3'      , nflt{3},   'Type', 'integer')
                         optimizableVariable('DropoutLayer'    , drp)
                         optimizableVariable('InitialLearnRate', ilrate, 'Transform', 'log')
-                        optimizableVariable('MaxEpochs'       , maxeps, 'Type',  'integer')];
+                        %                         optimizableVariable('FilterLayers'    , nlay,   'Type', 'integer')
+                        %                         optimizableVariable('MiniBatchSize'   , mbsize, 'Type', 'integer')
+                        %                         optimizableVariable('MaxEpochs'       , maxeps, 'Type',  'integer')
+                        ];
                     
                     % Get training and validation images and scores
                     if isempty(obj.Images)
-                        obj.storeImages;                        
+                        obj.storeImages;
                     end
                     
                     imgs  = obj.Images;
@@ -430,6 +469,7 @@ classdef HypocotylTrainer < handle
                                 [bay , fnc] = obj.getOptimizer;
                                 pcrng       = pc;
                         end
+                        
                     catch
                         fprintf(2, 'Error determining selected pc %s\n', pc);
                         return;
@@ -451,6 +491,8 @@ classdef HypocotylTrainer < handle
                         obj.ZParams{npc} = params;
                     end
                     
+                    obj.isOptimized.znn = 1;
+                    
                 case 'dnn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
                     return;
@@ -466,70 +508,58 @@ classdef HypocotylTrainer < handle
             
         end
         
-        function P = SetOptimizedParameters(obj, mth, pc, mpath)
+        function SetOptimizedParameters(obj, req)
             %% Set parameters to best values after optimization
-            %
-            % Input:
-            %   mth: algorithm to get parameters for [znn|dnn|snn]
-            %   pc: principal component to set optimized parameters for
-            %   mpath: path to directory of mat-files after optimization
-            
-            %% Parse inputs
-            switch nargin
-                case 1
-                    mth   = 'znn';
-                    pc    = 1;
-                    mpath = sprintf('%s%soptimization%spc%02d', ...
-                        pwd, filesep, filesep, pc);
-                case 2
-                    pc    = 1;
-                    mpath = sprintf('%s%soptimization%spc%d', ...
-                        pwd, filesep, filesep, pc);
-                case 3
-                    mpath = sprintf('%s%soptimization%spc%d', ...
-                        pwd, filesep, filesep, pc);
-                case 4
-                otherwise
-                    fprintf(2, 'Error with inputs [%d]\n', nargin);
-                    return;
-            end
-            
-            %% Set parameters
-            switch mth
+            % Each PC should have it's own set of optimized parameters
+            % NOTE: Rename properties to actual parameter names (get rid of XRange)
+            switch req
                 case 'znn'
-                    %% Set parameters for Z-Vector training
-                    % Extract directory of datasets
-                    exp = 'n_*.*e';
-                    d   = dir2(mpath);
-                    m   = arrayfun(@(x) x.name, d, 'UniformOutput', 0);
+                    %% Backup original ranges/values
+%                     oflds = {'FilterRange' ; 'NumFilterRange' ; 'MiniBatchSize' ; ...
+%                         'DropoutLayer'  ; 'InitialLearningRate' ; 'MaxEpochs'};
+                    oflds = {'FilterRange' ; 'NumFilterRange' ; ...
+                        'DropoutLayer'  ; 'InitialLearningRate'};
+                    bflds = cellfun(@(x) sprintf('%s_bak', x), oflds, 'UniformOutput', 0);
                     
-                    [a , b] = cellfun(@(x) regexpi(x, exp), ...
-                        m, 'UniformOutput', 0);
-                    val     = cell2mat(cellfun(@(mm,aa,bb) str2double( ...
-                        mm(aa+2:bb-1)), m, a, b, 'UniformOutput', 0));
+                    if isempty(obj.ZParams_bak)
+                        for fld = 1 : numel(oflds)
+                            obj.ZParams_bak.(bflds{fld}) = obj.(oflds{fld});
+                        end
+                    end
                     
-                    % Get data with minimum error
-                    minVal = min(val(val > 0));
-                    minIdx = find(val == minVal);
-                    minFnm = sprintf('%s%s%s', ...
-                        d(minIdx).folder , filesep , d(minIdx).name);
+                    %% Extract optimized parameters
+                    bay = obj.getOptimizer(req);
+                    bp  = cellfun(@(x) x.bestPoint, bay, 'UniformOutput', 0);
+                    bp  = cat(1, bp{:});
                     
-                    % Load data and extract values
-                    P       = load(minFnm);
-                    P       = P.BAYES;
-                    %                     net     = P.Net;
-                    %                     layers  = P.Net.Layers;
-                    %                     options = P.Options;
-                    %                     params  = P.Params;
+                    % Combine NumFilter1-3 into 1 column
+                    bp.NumFilterRange = [bp.NumFilters1 , bp.NumFilters2 , bp.NumFilters3];
+                    bp = movevars(bp, 'NumFilterRange', 'After', 'FilterSize');
+                    bp = removevars(bp, {'NumFilters1', 'NumFilters2', 'NumFilters3'});
                     
+                    nflds                         = fieldnames(bp);
+                    nflds(numel(nflds) - 2 : end) = [];
+                    
+                    % Replace original properties with values for each PC
+                    for fld = 1 : numel(nflds)
+                        obj.(oflds{fld}) = cell(obj.NPZ, 1);
+                        for pc = 1 : obj.NPZ
+                            obj.(oflds{fld}){pc} = bp(pc,:).(nflds{fld});
+                        end
+                    end
                     
                 case 'dnn'
+                    fprintf('Optimizing %s doesn''t work yet!\n', mth);
+                    return;
+                    
                 case 'snn'
+                    fprintf('Optimizing %s doesn''t work yet!\n', mth);
+                    return;
+                    
                 otherwise
-                    fprintf(2, 'Method %s not recognized [znn|dnn|snn]\n', mth);
+                    fprintf(2, 'Incorrect method %s [znn|dnn|snn]\n', mth);
                     return;
             end
-            
         end
         
     end
@@ -783,23 +813,25 @@ classdef HypocotylTrainer < handle
                 %% Train network with parameters and evaluate validation error
                 % Load parameters
                 flt    = params.FilterSize;
-                nflt   = str2num(char(params.NumFilters)); %#ok<ST2NM>
-%                 nlay   = params.FilterLayers;
-                nlay   = 1;
-                mbsize = params.MiniBatchSize;
+                nflt   = [params.NumFilters1 , params.NumFilters2 , params.NumFilters3];
                 drp    = params.DropoutLayer;
                 ilrate = params.InitialLearnRate;
-                maxeps = params.MaxEpochs;
+                %                 nlay   = params.FilterLayers;
+                %                 mbsize = params.MiniBatchSize;
+                %                 maxeps = params.MaxEpochs;
+                
+                %% Default properties [no to optimize]
+                nlay   = obj.FilterLayers;
+                mbsize = obj.MiniBatchSize;
+                maxeps = obj.MaxEpochs;
                 
                 %% Misc properties
-                sav = 0; % Don't save output
+                sav = 0; % Don't save output between optimizations
                 par = obj.Parallel;
                 vis = obj.Visualize;
                 vrb = obj.Verbose;
                 
                 %%
-                vrb = 0; % No output for testing
-                
                 [~, ZOUT] = znnTrainer(Timgs, Tscrs, obj.Splits, pc, ...
                     'FltRng', flt, 'NumFltRng', nflt, 'FltLayers', nlay, ...
                     'MBSize', mbsize, 'Dropout', drp, 'ILRate', ilrate, ...
@@ -815,8 +847,6 @@ classdef HypocotylTrainer < handle
                 outdir = sprintf('optimization%spc%02d', filesep, pc);
                 fnm    = sprintf('%s%s%s_optimization_%0.04ferror.mat', ...
                     outdir, filesep, tdate, valErr);
-                %                 BAYES  = struct('Net', net, 'Error', valErr, ...
-                %                     'Options', options, 'Params', table2struct(params));
                 BAYES  = struct('Net', net, 'Error', valErr, ...
                     'Params', table2struct(params));
                 
@@ -828,7 +858,6 @@ classdef HypocotylTrainer < handle
                 cons = [];
                 
             end
-            
             
         end
     end

@@ -4,13 +4,13 @@ function fb = curve2framebundle(crv)
 % tangents of the points along a curve.
 %
 % Usage:
-%   z = curve2framebundle(crv)
+%   fb = curve2framebundle(crv)
 %
 % Input:
 %   crv: x-/y-coordinates of the curve
 %
 % Output:
-%   z: frame bundle of the curve
+%   fb: frame bundle of the curve
 %
 
 %%

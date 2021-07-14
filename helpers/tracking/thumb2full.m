@@ -1,8 +1,22 @@
-
-function [rcntr , rmline, minfo] = thumb2full(c, frm, cntr, mline)
+function [rcntr , rmline, minfo] = thumb2full(c, frm, cntr, mline, rgn, rev)
 %% thumb2full: remap coordinates from thumbnail image to full resolution image
 % Extract Images | Rescale and Remap coordinates
 %
+% Usage:
+%   [rcntr , rmline, minfo] = thumb2full(c, frm, cntr, mline, rev)
+%
+% Input:
+%   c: Curve or CircuitJB Object
+%   frm: frame to remap
+%   cntr: contour associated with image
+%   mline: midline associated with image
+%   rgn: remap 'upper' or 'lower' region (default 'upper')
+%   rev: reverse direction of remapping [full2thumb] (default 0)
+%
+% Output:
+%   rcntr: contour remapped to full resolution image (reversed if rev == 1)
+%   rmline: midline remapped to full resolution image (reversed if rev == 1)
+%   minfo: miscellaneous information about remapping
 %
 
 %%
@@ -14,12 +28,14 @@ switch nargin
         img   = c.getImage;
         cntr  = c.getTrace;
         mline = c.getMidline('int', 'auto');
+        rgn   = 'upper';
         
     case 4
         % Untrained Hypocotyl object with contour and midline
         h   = c;
         d   = [];
         img = h.getImage(frm);
+        rgn = 'upper';
         
     otherwise
         fprintf(2, 'Error with %d inputs\n', nargin);
@@ -50,8 +66,7 @@ end
 %% Remap
 % Hypocotyl on non-resized seedling image
 simg = s.getImage(frm);
-sbox = h.getCropBox(frm);
-% scrp = s.getAnchorPoints(frm);
+sbox = h.getCropBox(frm, rgn);
 
 % Cropped seedling [non-resized hypocotyl]
 himg = simg(1:sbox(4),1:sbox(3));
@@ -59,7 +74,6 @@ himg = simg(1:sbox(4),1:sbox(3));
 % Seedling on full-res image
 gimg = g.getImage(frm);
 gbox = s.getPData(frm).BoundingBox;
-% sprj = scrp + gbox(1:2);
 
 % Rescale thumbnail coordinates back to original
 scls    = size(himg) ./ size(img);

@@ -23,6 +23,26 @@ if nargin < 3
     fmt = 'sep';
 end
 
+% Extract indices
+if numel(crc) > 1
+    [gIdx , sIdx , hIdx] = arrayfun(@(c) ...
+        getIndices(Ein, c), crc, 'UniformOutput', 0);
+    gIdx                 = cat(1, gIdx{:});
+    sIdx                 = cat(1, sIdx{:});
+    hIdx                 = cat(1, hIdx{:});
+else
+    [gIdx , sIdx , hIdx] = getIndices(Ein, crc);
+end
+
+% Keep output separate or combine into one matrix
+if strcmpi(fmt, 'cat')
+    gIdx = [gIdx , sIdx , hIdx];
+end
+
+end
+
+function [gIdx , sIdx , hIdx] = getIndices(Ein, crc)
+%% Extract indices from a CircuitJB object
 % Genotype Index
 gStr = ...
     string(arrayfun(@(x) x.GenotypeName, Ein.combineGenotypes, 'UniformOutput', 0));
@@ -39,10 +59,4 @@ sIdx = str2double(sStr(aIdx+1:bIdx-1));
 % Hypocotyl Frame
 hIdx = crc.getFrame;
 
-if strcmpi(fmt, 'cat')
-    gIdx = [gIdx , sIdx , hIdx];
 end
-
-end
-
-

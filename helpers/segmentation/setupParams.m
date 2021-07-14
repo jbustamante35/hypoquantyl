@@ -1,9 +1,10 @@
-function [scls, doms, domSizes] = setupParams(varargin)
+function [scls , doms , domSizes , domShapes] = setupParams(varargin)
 %% setupParams: get scales, domains, and domain sizes
 %
 %
 % Usage:
-%   [scls, doms, domSizes] = setupParams(toRemove, zoomLvl, ds, sq, vl, hl, d, s, v, h)
+%   [scls , doms , domSizes , domShapes] =  ...
+%       setupParams(toRemove, zoomLvl, ds, sq, vl, hl, d, s, v, h)
 %
 % Input:
 %   toRemove: index to remove unneeded domains and domain sizes
@@ -21,6 +22,7 @@ function [scls, doms, domSizes] = setupParams(varargin)
 %   scls: sizes to scale patches up or down
 %   doms: domain coordinates of various shapes
 %   domSizes: sizes for the generated domains
+%   domShapes: shapes of domains (for printing)
 %
 
 %% Parse inputs
@@ -35,10 +37,10 @@ scls(toRemove) = [];
 
 % Append additional scaling if given
 scls = cellfun(@(scl) [scl ; cell2mat(arrayfun(@(zl) scl * zl, ...
-    zoomLvl, 'UniformOutput', false)')], scls, 'UniformOutput', 0);
+    zoomLvl, 'UniformOutput', 0)')], scls, 'UniformOutput', 0);
 
 %% Generate domains
-[doms , domSizes] = generateDomains( ...
+[doms , domSizes , domShapes] = generateDomains( ...
     diskDomain, squareDomain, vertDomain, horzDomain, toRemove);
 
 end

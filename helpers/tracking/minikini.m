@@ -74,8 +74,8 @@ try
             cellfun(@(x) plt(x, 'b-', 1), crcs, 'UniformOutput', 0);
             
             % Show trails
-%             trls = arrayfun(@(x) fliplr(squeeze(pts(x,:,:))'), 1 : size(pts,1), 'UniformOutput', 0);
-%             cellfun(@(x) plt(x, '.', 3), trls, 'UniformOutput', 0);
+            %             trls = arrayfun(@(x) fliplr(squeeze(pts(x,:,:))'), 1 : size(pts,1), 'UniformOutput', 0);
+            %             cellfun(@(x) plt(x, '.', 3), trls, 'UniformOutput', 0);
             
             ttl = sprintf('Frame %d of %d', frm, frms);
             title(ttl, 'FontSize', 10);

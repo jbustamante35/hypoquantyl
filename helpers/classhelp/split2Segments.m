@@ -1,4 +1,4 @@
-function segs = split2Segments(trc, len, stp, mth)
+function segs = split2Segments(trc, len, stp, mth, toCenter)
 %% split2Segments: split contour into pieces of len size around the segment
 % This function takes a set of coordinates (typically defining a full contour)
 % and splits it into many segments of len size. These segments iteratively slide
@@ -10,28 +10,42 @@ function segs = split2Segments(trc, len, stp, mth)
 %
 % Input:
 %   trc: full contour as a set of x-/y-coordinates
-%   len: length to split each segment around the contour
-%   stp: step size for each iterative slide
-%   mth: method for performing the split [1|2|3]
+%   len: length to split each segment around the contour (default 25)
+%   stp: step size for each iterative slide (default 1)
+%   mth: method for performing the split [1|2|3] (default 1)
+%   toCenter: index to set new center point for each segment (default 1)
 %
 % Output:
 %   segs: [len x d x N] matrix of N segments of len size and d dimensions
 %
 
 %% Default to method 1
-if nargin < 4
-    mth = 1;
+switch nargin
+    case 1
+        len      = 25;
+        stp      = 1;
+        mth      = 1;
+        toCenter = 1;
+    case 2
+        stp      = 1;
+        mth      = 1;
+        toCenter = 1;
+    case 3
+        mth      = 1;
+        toCenter = 1;
+    case 4
+        toCenter = 1;
 end
 
 %% Continue generating segments to fully wrap around contour
 switch mth
     case 1
+        %% Fastest and least complex method
         % Open contour if closed
         if all(trc(1,:) == trc(end,:))
             trc(end,:) = [];
         end
         
-        %% Fastest and least complex method
         % This method works with all step sizes
         pad    = len - stp;
         wid    = size(trc,2);
@@ -39,12 +53,12 @@ switch mth
         segF   = im2colF(padtrc, [len , wid], [stp, 1]);
         segs   = reshape(segF, [len , wid , size(segF,2)]);
         
-        % Convert back to original class
+        % Re-index so start point is at desired index
+        segs = circshift(segs, toCenter - 1, 3); %#ok<NASGU>
+        
+        %% Convert back to original class
         cls  = class(trc);
         segs = eval(sprintf('%s(%s)', cls, 'segs'));
-        
-        %% TODO %%
-        % Re-index so start point is center of base        
         
     case 2
         %% Nathan's method that labels stacked curves
@@ -78,6 +92,7 @@ switch mth
                 segs(:,:,sIdx) = [segA ; segB];
             end
         end
+        
     otherwise
         %% Incorrect method chosen
         fprintf(2, 'Method must be [1|2|3]\n');

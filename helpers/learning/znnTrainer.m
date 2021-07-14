@@ -152,11 +152,6 @@ end
 znet = trainNetwork(X, cnnY, layers, options);
 
 n = fprintf(' %d |', pc);
-
-% Store Networks in a structure
-% netStr = arrayfun(@(x) sprintf('N%d', x), pc, 'UniformOutput', 0);
-% znet   = cell2struct(znet, netStr, 2);
-
 jprintf(' ', toc(t), 1, 80 - sum(n));
 
 %% Save it before making predictions, then save it again
@@ -183,12 +178,12 @@ n = fprintf('Making predictions from %d-layer model [Validation %d]', ...
 
 % Predictions from model
 ypre = double(znet.predict(IMGS));
-yerr = meansqr(diag(pdist2(ypre, cnnY)) ./ cnnY);
+yerr = mean((cnnY - ypre).^2, 1) .^ 0.5;
 
 % Compute error of validation set (if given)
 if ~isempty(Vimgs)
     valPre = znet.predict(Vimgs);
-    valErr = meansqr(diag(pdist2(valPre, Vscrs)) ./ Vscrs);    
+    valErr = mean((Vscrs - valPre).^2, 1) .^ 0.5;
 else
     valErr = [];
 end
@@ -213,14 +208,13 @@ if Save
 end
 
 jprintf(' ', toc(t), 1, 80 - n);
-
 fprintf('%s\nFinished training Z-Vector CNN [%.03f sec]\n%s', ...
     sepA, toc(tAll), sepB);
 
 end
 
 function args = parseInputs(varargin)
-%% Parse input parameters 
+%% Parse input parameters
 % Need descriptions for all these parameters
 % pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 
@@ -250,13 +244,13 @@ end
 %         batchNormalizationLayer;
 %         reluLayer;
 %         maxPooling2dLayer(2,'Stride',2);
-% 
+%
 %         % Layer 2
 %         convolution2dLayer(7, 5,'Padding','same');
 %         batchNormalizationLayer;
 %         reluLayer;
 %         maxPooling2dLayer(2,'Stride',2);
-% 
+%
 %         % Layer 3
 %         convolution2dLayer(7, 3,'Padding','same');
 %         batchNormalizationLayer;

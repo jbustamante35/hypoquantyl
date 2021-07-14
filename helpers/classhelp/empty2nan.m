@@ -1,10 +1,10 @@
 function c = empty2nan(c, val)
-%% empty2nan: set all empty cells in a cell array to given value
-% This function was initially written for replacing all NaN cells in a Genotype object's
-% RawSeedlings property with Seedling objects with the name 'empty'. This allowed me to run the
-% filtering algorithm to align Seedling objects in one frame with the Seedling object in the 
-% following frame with the closest matching coordinate. 
-% 
+%% empty2nan: set all empty cells in a cell array to a specific value
+% This was initially written to replace all NaN cells in the RawSeedlings of a
+% Genotype with Seedling objects with the name 'empty'. This allowed me to run
+% the algorithm that aligns Seedling objects in one frame with the Seedling
+% object in the following frame based on the closest matching coordinate.
+%
 % Usage:
 %   c = empty2nan(c, val)
 %

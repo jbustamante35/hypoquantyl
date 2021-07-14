@@ -288,8 +288,8 @@ end
 
 %%
 tAll = tic;
-fprintf('\n%s\nRunning Recursive Displacement Predictor on %d images...\n%s\n', ...
-    sptA, ncrvs, sptB);
+fprintf('\n%s\nRunning Recursive Displacement Predictor on %d images...', ...
+    sptA, ncrvs);
 
 [Cntr, Znrms, Simg] = deal(cell(ncrvs, 1));
 allCrvs             = 1 : ncrvs;
@@ -299,8 +299,15 @@ if par
     % A parellel pool of 6 workers from a total of 12 (24 logical cores) was
     % safest on my remote server, and so I think for general purposes I'll
     % create a pool of (NumCores / 2)
-    halfCores = ceil(feature('numcores') / 2);
-    setupParpool(halfCores, 0);
+    %     halfCores = ceil(feature('numcores') / 2);
+    totalCores = feature('numcores');
+    if par == 1 || par > totalCores
+        ncores = ceil(totalCores / 2);
+    elseif par <= totalCores && par ~= 1
+        ncores = par;
+    end
+
+    setupParpool(ncores, 0);
     
     %% Run through with parallelization using half cores
     % Convert PCA object to struct because parfor loops do weird and unexpected
@@ -312,8 +319,8 @@ if par
     
     parfor cIdx = allCrvs
         if v
-%             t = tic;
-            fprintf('\n%s\nPredicting segments for hypocotyl %d\n', sptB, cIdx);
+            t = tic;
+            fprintf('\n%s\nPredicting contour for hypocotyl %d\n', sptB, cIdx);
         end
         
         img                                   = imgs{cIdx};
@@ -322,9 +329,8 @@ if par
             img, pdx, pdy, pz, pdp, Nz, Nd, zseed, v, varargin{:});
         
         if v
-%             fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
-            fprintf('Finished with hypocotyl %d...\n%s\n', ...
-                cIdx, sptB);
+            fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s', ...
+                cIdx, toc(t), sptB);
         end
         
     end
@@ -343,7 +349,7 @@ else
             img, pdx, pdy, pz, pdp, Nz, Nd, zseed, v, varargin{:});
         
         if v
-            fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s\n', ...
+            fprintf('Finished with hypocotyl %d...[%.02f sec]\n%s', ...
                 cIdx, toc(t), sptB);
         end
         
@@ -351,7 +357,7 @@ else
 end
 
 % DONE!
-fprintf('Finished running recursive displacement predictor...[%.02f sec]\n%s\n', ...
+fprintf('\nFinished running recursive displacement predictor...[%.02f sec]\n%s\n', ...
     toc(tAll), sptA);
 
 end

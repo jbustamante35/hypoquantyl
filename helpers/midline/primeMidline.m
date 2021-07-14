@@ -8,7 +8,7 @@ function [trc , skltn] = primeMidline(img, cntr, INTRP, TERMPCT, PADLENGTH)
 % Input:
 %   img: image associated with contour
 %   cntr: contour around object
-%   INTRP: number of coordinates to interpolate to (default 20)
+%   INTRP: number of coordinates to interpolate to (default 50)
 %   TERMPCT: percentage to set termination point (default 0.70)
 %   PADLENGTH: number of replicating rows to add to base of image (default 20)
 %
@@ -21,7 +21,7 @@ function [trc , skltn] = primeMidline(img, cntr, INTRP, TERMPCT, PADLENGTH)
 %% Skeletonize, dijkstras, anchor, then interpolate
 switch nargin
     case 2
-        INTRP     = 20;
+        INTRP     = 50;
         TERMPCT   = 0.70;
         PADLENGTH = 20;
     case 3
@@ -29,6 +29,11 @@ switch nargin
         PADLENGTH = 20;
     case 4
         PADLENGTH = 20;
+    case 5
+    otherwise
+        fprintf(2, 'Incorrect number of inputs (%d of %d)\n', nargin, 5);
+        [trc , skltn] = deal([]);
+        return;
 end
 
 baki = img;
@@ -46,7 +51,7 @@ skltn.RunPipeline([]);
 trc   = skltn.getLongestRoute('branches');
 
 % Remove padded region on contour and longest route
-% NOTE: Use max row of contour since not all contours are fixed to bottom 
+% NOTE: Use max row of contour since not all contours are fixed to bottom
 cntr(cntr(:,2) > size(img,2),:) = [];
 
 % Close curve if still open

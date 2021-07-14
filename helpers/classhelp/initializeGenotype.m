@@ -24,13 +24,13 @@ for fn = fieldnames(args)'
 end
 
 %% Initialize with parent Experiment object
-Ein      = Parent;
-genotype = Genotype('GenotypeName', gName, 'Parent', Ein);
-genotype.ExperimentName = Ein.ExperimentName;
-genotype.ExperimentPath = Ein.ExperimentPath;
+ex                      = Parent;
+genotype                = Genotype('GenotypeName', gName, 'Parent', ex);
+genotype.ExperimentName = ex.ExperimentName;
+genotype.ExperimentPath = ex.ExperimentPath;
 
 %% Create image data store from path to images
-Imgs = imageDatastore([Ein.ExperimentPath , filesep,  gName], ...
+Imgs = imageDatastore([ex.ExperimentPath , filesep,  gName], ...
     'IncludeSubfolders', add_sub_dirs, 'FileExtensions', image_extension);
 genotype.storeImages(Imgs);
 
