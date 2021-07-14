@@ -1,9 +1,15 @@
 %% HypocotylTrainer: class for sections of contours for a CircuitJB object
 % Descriptions
+%
+% Example:
+%
+%
 
 classdef HypocotylTrainer < handle
     properties (Access = public)
         Curves
+        HTName
+        SaveDirectory
         
         % Curve Segment Properties
         SegmentSize
@@ -19,7 +25,14 @@ classdef HypocotylTrainer < handle
         NPY
         NPZ
         NZP
+        ZNorm
+        ZShape
+        
+        % Z-Vector Attributes
         AddMid
+        ZRotate
+        ZRotateType
+        Split2Stitch
         
         % Z-Vector CNN
         FilterRange
@@ -55,13 +68,16 @@ classdef HypocotylTrainer < handle
         SplitCurves
         Splits
         PCA
+        isOptimized
         ZVectors
         ZFnc
         ZBay
         ZParams
+        ZParams_bak
         DVectors
         SVectors
         FigNames
+        Images
     end
     
     %%
@@ -80,6 +96,8 @@ classdef HypocotylTrainer < handle
             prps   = properties(class(obj));
             deflts = { ...
                 % Curve Properties
+                'HTName'              , [] ; ...
+                'SaveDirectory'       , pwd ; ...
                 'SegmentSize'         , 25 ; ...
                 'SegmentSteps'        , 1 ; ...
                 
@@ -89,11 +107,18 @@ classdef HypocotylTrainer < handle
                 'TestingPct'          , 0.1 ; ...
                 
                 % PCA Parametersrunning
-                'NPX'                 , 6 ; ...
-                'NPY'                 , 6 ; ...
-                'NPZ'                 , 20 ; ...
-                'NZP'                 , 20 ; ...
+                'NPX'                 , 0 ; ... % 6
+                'NPY'                 , 0 ; ... % 6
+                'NPZ'                 , 0 ; ... % 10
+                'NZP'                 , 0 ; ... % 10
+                'ZNorm'               , struct('ps', 0, 'pz', 0, 'pp', 0) ; ...
+                'ZShape'              , struct('ps', 0, 'pz', 0, 'pp', 0) ; ...
+                
+                % Z-Vector Attributes
                 'AddMid'              , 0 ; ...
+                'ZRotate'             , 0 ; ...
+                'ZRotateType'         , 'na' ; ...
+                'Split2Stitch'        , 0 ; ...
                 
                 % Z-Vector CNN
                 'FilterRange'         , 7 ; ...
@@ -126,6 +151,11 @@ classdef HypocotylTrainer < handle
             
             obj = classInputParser(obj, prps, deflts, vargs);
             
+            if isempty(obj.HTName)
+                % Auto-Generate Name
+                obj.HTName = makeName(obj);
+            end
+            
         end
         
         function obj = ProcessCurves(obj)
@@ -145,7 +175,7 @@ classdef HypocotylTrainer < handle
         
         function obj = SplitDataset(obj)
             %% Split Curves into training, validation, and testing sets
-            % Validation and Testing sets shouldn't be seen by any training algorithms
+            % Validation and Testing sets shouldn't be seen by training algorithm
             t = tic;
             n = fprintf('Splitting into training,validation,testing sets');
             
@@ -175,12 +205,12 @@ classdef HypocotylTrainer < handle
                 case 'trn'
                     % Run with only training set
                     C = obj.getSplitCurves('training');
-
+                    
                 case 'withval'
                     % Run with training and validation sets
                     % Order is training in front, validation in back
                     C = [obj.getSplitCurves('training') ; ...
-                        obj.getSplitCurves('validation')];                                        
+                        obj.getSplitCurves('validation')];
                     
                 otherwise
                     fprintf(2, 'Method %d not implemented [trn|withval]\n', mth);
@@ -188,29 +218,82 @@ classdef HypocotylTrainer < handle
             end
             
             [px, py, pz, pp] = hypoquantylPCA(C, obj.Save, ...
-                obj.NPX, obj.NPY, obj.NPZ, obj.NZP, obj.AddMid);
-            obj.PCA          = struct('px', px, 'py', py, 'pz', pz, 'pp', pp);
+                'pcx', obj.NPX, 'pcy', obj.NPY, 'pcz', obj.NPZ, 'pcp', obj.NZP, ...
+                'addMid', obj.AddMid, 'zrotate', obj.ZRotate, ...
+                'rtyp', obj.ZRotateType, 'znorm', obj.ZNorm, ...
+                'zshp', obj.ZShape, 'split2stitch', obj.Split2Stitch);
+            
+            %             [px, py, pz, pp] = hypoquantylPCA(C, obj.Save, ...
+            %                 obj.NPX, obj.NPY, obj.NPZ, obj.NZP, ...
+            %                 obj.AddMid, obj.ZRotate, obj.ZRotateType);
+            obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp);
             
         end
         
         function obj = TrainZVectors(obj)
             %% Train Z-Vectors
             t = tic;
-            n = fprintf('Preparing %d images and %d Z-Vectors PC scores', ...
-                numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ);
-                        
-            IMGS  = arrayfun(@(c) c.getImage, ...
-                obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
-            IMGS  = cat(4, IMGS{:});
-            ZSCRS = obj.PCA.pz.PCAScores(1 : size(IMGS,4));
+            
+            if obj.Split2Stitch
+                n    = fprintf('Preparing %d images and [%d|%d] Z-Vectors PC scores', ...
+                    numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ{1}, obj.NPZ{2});
+                flds = fieldnames(obj.PCA.pz);
+                vtyp = flds{end};
+            else
+                n = fprintf('Preparing %d images and %d Z-Vectors PC scores', ...
+                    numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ);
+            end
+            
+            if ~isempty(obj.Images)
+                IMGS = obj.Images(obj.Splits.trnIdx);
+                IMGS = cat(4, IMGS{:});
+            else
+                IMGS = arrayfun(@(c) c.getImage, ...
+                    obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
+                IMGS = cat(4, IMGS{:});
+            end
+            
+            % Stitch midpoints-tangents
+            if obj.Split2Stitch
+                ZSCRS = [obj.PCA.pz.mids.PCAScores(1 : size(IMGS,4)) , ...
+                    obj.PCA.pz.(vtyp).PCAScores(1 : size(IMGS,4))];
+            else
+                ZSCRS = obj.PCA.pz.PCAScores(1 : size(IMGS,4));
+            end
             
             jprintf(' ', toc(t), 1, 80 - n);
             
-            [IN, OUT] = znnTrainer(IMGS, ZSCRS, obj.Splits, 'Save', obj.Save, ...
-                'FltRng', obj.FilterRange, 'NumFltRng', obj.NumFilterRange, ...
-                'MBSize', obj.MiniBatchSize, 'Dropout', obj.DropoutLayer, ...
-                'ILRate', obj.InitialLearningRate, 'MaxEps', obj.MaxEpochs, ...
-                'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+            % TODO: Need the neural net parmeters optimized for each PC
+            [IN , OUT] = deal(cell(1, size(ZSCRS,2)));
+            
+            if obj.isOptimized.znn
+                % Set PC-optimized parameters if not already
+                if ~iscell(obj.FilterRange)
+                    obj.SetOptimizedParameters('znn');
+                end
+                
+                % Loop through optimized parameters
+                for pc = 1 : size(ZSCRS,2)
+                    [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
+                        'Save', obj.Save, 'FltRng', obj.FilterRange{pc}, ...
+                        'NumFltRng', obj.NumFilterRange{pc}, ...
+                        'MBSize', obj.MiniBatchSize, ...
+                        'Dropout', obj.DropoutLayer{pc}, ...
+                        'ILRate', obj.InitialLearningRate{pc}, ...
+                        'MaxEps', obj.MaxEpochs, ...
+                        'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+                end
+            else
+                % Use same parameters for each PC [old method]
+                for pc = 1 : size(ZSCRS,2)
+                    [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
+                        'Save', obj.Save, 'FltRng', obj.FilterRange, ...
+                        'NumFltRng', obj.NumFilterRange, ...
+                        'MBSize', obj.MiniBatchSize, 'Dropout', obj.DropoutLayer, ...
+                        'ILRate', obj.InitialLearningRate, 'MaxEps', obj.MaxEpochs, ...
+                        'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+                end
+            end
             
             obj.ZVectors = struct('ZIN', IN, 'ZOUT', OUT);
             
@@ -263,6 +346,17 @@ classdef HypocotylTrainer < handle
                 training2run = [1 , 1 , 0];
             end
             
+            if obj.Save
+                currDir = pwd;
+                saveDir = obj.SaveDirectory;
+                
+                if ~isfolder(saveDir)
+                    mkdir(saveDir);
+                end
+                
+                cd(saveDir);
+            end
+            
             obj.ProcessCurves;
             obj.SplitDataset;
             obj.RunPCA;
@@ -270,6 +364,32 @@ classdef HypocotylTrainer < handle
             if training2run(1); obj.TrainZVectors; end
             if training2run(2); obj.TrainDVectors; end
             if training2run(3); obj.TrainSVectors; end
+            
+            if obj.Save
+                cd(currDir);
+                obj.SaveTrainer(saveDir);
+            end
+            
+        end
+        
+        function obj = SaveTrainer(obj, dnm)
+            %% Save this object into a .mat file
+            if ~isfolder(dnm)
+                mkdir(dnm);
+            end
+            
+            % Remove Curves
+            crvs  = obj.Curves;
+            csplt = obj.SplitCurves;
+            [obj.Curves , obj.SplitCurves] = deal([]);
+            
+            HT  = obj;
+            fnm = sprintf('%s%s%s', dnm, filesep, obj.HTName);
+            save(fnm, '-v7.3', 'HT');
+            
+            % Replace Curves after saving
+            obj.Curves      = crvs;
+            obj.SplitCurves = csplt;
             
         end
         
@@ -290,35 +410,46 @@ classdef HypocotylTrainer < handle
                 case 'znn'
                     %% Run metaparameter optimization for Z-Vector CNN
                     flt    = obj.FilterRange;
-                    nflt   = cellfun(@(x) num2str(x), obj.NumFilterRange, 'UniformOutput', 0);
-                    nlay   = obj.FilterLayers;
-                    mbsize = obj.MiniBatchSize;
+                    nflt   = obj.NumFilterRange;
                     drp    = obj.DropoutLayer;
                     ilrate = obj.InitialLearningRate;
-                    maxeps = obj.MaxEpochs;
+                    %                     nlay   = obj.FilterLayers;
+                    %                     mbsize = obj.MiniBatchSize;
+                    %                     maxeps = obj.MaxEpochs;
                     
                     % Define optimizable variables
                     params = [
-                        optimizableVariable('FilterSize'      , flt, 'Type', 'integer')
-                        optimizableVariable('NumFilters'      , nflt, 'Type', 'categorical')
-                        optimizableVariable('FilterLayers'    , nlay, 'Type', 'integer')
-                        optimizableVariable('MiniBatchSize'   , mbsize, 'Type', 'integer')
+                        optimizableVariable('FilterSize'      , flt,    'Type', 'integer')
+                        optimizableVariable('NumFilters1'      , nflt{1},   'Type', 'integer')
+                        optimizableVariable('NumFilters2'      , nflt{2},   'Type', 'integer')
+                        optimizableVariable('NumFilters3'      , nflt{3},   'Type', 'integer')
                         optimizableVariable('DropoutLayer'    , drp)
                         optimizableVariable('InitialLearnRate', ilrate, 'Transform', 'log')
-                        optimizableVariable('MaxEpochs'       , maxeps, 'Type', 'integer')];
+                        %                         optimizableVariable('FilterLayers'    , nlay,   'Type', 'integer')
+                        %                         optimizableVariable('MiniBatchSize'   , mbsize, 'Type', 'integer')
+                        %                         optimizableVariable('MaxEpochs'       , maxeps, 'Type',  'integer')
+                        ];
                     
                     % Get training and validation images and scores
-                    Timgs = obj.getZVector.IN.training.IMGS;
-                    Tscrs = obj.getZVector.IN.training.ZSCRS;
-                    Vimgs = obj.getZVector.IN.validation.IMGS;
-                    Vscrs = obj.getZVector.IN.validation.ZSCRS;
+                    if isempty(obj.Images)
+                        obj.storeImages;
+                    end
+                    
+                    imgs  = obj.Images;
+                    zscrs = obj.getPCA('pz').PCAScores;
+                    ntrn  = numel(obj.getSplits.trnIdx);
+                    
+                    Timgs = cat(4, imgs{obj.getSplits.trnIdx});
+                    Tscrs = zscrs(1 : ntrn, :);
+                    Vimgs = cat(4, imgs{obj.getSplits.valIdx});
+                    Vscrs = zscrs((ntrn + 1) : end, :);
                     
                     % Determine which PC to start from
                     try
                         switch pc
                             case 0
                                 % Start from last available PC
-                                [bay , fnc] = obj.getOptimizer;
+                                [bay , fnc] = obj.getOptimizer(mth);
                                 pci         = sum(~cellfun(@isempty, bay)) + 1;
                                 pcf         = size(Tscrs, 2);
                                 pcrng       = pci : pcf;
@@ -338,26 +469,29 @@ classdef HypocotylTrainer < handle
                                 [bay , fnc] = obj.getOptimizer;
                                 pcrng       = pc;
                         end
+                        
                     catch
                         fprintf(2, 'Error determining selected pc %s\n', pc);
                         return;
                     end
                     
                     %% Run Bayes Optimization on all Z-Vector PCs
-                    for pc = pcrng
-                        fnc{pc} = obj.makeZFnc( ...
-                            Timgs, Tscrs(:,pc), Vimgs, Vscrs(:,pc), pc);
+                    for npc = pcrng
+                        fnc{npc} = obj.makeZFnc( ...
+                            Timgs, Tscrs, Vimgs, Vscrs(:,npc), npc);
                         
                         % Bayes optimization
-                        bay{pc} = bayesopt(fnc{pc}, params, ...
+                        bay{npc} = bayesopt(fnc{npc}, params, ...
                             'MaxTime', 1*60*60, 'IsObjectiveDeterministic', 0, ...
                             'UseParallel', 0, 'Verbose', obj.Verbose);
                         
                         % Store into this object for debugging
-                        obj.ZFnc{pc}    = fnc{pc};
-                        obj.ZBay{pc}    = bay{pc};
-                        obj.ZParams{pc} = params;
+                        obj.ZFnc{npc}    = fnc{npc};
+                        obj.ZBay{npc}    = bay{npc};
+                        obj.ZParams{npc} = params;
                     end
+                    
+                    obj.isOptimized.znn = 1;
                     
                 case 'dnn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
@@ -374,70 +508,58 @@ classdef HypocotylTrainer < handle
             
         end
         
-        function P = SetOptimizedParameters(obj, mth, pc, mpath)
+        function SetOptimizedParameters(obj, req)
             %% Set parameters to best values after optimization
-            %
-            % Input:
-            %   mth: algorithm to get parameters for [znn|dnn|snn]
-            %   pc: principal component to set optimized parameters for
-            %   mpath: path to directory of mat-files after optimization
-            
-            %% Parse inputs
-            switch nargin
-                case 1
-                    mth   = 'znn';
-                    pc    = 1;
-                    mpath = sprintf('%s%soptimization%spc%02d', ...
-                        pwd, filesep, filesep, pc);
-                case 2
-                    pc    = 1;
-                    mpath = sprintf('%s%soptimization%spc%d', ...
-                        pwd, filesep, filesep, pc);
-                case 3
-                    mpath = sprintf('%s%soptimization%spc%d', ...
-                        pwd, filesep, filesep, pc);
-                case 4
-                otherwise
-                    fprintf(2, 'Error with inputs [%d]\n', nargin);
-                    return;
-            end
-            
-            %% Set parameters
-            switch mth
+            % Each PC should have it's own set of optimized parameters
+            % NOTE: Rename properties to actual parameter names (get rid of XRange)
+            switch req
                 case 'znn'
-                    %% Set parameters for Z-Vector training
-                    % Extract directory of datasets
-                    exp = 'n_*.*e';
-                    d   = dir2(mpath);
-                    m   = arrayfun(@(x) x.name, d, 'UniformOutput', 0);
+                    %% Backup original ranges/values
+%                     oflds = {'FilterRange' ; 'NumFilterRange' ; 'MiniBatchSize' ; ...
+%                         'DropoutLayer'  ; 'InitialLearningRate' ; 'MaxEpochs'};
+                    oflds = {'FilterRange' ; 'NumFilterRange' ; ...
+                        'DropoutLayer'  ; 'InitialLearningRate'};
+                    bflds = cellfun(@(x) sprintf('%s_bak', x), oflds, 'UniformOutput', 0);
                     
-                    [a , b] = cellfun(@(x) regexpi(x, exp), ...
-                        m, 'UniformOutput', 0);
-                    val     = cell2mat(cellfun(@(mm,aa,bb) str2double( ...
-                        mm(aa+2:bb-1)), m, a, b, 'UniformOutput', 0));
+                    if isempty(obj.ZParams_bak)
+                        for fld = 1 : numel(oflds)
+                            obj.ZParams_bak.(bflds{fld}) = obj.(oflds{fld});
+                        end
+                    end
                     
-                    % Get data with minimum error
-                    minVal = min(val(val > 0));
-                    minIdx = find(val == minVal);
-                    minFnm = sprintf('%s%s%s', ...
-                        d(minIdx).folder , filesep , d(minIdx).name);
+                    %% Extract optimized parameters
+                    bay = obj.getOptimizer(req);
+                    bp  = cellfun(@(x) x.bestPoint, bay, 'UniformOutput', 0);
+                    bp  = cat(1, bp{:});
                     
-                    % Load data and extract values
-                    P       = load(minFnm);
-                    P       = P.BAYES;
-                    %                     net     = P.Net;
-                    %                     layers  = P.Net.Layers;
-                    %                     options = P.Options;
-                    %                     params  = P.Params;
+                    % Combine NumFilter1-3 into 1 column
+                    bp.NumFilterRange = [bp.NumFilters1 , bp.NumFilters2 , bp.NumFilters3];
+                    bp = movevars(bp, 'NumFilterRange', 'After', 'FilterSize');
+                    bp = removevars(bp, {'NumFilters1', 'NumFilters2', 'NumFilters3'});
                     
+                    nflds                         = fieldnames(bp);
+                    nflds(numel(nflds) - 2 : end) = [];
+                    
+                    % Replace original properties with values for each PC
+                    for fld = 1 : numel(nflds)
+                        obj.(oflds{fld}) = cell(obj.NPZ, 1);
+                        for pc = 1 : obj.NPZ
+                            obj.(oflds{fld}){pc} = bp(pc,:).(nflds{fld});
+                        end
+                    end
                     
                 case 'dnn'
+                    fprintf('Optimizing %s doesn''t work yet!\n', mth);
+                    return;
+                    
                 case 'snn'
+                    fprintf('Optimizing %s doesn''t work yet!\n', mth);
+                    return;
+                    
                 otherwise
-                    fprintf(2, 'Method %s not recognized [znn|dnn|snn]\n', mth);
+                    fprintf(2, 'Incorrect method %s [znn|dnn|snn]\n', mth);
                     return;
             end
-            
         end
         
     end
@@ -445,9 +567,16 @@ classdef HypocotylTrainer < handle
     %% -------------------------- Helper Methods ---------------------------- %%
     methods (Access = public)
         %% Various helper methods
-        function splts = getSplits(obj)
+        function splts = getSplits(obj, req)
             %% Return dataset splits
-            splts = obj.Splits;
+            switch nargin
+                case 1
+                    splts = obj.Splits;
+                case 2
+                    if ~isempty(obj.Splits)
+                        splts = obj.Splits.(req);
+                    end
+            end
         end
         
         function crvs = getSplitCurves(obj, typ)
@@ -468,19 +597,41 @@ classdef HypocotylTrainer < handle
             
         end
         
-        function pca = getPCA(obj)
+        function pca = getPCA(obj, req)
             %% Return PCA results
-            pca = obj.PCA;
+            switch nargin
+                case 1
+                    pca = obj.PCA;
+                case 2
+                    pca = obj.PCA.(req);
+            end
+            
         end
         
-        function z = getZVector(obj)
+        function z = getZVector(obj, req, pc)
             %% Return Z-Vector training results
-            z = obj.ZVectors;
+            switch nargin
+                case 1
+                    z = obj.ZVectors;
+                case 2
+                    z = obj.ZVectors;
+                    z = arrayfun(@(x) x.(req), z, 'UniformOutput', 0);
+                    z = cat(1, z{:});
+                case 3
+                    z = obj.ZVectors(pc);
+                    z = arrayfun(@(x) x.(req), z, 'UniformOutput', 0);
+                    z = cat(1, z{:});
+            end
         end
         
-        function d = getDVector(obj)
+        function d = getDVector(obj, req)
             %% Return D-Vector training results
-            d = obj.DVectors;
+            switch nargin
+                case 1
+                    d = obj.DVectors;
+                case 2
+                    d = obj.DVectors.(req);
+            end
         end
         
         function s = getSVector(obj)
@@ -488,16 +639,61 @@ classdef HypocotylTrainer < handle
             s = obj.SVectors;
         end
         
-        function [bay , objfn , params] = getOptimizer(obj)
+        function [bay , objfn , params] = getOptimizer(obj, req)
             %% Return optimization components
-            bay    = obj.ZBay;
-            objfn  = obj.ZFnc;
-            params = obj.ZParams;
+            if nargin < 2
+                req = 'all';
+            end
+            
+            switch req
+                case 'znn'
+                    % Return parameters for Z-Vector training
+                    bay    = obj.ZBay;
+                    objfn  = obj.ZFnc;
+                    params = obj.ZParams;
+                    
+                case 'dnn'
+                    % Return parameters for D-Vector training
+                case 'snn'
+                    % Return parameters for S-Vector training
+                case 'all'
+                    % Return all parameters
+                    [bay , objfn , params] = deal([]);
+                otherwise
+                    fprintf(2, 'Error requesting optimization parameters %s\n', ...
+                        req);
+                    [bay , objfn , params] = deal([]);
+            end
+            
         end
         
         function fnms = getFigNames(obj)
             %% Return figure names
             fnms = obj.FigNames;
+        end
+        
+        function obj = storeImages(obj, req)
+            %% Store images in a property variable, or remove them for saving
+            if nargin < 2
+                req = 'set';
+            end
+            
+            switch req
+                case 'set'
+                    % Store images in property
+                    imgs  = arrayfun(@(x) x.getImage, ...
+                        obj.Curves, 'UniformOutput', 0);
+                    obj.Images = imgs;
+                    
+                case 'kill'
+                    % Remove images (for saving this object)
+                    obj.Images = [];
+                    
+                otherwise
+                    fprintf(2, 'Error with req %s [get|kill]\n', req);
+                    return;
+            end
+            
         end
         
         function [din , dout] = prepareData(obj, typ, IMGS, ZSCRS)
@@ -523,12 +719,14 @@ classdef HypocotylTrainer < handle
                     
                 case 'testing'
                     % Not yet implemented
-                    fprintf(2, 'Type (%s) not yet implemented [training|validation]\n', typ);
+                    fprintf(2, 'Type (%s) not implemented [training|validation]\n', ...
+                        typ);
                     [din , dout] = deal([]);
                     return;
                     
                 otherwise
-                    fprintf(2, 'Type (%s) should be [training|validation|testing]\n', typ);
+                    fprintf(2, 'Type (%s) should be [training|validation|testing]\n', ...
+                        typ);
                     [din , dout] = deal([]);
                     return;
             end
@@ -558,6 +756,35 @@ classdef HypocotylTrainer < handle
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
         %% Private helper methods
+        function htname = makeName(obj)
+            %% Auto-Generate a name for this object
+            ncrvs = numel(obj.Curves);
+            npx   = obj.NPX;
+            npy   = obj.NPY;
+            npz   = obj.NPZ;
+            nzp   = obj.NZP;
+            npf   = obj.NPF;
+            npd   = obj.NPD;
+            rot   = obj.ZRotate;
+            rtyp  = obj.ZRotateType;
+            itrs  = obj.Iterations;
+            
+            if ~isempty(obj.Splits)
+                ntrnd = numel(obj.getSplits('trnIdx'));
+            else
+                ntrnd = 0;
+            end
+            
+            if obj.Split2Stitch
+                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02-%02ddpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
+                    tdate, ncrvs, ntrnd, npx, npy, npz{1}, npz{2}, nzp, nzp, npf, npd, rot, rtyp, itrs);
+            else
+                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
+                    tdate, ncrvs, ntrnd, npx, npy, npz, nzp, npf, npd, rot, rtyp, itrs);
+            end
+            
+        end
+        
         function [SSCR , ZSLC] = prepareSVectors(obj)
             %% Process x-/y-coordinate PCA scores and Z-Vector slices
             t = tic;
@@ -586,21 +813,26 @@ classdef HypocotylTrainer < handle
                 %% Train network with parameters and evaluate validation error
                 % Load parameters
                 flt    = params.FilterSize;
-                nflt   = str2num(char(params.NumFilters)); %#ok<ST2NM>
-                nlay   = params.FilterLayers;
-                mbsize = params.MiniBatchSize;
+                nflt   = [params.NumFilters1 , params.NumFilters2 , params.NumFilters3];
                 drp    = params.DropoutLayer;
                 ilrate = params.InitialLearnRate;
-                maxeps = params.MaxEpochs;
+                %                 nlay   = params.FilterLayers;
+                %                 mbsize = params.MiniBatchSize;
+                %                 maxeps = params.MaxEpochs;
+                
+                %% Default properties [no to optimize]
+                nlay   = obj.FilterLayers;
+                mbsize = obj.MiniBatchSize;
+                maxeps = obj.MaxEpochs;
                 
                 %% Misc properties
-                sav = 0; % Don't save output
+                sav = 0; % Don't save output between optimizations
                 par = obj.Parallel;
                 vis = obj.Visualize;
                 vrb = obj.Verbose;
                 
                 %%
-                [~, ZOUT] = znnTrainer(Timgs, Tscrs, obj.Splits, ...
+                [~, ZOUT] = znnTrainer(Timgs, Tscrs, obj.Splits, pc, ...
                     'FltRng', flt, 'NumFltRng', nflt, 'FltLayers', nlay, ...
                     'MBSize', mbsize, 'Dropout', drp, 'ILRate', ilrate, ...
                     'MaxEps', maxeps, 'Vimgs', Vimgs, 'Vscrs', Vscrs, ...
@@ -615,8 +847,6 @@ classdef HypocotylTrainer < handle
                 outdir = sprintf('optimization%spc%02d', filesep, pc);
                 fnm    = sprintf('%s%s%s_optimization_%0.04ferror.mat', ...
                     outdir, filesep, tdate, valErr);
-                %                 BAYES  = struct('Net', net, 'Error', valErr, ...
-                %                     'Options', options, 'Params', table2struct(params));
                 BAYES  = struct('Net', net, 'Error', valErr, ...
                     'Params', table2struct(params));
                 
@@ -628,7 +858,6 @@ classdef HypocotylTrainer < handle
                 cons = [];
                 
             end
-            
             
         end
     end

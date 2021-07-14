@@ -9,11 +9,11 @@ function [PTCHS , ZVECS , TRGS] = masterFunction2(IMG, CNTR, par, trgs, scls, do
 % Input:
 %   IMG: cell array of grayscale images
 %   CNTR: cell array of contours
-%   par:
+%   par: run on single-thread (0) or with parallelization (1)
 %   trgs: displacement vectors predicted by neural net, in tangent frames
-%   scls:
-%   dom:
-%   dsz:
+%   scls: zoom scales for image patches
+%   dom: domain vectors defining shape of image patches
+%   dsz: domain sizes for image patches
 %
 % Output:
 %   PTCHS: vectorized image patches for multiple scales and multiple domains
@@ -33,12 +33,12 @@ allCrvs  = 1 : nCrvs;
 % Check if first iteration
 if nargin < 4
     firstItr = true;
-    TRGS        = cell(1, nCrvs);
+    TRGS     = cell(1, nCrvs);
 else
     % [NOTE]
     % Be sure to not assign Y output if running through multiple iterations
     firstItr = false;
-    TRGS        = [];
+    TRGS     = [];
 end
 
 % Get parameters for patch scaling and domain shapes and sizes
@@ -114,9 +114,9 @@ end
 PTCHS = cat(3, PTCHS{:});
 PTCHS = permute(PTCHS, [1 , 3 , 2]);
 
-szX = size(PTCHS);
-PTCHS   = reshape(PTCHS, [prod(szX(1:2)) , prod(szX(3))]);
-ZVECS   = cat(3, ZVECS{:});
+szX   = size(PTCHS);
+PTCHS = reshape(PTCHS, [prod(szX(1:2)) , prod(szX(3))]);
+ZVECS = cat(3, ZVECS{:});
 
 end
 

@@ -1,4 +1,4 @@
-function [ptch , imgSample , domSample] = tbSampler(img, aff, dom, domSize, vis)
+function [ptch , imgSample , domSample] = tbSampler(img, aff, dom, domSize, vis, sidx, dshp)
 %% tbSampler: sample image at domains from the affine transformation
 % Sample an image from the coordinates of the inputted domains generated from
 % the affine transformation. This returns the image patches corresponding to the
@@ -6,18 +6,26 @@ function [ptch , imgSample , domSample] = tbSampler(img, aff, dom, domSize, vis)
 %
 % Usage:
 %   [ptch , imgSample , domSample] = tbSampler( ...
-%       img, aff, dom, domSize, vis)
+%       img, aff, dom, domSize, vis, sidx)
 %
 % Input:
 %   img: image to sample on
 %   aff: resulting coordinates of the affine transformation
 %   dom: domain shape to sample from
 %   domSize: size of the domain
-%   vis: boolean to visualize patches as they are generated
+%   vis: figure handle index for visualizing image patches
+%   sidx: unique index value for saving filename
+%   dshp: shape of domains (for text output)
 %
 % Output:
 %   ptch: image patches sampled from the domains of the transformations
 %
+
+%%
+if nargin < 6
+    sidx = 0;
+    dshp = '';
+end
 
 %%
 ptch   = zeros([size(aff,1) , domSize , size(aff,4)]);
@@ -28,43 +36,63 @@ bak    = img; %#ok<NASGU> % backup of image [for debug]
 img    = padarray(img, [padVal , padVal], bk, 'both');
 
 %% Sample image with affines for each segment
-for e = 1 : size(aff,1)
+naffs = size(aff,1);
+nscls = size(aff,4);
+for e = 1 : naffs
     % Sample image with affines for each scale
-    for s = 1 : size(aff,4)
+    for s = 1 : nscls
         domSample = squeeze(aff(e,:,:,s)) * dom';
         imgSample = ...
             ba_interp2(img, domSample(1,:) + padVal, domSample(2,:) + padVal);
-        
-        % I think square patches need to be rotated?
         imgSample = reshape(imgSample, domSize);
         
-        if size(domSize,1) == size(domSize,2)
-            % NOTE: This logic needs to change if using rectangles. But then
-            % again, a rectangle is just a fattened line
-            ptch(e,:,:,s) = rot90(imgSample);
+        if domSize(1) == domSize(2)
+            % Rotate squares 90-degrees
+            rots = 1;
+        elseif domSize(1) > domSize(2)
+            % Flip horizontal lines 180-degrees
+            rots = 2;
         else
-            % Don't rotate for vertical/horizontal lines
-            ptch(e,:,:,s) = imgSample;
+            % Don't flip vertical lines
+            rots = 0;
         end
+        
+        imgSample     = rot90(imgSample,rots);
+        ptch(e,:,:,s) = imgSample;
         
         z    = squeeze(aff(e,:,:,s));
         mid  = z(1:2,3)' + padVal;
+        tng  = [(z(1:2,1)' + mid) ; mid];
+        nrm  = [(z(1:2,2)' + mid) ; mid];
         dsmp = domSample(1:2,:)' + padVal;
+        mpt  = flip(round(size(imgSample) / 2));
         if vis
-            figclr(1);
+            figclr(vis);
+            subplot(121);
             myimagesc(imgSample);
+            hold on;
+            plt(mpt, 'g.', 20);
             ttl = sprintf('Domain Size [%d %d]', domSize);
             title(ttl, 'FontSize', 10);
             
-            figclr(2);
+            subplot(122);
             myimagesc(img);
             hold on;
             plt(dsmp, 'g.', 10);
-            plt(mid, 'r.', 20);
+            plt(tng, 'r-', 2);
+            plt(nrm, 'b-', 2);
+            plt(mid, 'y.', 20);
             ttl = sprintf('Image Padding [%d]', padVal);
             title(ttl, 'FontSize', 10);
             
             drawnow;
+            
+            if sidx
+                sdir = sprintf('tbsampler_curve%03d', sidx);
+                fnm = sprintf('%s_tbsampler_dims[%d-%d]_scale%02dof%02d_zvec%03dof%03d_%s', ...
+                    tdate, domSize, s, nscls, e, naffs, dshp);
+                saveFiguresJB(vis ,{fnm}, 0, 'png', sdir);
+            end
         end
     end
 end

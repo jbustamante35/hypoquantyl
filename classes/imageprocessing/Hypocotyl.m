@@ -14,6 +14,7 @@ classdef Hypocotyl < handle
         HypocotylName
         Frame
         Lifetime
+        Stem
     end
     
     properties (Access = private)
@@ -23,7 +24,7 @@ classdef Hypocotyl < handle
         Circuit
         CropBox
         Midline
-        Coordinates        
+        Coordinates
     end
     
     methods (Access = public)
@@ -37,11 +38,11 @@ classdef Hypocotyl < handle
                 % Set default properties for empty object
                 vargs = {};
             end
-
+            
             prps   = properties(class(obj));
             deflts = {...
-                    'Lifetime', 0 ; ...
-                    'Frame'   , [0 0]};
+                'Lifetime', 0 ; ...
+                'Frame'   , [0 0]};
             obj    = classInputParser(obj, prps, deflts, vargs);
             
         end
@@ -204,27 +205,39 @@ classdef Hypocotyl < handle
                     
                 case 3
                     %% Return Specific image type
-                    % Get requested data field [ 'gray' | 'bw' ]
+                    % Get image type [ 'gray' | 'bw'  || 'upper' | 'lower']
                     try
                         frm = varargin{2};
                         req = varargin{3};
                         
+                        if ismember(req, {'gray' , 'bw'})
+                            %% Get grayscale or bw image
+                            % Always get upper region
+                            rgn = 'upper';
+                        elseif ismember(req, {'upper' , 'lower'})
+                            %% Get upper or lower region
+                            % Always get grayscale image
+                            rgn = req;
+                            req = 'gray';
+                        end
+                        
+                        %% Get image
                         if numel(frm) > 1
                             img = obj.Parent.getImage(frm, req);
                             bnd = num2cell(...
-                                obj.getCropBox(frm), 2)';
+                                obj.getCropBox(frm, rgn), 2)';
                             crp = cellfun(@(i,b) imcrop(i,b), ...
                                 img, bnd, 'UniformOutput', 0);
                             dat = cellfun(@(x) imresize(x, sclsz), ...
                                 crp, 'UniformOutput', 0);
                         else
                             img = obj.Parent.getImage(frm, req);
-                            crp = imcrop(img, obj.getCropBox(frm));
+                            crp = imcrop(img, obj.getCropBox(frm, rgn));
                             dat = imresize(crp, sclsz);
                         end
                         
                     catch
-                        fprintf(2, 'Requested field must be either: [b|d]\n');
+                        fprintf(2, 'Request must be [gray|bw||upper|lower]\n');
                         dat = [];
                     end
                     
@@ -308,24 +321,63 @@ classdef Hypocotyl < handle
             
         end
         
-        function obj = setCropBox(obj, frm, bbox)
+        function setCropBox(obj, frms, bbox, rgn)
             %% Set vector for bounding box
-            box_size = [1 4];
-            if isequal(size(bbox), box_size)
+            switch nargin
+                case 3
+                    rgn = 'upper';
+            end
+            
+            switch rgn
+                case 'upper'
+                    r = 1;
+                case 'lower'
+                    r = 2;
+                otherwise
+                    fprintf(2, 'Region %s not recognized [upper|lower]\n', rgn);
+                    return;
+            end
+            
+            bdims = [1 , 4];
+            if isequal(size(bbox(1,:)), bdims)
                 if isempty(obj.CropBox)
-                    obj.CropBox(1, :) = bbox;
+                    obj.CropBox(1, :, r) = bbox;
                 else
-                    obj.CropBox(frm, :) = bbox;
+                    obj.CropBox(frms, :, r) = bbox;
                 end
             else
-                fprintf(2, 'CropBox should be size %s\n', num2str(box_size));
+                fprintf(2, 'CropBox should be size %s\n', num2str(bdims));
             end
         end
         
-        function bbox = getCropBox(obj, frm)
-            %% Return CropBox parameter, or the [4 x 1] vector that defines the
-            % bounding box to crop from Parent Seedling
-            bbox = obj.CropBox(frm, :);
+        function bbox = getCropBox(obj, frm, rgn)
+            %% Return CropBox parameter
+            % The CropBox is a [4 x 1] vector that defines the bounding box
+            % to crop from Parent Seedling. This can be from either the upper or
+            % lower region of the Seedling.
+            
+            % Defaults
+            switch nargin
+                case 1
+                    frm = ':';
+                    rgn = 'upper';
+                case 2
+                    rgn = 'upper';
+            end
+            
+            % Region dimension
+            switch rgn
+                case 'upper'
+                    r = 1;
+                case 'lower'
+                    r = 2;
+                otherwise
+                    fprintf(2, 'Region %s not recognized [upper|lower]\n', rgn);
+                    bbox = [];
+                    return;
+            end
+            
+            bbox = obj.CropBox(frm, :, r);
         end
         
         function obj = setContour(obj, frm, ctr)
@@ -440,12 +492,43 @@ classdef Hypocotyl < handle
             end
         end
         
+        function ResetCropBox(obj, frms)
+            %% Set lower region bounding box for frame
+            if nargin < 2
+                frms = 1 : obj.Lifetime;
+            end
+            
+            s     = obj.Parent;
+            %             imgs  = s.getImage(frms, 'bw');
+            imgs  = s.getImage(frms);
+            apts  = s.getAnchorPoints(frms);
+            scl   = s.getProperty('SCALESIZE');
+            nfrms = numel(frms);
+            
+            if nfrms > 1
+                [tm , tb , lm , lb] = deal(cell(nfrms, 1));
+                for f = 1 : nfrms
+                    [tm{f} , tb{f} , lm{f} , lb{f}] = ...
+                        cropFromAnchorPoints(imgs{f}, apts(:,:,f), scl);
+                end
+                
+                tb = cat(1, tb{:});
+                lb = cat(1, lb{:});
+                
+            else
+                [~ , tb , ~ , lb] = cropFromAnchorPoints(imgs, apts, scl);
+            end
+            
+            % Reset upper and lower bounding boxes
+            obj.setCropBox(frms, tb, 'upper');
+            obj.setCropBox(frms, lb, 'lower');
+        end
     end
     
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
         % Private helper methods
-
+        
     end
     
 end

@@ -1,10 +1,10 @@
-function [snp, idx] = snap2curve(ref, trg, mth, rot)
+function [snp , idx , dst] = snap2curve(ref, trg, mth, rot)
 %% snap2curve: snap coordinates to closest point along curve
 % This function takes [m x n] coordinate positions, finds the index along [p x n] coordinate matrix,
 % and returns an [m x n] matrix, where coordinates are replaced by nearest coordinates in crds.
 %
 % Usage:
-%   [snp, idx] = snap2curve(ref, trg, mth)
+%   [snp , idx , dst] = snap2curve(ref, trg, mth)
 %
 % Input:
 %   pts: [m x n] matrix of coordinates near curve
@@ -35,8 +35,8 @@ end
 switch mth
     case 'dsearch'
         %% Implement search without triangulation (fastest)
-        idx = dsearchn(trg, ref);
-        snp = trg(idx, :);
+        [idx , dst] = dsearchn(trg, ref);
+        snp         = trg(idx, :);
         
     case 'delaunay'
         %% Implement delaunay triangulation

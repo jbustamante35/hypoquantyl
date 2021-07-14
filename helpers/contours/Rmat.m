@@ -1,4 +1,4 @@
-function [Rm, R3] = Rmat(deg, d)
+function [Rm, R3] = Rmat(deg, rad, d)
 %% Rmat: rotation matrix of deg degrees in Euclidean space
 % This function returns the rotation matrix needed to perform a rotation of a
 % vector in Euclidean (xy) space in a counter-clockwise direction. The input
@@ -11,10 +11,11 @@ function [Rm, R3] = Rmat(deg, d)
 % transpose of the vector to rotate to yield the rotated vector.
 %
 % Usage:
-%   [Rm, R3] = Rmat(deg, d)
+%   [Rm, R3] = Rmat(deg, rad, d)
 %
 % Input:
 %   deg: degrees in which to rotate the vector in a counter-clockwise direction
+%   rad: boolean to keep in radians (default 0)
 %   d: dimension (x, y, or z) to perform a 3D rotation
 %
 % Output:
@@ -22,11 +23,24 @@ function [Rm, R3] = Rmat(deg, d)
 %   R3: 3-Dimensional rotation matrix in x, y, or z direction
 %
 
+switch nargin
+    case 1
+        [rad , d] = deal(0);
+    case 2
+        d = 0;
+end
+
 rotation_matrix = @(t) [[cos(t) ; -sin(t)], ...
     [sin(t) ; cos(t)]];
-Rm              = rotation_matrix(deg2rad(deg));
 
-if nargin > 1
+% Convert to degrees (default) or keep in radians
+if rad
+    Rm = rotation_matrix(deg);
+else
+    Rm = rotation_matrix(deg2rad(deg));
+end
+
+if d
     switch d
         % 3D rotation matrix
         case 'x'

@@ -136,8 +136,8 @@ classdef OutlineFixer < handle
             switch class(obj.Object)
                 case 'CircuitJB'
                     %% Auto-segmentation when fixing outline
-                    msk = segmentObjectsHQ(obj.Image, obj.SegSmooth);
-                    trc = extractContour(msk, 300);
+                    msk        = segmentObjectsHQ(obj.Image, obj.SegSmooth);
+                    [~ , trc]  = extractContour(msk, 300, 'alt', 'Normalize');
                 case 'Curve'
                     %% Auto-fix to midline based on distance transform
                     % Get distance transform

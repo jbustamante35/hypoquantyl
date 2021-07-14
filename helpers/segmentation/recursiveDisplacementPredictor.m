@@ -35,7 +35,7 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz
 %
 % Output:
 %   Cntr: the contour predicted by this algorithm
-%   Znrms: Z-Vector of the predicted contour
+%   Znrms: Z-Vector of the predicted contour [note: not from final iteration]
 %   Simg: placeholder debugging variable
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -79,147 +79,252 @@ allItrs = 1 : nItrs;
 [scls, dom, domSize] = setupParams('toRemove', toRemove, 'zoomLvl', zoomLvl);
 
 %% Get initial frame bundle and image patches
-if v
-    t    = tic;
-    tCrv = tic;
-    fprintf('Getting initial tangent bundle and image patch samples...');
+switch v
+    case 1
+        % Condense each iteration
+        fprintf('|0');
+    case 2
+        % Each iteration
+        t    = tic;
+        tCrv = tic;
+        fprintf('Getting initial tangent bundle and image patch samples...');
 end
 
 % Predict skeleton if input is empty
 if isempty(z)
-    if v
-        tt = tic;
-        fprintf('Predicting Tangent Bundle from Image...');
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('-');
+        case 2
+            % Each iteration
+            fprintf('Predicting Tangent Bundle from Image...');
     end
     
-    z = predictZvectorFromImage(imgs, Nz, pz);
+    z = predictZvectorFromImage(imgs, Nz, pz, rot, split2stitch, addMid, uLen);
     
-    if v
-        fprintf('DONE [%.02f sec]\n', toc(tt));
+    % Initial Z-Vector prediction from image
+    Znrms.initial = z;
+    
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('.');
+        case 2
+            % Each iteration
+            fprintf('DONE [%.02f sec]...', toc(tt));
     end
 end
 
 % Get image patches and differnet scales and domain shapes/sizes
 x = sampleCorePatches(imgs, z, scls, dom, domSize, DVIS);
 
-if v
-    fprintf('DONE [%.02f sec]\n', toc(t));
+switch v
+    case 1
+        % Condense each iteration
+        fprintf('o');
+    case 2
+        % Each iteration
+        fprintf('DONE [%.02f sec]\n', toc(t));
 end
 
 %% Recursively predict vector displacements from frame bundles
 Simg = cell(1, nItrs); % Placeholder debugging variable
 
 for itr = allItrs
-    if v
-        tItr = tic;
-        fprintf('\n%s\nPredicting image from Iteration %d...\n', ...
-            sprA, itr);
+    % ------------------------------------------------------------------------ %
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('|%d', itr);
+        case 2
+            % Each iteration
+            tItr = tic;
+            fprintf('\n%s\nPredicting image from Iteration %d...\n', ...
+                sprA, itr);
     end
     
+    % ------------------------------------------------------------------------ %
     %% Predict vector displacements from image patches
     % Fold image patches into PC scores
-    if v
-        t = tic;
-        fprintf('%s\nFolding Image Patch into %d PC scores...', ...
-            sprB, size(pdp.EigVecs{itr}, 2));
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('-');
+        case 2
+            % Each iteration
+            t = tic;
+            fprintf('%s\nFolding Image Patch into %d PC scores...', ...
+                sprB, size(pdp.EigVecs{itr}, 2));
     end
     
     vprj = pcaProject(x, pdp.EigVecs{itr}, pdp.MeanVals{itr}, 'sim2scr');
     
-    if v
-        fprintf('DONE [%.02f sec]\n', toc(t));
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('.');
+        case 2
+            % Each iteration
+            fprintf('DONE [%.02f sec]\n', toc(t));
     end
     
-    % Run neural net on PC scores of image patches
-    if v
-        t = tic;
-        fprintf('Predicting %d-D vector from Neural Net...', ...
-            size(pdp.EigVecs{itr}, 1));
+    % ------------------------------------------------------------------------ %
+    %% Run neural net on PC scores of image patches
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('-');
+        case 2
+            % Each iteration
+            t = tic;
+            fprintf('Predicting %d-D vector from Neural Net...', ...
+                size(pdp.EigVecs{itr}, 1));
     end
     
     netstr = sprintf('N%d', itr);
     ypre   = (Nd.(netstr)(vprj'))';
     
-    if v
-        fprintf('DONE [%.02f sec]\n', toc(t));
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('.');
+        case 2
+            % Each iteration
+            fprintf('DONE [%.02f sec]\n', toc(t));
     end
     
+    % ------------------------------------------------------------------------ %
     %% Map and Reshape predictions to image frame
-    if v
-        t = tic;
-        fprintf('Reshaping and Mapping back to image frame...');
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('-');
+        case 2
+            % Each iteration
+            t = tic;
+            fprintf('Reshaping and Mapping back to image frame...');
     end
     
     tshp = computeTargets(ypre, z, false);
     
-    if v
-        fprintf('DONE [%.02f sec]\n', toc(t));
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('.');
+        case 2
+            % Each iteration
+            fprintf('DONE [%.02f sec]\n', toc(t));
     end
     
+    % ------------------------------------------------------------------------ %
     %% Smooth predicted targets using PCA on predicted displacement vectors
     if foldPredictions
-        if v
-            tt = tic;
-            fprintf('Smoothing %d predictions with %d PCs...', ...
-                size(tshp,1), npc);
+        switch v
+            case 1
+                % Condense each iteration
+                fprintf('-');
+            case 2
+                % Each iteration
+                tt = tic;
+                fprintf('Smoothing %d predictions with %d PCs...', ...
+                    size(tshp,1), npc);
         end
         
         % Convert to PC scores, Back-Project, and Reshape for x-/y-coordinates
         tshp = pcaSmooth(tshp, pdx, pdy);
         
-        if v
-            fprintf('DONE [%.02f sec]...\n', toc(tt));
+        switch v
+            case 1
+                % Condense each iteration
+                fprintf('.');
+            case 2
+                % Each iteration
+                fprintf('DONE [%.02f sec]...\n', toc(tt));
         end
     else
         %% Don't smooth predictions and only take x-/y-coordinates
         tshp = tshp(:,1:2);
     end
     
+    % ------------------------------------------------------------------------ %
     %% Create frame bundle from initial predicted contour
-    if v
-        t = tic;
-        fprintf('Computing new frame bundle and sampling new patches...');
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('-');
+        case 2
+            % Each iteration
+            t = tic;
+            fprintf('Computing new frame bundle and sampling new patches...');
     end
     
     z = curve2framebundle(tshp); % normalizes length along curve
     %     z = contour2corestructure(tshp);
     x = sampleCorePatches(imgs, z, scls, dom, domSize, DVIS);
     
-    if v
-        fprintf('DONE [%.02f sec]\n', toc(t));
+    switch v
+        case 1
+            % Condense each iteration
+            fprintf('.');
+        case 2
+            % Each iteration
+            fprintf('DONE [%.02f sec]\n', toc(t));
     end
     
+    % ------------------------------------------------------------------------ %
     %% Fold at the last iteration
     if itr == nItrs && lastFrmFold
-        if v
-            tt = tic;
-            fprintf('Smoothing final iteration with %d PCs...', npc);
+        switch v
+            case 1
+                % Condense each iteration
+                fprintf('-');
+            case 2
+                % Each iteration
+                tt = tic;
+                fprintf('Smoothing final iteration with %d PCs...', npc);
         end
         
         % Convert to PC scores, Back-Project, and Reshape for x-/y-coordinates
         tshp = pcaSmooth(tshp, pdx, pdy);
         
-        if v
-            fprintf('DONE [%.02f sec]...\n', toc(tt));
+        switch v
+            case 1
+                % Condense each iteration
+                fprintf('.');
+            case 2
+                % Each iteration
+                fprintf('DONE [%.02f sec]...\n', toc(tt));
         end
     end
     
     % Store each iteration's contour and close it
     Simg{itr} = [tshp ; tshp(1,:)];
     
-    if v
-        fprintf('%s\nFinished iteration %d! [%.02f sec]\n%s\n', ...
-            sprB, itr, toc(tItr), sprA);
+    switch v
+        case 1
+            % Condense each iteration           
+            fprintf('o');
+        case 2
+            % Each iteration
+            fprintf('%s\nFinished iteration %d! [%.02f sec]\n%s\n', ...
+                sprB, itr, toc(tItr), sprA);
     end
 end
 
-% Predicted contour is the final iteration
-Cntr  = Simg{itr};
-Znrms = contour2corestructure(Cntr, LEN, STP); % Get Z-Vector of prediction
+% ---------------------------------------------------------------------------- %
+%% Predicted contour is the final iteration
+Cntr        = Simg{itr};
+Znrms.final = contour2corestructure(Cntr, LEN, STP); % Get Z-Vector of prediction
 
-if v
-    fprintf('\n%s\nDone predicting image from %d iterations! [%.02f sec]\n%s\n', ...
-        sprB, nItrs, toc(tCrv), sprB);
+switch v
+    case 1
+        % Condense each iteration
+        fprintf('|\n');
+    case 2
+        % Each iteration
+        fprintf('\n%s\nDone predicting image from %d iterations! [%.02f sec]\n%s\n', ...
+            sprB, nItrs, toc(tCrv), sprB);
 end
 
 end
@@ -252,6 +357,10 @@ p.addParameter('toRemove', 1);
 p.addParameter('zoomLvl', []);
 p.addParameter('foldPredictions', 1);
 p.addParameter('lastFrmFold', 1);
+p.addParameter('rot', 0);
+p.addParameter('split2stitch', 0);
+p.addParameter('addMid', 0);
+p.addParameter('uLen', 0);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

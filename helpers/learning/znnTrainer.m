@@ -1,13 +1,24 @@
-function [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, varargin)
+function [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, pc, varargin)
 %% znnTrainer: CNN to predict Z-Vector slices given grayscale images
+% This function runs a convolution neural net on image stacks to train these
+% images to learn a single PC score. This function was meant to be used in a
+% loop, where each PC score is run through a separate function with differing
+% configurations for layers of the neural net.
+%
+% Output is in the form of two structures: IN contains the reshaped stack of
+% images along with their corresponding PC score, and OUT contains the indices
+% for splitting the dataset, the neural net model, and  the predicted values
+% from that model on the training, validation, and testing datasets.
 %
 % Usage:
-%   [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts)
+%   [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, pc, varargin)
 %
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
 %   IMGS: reshaped and rescaled hypocotyl images [x x 1 N]
 %   splts: dataset splits of training, validation, testing indices
+%   pc: PC to train
+%   varargin: various inputs for neural net [see below]
 %
 %   Miscellaneous Inputs
 %       MBSize: mini batch size parameter
@@ -15,6 +26,7 @@ function [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, varargin)
 %       ILRate: initial learning rate
 %       Save: boolean to save output in a .mat file
 %       Parallel: boolean to use parallel computing if available
+%       Visualize: show current progress of training
 %       Verbose: boolean to determine verbosity level
 %
 % Output:
@@ -35,8 +47,8 @@ PCZ   = size(ZSCRS,2);
 
 tAll              = tic;
 [~ , sepA , sepB] = jprintf('', 0, 0);
-fprintf('%s\nTraining Z-Vectors from %d Images to %d PC Scores [Save %d | Par %d | Verbose %d]\n%s\n', ...
-    sepA, NCRVS, PCZ, Save, Parallel, Verbose, sepB);
+fprintf('%s\nTraining Z-Vectors from %d Images to PC Score %d [Save %d | Par %d | Verbose %d]\n%s\n', ...
+    sepA, NCRVS, pc, Save, Parallel, Verbose, sepB);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Split into training, validation, and testing sets
@@ -49,7 +61,7 @@ if isempty(splts)
     valPct = 0.1;
     tstPct = 0.1;
     splts  = splitDataset(1 : NCRVS, trnPct, valPct, tstPct);
-
+    
     X = IMGS(:, :, :, splts.trnIdx); % For CNN
     Y = ZSCRS(splts.trnIdx, :);
 else
@@ -65,8 +77,6 @@ jprintf(' ', toc(t), 1, 80 - n);
 %% Start training Convolution Neural Net [midpoint CNN method]
 t = tic;
 n = fprintf('Training CNN |');
-
-znet = cell(1, size(Y,2)); % Iteratively predicts all PCs
 
 % Determine parallelization
 switch Parallel
@@ -99,72 +109,63 @@ switch Visualize
         return;
 end
 
+% Run CNN to predict all Z-vector PCs
 % Generate multiple layers from range of filters
 LAYERS = generateLayers(FltRng, NumFltRng, FltLayers);
+cnnY   = Y(:,pc);
+csz    = size(cnnY,2);
 
-% Run CNN to predict all Z-vector PCs
-for pc = 1 : PCZ
-    % for e = 1 : 1 % Debug by running only 1 PC
-    cnnY = Y(:,pc);
-    csz  = size(cnnY,2);
+% Create CNN Layers
+imgnm  = sprintf('imgin_%d_imgs%d', pc, size(IMGS,4));
+drpnm  = sprintf('drp_%d', pc);
+connnm = sprintf('conn_%d_sz%d', pc, csz);
+regnm  = sprintf('reg_%d', pc);
 
-    % Create CNN Layers
-    imgnm  = sprintf('imgin_%d_imgs%d', pc, size(IMGS,4));
-    drpnm  = sprintf('drp_%d', pc);
-    connnm = sprintf('conn_%d_sz%d', pc, csz);
-    regnm  = sprintf('reg_%d', pc);
+layers = [
+    imageInputLayer([size(IMGS,1) , size(IMGS,2) , 1], ...
+    'Name', imgnm, 'Normalization', 'none');
+    
+    LAYERS ;
+    
+    dropoutLayer(Dropout, 'Name', drpnm);
+    fullyConnectedLayer(csz, 'Name', connnm);
+    regressionLayer('Name', regnm);
+    ];
 
-    layers = [
-        imageInputLayer([size(IMGS,1) , size(IMGS,2) , 1], ...
-        'Name', imgnm, 'Normalization', 'none');
+% Configure CNN options
+options = trainingOptions( ...
+    'sgdm', ...
+    'MiniBatchSize',        MBSize, ...
+    'MaxEpochs',            MaxEps, ...
+    'InitialLearnRate',     ILRate, ...
+    'Shuffle',              'every-epoch', ...
+    'Plots',                vis, ...
+    'Verbose',              Verbose, ...
+    'ExecutionEnvironment', exenv);
 
-        LAYERS ;
-
-        dropoutLayer(Dropout, 'Name', drpnm);
-        fullyConnectedLayer(csz, 'Name', connnm);
-        regressionLayer('Name', regnm);
-        ];
-
-    % Configure CNN options
-    options = trainingOptions( ...
-        'sgdm', ...
-        'MiniBatchSize',        MBSize, ...
-        'MaxEpochs',            MaxEps, ...
-        'InitialLearnRate',     ILRate, ...
-        'Shuffle',              'every-epoch', ...
-        'Plots',                vis, ...
-        'Verbose',              Verbose, ...
-        'ExecutionEnvironment', exenv);
-
-    if ~isempty(Vimgs)
-        options.ValidationData      = {Vimgs , Vscrs(:,pc)};
-        options.ValidationFrequency = floor(NCRVS / MBSize);
-    end
-
-    % Run CNN
-    znet{pc} = trainNetwork(X, cnnY, layers, options);
-
-    n(pc+1) = fprintf(' %d |', pc);
+if ~isempty(Vimgs)
+    options.ValidationData      = {Vimgs , Vscrs};
+    options.ValidationFrequency = floor(NCRVS / MBSize);
 end
 
-% Store Networks in a structure
-netStr = arrayfun(@(x) sprintf('N%d', x), 1 : PCZ, 'UniformOutput', 0);
-znet   = cell2struct(znet, netStr, 2);
+% Run CNN
+znet = trainNetwork(X, cnnY, layers, options);
 
-jprintf(' ', toc(t), 1, 80 -sum(n));
+n = fprintf(' %d |', pc);
+jprintf(' ', toc(t), 1, 80 - sum(n));
 
 %% Save it before making predictions, then save it again
 % Avoid errors after the hours it takes to run the training
 t = tic;
 n = fprintf('Saving initial training');
 
-IN  = struct('IMGS', IMGS, 'ZSCRS', ZSCRS);
+IN  = struct('ZSCRS', ZSCRS, 'zinn', cnnY);
 OUT = struct('SplitSets', splts, 'Net', znet);
 
 % Save results in structure
 if Save
-    pnm = sprintf('%s_ZScoreCNN_%dContours_z%dPCs', ...
-        tdate('s'), NCRVS, PCZ);
+    pnm = sprintf('%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
+        tdate('s'), NCRVS, pc, PCZ);
     save(pnm, '-v7.3', 'IN', 'OUT');
 end
 
@@ -175,24 +176,14 @@ t = tic;
 n = fprintf('Making predictions from %d-layer model [Validation %d]', ...
     PCZ, ~isempty(Vimgs));
 
-% Predictions of full dataset
-ypre = zeros(size(ZSCRS));
-yerr = zeros(1, size(ZSCRS,2));
-for pc = 1 : PCZ
-    ypre(:,pc) = double(znet.(netStr{pc}).predict(IMGS));
-    yerr(pc)   = meansqr(diag(pdist2(ypre(:,pc), ZSCRS(:,pc))) ./ ZSCRS(:,pc));
-end
+% Predictions from model
+ypre = double(znet.predict(IMGS));
+yerr = mean((cnnY - ypre).^2, 1) .^ 0.5;
 
 % Compute error of validation set (if given)
 if ~isempty(Vimgs)
-    valPre = zeros(size(Vscrs));
-    valErr = zeros(1, size(Vscrs,2));
-    for pc = 1 : PCZ
-        valPre(:,pc) = znet.(netStr{pc}).predict(Vimgs);
-        valErr(pc)   = meansqr(diag(pdist2( ...
-            valPre(:,pc), Vscrs(:,pc))) ./ Vscrs(:,pc));
-    end
-
+    valPre = znet.predict(Vimgs);
+    valErr = mean((Vscrs - valPre).^2, 1) .^ 0.5;
 else
     valErr = [];
 end
@@ -205,26 +196,25 @@ jprintf(' ', toc(t), 1, 80 - n);
 t = tic;
 n = fprintf('Saving final outputs');
 
-IN  = struct('IMGS', IMGS, 'ZSCRS', ZSCRS);
+IN  = struct('ZSCRS', ZSCRS, 'zinn', cnnY);
 OUT = struct('SplitSets', splts, 'Predictions', ypre, 'Error', yerr, ...
     'Net', znet, 'ValErr', valErr);
 
 % Save results in structure
 if Save
-    pnm = sprintf('%s_ZScoreCNN_%dContours_z%dPCs', ...
-        tdate('s'), NCRVS, PCZ);
+    pnm = sprintf('%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
+        tdate('s'), NCRVS, pc, PCZ);
     save(pnm, '-v7.3', 'IN', 'OUT');
 end
 
 jprintf(' ', toc(t), 1, 80 - n);
-
 fprintf('%s\nFinished training Z-Vector CNN [%.03f sec]\n%s', ...
     sepA, toc(tAll), sepB);
 
 end
 
 function args = parseInputs(varargin)
-%% Parse input parameters for Constructor method
+%% Parse input parameters
 % Need descriptions for all these parameters
 % pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 

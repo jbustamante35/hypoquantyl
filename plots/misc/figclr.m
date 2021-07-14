@@ -15,4 +15,6 @@ else
     cla;clf;
 end
 
+drawnow;
+
 end

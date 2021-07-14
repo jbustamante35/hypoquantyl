@@ -1,4 +1,4 @@
-function [dom , domSize] = generateDomains(dSize, sSize, vSize, hSize, toRemove)
+function [dom , domSize , domShape] = generateDomains(dSize, sSize, vSize, hSize, toRemove)
 %% generateDomains: create domain for a disk, square, vertical/horizontal line
 % This function generates domains for generating a disk (d), square (s),
 % vertical line (v) and a horizontal line (h). These domains can be used with an
@@ -17,6 +17,7 @@ function [dom , domSize] = generateDomains(dSize, sSize, vSize, hSize, toRemove)
 % Output:
 %   dom: cell array of all domains
 %   domSize: cell array of sizes used for the domains
+%   domShape: shapes of domains (for printing)
 
 %% Set domain properties
 % Disk
@@ -26,27 +27,31 @@ d2            = rho .* sin(theta);
 dsk           = [d1(:) , d2(:) , ones(size(d1(:)))];
 
 % Square
-[s1, s2] = ndgrid(linspace(-1, 1, sSize(1)), linspace(-1, 1, sSize(2)));
-sqr      = [s1(:) , s2(:) , ones(size(s1(:)))];
-
-% Vertical Line
-vmag     = 0.1;
-[v2, v1] = ndgrid(linspace(-vmag, vmag, vSize(1)), linspace(-1, 1, vSize(2)));
-vline    = [v1(:) , v2(:) , ones(size(v1(:)))];
+[s1 , s2] = ndgrid(linspace(-1, 1, sSize(1)), linspace(-1, 1, sSize(2)));
+sqr       = [s1(:) , s2(:) , ones(size(s1(:)))];
 
 % Horizontal Line
-hmag     = 0.1;
-[h2, h1] = ndgrid(linspace(-1, 1, hSize(1)), linspace(-hmag, hmag, hSize(2)));
-hline    = [h1(:) , h2(:) , ones(size(h1(:)))];
+hmag      = 0.1;
+% [v2 , v1] = ndgrid(linspace(-vmag, vmag, vSize(1)), linspace(-1, 1, vSize(2)));
+[h2 , h1] = ndgrid(linspace(-hmag, hmag, hSize(2)), linspace(-1, 1, hSize(1)));
+hline     = [h1(:) , h2(:) , ones(size(h1(:)))];
+
+% Vertical Line
+vmag      = 0.1;
+% [h2 , h1] = ndgrid(linspace(-1, 1, hSize(1)), linspace(-hmag, hmag, hSize(2)));
+[v2 , v1] = ndgrid(linspace(-1, 1, vSize(2)), linspace(-vmag, vmag, vSize(1)));
+vline     = [v1(:) , v2(:) , ones(size(v1(:)))];
 
 %% Store everything in a cell array
-dom     = {dsk ,  sqr , vline , hline};
-domSize = {dSize, sSize, vSize, hSize};
+dom      = {dsk    , sqr      , hline   , vline};
+domSize  = {dSize  , sSize    , vSize   , hSize};
+domShape = {'disk' , 'square' , 'vline' , 'hline'};
 
 %% Remove indices
 if ~isempty(toRemove)
-    dom(toRemove)     = [];
-    domSize(toRemove) = [];
+    dom(toRemove)      = [];
+    domSize(toRemove)  = [];
+    domShape(toRemove) = [];
 end
 
 end

@@ -57,7 +57,7 @@ elseif poolExists
     else
         %% Delete all open pools if they don't match number to set up
         fprintf('Shutting down pool of %d Workers and setting with %d Workers...\n', ...
-            currCores, halfCores);
+            currCores, nCores);
         delete(gcp('nocreate'));
         P = startPool(nCores, testOn);
     end

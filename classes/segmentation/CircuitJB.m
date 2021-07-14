@@ -15,11 +15,12 @@ classdef CircuitJB < handle
     end
     
     properties (Access = private)
-        INTERPOLATIONSIZE = 210 % [default 2100 --> gives 10 points per pixel]
+        INTERPOLATIONSIZE = 210 % [gives 1 points per pixel]
         RawPoints
         RawOutline
+        BackupOutline
         Image
-        InterpOutline
+        InterpOutline           % DEPRECATED (but I might still have use for it)
         NormalOutline           % DEPRECATED (but I might still have use for it)
         NUMBEROFANCHORS = 7     % DEPRECATED (but I might still have use for it)
         Routes                  % DEPRECATED (but I might still have use for it)
@@ -167,7 +168,7 @@ classdef CircuitJB < handle
         end
         
         function [obj , ofix] = FixContour(obj, fidx, interp_fixer, seg_smooth)
-            %% Fix the original contour
+            %% Manually fix the contour
             switch nargin
                 case 1
                     fidx         = 1;
@@ -292,11 +293,23 @@ classdef CircuitJB < handle
             
         end
         
-        function obj = NormalizeOutline(obj)
-            %% Normalize InterpOutline to NormalOutline [DEPRECATED]
-            % Rescale outlines by base width to set common start and end point
-            obj.NormalOutline = rescaleNormMethod(obj.InterpOutline, 15);
+        function [nrm , apt] = NormalizeOutline(obj, init)
+            %% Reindex coordinates to normalize start points
+            if nargin < 2
+                init = 'alt';
+            end
+            
+            intrp        = obj.InterpOutline;            
+            [apt, aidxs] = findAnchorPoint(obj, intrp, init);            
+            nrm          = obj.repositionPoints(intrp, aidxs, init);
+            
         end
+        
+        %         function obj = NormalizeOutline(obj)
+        %             %% Normalize InterpOutline to NormalOutline [DEPRECATED]
+        %             % Rescale outlines by base width to set common start and end point
+        %             obj.NormalOutline = rescaleNormMethod(obj.InterpOutline, 15);
+        %         end
         
         function obj = ConvertRawOutlines(obj)
             %% Convert contours from RawOutline to InterpOutline
@@ -383,10 +396,10 @@ classdef CircuitJB < handle
             frm = str2double(nm(aa(end) + 1 : bb(end) - 1));
         end
         
-        function obj = setImage(obj, frm, req, im)
-            %% Set grayscale or bw image at given frame [frm, req, im]
+        function obj = setImage(obj, frm, req, img)
+            %% Set grayscale or bw image at given frame [frm, req, img]
             try
-                obj.Image(frm).(req) = im;
+                obj.Image(frm).(req) = img;
             catch
                 fprintf(2, 'Error setting %s image at frame %d\n', req, frm);
             end
@@ -465,6 +478,23 @@ classdef CircuitJB < handle
                 otherwise
                     fprintf(2, 'Error requesting data.\n');
                     return;
+            end
+        end
+        
+        function obj = setFullOutline(obj, oL, bakUp)
+            %% Set coordinates for FullOutline
+            try
+                if nargin < 2
+                    bakUp = 0;
+                end
+                
+                if bakUp
+                    obj.BackupOutline = obj.FullOutline;
+                end
+                
+                obj.FullOutline = oL;
+            catch e
+                fprintf(2, 'Error setting FullOutline\n%s\n', e.getReport);
             end
         end
         
@@ -662,7 +692,80 @@ classdef CircuitJB < handle
             P = cat(1, R{:});
         end
         
+        function [apt, idx] = findAnchorPoint(obj, crds, init)
+            %% findAnchorPoint: find anchor point coordinate
+            % The definition of the anchor point is determined by the algorithm
+            % selected.
+            %
+            % The first is typically for CarrotSweeper, where the
+            % anchor point is defined as lowest and central column of the
+            % corresponding image. This is the default algorithm if the alg
+            % parameter is empty.
+            %
+            % The second algorithm is for HypoQuantyl, where the anchor point is
+            % defined as the lower-left coordinate of the image. This is the
+            % standardaized starting location for training hypocotyl images. The
+            % alg parameter should be set to 1 or true to use this.
+            %
+            
+            if strcmpi(init , 'default')
+                %% Use CarrotSweeper's anchor point
+                low = min(crds(:,1));
+                rng = round(crds(crds(:,1) == low, :), 4);
+                
+                % Get median of column range
+                if mod(size(rng,1), 2)
+                    mtc = median(rng, 1);
+                else
+                    % Remove last row if even number of values
+                    nrng = rng(1:end-1, :);
+                    mtc  = median(nrng, 1);
+                end
+                
+                % Get index of Anchor Point
+                idx = find(ismember(round(crds, 4), round(mtc, 4), 'rows'));
+                if ~isempty(idx > 1)
+                    % Check if more than 1 index and choose larger index
+                    idx = max(idx);
+                elseif isnan(mtc)
+                    % Check if no index found, if range is only a single value
+                    %idx = find(crds == rng);
+                    idx = find(ismember(round(crds), round(rng), 'rows'));
+                end
+                
+            else
+                %% Use HypoQuantyl's anchor point
+                % Get the initial starting point for contours and shift indexing
+                % of coordinates for CircuitJB objects used in my training set.
+                %
+                % UPDATE [06.02.2021]
+                % This will now identify the base of the contour and set the
+                % starting point to the left-most point of the base.
+                LOWRANGE = 2;
+                b        = labelContour(crds, LOWRANGE);
+                bidxs    = find(b);
+                idx      = bidxs(end);
+            end
+            
+            %% Pull out the anchor point from the coordinates
+            apt = crds(idx, :);
+            
+        end
+        
+        function shft = repositionPoints(obj, crds, idx, init)
+            %% Shift contour points around AnchorPoint coordinate
+            
+            if strcmpi(init, 'default')
+                %% Re-index and Re-Center around AnchorPoint
+                subt = crds - crds(idx,:);
+                shft = circshift(subt, -idx+1);
+            else
+                %% Only Re-index saround AnchorPoint coordinate
+                shft = circshift(crds, -idx+1);
+            end
+        end
+        
+        
     end
     
 end
-

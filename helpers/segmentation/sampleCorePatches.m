@@ -1,9 +1,9 @@
-function smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, vis)
+function smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, vis, sidx, dshp)
 %% sampleCorePatches: sample image from tangent bundle points
 %
 %
 % Usage:
-%   smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, vis)
+%   smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, vis, dshp)
 %
 % Input:
 %   img:
@@ -11,19 +11,24 @@ function smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, vis)
 %   scls:
 %   doms:
 %   domSizes:
-%   vis:
+%   vis: figure handle index to visualize image patches
+%   sidx: save index
+%   dshp: shapes of domains (for text output)
 %
 % Output:
 %   smpl: concatenation of image patches sampled at all domains of each scale
 %
 
 %%
-if vis
-    figclr;
+if nargin < 7
+    sidx = 0;
+    dshp = cell(size(doms));
 end
 
-smpl = cellfun(@(s,d,ds) sampleAtDomain(img, zvec, s, d, ds, vis), ...
-    scls, doms, domSizes, 'UniformOutput', 0);
+%%
+smpl = cellfun(@(s,d,ds,shp) ...
+    sampleAtDomain(img, zvec, s, d, ds, vis, sidx, shp), ...
+    scls, doms, domSizes, dshp, 'UniformOutput', 0);
 smpl = cat(2, smpl{:});
 
 end
