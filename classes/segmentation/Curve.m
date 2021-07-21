@@ -98,7 +98,7 @@ classdef Curve < handle
         
         end
         
-        function Z = getZVector(obj, ndims, addMid, rot, rtyp, dpos, midx)
+        function Z = getZVector(obj, ndims, addMid, rot, rtyp, dpos, nsplt, midx)
         %% Compute the Z-Vector skeleton for this contour
         % This will compute the Z-Vector each time, rather than storing it
         % in a variable after being run once. This will deprecate the
@@ -109,21 +109,25 @@ classdef Curve < handle
                 ndims  = 0;
                 addMid = 0;
                 rot    = 0;
+                nsplt  = obj.SEGMENTSIZE;
                 midx   = obj.TOCENTER;
             case 2
                 addMid = 0;
                 rot    = 0;
+                nsplt  = obj.SEGMENTSIZE;
                 midx   = obj.TOCENTER;
             case 3
-                rot  = 0;
-                midx = obj.TOCENTER;
+                rot   = 0;
+                nsplt = obj.SEGMENTSIZE;
+                midx  = obj.TOCENTER;
             case 4
-                midx = obj.TOCENTER;
+                nsplt = obj.SEGMENTSIZE;                
+                midx  = obj.TOCENTER;
         end
         
-        % Returns the dimensions from ndims [default to all]
-        Z = contour2corestructure(...
-            obj.getTrace, obj.SEGMENTSIZE, obj.SEGMENTSTEPS, midx);
+        % Returns the dimensions from ndims [default to all]        
+        Z = contour2corestructure( ...
+            obj.getTrace, nsplt, obj.SEGMENTSTEPS, midx);
         
         if addMid
             mid = Z(:,1:2);

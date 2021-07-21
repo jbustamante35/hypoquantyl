@@ -47,8 +47,8 @@ PCZ   = size(ZSCRS,2);
 
 tAll              = tic;
 [~ , sepA , sepB] = jprintf('', 0, 0);
-fprintf('%s\nTraining Z-Vectors from %d Images to PC Score %d [Save %d | Par %d | Verbose %d]\n%s\n', ...
-    sepA, NCRVS, pc, Save, Parallel, Verbose, sepB);
+fprintf('%s\nTraining Z-Vectors from %d Images to PC Score %d of %d [Save %d | Par %d | Verbose %d]\n%s\n', ...
+    sepA, NCRVS, pc, PCZ, Save, Parallel, Verbose, sepB);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Split into training, validation, and testing sets
@@ -62,7 +62,7 @@ if isempty(splts)
     tstPct = 0.1;
     splts  = splitDataset(1 : NCRVS, trnPct, valPct, tstPct);
     
-    X = IMGS(:, :, :, splts.trnIdx); % For CNN
+    X = IMGS(:,:,:,splts.trnIdx); % For CNN
     Y = ZSCRS(splts.trnIdx, :);
 else
     % Input is already the training set
@@ -75,8 +75,8 @@ jprintf(' ', toc(t), 1, 80 - n);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Start training Convolution Neural Net [midpoint CNN method]
-t = tic;
-n = fprintf('Training CNN |');
+t  = tic;
+n1 = fprintf('Training CNN |');
 
 % Determine parallelization
 switch Parallel
@@ -151,8 +151,8 @@ end
 % Run CNN
 znet = trainNetwork(X, cnnY, layers, options);
 
-n = fprintf(' %d |', pc);
-jprintf(' ', toc(t), 1, 80 - sum(n));
+n2 = fprintf(' %d |', pc);
+jprintf(' ', toc(t), 1, 80 - sum(n1,n2));
 
 %% Save it before making predictions, then save it again
 % Avoid errors after the hours it takes to run the training
@@ -164,8 +164,9 @@ OUT = struct('SplitSets', splts, 'Net', znet);
 
 % Save results in structure
 if Save
-    pnm = sprintf('%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
-        tdate('s'), NCRVS, pc, PCZ);
+    pdir = sprintf('zvector_training/pcs');
+    pnm  = sprintf('%s/%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
+        pdir, tdate, NCRVS, pc, PCZ);
     save(pnm, '-v7.3', 'IN', 'OUT');
 end
 
@@ -202,13 +203,14 @@ OUT = struct('SplitSets', splts, 'Predictions', ypre, 'Error', yerr, ...
 
 % Save results in structure
 if Save
-    pnm = sprintf('%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
-        tdate('s'), NCRVS, pc, PCZ);
+    pdir = sprintf('zvector_training');
+    pnm  = sprintf('%s/%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
+        pdir, tdate, NCRVS, pc, PCZ);
     save(pnm, '-v7.3', 'IN', 'OUT');
 end
 
 jprintf(' ', toc(t), 1, 80 - n);
-fprintf('%s\nFinished training Z-Vector CNN [%.03f sec]\n%s', ...
+fprintf('%s\nFinished training Z-Vector CNN [%.03f sec]\n%s\n', ...
     sepA, toc(tAll), sepB);
 
 end

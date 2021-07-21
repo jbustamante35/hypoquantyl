@@ -37,24 +37,6 @@ mypca = PcaJB(rawD, numC, 'DataName', dName, varargin{:});
 fname = mypca.DataName;
 
 % ---------------------------------------------------------------------------- %
-% %% DEPRECATED [04.05.2021] - only use custom class PcaJB
-% switch mth
-%     case 1
-%         % Update that uses a custom class [10.23.2019]
-%         mypca = PcaJB(rawD, numC, 'DataName', dName, varargin);
-%         fname = mypca.DataName;
-%
-%     case 2
-%         % Traditional method that uses stores data into built-in structure
-%         mypca = myPCA(rawD, numC, 'old');
-%         fname = sprintf('%s_pcaResults_%s_%dPCs', tdate, dName, numC);
-%
-%     otherwise
-%         fprintf(2, 'Error with Method %d\n', mth);
-%         mypca = [];
-%         return;
-% end
-% ---------------------------------------------------------------------------- %
 %% Save results from custom and built-in analysis
 if sav
     save(fname, '-v7.3', 'mypca');

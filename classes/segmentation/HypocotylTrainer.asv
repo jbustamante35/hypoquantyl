@@ -10,7 +10,7 @@ classdef HypocotylTrainer < handle
         Curves
         HTName
         SaveDirectory
-        Splits
+        isSplit
         
         % Curve Segment Properties
         SegmentSize
@@ -67,7 +67,8 @@ classdef HypocotylTrainer < handle
     end
     
     properties (Access = protected)
-        SplitCurves        
+        SplitCurves
+        Splits
         PCA
         isOptimized
         ZVectors
@@ -99,6 +100,7 @@ classdef HypocotylTrainer < handle
                 % Curve Properties
                 'HTName'              , []  ; ...
                 'SaveDirectory'       , pwd ; ...
+                'isSplit'             , 0   ; ...
                 'SegmentSize'         , 25  ; ...
                 'SegmentSteps'        , 1   ; ...
                 
@@ -175,27 +177,26 @@ classdef HypocotylTrainer < handle
             jprintf(' ', toc(t), 1, 80 - n);
         end
         
-        function obj = SplitDataset(obj, toSplit)
+        function obj = SplitDataset(obj)
             %% Split Curves into training, validation, and testing sets
             % Validation and Testing sets shouldn't be seen by training algorithm
             t = tic;
-            if toSplit             
+            if ~obj.isSplit                
                 n = fprintf('Splitting into training,validation,testing sets');
                 
                 % Get indices of split datasets
                 numCrvs    = numel(obj.Curves);
                 obj.Splits = splitDataset(1 : numCrvs, ...
                     obj.TrainingPct, obj.ValidationPct, obj.TestingPct);
+                
+                % Split Curves into specific sets
+                obj.SplitCurves = struct( ...
+                    'training',   obj.Curves(obj.getSplits.trnIdx) , ...
+                    'validation', obj.Curves(obj.getSplits.valIdx), ...
+                    'testing',    obj.Curves(obj.getSplits.tstIdx));
                                 
             else
-                n = fprintf('Data already split');                
             end
-            
-            % Split Curves into specific sets
-            obj.SplitCurves = struct( ...
-                'training',   obj.Curves(obj.getSplits.trnIdx) , ...
-                'validation', obj.Curves(obj.getSplits.valIdx), ...
-                'testing',    obj.Curves(obj.getSplits.tstIdx));
             
             jprintf(' ', toc(t), 1, 80 - n);
         end
@@ -344,7 +345,7 @@ classdef HypocotylTrainer < handle
             
         end
         
-        function obj = RunFullPipeline(obj, training2run, toSplit)
+        function obj = RunFullPipeline(obj, training2run)
             %% Run full training pipeline
             if nargin < 2
                 % Default to not train S-Vectors
@@ -363,7 +364,7 @@ classdef HypocotylTrainer < handle
             end
             
             obj.ProcessCurves;
-            obj.SplitDataset(toSplit); % Don't split if already split
+            obj.SplitDataset;
             obj.RunPCA;
             
             if training2run(1); obj.TrainZVectors; end
@@ -424,10 +425,10 @@ classdef HypocotylTrainer < handle
                     
                     % Define optimizable variables
                     params = [
-                        optimizableVariable('FilterSize'      , flt,     'Type', 'integer')
-                        optimizableVariable('NumFilters1'     , nflt{1}, 'Type', 'integer')
-                        optimizableVariable('NumFilters2'     , nflt{2}, 'Type', 'integer')
-                        optimizableVariable('NumFilters3'     , nflt{3}, 'Type', 'integer')
+                        optimizableVariable('FilterSize'      , flt,    'Type', 'integer')
+                        optimizableVariable('NumFilters1'      , nflt{1},   'Type', 'integer')
+                        optimizableVariable('NumFilters2'      , nflt{2},   'Type', 'integer')
+                        optimizableVariable('NumFilters3'      , nflt{3},   'Type', 'integer')
                         optimizableVariable('DropoutLayer'    , drp)
                         optimizableVariable('InitialLearnRate', ilrate, 'Transform', 'log')
                         %                         optimizableVariable('FilterLayers'    , nlay,   'Type', 'integer')

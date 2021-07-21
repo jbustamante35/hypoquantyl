@@ -1,7 +1,5 @@
-function [dpre , dnet , evecs , mns] = nn_dvectors(inputs, targets, dsz, par, npd, nlayers, trnfn)
-%% nn_dvector: CNN to predict contour segments given a Z-Vector slice
-%
-%
+function [wpre , wnet , zpevecs , zpmns] = nn_wvectors(inputs, targets, par, nzp, nlayers, trnfn, wsz)
+%% nn_wvectors: CNN to predict contour segments given a Z-Vector slice
 %
 % Parallel/GPU Codes ['par' parameter]:
 %   | Input |  CPU  |  GPU   |              Note             |
@@ -13,30 +11,32 @@ function [dpre , dnet , evecs , mns] = nn_dvectors(inputs, targets, dsz, par, np
 %   |   4   | 'no'  | 'yes'  | Not sure this will even work? |
 %
 % Usage:
-%   [dpre , dnet , evecs , mns] = nn_dvectors( ...
-%       inputs, targets, dsz, par, npd, nlayers, trnfn)
+%   [wpre , wnet , zpevecs , zpmns] = ...
+%       nn_wvectors(inputs, targets, par, nzp, nlayers, trnfn, wsz)
 %
 % Input:
 %   inputs: vectorized image patches from multiple scales and domains
 %   targets: displacement vectors to place from tangent bundle
-%   dsz: size to reshape predictions after using the neural net model
 %   par: run on single-thread (0), parallelization (1), or with GPU (2)
-%   npd: number of Principal Components to reduce inputs (sampled core patches)
+%   nzp: number of PCs to reduce inputs (sampled patches)
 %   nlayers: number of hidden layers for neural net
 %   trnfn: training algorithm to use (default 'trainlm')
+%   wsz: size to reshape predictions after using the neural net model
 %
 % Output:
-%   dpre: predicted target values
-%   dnet: neural net object after training
-%   evecs: eigenvectors after folding input to PC scores
-%   mns: column means of the input matrix
+%   wpre: predicted target values
+%   wnet: neural net object after training
+%   wevecs: eigenvectors after folding input to PC scores
+%   wmns: column means of the input matrix
 %
 
 %% Setup the net
-if nargin < 5
-    npd     = 10;
-    nlayers = 5;
-    trnfn   = 'trainlm';
+switch nargin
+    case 3
+        nzp     = 6;
+        nlayers = 5;
+        trnfn   = 'trainlm';
+        wsz     = 0;
 end
 
 % Use with parallelization or GPU
@@ -72,21 +72,30 @@ switch par
         gll = 'yes';
 end
 
-%% Fold Patches to PC scores
-pp    = myPCA(inputs, npd);
-% scrs  = pp.PCAScores;
-evecs = pp.EigVecs;
-mns   = pp.MeanVals;
-scrs  = pcaProject(inputs, evecs, mns, 'sim2scr');
+%% Compress Z-Patches via PCA
+nsplt   = round(size(targets,2) / 2);
+zpnm    = sprintf('zpatches_%dwindowPCs', nsplt);
+pzp     = pcaAnalysis(inputs, nzp, 0, zpnm);
+zpscrs  = pzp.PCAScores;
+zpevecs = pzp.EigVecs;
+zpmns   = pzp.MeanVals;
 
-%% Run a fitnet to predict displacement vectors from image patches
-dnet = fitnet(nlayers, trnfn);
-dnet = train(dnet, scrs', targets', ppll, pll, gpll, gll);
+%% Run fitnet to predict displacement vectors from image patches
+wnet = fitnet(nlayers, trnfn);
+wnet = train(wnet, zpscrs', targets', ppll, pll, gpll, gll);
 
-% Predict training set data
-dpre = dnet(scrs')';
-dpre = reshape(dpre, dsz);
-dpre = ipermute(dpre, [1 , 3 , 2]);
-
+%% Predict on training data
+if isstruct(wnet)
+    wpre = struct2array(structfun(@(net) ...
+        net(zpscrs')', wnet, 'UniformOutput', 0));
+else
+    wpre = wnet(zpscrs')';
 end
 
+% If not performing PCA folding after this step [reshape into multidim]
+if wsz
+    wpre = reshape(wpre, wsz);
+    wpre = permute(wpre, [3 , 4 , 1 , 2]);
+end
+
+end

@@ -75,12 +75,16 @@ if split2stitch
     
 else
     % Determine size of dataset and number of segments
-    ncrvs = size(pz.InputData,1);
+    if iscell(img)
+        ncrvs = numel(img);
+    else
+        ncrvs = 1;
+    end
     
     if rot
         nsegs = size(pz.InputData,2) / 3;
     else
-        nsegs = size(pz.InputData,2) / 4;
+        nsegs = size(pz.InputData,2) / 6;
     end
     
     % Predict Z-Vector scores from the inputted hypocotyl image
@@ -90,25 +94,14 @@ else
     Zprep = pcaProject(Zscrs, pz.EigVecs, pz.MeanVals, 'scr2sim');
     Zrevs = zVectorConversion(Zprep, nsegs, ncrvs, 'rev');
     
-    %     if rot
-    %         Znrms = zVectorConversion(Zrevs, nsegs, ncrvs, 'rot');
-    %     else
-    %         % Force Tangent vector to be unit length                [10.01.2019]
-    %         % Don't add back midpoints to tangents-normals          [10.18.2019]
-    %         % Determine if Tangent should be subtracted by midpoint [11.06.2019]
-    %         [~, Znrms] = addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid, uLen);
-    %     end
-    
 end
 
 %% Determine if final Z-Vector should be in rotations or tangent-normals
 if rot
     % Prediction should already be in rotations
     Znrms = zVectorConversion(Zrevs, nsegs, ncrvs, 'rot');
-%     Znrms = Zrevs;
 else
     % Add normal vector
     [~ , Znrms] = addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid, uLen);
 end
 end
-

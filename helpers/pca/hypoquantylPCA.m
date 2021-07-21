@@ -116,8 +116,11 @@ else
 end
 
 if zchk > 0
-    rZ = arrayfun(@(c) c.getZVector(1:4, addMid, zrotate, rtyp), ...
-        CRVS, 'UniformOutput', 0);
+    midx = round(nsplt / 2);
+    rZ   = arrayfun(@(c) c.getZVector( ...
+        1:4, addMid, zrotate, rtyp, 0, nsplt, midx), CRVS, 'UniformOutput', 0);
+%     rZ = arrayfun(@(c) c.getZVector(1:4, addMid, zrotate, rtyp), ...
+%         CRVS, 'UniformOutput', 0);
     Z  = cat(1, rZ{:});
     pz = zvectorPCA(Z, sav, pcz, nsegs, ncrvs, ...
         addMid, zrotate, rtyp, znorm.pz, zshp.pz, split2stitch);
@@ -143,33 +146,6 @@ end
 
 jprintf(' ', toc(t), 1, 80 - n);
 
-% ---------------------------------------------------------------------------- %
-%% DEPRECATED [04.07.2021] - Replaced by sub-functions that perform PCA
-% %% Run PCA on x-/y-coordinates and Z-Vectors
-% t = tic;
-% n = fprintf('Performing PCA on all datasets');
-%
-% % Run PCA on x-coordinates
-% xnm = sprintf('x%dHypocotyls', numCrvs);
-% px  = pcaAnalysis(rX, pcx, sav, xnm, ...
-%     'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
-%
-% % Run PCA on y-coordinates
-% ynm = sprintf('y%dHypocotyls', numCrvs);
-% py  = pcaAnalysis(rY, pcy, sav, ynm, ...
-%     'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
-%
-% % Run PCA on z-Vectors
-% znm = sprintf('z%dHypocotyls', numCrvs);
-% pz  = pcaAnalysis(rZ, pcz, sav, znm, ...
-%     'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
-%
-% % Run PCA on z-patches
-% pnm = sprintf('zp%dHypocotyls', numCrvs);
-% pp  = pcaAnalysis(rP, pcp, sav, pnm, ...
-%     'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
-%
-% jprintf(' ', toc(t), 1, 80 - n);
 % ---------------------------------------------------------------------------- %
 
 fprintf('%s\nFinished PCA pipeline on %d %ss [ %.03f sec]\n%s\n', ...
@@ -262,6 +238,7 @@ p.addOptional('pcp', 10);
 p.addOptional('addMid', 0);
 p.addOptional('zrotate', 0);
 p.addOptional('rtyp', 'rad');
+p.addOptional('nsplt', 25);
 p.addOptional('znorm', struct('ps', 0, 'pz', 0, 'pp', 0));
 p.addOptional('zshp', struct('ps', 0, 'pz', 0, 'pp', 0));
 p.addOptional('split2stitch', 0);
