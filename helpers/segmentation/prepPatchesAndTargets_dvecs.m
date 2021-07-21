@@ -1,19 +1,20 @@
-function [PTCHS , ZVECS , TRGS] = masterFunction2(IMG, CNTR, par, trgs, scls, doms, dsz)
-%% masterFunction2:
+function [PTCHS , ZVECS , TRGS] = prepPatchesAndTargets_dvecs(IMG, CNTR, par, len, scls, doms, dszs, trgs)
+%% prepPatchesAndTargets_dvecs:
 %
 %
 % Usage:
-%   [PTCHS , ZVECS , TRGS] = masterFunction2( ...
-%           IMG, CNTR, par, trgs, scls, doms, domSizes)
+%   [PTCHS , ZVECS , TRGS] = prepPatchesAndTargets_dvecs( ...
+%           IMG, CNTR, par, len, scls, doms, dszs, trgs)
 %
 % Input:
 %   IMG: cell array of grayscale images
 %   CNTR: cell array of contours
 %   par: run on single-thread (0) or with parallelization (1)
-%   trgs: displacement vectors predicted by neural net, in tangent frames
-%   scls: zoom scales for image patches
+%   len: length to split segments
+%   scls: zoom scale vectors for image patches
 %   dom: domain vectors defining shape of image patches
-%   dsz: domain sizes for image patches
+%   dszs: domain sizes for image patches
+%   trgs: displacement vectors predicted by neural net, in tangent frames
 %
 % Output:
 %   PTCHS: vectorized image patches for multiple scales and multiple domains
@@ -22,18 +23,12 @@ function [PTCHS , ZVECS , TRGS] = masterFunction2(IMG, CNTR, par, trgs, scls, do
 %
 
 %% Constants and Parameter setup
-% LEN      = 25;
-% STP      = 1;
-% VIS      = 0;
-toRemove = 1;
-zoomLvl  = [0.5 , 1.5];
-nCrvs    = numel(IMG);
-allCrvs  = 1 : nCrvs;
+ncrvs = numel(IMG);
 
 % Check if first iteration
-if nargin < 4
+if nargin < 8
     firstItr = true;
-    TRGS     = cell(1, nCrvs);
+    TRGS     = cell(1, ncrvs);
 else
     % [NOTE]
     % Be sure to not assign Y output if running through multiple iterations
@@ -41,65 +36,60 @@ else
     TRGS     = [];
 end
 
-% Get parameters for patch scaling and domain shapes and sizes
-if nargin < 5
-    [scls, doms, dsz] = setupParams('toRemove', toRemove, 'zoomLvl', zoomLvl);
-end
-
 %% Get all core patches, tangent bundles, and displacement vectors
-[PTCHS , ZVECS] = deal(cell(1, nCrvs));
-
+[PTCHS , ZVECS] = deal(cell(1, ncrvs));
 if par
     %% Run with parallelization
-    if ~firstItr
-        % Avoid overhead and index targets in a cell array
-        tpre = arrayfun(@(x) trgs(:,1:2,x), allCrvs, 'UniformOutput', 0);
+    if firstItr
+        % Make empty cell array to begin
+        trgs = cell(1, ncrvs);
     else
-        tpre = cell(1, nCrvs);
+        % Avoid overhead and index targets in a cell array
+        trgs = arrayfun(@(x) trgs(:,1:2,x), 1 : ncrvs, 'UniformOutput', 0);
     end
     
-    [PTCHS, ZVECS, TRGS] = deal(cell(1, nCrvs));
-    parfor cIdx = 1 : nCrvs
-        img  = IMG{cIdx};
-        cntr = CNTR{cIdx};
+    [PTCHS , ZVECS , TRGS] = deal(cell(1, ncrvs));
+    parfor cidx = 1 : ncrvs
+        img  = IMG{cidx};
+        cntr = CNTR{cidx};
         
         % Run through the master function
         if firstItr
             % Use contour points as D-Vectors in first iteration
-            [PTCHS{cIdx} , ZVECS{cIdx} , TRGS{cIdx}] = runMasterFunction( ...
-                img, cntr, scls, doms, dsz);
+            [PTCHS{cidx} , ZVECS{cidx} , TRGS{cidx}] = runMasterFunction( ...
+                img, cntr, scls, doms, dszs, len);
         else
             % Compute D-Vectors from tangent bundle from previous iteration
-            [PTCHS{cIdx} , ZVECS{cIdx} , TRGS{cIdx}] = runMasterFunction( ...
-                img, cntr, scls, doms, dsz, tpre{cIdx});
+            [PTCHS{cidx} , ZVECS{cidx} , TRGS{cidx}] = runMasterFunction( ...
+                img, cntr, scls, doms, dszs, len, trgs{cidx});
         end
         
         % Track progress
-        fprintf('...%d', cIdx);
+        fprintf('...%d', cidx);
         
     end
 else
     %% Run with single-thread
-    for cIdx = allCrvs
-        img  = IMG{cIdx};
-        cntr = CNTR{cIdx};
+    for cidx = 1 : ncrvs
+        img  = IMG{cidx};
+        cntr = CNTR{cidx};
         
         % Obtain image patches, Z-Vectors, and D-Vectors
         if firstItr
             % Use contour points as D-Vectors in first iteration
-            [PTCHS{cIdx} , ZVECS{cIdx} , TRGS{cIdx}] = runMasterFunction( ...
-                img, cntr, scls, doms, dsz);
+            [PTCHS{cidx} , ZVECS{cidx} , TRGS{cidx}] = runMasterFunction( ...
+                img, cntr, scls, doms, dszs, len);
         else
             % Compute D-Vectors from tangent bundle from previous iteration
-            [PTCHS{cIdx} , ZVECS{cIdx} , TRGS{cIdx}] = runMasterFunction( ...
-                img, cntr, scls, doms, dsz, trgs(:, 1:2, cIdx));
+            [PTCHS{cidx} , ZVECS{cidx} , TRGS{cidx}] = runMasterFunction( ...
+                img, cntr, scls, doms, dszs, len, trgs(:, 1:2, cidx));
         end
         
         % Track progress
-        if mod(cIdx, 10)
+        if mod(cidx, 10)
             fprintf('.');
         else
-            fprintf('%d', cIdx);
+            fprintf('%d', cidx);
         end
         
     end
@@ -120,24 +110,22 @@ ZVECS = cat(3, ZVECS{:});
 
 end
 
-function [PTCHS , ZVECS , TRGS] = runMasterFunction(img, cntr, scls, doms, dsz, trgs, LEN, STP, VIS)
+function [PTCHS , ZVECS , TRGS] = runMasterFunction(img, cntr, scls, doms, dszs, len, trgs)
 %% runMasterFunction: obtain the image patches and frame bundle
 %
 %
 % Usage:
 %   [PTCHS , ZVECS , TRGS] = runMasterFunction( ...
-%       img, cntr, scls, doms, dsz, trgs, LEN, STP, VIS)
+%       img, cntr, scls, doms, dszs, len, trgs)
 %
 % Input:
 %   img:
 %   cntr:
 %   scls:
 %   doms:
-%   dsz:
+%   dszs:
+%   len:
 %   trgs:
-%   LEN:
-%   STP:
-%   VIS:
 %
 % Output:
 %   PTCHS:
@@ -147,12 +135,6 @@ function [PTCHS , ZVECS , TRGS] = runMasterFunction(img, cntr, scls, doms, dsz, 
 
 %% Constants
 if nargin < 7
-    LEN = 25;
-    STP = 1;
-    VIS = 0;
-end
-
-if nargin < 6
     firstItr = true;
 else
     firstItr = false;
@@ -161,22 +143,21 @@ end
 %%
 if firstItr
     % Get ground truth contour and displacement vectors
-    TRGS = prepareTargets(cntr, LEN, STP);
+    TRGS = prepareTargets(cntr, len);
 else
     TRGS = [];
 end
 
 if firstItr
     % Get ground truth tangent bundle
-    ZVECS = contour2corestructure(cntr, LEN, STP);
+    ZVECS = contour2corestructure(cntr, len);
 else
     % Compute predicted tangent bundle
-    crv   = trgs;
-    ZVECS = curve2framebundle(crv); % normalizes length of curve
-    %     ZVECS = contour2corestructure(crv, LEN, STP);
+    trgs  = prepareTargets(trgs, len);
+    ZVECS = curve2framebundle(trgs(:,1:2,:));
 end
 
 % Sample Image from Tangent Bundles
-PTCHS = sampleCorePatches(img, ZVECS, scls, doms, dsz, VIS);
+PTCHS = sampleCorePatches(img, ZVECS, scls, doms, dszs);
 
 end

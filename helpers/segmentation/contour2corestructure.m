@@ -9,7 +9,7 @@ function [Z, L, segs, lbl] = contour2corestructure(cntr, len, stp, toCenter)
 %   cntr: x-/y-coordinates of a closed contour
 %   len: length of the segments to split the contour
 %   stp: step size to skip per segment
-%   toCenter: index to set new center point for each segment (default 1)
+%   toCenter: index to set new center point for each segment (default len/2)
 %
 % Output:
 %   Z: tangent bundle for each of the contour's segments
@@ -24,12 +24,12 @@ switch nargin
     case 1
         len      = 25;
         stp      = 1;
-        toCenter = 1;
+        toCenter = round(len / 2);
     case 2
         stp      = 1;
-        toCenter = 1;
+        toCenter = round(len / 2);
     case 3
-        toCenter = 1;
+        toCenter = round(len / 2);
     case 4
     otherwise
         fprintf(2, 'Incorrect number of inputs (%d)\n', nargin);
