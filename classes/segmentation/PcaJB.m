@@ -139,7 +139,8 @@ classdef PcaJB < handle
             end
             
             S = bsxfun(@minus, X, M);
-            C = (S' * S) / size(S, 1);
+            C = cov(S);
+%             C = (S' * S) / (size(S, 1)-1);
         end
         
         function E = EigVecs(obj, neigs)
@@ -175,8 +176,8 @@ classdef PcaJB < handle
                 case 3
             end
             
-            V            = obj.EigVals(n);
-            [varx, pctN] = variance_explained(V, pct);
+            V             = obj.EigVals(size(obj.InputData,2));
+            [varx , pctN] = variance_explained(V, pct);
             
             varX = varx(1 : n);
             

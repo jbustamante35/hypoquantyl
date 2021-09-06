@@ -406,56 +406,84 @@ classdef Hypocotyl < handle
             
         end
         
-        function obj = setCircuit(obj, frm, crc, req)
+        function obj = setCircuit(obj, frm, crc, req, ver)
             %% Set manually-drawn CircuitJB object (original or flipped)
-            crc.trainCircuit(true);
+            switch nargin
+                case 3
+                    req = 'org';
+                    ver = 'whole';
+                case 4
+                    ver = 'whole';
+            end
+            
+            % Original or flipped direction
             switch req
                 case 'org'
-                    try
-                        obj.Circuit(frm,1) = crc;
-                    catch
-                        obj.Circuit(frm,1) = crc;
-                    end
+                    flp = 1;
                 case 'flp'
-                    try
-                        obj.Circuit(frm,2) = crc;
-                    catch
-                        obj.Circuit(frm,2) = crc;
-                    end
-                    
+                    flp = 2;
                 otherwise
-                    fprintf(2, 'Error setting %s Circuit\n', req);
+                    fprintf(2, 'Error setting %s direction\n', req);
+            end
+            
+            % Whole or clipped contour
+            switch ver
+                case 'whole'
+                    clp = 1;
+                case 'clipped'
+                    clp = 2;
+                otherwise
+                    fprintf(2, 'Error setting %s version\n', req);
+            end
+            
+            % Forcibly set final Circuit
+            try
+                obj.Circuit(frm, flp, clp) = crc;
+                crc.trainCircuit(true);
+            catch
+                obj.Circuit(frm, flp, clp) = crc;
+                crc.trainCircuit(true);
             end
         end
         
-        function crc = getCircuit(obj, frm, req)
+        function crc = getCircuit(obj, frm, req, ver)
             %% Return original or flipped version of CircuitJB object
             if ~isempty(obj.Circuit)
+                switch nargin
+                    case 2
+                        req = 'org';
+                        ver = 'whole';
+                    case 3
+                        ver = 'whole';
+                end
+                
+                crc = [];
                 switch req
                     case 'org'
-                        try
-                            c = obj.Circuit(frm, 1);
-                            if c.isTrained
-                                crc = c;
-                            else
-                                crc = [];
-                            end
-                        catch
-                            crc = [];
-                        end
+                        flp = 1;
                     case 'flp'
-                        try
-                            c = obj.Circuit(frm, 2);
-                            if c.isTrained
-                                crc = c;
-                            else
-                                crc = [];
-                            end
-                        catch
-                            crc = [];
-                        end
+                        flp = 2;
                     otherwise
-                        fprintf(2, 'Error returning %s circuit\n', req);
+                        fprintf(2, 'Error returning %s circuit [org|flp]\n', ...
+                            req);
+                        return;
+                end
+                
+                % Get whole contour or clipped version
+                switch ver
+                    case 'whole'
+                        clp = 1;
+                    case 'clipped'
+                        clp = 2;
+                    otherwise
+                        fprintf(2, 'Error returning %s version [whole|clipped]\n', ...
+                            ver);
+                end
+                
+                % Return only if it is trained...why did I do this?
+                c = obj.Circuit(frm, flp, clp);
+                if c.isTrained
+                    crc = c;
                 end
             else
                 crc = [];
@@ -478,7 +506,8 @@ classdef Hypocotyl < handle
             % orientation and assumes that the flipped orientation will give
             % the same result.
             try
-                frms_all = 1 : obj.Lifetime;
+                %                 frms_all = 1 : obj.Lifetime;
+                frms_all = 1 : size(obj.Circuit,1);
                 
                 orgs = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'org')), ...
                     frms_all, 'UniformOutput', 0));

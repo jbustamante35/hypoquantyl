@@ -1,4 +1,4 @@
-function [scrStruct, simStruct] = pcaSweep(mns, eigs, scrs, pc, upFn, dwnFn, stp, f, sngl)
+function [scrStruct, simStruct] = pcaSweep(mns, evecs, scrs, pc, upFn, dwnFn, stp, vis, idx)
 %% pcaSweep: sweep through mean principal component scores
 % This function performs an iterative step up and down through a single
 % principal component, where the iterative step is defined by the user. User
@@ -14,18 +14,19 @@ function [scrStruct, simStruct] = pcaSweep(mns, eigs, scrs, pc, upFn, dwnFn, stp
 %    dwnFn = @(x,y) x-y;
 %
 % Usage:
-%   [scoreStruct, simStruct] = pcaSweep(mns, eigs, scrs, pc, upFn, dwnFn, stp, f, sngl)
+%   [scoreStruct, simStruct] = pcaSweep( ...
+%       mns, evecs, scrs, pc, upFn, dwnFn, stp, vis, idx)
 %
 % Input:
 %   mns: mean values subtracted from rasterized dataset
-%   eigs: eigenvectors from PCA output
-%   scrs: principal component (PC) scores from PCA output
+%   evecs: eigenvectors from PCA output
+%   scrs: principal component (PC) scores
 %   pc: principal component to sweep
 %   upFn: function handle to positively sweep PC
 %   dwnFn: function handle to negatively sweep PC
 %   stp: size of step to iteratively sweep by sweeping function [usually 1]
-%   f: boolean to hide figure output (0) or generate figure (1)
-%   sngl: single row from PC scores to check iteration with individual scores
+%   vis: quite output (0) or visualize result (1)
+%   idx: row index from scores to run on
 %
 % Output:
 %   scoreStruct: structure containing PC values after iterative step
@@ -43,7 +44,7 @@ function [scrStruct, simStruct] = pcaSweep(mns, eigs, scrs, pc, upFn, dwnFn, stp
 if nargin < 9
     scoreMn = mean(scrs);
 else
-    scoreMn = scrs(sngl,:);
+    scoreMn = scrs(idx,:);
 end
 
 stDevs  = std(scrs);
@@ -54,7 +55,7 @@ if pc > 0
     val    = stDevs(pc) * stp;
     itrUp  = upFn(scoreMn(pc), val);
     itrDwn = dwnFn(scoreMn(pc), val);
-
+    
     % Replace old with new values and store updated mean PC scores
     [scoreUp, scoreDown] = deal(scoreMn);
     scoreUp(pc)          = itrUp;
@@ -65,9 +66,9 @@ else
 end
 
 %% Create new synthetic images with updated PC scores
-orgSim = [pcaProject(scoreMn,   eigs, mns, 'scr2sim') ; 1:length(eigs)]';
-upSim  = [pcaProject(scoreUp,   eigs, mns, 'scr2sim') ; 1:length(eigs)]';
-dwnSim = [pcaProject(scoreDown, eigs, mns, 'scr2sim') ; 1:length(eigs)]';
+orgSim = [pcaProject(scoreMn,   evecs, mns, 'scr2sim') ; 1:length(evecs)]';
+upSim  = [pcaProject(scoreUp,   evecs, mns, 'scr2sim') ; 1:length(evecs)]';
+dwnSim = [pcaProject(scoreDown, evecs, mns, 'scr2sim') ; 1:length(evecs)]';
 
 %% Create output structures
 scrStruct = struct('up', scoreUp, 'mean', scoreMn, 'down', scoreDown);
@@ -75,12 +76,12 @@ simStruct = struct('up', upSim(:,1), 'mean', orgSim(:,1), 'down', dwnSim(:,1));
 
 %% Plot original, up, and down iterative steps on single plot
 % DO NOT CREATE A NEW FIGURE (figures created with multi-sweep functions)
-if f
+if vis
     plt(orgSim, 'k--', 1);
     hold on;
     plt(dwnSim, 'r-', 1);
     plt(upSim, 'g-', 1);
-
+    
     ttl = sprintf('PC_%d|Steps_%d', pc, stp);
     title(ttl);
     axis ij;

@@ -481,11 +481,24 @@ classdef CircuitJB < handle
             end
         end
         
-        function obj = setFullOutline(obj, oL, bakUp)
+        function obj = setOutline(obj, oL, typ)
+            %% Set coordinates for type of outline
+            if nargin < 3
+                typ = 'Full';
+            end
+            
+            obj
+        end
+        
+        function obj = setFullOutline(obj, oL, typ, bakUp)
             %% Set coordinates for FullOutline
             try
-                if nargin < 2
-                    bakUp = 0;
+                switch nargin
+                    case 2
+                        typ = 'Full';
+                        bakUp = 0;
+                    case 3
+                        bakUp = 0;
                 end
                 
                 if bakUp
@@ -493,6 +506,8 @@ classdef CircuitJB < handle
                 end
                 
                 obj.FullOutline = oL;
+                obj.ReconfigInterpOutline;
+                
             catch e
                 fprintf(2, 'Error setting FullOutline\n%s\n', e.getReport);
             end
@@ -521,14 +536,25 @@ classdef CircuitJB < handle
             end
         end
         
-        function iL = getOutline(obj, idx)
+        function iL = getOutline(obj, idx, typ)
             %% Return Interpolated Outline
             try
-                if nargin < 2
+                switch nargin
+                    case 1
+                        idx = ':';
+                        typ = 'Interp';
+                    case 2
+                        typ = 'Interp';
+                end
+                
+                % If idx input is outline type
+                if ischar(idx) && ~strcmpi(idx, ':')
+                    typ = idx;
                     idx = ':';
                 end
                 
-                iL = obj.InterpOutline(idx,:);
+                oL = sprintf('%sOutline', typ);
+                iL = obj.(oL)(idx,:);
             catch e
                 fprintf(2, 'Error returning InterpOutline\n%s\n', e.getReport);
             end

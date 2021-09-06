@@ -165,6 +165,12 @@ OUT = struct('SplitSets', splts, 'Net', znet);
 % Save results in structure
 if Save
     pdir = sprintf('zvector_training/pcs');
+    
+    if ~isfolder(pdir)
+        mkdir(pdir);
+        pause(0.5);
+    end
+    
     pnm  = sprintf('%s/%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
         pdir, tdate, NCRVS, pc, PCZ);
     save(pnm, '-v7.3', 'IN', 'OUT');
