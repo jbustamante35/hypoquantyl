@@ -3,7 +3,7 @@ function [zvec , zmid , ztng , znrm] = zscr2zvec(zscr, nsegs, evecs, mns, scl)
 % Description
 %
 % Usage:
-%    [zvec , zmid , ztng , znrm] = zscr2zvec(scr, nsegs, evecs, mns, scl)
+%    [zvec , zmid , ztng , znrm] = zscr2zvec(zscr, nsegs, evecs, mns, scl)
 %
 % Input:
 %   scr: pc scores of the Z-Vector

@@ -1,4 +1,4 @@
-function [pz , pdp , pdx , pdy , Nz , Nd , trnIdx , valIdx , tstIdx] = loadHTNetworks(HT)
+function [pz , pdp , pdx , pdy , pdw , Nz , Nd , trnIdx , valIdx , tstIdx] = loadHTNetworks(HT)
 %% loadHTNetworks: Load models and PCA from HypocotylTrainer object
 % Description
 %
@@ -46,5 +46,13 @@ pdp.MeanVals = dout.MeanVals;
 
 pdx = dout.pdf.pdx;
 pdy = dout.pdf.pdy;
+pdw = dout.pdf.pdw;
 
+if nargout == 1
+    splts = struct('trnIdx', trnIdx , 'valIdx', valIdx , 'tstIdx', tstIdx);
+    hout  = {pz   , pdp   , pdx   , pdy   , pdw   , Nz   , Nd   , splts}';
+    flds  = {'pz' , 'pdp' , 'pdx' , 'pdy' , 'pdw' , 'Nz' , 'Nd' , 'splts'}';
+    pz    = cell2struct(hout, flds);
 end
+end
+

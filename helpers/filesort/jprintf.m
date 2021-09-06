@@ -20,10 +20,10 @@ function [jmsg , strA , strB] = jprintf(msg, tt, v, len, estr, charA, charB)
 %   msg: message to print before filler message
 %   tt: output of toc
 %   v: store in string (0) or output to console (1) [default 1]
-%   len: max length of each line of the message
-%   estr: string or character to use as message filler
-%   charA: string or character for heading separator
-%   charB: string or character for section separator
+%   len: max length of each line of the message (default 80)
+%   estr: string or character to use as message filler (default '.')
+%   charA: string or character for heading separator (default '=')
+%   charB: string or character for section separator (default '-')
 %
 % Output:
 %   jmsg: function to use message in a string message

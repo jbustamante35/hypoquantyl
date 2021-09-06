@@ -60,6 +60,7 @@ classdef HypocotylTrainer < handle
         % Miscellaneous Properties
         Save
         Visualize
+        toStore
         Parallel
         Verbose
         Figures
@@ -67,7 +68,7 @@ classdef HypocotylTrainer < handle
     end
     
     properties (Access = protected)
-        SplitCurves        
+        SplitCurves
         PCA
         isOptimized
         ZVectors
@@ -146,6 +147,7 @@ classdef HypocotylTrainer < handle
                 % Miscellaneous Properties
                 'Save'                , 0 ; ...
                 'Visualize'           , 0 ; ...
+                'toStore'             , 0 ; ...
                 'Parallel'            , 0 ; ...
                 'Verbose'             , 0 ; ...
                 'Figures'             , 1 : 4  ...
@@ -179,16 +181,16 @@ classdef HypocotylTrainer < handle
             %% Split Curves into training, validation, and testing sets
             % Validation and Testing sets shouldn't be seen by training algorithm
             t = tic;
-            if toSplit             
+            if toSplit
                 n = fprintf('Splitting into training,validation,testing sets');
                 
                 % Get indices of split datasets
                 numCrvs    = numel(obj.Curves);
                 obj.Splits = splitDataset(1 : numCrvs, ...
                     obj.TrainingPct, obj.ValidationPct, obj.TestingPct);
-                                
+                
             else
-                n = fprintf('Data already split');                
+                n = fprintf('Data already split');
             end
             
             % Split Curves into specific sets
@@ -228,8 +230,9 @@ classdef HypocotylTrainer < handle
                 'pcx', obj.NPX, 'pcy', obj.NPY, 'pcz', obj.NPZ, 'pcp', obj.NZP, ...
                 'addMid', obj.AddMid, 'zrotate', obj.ZRotate, ...
                 'rtyp', obj.ZRotateType, 'znorm', obj.ZNorm, 'zshp', obj.ZShape, ...
-                'split2stitch', obj.Split2Stitch, 'nsplt', obj.NSplt);
-
+                'split2stitch', obj.Split2Stitch, 'nsplt', obj.NSplt, ...
+                'sdir', obj.SaveDirectory);
+            
             obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp);
             
         end
@@ -315,9 +318,9 @@ classdef HypocotylTrainer < handle
                 obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
             
             nfigs           = numel(obj.Figures);
-            cidxs           = pullRandom(obj.Splits.trnIdx, nfigs, 1);
+            cidxs           = pullRandom(obj.Splits.trnIdx, nfigs, 0);
             [IN, OUT, fnms] = dnnTrainer(IMGS, CNTRS, obj.Iterations, ...
-                cidxs, obj.FoldMethod, obj.NPF, obj.NPD, obj.DLayers, ...
+                obj.NSplt, cidxs, obj.FoldMethod, obj.NPF, obj.NPD, obj.DLayers, ...
                 obj.DTrainFnc, obj.Save, obj.Visualize, obj.Parallel);
             
             jprintf(' ', toc(t), 1, 80 - n);
@@ -347,19 +350,20 @@ classdef HypocotylTrainer < handle
         function obj = RunFullPipeline(obj, training2run, toSplit)
             %% Run full training pipeline
             if nargin < 2
-                % Default to not train S-Vectors
+                % Default to not train S-Vectors and splitting sets
                 training2run = [1 , 1 , 0];
+                toSplit      = 1;
             end
             
             if obj.Save
-                currDir = pwd;
+                %                 currDir = pwd;
                 saveDir = obj.SaveDirectory;
                 
                 if ~isfolder(saveDir)
                     mkdir(saveDir);
                 end
                 
-                cd(saveDir);
+                %                 cd(saveDir);
             end
             
             obj.ProcessCurves;
@@ -371,7 +375,6 @@ classdef HypocotylTrainer < handle
             if training2run(3); obj.TrainSVectors; end
             
             if obj.Save
-                cd(currDir);
                 obj.SaveTrainer(saveDir);
             end
             
@@ -436,11 +439,15 @@ classdef HypocotylTrainer < handle
                         ];
                     
                     % Get training and validation images and scores
-                    if isempty(obj.Images)
+%                     if isempty(obj.Images)
+                    if obj.toStore
                         obj.storeImages;
+                        imgs  = obj.Images;
+                    else
+                        imgs  = arrayfun(@(x) x.getImage, ...
+                        obj.Curves, 'UniformOutput', 0);
                     end
-                    
-                    imgs  = obj.Images;
+                                        
                     zscrs = obj.getPCA('pz').PCAScores;
                     ntrn  = numel(obj.getSplits.trnIdx);
                     
@@ -486,8 +493,9 @@ classdef HypocotylTrainer < handle
                             Timgs, Tscrs, Vimgs, Vscrs(:,npc), npc);
                         
                         % Bayes optimization
+                        hrs      = 2; % Hours to run optimization
                         bay{npc} = bayesopt(fnc{npc}, params, ...
-                            'MaxTime', 1*60*60, 'IsObjectiveDeterministic', 0, ...
+                            'MaxTime', hrs*60*60, 'IsObjectiveDeterministic', 0, ...
                             'UseParallel', 0, 'Verbose', obj.Verbose);
                         
                         % Store into this object for debugging
@@ -497,6 +505,17 @@ classdef HypocotylTrainer < handle
                     end
                     
                     obj.isOptimized.znn = 1;
+                    
+                    % Save object afterwards
+                    if obj.Save
+                        saveDir = obj.SaveDirectory;
+                        
+                        if ~isfolder(saveDir)
+                            mkdir(saveDir);
+                        end
+                        
+                        obj.SaveTrainer(saveDir);
+                    end
                     
                 case 'dnn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
@@ -520,8 +539,8 @@ classdef HypocotylTrainer < handle
             switch req
                 case 'znn'
                     %% Backup original ranges/values
-%                     oflds = {'FilterRange' ; 'NumFilterRange' ; 'MiniBatchSize' ; ...
-%                         'DropoutLayer'  ; 'InitialLearningRate' ; 'MaxEpochs'};
+                    %                     oflds = {'FilterRange' ; 'NumFilterRange' ; 'MiniBatchSize' ; ...
+                    %                         'DropoutLayer'  ; 'InitialLearningRate' ; 'MaxEpochs'};
                     oflds = {'FilterRange' ; 'NumFilterRange' ; ...
                         'DropoutLayer'  ; 'InitialLearningRate'};
                     bflds = cellfun(@(x) sprintf('%s_bak', x), oflds, 'UniformOutput', 0);
@@ -538,9 +557,13 @@ classdef HypocotylTrainer < handle
                     bp  = cat(1, bp{:});
                     
                     % Combine NumFilter1-3 into 1 column
-                    bp.NumFilterRange = [bp.NumFilters1 , bp.NumFilters2 , bp.NumFilters3];
-                    bp = movevars(bp, 'NumFilterRange', 'After', 'FilterSize');
-                    bp = removevars(bp, {'NumFilters1', 'NumFilters2', 'NumFilters3'});
+                    bp.NumFilterRange = ...
+                        [bp.NumFilters1 , bp.NumFilters2 , bp.NumFilters3];
+                    
+                    bp = movevars( ...
+                        bp, 'NumFilterRange', 'After', 'FilterSize');
+                    bp = removevars( ...
+                        bp, {'NumFilters1', 'NumFilters2', 'NumFilters3'});
                     
                     nflds                         = fieldnames(bp);
                     nflds(numel(nflds) - 2 : end) = [];

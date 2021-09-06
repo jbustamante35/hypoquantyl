@@ -1,16 +1,18 @@
-function Znrms = predictZvectorFromImage(img, Nz, pz, rot, split2stitch, addMid, uLen)
+function [Znrms , Zscrs] = predictZvectorFromImage(img, Nz, pz, alt_return, rot, split2stitch, addMid, uLen)
 %% predictZvectorFromImage:
 % This function predicts the Z-Vector PC scores from the inputted image using
 % the given neural network model. It then unfolds the PC scores and reshapes the
 % Z-Vector into stacked Z-Vector slices.
 %
 % Usage:
-%   Znrms = predictZvectorFromImage(img, Nz, pz, rot, addMid, uLen)
+%   [Znrms , Zscrs] = predictZvectorFromImage(img, Nz, pz, alt_return, ...
+%       rot, split2stitch, addMid, uLen)
 %
 % Input:
 %   img: image of the hypocotyl
 %   Nz: neural network model for predicting Z-Vector PC scores from images
 %   pz: Z-Vector eigenvectors and means
+%   alt_return: 1 to return PC scores instead of vector (default 0)
 %   split2stitch: Z-Vector PC scores are split by midpoints-tangents/rotations
 %   rot: replace tangent-normal vectors with rotation vector (default 0)
 %   addMid: add back midpoint to Z-Vector's tangent-normal (default 0)
@@ -18,26 +20,34 @@ function Znrms = predictZvectorFromImage(img, Nz, pz, rot, split2stitch, addMid,
 %
 % Output:
 %   Znrms: predicted Z-Vector slices after unfolding and reshaping
+%   Zscrs: predicted Z-Vector in PC spaces
 %
 
 %% Load datasets if none given
 switch nargin
     case 1
         [pz , Nz]    = loadZVecNetworks;
+        alt_return   = 0;
         split2stitch = 0;
         rot          = 0;
         addMid       = 0;
         uLen         = 1;
     case 3
+        alt_return   = 0;
         split2stitch = 0;
         rot          = 0;
         addMid       = 0;
         uLen         = 1;
     case 4
+        rot          = 0;
         split2stitch = 0;
         addMid       = 0;
         uLen         = 1;
     case 5
+        split2stitch = 0;
+        addMid = 0;
+        uLen   = 1;
+    case 6
         addMid = 0;
         uLen   = 1;
 end
@@ -84,7 +94,7 @@ else
     if rot
         nsegs = size(pz.InputData,2) / 3;
     else
-        nsegs = size(pz.InputData,2) / 6;
+        nsegs = size(pz.InputData,2) / 4;
     end
     
     % Predict Z-Vector scores from the inputted hypocotyl image
@@ -104,4 +114,19 @@ else
     % Add normal vector
     [~ , Znrms] = addNormalVector(Zrevs(:,1:2), Zrevs(:,3:4), addMid, uLen);
 end
+
+%% Convert outputs to double
+if ~strcmpi(Znrms, 'double')
+    Znrms = double(Znrms);
+end
+
+if ~strcmpi(Zscrs, 'double')
+    Zscrs = double(Zscrs);
+end
+
+% Return Z-Vector PC scores instead of vector
+if alt_return
+    Znrms = Zscrs;
+end
+
 end

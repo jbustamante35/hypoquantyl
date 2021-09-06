@@ -147,6 +147,30 @@ end
 jprintf(' ', toc(t), 1, 80 - n);
 
 % ---------------------------------------------------------------------------- %
+%% Save datasets
+t = tic;
+n = fprintf('Saving PCA Datasets');
+
+if sav
+    if ~isempty(px)
+        save([sdir , filesep , px.DataName], '-v7.3', 'px');
+    end
+    
+    if ~isempty(py)
+        save([sdir , filesep , py.DataName], '-v7.3', 'py');
+    end
+    
+    if ~isempty(pz)
+        save([sdir , filesep , pz.DataName], '-v7.3', 'pz');
+    end
+    
+    if ~isempty(pp)
+        save([sdir , filesep , pp.DataName], '-v7.3', 'pp');
+    end    
+    
+end
+
+jprintf(' ', toc(t), 1, 80 - n);
 
 fprintf('%s\nFinished PCA pipeline on %d %ss [ %.03f sec]\n%s\n', ...
     sepB, ncrvs, class(CRVS), toc(tAll), sepA);
@@ -157,12 +181,12 @@ function [px , py] = svectorPCA(X, Y, ncrvs, pcx, pcy, sav, znorm, zshp)
 %% S-Vectors: x-coordinates and y-coordinates of segments
 % Run PCA on x-coordinates
 xnm = sprintf('x%dHypocotyls', ncrvs);
-px  = pcaAnalysis(X, pcx, sav, xnm, ...
+px  = pcaAnalysis(X, pcx, 0, xnm, ...
     'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
 
 % Run PCA on y-coordinates
 ynm = sprintf('y%dHypocotyls', ncrvs);
-py  = pcaAnalysis(Y, pcy, sav, ynm, ...
+py  = pcaAnalysis(Y, pcy, 0, ynm, ...
     'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
 
 end
@@ -211,7 +235,7 @@ else
     end
 
     znm = sprintf('z%dHypocotyls', ncrvs);
-    pz  = pcaAnalysis(Z, pcz, sav, znm, ...
+    pz  = pcaAnalysis(Z, pcz, 0, znm, ...
         'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
 
 end
@@ -222,7 +246,7 @@ function pp = zpatchPCA(P, sav, ncrvs, pcp, znorm, zshp)
 %% Z-Vector patches
 % Run PCA on z-patches
 pnm = sprintf('zp%dHypocotyls', ncrvs);
-pp  = pcaAnalysis(P, pcp, sav, pnm, ...
+pp  = pcaAnalysis(P, pcp, 0, pnm, ...
     'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
 
 end
@@ -242,6 +266,7 @@ p.addOptional('nsplt', 25);
 p.addOptional('znorm', struct('ps', 0, 'pz', 0, 'pp', 0));
 p.addOptional('zshp', struct('ps', 0, 'pz', 0, 'pp', 0));
 p.addOptional('split2stitch', 0);
+p.addOptional('sdir', pwd);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

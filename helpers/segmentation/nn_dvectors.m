@@ -59,32 +59,36 @@ switch par
         % To run in parallel, with workers each assigned to a different unique
         % GPU, with extra workers running on CPU:
         pll = 'yes';
-        gll = 'yes';
+%         gll = 'yes';
+%         trnfn = 'trainscg';
+        gll = 'no';
     case 3
         %
         % Using only workers with unique GPUs might result in higher speed, as
         % CPU workers might not keep up.
         pll = 'yes';
         gll = 'only';
+        trnfn = 'trainscg';
     case 4
         % No parallel, With GPU [don't see why you'd ever use this]
         pll = 'no';
         gll = 'yes';
+        trnfn = 'trainscg';
 end
 
 %% Fold Patches to PC scores
 pp    = myPCA(inputs, npd);
-% scrs  = pp.PCAScores;
 evecs = pp.EigVecs;
 mns   = pp.MeanVals;
 scrs  = pcaProject(inputs, evecs, mns, 'sim2scr');
 
 %% Run a fitnet to predict displacement vectors from image patches
 dnet = fitnet(nlayers, trnfn);
-dnet = train(dnet, scrs', targets', ppll, pll, gpll, gll);
+dnet = train(dnet, scrs', targets(:,1:2)', ppll, pll, gpll, gll);
 
-% Predict training set data
+% Predict training set data [add back 1's column]
 dpre = dnet(scrs')';
+dpre = [dpre , ones(size(dpre,1),1)];
 dpre = reshape(dpre, dsz);
 dpre = ipermute(dpre, [1 , 3 , 2]);
 
