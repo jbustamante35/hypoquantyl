@@ -64,8 +64,8 @@ for frm = 1 : frms
     if sav
         t = tic;
         fprintf('Saving results for frame %02d of %02d...', frm, frms);
-        saveFiguresJB(1, fnms(1), 0, 'png', thmb);
-        saveFiguresJB(2, fnms(2), 0, 'png', fres);
+        saveFiguresJB(1, fnms(1), thmb);
+        saveFiguresJB(2, fnms(2), fres);
         fprintf('DONE! [%.03f sec]\n', toc(t));
     end
 end

@@ -40,14 +40,14 @@ function [scrStruct, simStruct] = pcaSweep(mns, evecs, scrs, pc, upFn, dwnFn, st
 %
 
 %% Mean and StDev of all PCs in x and y coords
-% Take mean if sngl parameter is true
+% Take mean if idx parameter is true
 if nargin < 9
     scoreMn = mean(scrs);
 else
     scoreMn = scrs(idx,:);
 end
 
-stDevs  = std(scrs);
+stDevs = std(scrs);
 
 %% PCn (xstp) StDevs above mean
 if pc > 0

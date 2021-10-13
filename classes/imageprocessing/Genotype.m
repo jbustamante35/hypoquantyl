@@ -25,7 +25,6 @@ classdef Genotype < handle
     end
     
     %% ------------------------- Primary Methods --------------------------- %%
-    
     methods (Access = public)
         %% Constructor and main methods
         function obj = Genotype(varargin)
@@ -43,7 +42,6 @@ classdef Genotype < handle
                 'TotalImages', 0 ; ...
                 'NumberOfSeedlings', 0};
             obj    = classInputParser(obj, prps, deflts, vargs);
-            
         end
         
         function rawSdls = FindSeedlings(obj, rng, hypln, v)
@@ -51,19 +49,25 @@ classdef Genotype < handle
             % This function searches the large grayscale image for what is
             % expected to be Seedling objects. The threshold size of the
             % Seedling is set by the MASKSIZE property.
+            if nargin < 2; rng   = 1 : obj.TotalImages;        end % Range of images
+            if nargin < 3; hypLn = obj.Parent.HYPOCOTYLLENGTH; end % Hypocotyl cutoff length
+            if nargin < 4; v     = 0;                          end % Verbosity
+            
             if v
                 t = tic;
                 fprintf('Extracting Seedlings from %s\n', obj.GenotypeName);
             end
             
-            if rng(end) > obj.TotalImages || isequal(rng, 0)
-                rng = 1 : obj.TotalImages;
+            if numel(rng) > 1
+                if rng(end) > obj.TotalImages || isequal(rng, 0)
+                    rng = 1 : obj.TotalImages;
+                end
             end
             
             % Find raw seedlings from each frame in range
             sdls = cell(1, numel(rng));
-            frm  = 1; % Set first frame for first Seedling
-            gnm  = obj.GenotypeName;            
+            frm  = rng(1); % Set to any frame [09.17.2021]
+            gnm  = obj.GenotypeName;
             for r = rng
                 tr      = tic;
                 img     = obj.getImage(r);
@@ -90,15 +94,17 @@ classdef Genotype < handle
             
             % Store all found seedlings in RawSeedlings property
             obj.RawSeedlings = rawSdls;
-            
         end
         
-        function sdls = SortSeedlings(obj, v)
+        function sdls = SortSeedlings(obj, v, mth)
             %% Align Seedlings and filter out bad frames
             % Aligns each Seedling by their centroid coordinate and then filters
             % out empty time points [to obtain true lifetime]. This function
             % calls an assortment of helper functions that filters out empty
             % frames and aligns Seedling objects through subsequent frames.
+            if nargin < 2; v   = 0;     end
+            if nargin < 3; mth = 'new'; end
+            
             rs   = obj.getRawSeedling;
             frms = size(rs,1);
             ns   = size(rs,2);
@@ -107,7 +113,7 @@ classdef Genotype < handle
                 fprintf('Aligning %d seedlings from %d frames...', ns, frms);
             end
             
-            sdls = obj.filterSeedlings(rs, ns, v);
+            sdls                  = obj.filterSeedlings(rs, ns, v, mth);
             obj.NumberOfSeedlings = numel(sdls);
             arrayfun(@(x) x.RemoveBadFrames, sdls, 'UniformOutput', 0);
             
@@ -116,14 +122,15 @@ classdef Genotype < handle
             end
         end
         
-        function obj = PruneSeedlings(obj)
+        function PruneSeedlings(obj)
             %% Remove RawSeedlings to decrease size of data object
             obj.RawSeedlings = [];
         end
         
-        
         function hyps = FindHypocotylAllSeedlings(obj, v)
             %% Extract Hypocotyl from all Seedlings from this Genotype
+            if nargin < 2; v = 0; end % Verbosity
+            
             try
                 if v
                     fprintf('Extracting Hypocotyls from %s\n', ...
@@ -134,7 +141,8 @@ classdef Genotype < handle
                 sdls = obj.Seedlings;
                 hyps = arrayfun(@(x) x.FindHypocotylAllFrames(v), ...
                     sdls, 'UniformOutput', 0);
-                hyps = arrayfun(@(x) x.SortPreHypocotyls, sdls, 'UniformOutput', 0);
+                hyps = arrayfun(@(x) x.SortPreHypocotyls, ...
+                    sdls, 'UniformOutput', 0);
                 
                 if v
                     fprintf('[%.02f sec] Extracted Hypocotyls from %s\n', ...
@@ -149,7 +157,6 @@ classdef Genotype < handle
                     fprintf('[%.02f sec] %s\n', toc);
                 end
             end
-            
         end
         
         function DerefParents(obj)
@@ -160,7 +167,6 @@ classdef Genotype < handle
         function RefChild(obj)
             %% Set reference back to Children [ after use of DerefParents ]
             arrayfun(@(x) x.setParent(obj), obj.Seedlings, 'UniformOutput', 0);
-            
         end
         
         function fout = ChangeStorePaths(obj, p)
@@ -168,7 +174,6 @@ classdef Genotype < handle
             % I'm an idiot and changed the directory to the base data, and it
             % messed up the entire dataset. This should allow flexibility in
             % the path to data.
-            
             try
                 % Set new experiment name and path
                 obj.ExperimentPath = char(p);
@@ -194,11 +199,9 @@ classdef Genotype < handle
                 return;
             end
         end
-        
     end
     
     %% ------------------------- Helper Methods ---------------------------- %%
-    
     methods (Access = public)
         %% Various helper functions
         function obj = setGenotypeName(obj, gn)
@@ -235,12 +238,12 @@ classdef Genotype < handle
             obs = [];
             
             switch nargin
-                % ---------------------------- Image Store ----------------------------------- %
+                % -------------------------- Image Store --------------------- %
                 case 1
                     % All grayscale images from this object
                     img = obj.ImageStore.readall;
                     
-                    % --------------------------- Indexed Image ---------------------------------- %
+                    % --------------------- Indexed Image -------------------- %
                 case 2
                     % Grayscale image at index [can be a range of images]
                     idx = varargin{2};
@@ -250,15 +253,13 @@ classdef Genotype < handle
                         fprintf(2, 'No image(s) at index/range %s \n', idx);
                     end
                     
-                    % ---------------------------- Image Type ------------------------------------ %
+                    % ------------------- Image Type ------------------------- %
                 case 3
                     % Requested image type at index or range
                     idx = varargin{2};
                     req = varargin{3};
-                    
                     try
                         imgs = searchImageStore(obj.ImageStore, idx);
-                        
                         switch req
                             case 'gray'
                                 img = imgs;
@@ -289,13 +290,13 @@ classdef Genotype < handle
                         img = [];
                     end
                     
-                    % -------------------------------- Error ------------------------------------- %
+                    % ------------------------ Error ------------------------- %
                 otherwise
                     fprintf(2, 'Error returning images\n');
                     img = [];
             end
             
-            % -------------------------- Convert to Double ------------------------------- %
+            % ------------------- Convert to Double -------------------------- %
             % Always convert images to double
             if iscell(img)
                 img = cellfun(@(i) double(i), img, 'UniformOutput', 0);
@@ -317,8 +318,7 @@ classdef Genotype < handle
             
             % Segment objects using simple binarization
             pdps  = obj.PDPROPERTIES;
-            %             prps  = cellfun(@(i) segmentObjectsHQ(imcomplement(i), pdps, [], 1), ...
-            %                 imgs, 'UniformOutput', 0);
+            
             % Might have problems at this line
             prps  = cellfun(@(i) ...
                 segmentObjectsHQ(imcomplement(i), 1, pdps, [], 1), ...
@@ -337,7 +337,6 @@ classdef Genotype < handle
             
             obj.Seedlings         = sdl;
             obj.NumberOfSeedlings = numel(sdl);
-            
         end
         
         function obj = setParent(obj, p)
@@ -356,7 +355,6 @@ classdef Genotype < handle
                             obj.RawSeedlings{f,idx} = sdls{f};
                         end
                     end
-                    %                     obj.RawSeedlings(frms,sidxs) = sdls;
                 else
                     obj.RawSeedlings{frms,sidxs} = sdls;
                 end
@@ -406,7 +404,6 @@ classdef Genotype < handle
         function [s, i] = search4Seedling(obj, nm)
             %% Return specific Seedling by SeedlingName and index
             sdls = obj.getSeedling(':');
-            
             for i = 1 : numel(sdls)
                 mtc = sdls(i).SeedlingName;
                 if isequal(nm, mtc)
@@ -425,7 +422,7 @@ classdef Genotype < handle
                         'UniformOutput', 0);
                     v     = 0;
                 case 2
-                    frms  = arrayfun(@(s) 1:s.Lifetime, obj.getSeedling(hidxs), ...
+                    frms = arrayfun(@(s) 1:s.Lifetime, obj.getSeedling(hidxs), ...
                         'UniformOutput', 0);
                     v    = 0;
                 case 3
@@ -450,7 +447,16 @@ classdef Genotype < handle
                 fprintf(2, 'Error setting CropBox\n');
                 [tbox , lbox] = deal([0 , 0 , 0 , 0]);
             end
-            
+        end
+        
+        function setProperty(obj, req, val)
+            %% Returns a property of this Genotype object
+            try
+                obj.(req) = val;
+            catch e
+                fprintf(2, 'Property %s does not exist\n%s\n', ...
+                    req, e.message);
+            end
         end
         
         function prp = getProperty(obj, req)
@@ -462,7 +468,6 @@ classdef Genotype < handle
                     req, e.message);
             end
         end
-        
     end
     
     %% ------------------------- Private Methods --------------------------- %%
@@ -483,10 +488,7 @@ classdef Genotype < handle
             %   hypln: distance at bottom of image to set cutoff for Hypocotyl
             %
             
-            %% Compute cut-off to chop hypocotyl
-            
-            %             SMOOTH_MASK = true;
-            %             [msk, dd]   = segmentObjectsHQ(img, SMOOTH_MASK);
+            % Compute cut-off to chop hypocotyl
             [msk , dd] = obj.getImage(frm, 'bw');
             prp        = regionprops(dd, img, obj.PDPROPERTIES);
             nsdls      = numel(prp);
@@ -516,16 +518,17 @@ classdef Genotype < handle
                     sdl.setCoordinates(1, prp(sidx).Centroid);
                 end
                 
-                pts = bwAnchorPoints(sdl.getImage(1, 'bw'), hypln);
+                simg = sdl.getImage(1, 'bw');
+                simg = bwareaopen(simg, 400); % Clean image from specks [09.17.2021]
+                pts = bwAnchorPoints(simg, hypln);
                 sdl.setAnchorPoints(1, pts);
                 sdls{sidx} = sdl;
                 
                 obj.setRawSeedlings(frm, sidx, sdl);
-                %                 obj.RawSeedlings{frm,sidx} = sdl;
             end
         end
         
-        function sdls = filterSeedlings(obj, rs, nsdls, v)
+        function sdls = filterSeedlings(obj, rs, nsdls, v, mth)
             %% Filter out bad Seedling objects and frames
             % This function iterates through the cell array of RawSeedlings to
             % add only good Seedling objects into this Genotype.
@@ -534,69 +537,163 @@ classdef Genotype < handle
             % Seedling to align it with the Seedling with the closest centroid
             % coordinates in the next frame.
             %
+            if nargin < 4; v   = 0;     end % Verbosity
+            if nargin < 5; mth = 'new'; end % Sort method
             
-            % Store all coordinates in 3-dim matrix
-            rs       = empty2nan(rs, ...
-                Seedling('SeedlingName', 'empty', 'Coordinates', [nan , nan]));
-            crdsCell = ...
-                cellfun(@(x) x.getCoordinates(1), rs, 'UniformOutput', 0);
-            crdsMtrx = zeros(size(crdsCell, 1), 2, size(crdsCell, 2));
-            for ns = 1 : size(crdsCell, 2)
-                crdsMtrx(:,:,ns) = cat(1, crdsCell{:,ns});
-            end
-            
-            % Create empty Seedling array
-            mkSdl = @(x) Seedling('SeedlingName', ...
-                sprintf('Seedling_{%s}', num2str(x)));
-            sdls  = arrayfun(@(x) mkSdl(x), 1:nsdls, 'UniformOutput', 0)';
-            sdls  = cat(1, sdls{:});
-            
-            % Align coordinates to closest match at each frame.
-            % TODO: implement collision detection --> combine collided objects
-            %   1) colliding objects both should combine coordinates
-            %   2) last indexed object is cut because colliding objects problem
-            crdsMtrx = permute(crdsMtrx, [3 , 2 , 1]);
-            sdlIdx   = alignCoordinates(crdsMtrx);
-            
-            % Add child Seedlings to this Genotype parent
-            for ns = 1 : nsdls
-                if v
-                    tf = tic;
-                    fprintf('\n[Seedling %02d of %02d] | ', ns, nsdls);
-                end
-                
-                sdl   = sdls(ns);
-                idx   = sdlIdx(ns,:);
-                nfrms = numel(idx);
-                for nf = 1 : nfrms                                        
-                    t = rs{nf,ns};
-                    
-                    if sdl.getLifetime == 0
-                        sdl.setFrame(t.getFrame('b'), 'b');
-                    elseif sdl.getFrame('d') <= t.getFrame('b')
-                        sdl.setFrame(t.getFrame('b'), 'd');
-                    else
-                        break;
+            switch mth
+                case 'old'
+                    % Store all coordinates in 3-dim matrix
+                    rs       = empty2nan(rs, Seedling( ...
+                        'SeedlingName', 'empty', 'Coordinates', [nan , nan]));
+                    crdsCell = cellfun(@(x) ...
+                        x.getCoordinates(1), rs, 'UniformOutput', 0);
+                    crdsMtrx = zeros(size(crdsCell, 1), 2, size(crdsCell, 2));
+                    for ns = 1 : size(crdsCell, 2)
+                        crdsMtrx(:,:,ns) = cat(1, crdsCell{:,ns});
                     end
                     
-                    sdl.increaseLifetime;
-                    sdl.setCoordinates(sdl.getLifetime, t.getCoordinates(1));
-                    sdl.setAnchorPoints(sdl.getLifetime, t.getAnchorPoints(1));
-                    sdl.setContour(sdl.getLifetime, t.getContour(1));
-                    sdl.setPData(sdl.getLifetime, t.getPData);
-                    sdl.setParent(obj);
+                    % Create empty Seedling array
+                    mkSdl = @(x) Seedling('SeedlingName', ...
+                        sprintf('Seedling_{%s}', num2str(x)));
+                    sdls  = arrayfun(@(x) mkSdl(x), ...
+                        1 : nsdls, 'UniformOutput', 0)';
+                    sdls  = cat(1, sdls{:});
                     
-                    if v
-                        fprintf('%02d | ', nf);
+                    % Align coordinates to closest match at each frame.
+                    crdsMtrx = permute(crdsMtrx, [3 , 2 , 1]);
+                    sdlIdx   = alignCoordinates(crdsMtrx);
+                    
+                    %% Add child Seedlings to this Genotype parent
+                    for ns = 1 : nsdls
+                        if v
+                            tf = tic;
+                            fprintf('\n[Seedling %02d of %02d] | ', ns, nsdls);
+                        end
+                        
+                        sdl   = sdls(ns);
+                        idx   = sdlIdx(ns,:);
+                        nfrms = numel(idx);
+                        for nf = 1 : nfrms
+                            t = rs{nf,ns};
+                            
+                            if sdl.getLifetime == 0
+                                sdl.setFrame(t.getFrame('b'), 'b');
+                            elseif sdl.getFrame('d') <= t.getFrame('b')
+                                sdl.setFrame(t.getFrame('b'), 'd');
+                            else
+                                break;
+                            end
+                            
+                            sdl.increaseLifetime;
+                            sdl.setCoordinates(sdl.getLifetime, t.getCoordinates(1));
+                            sdl.setAnchorPoints(sdl.getLifetime, t.getAnchorPoints(1));
+                            sdl.setContour(sdl.getLifetime, t.getContour(1));
+                            sdl.setPData(sdl.getLifetime, t.getPData);
+                            sdl.setParent(obj);
+                            
+                            if v
+                                fprintf('%02d | ', nf);
+                            end
+                        end
+                        
+                        if v
+                            fprintf('DONE! [%.03f sec]\n', toc(tf));
+                        end
                     end
-                end
-                
-                if v
-                    fprintf('DONE! [%.03f sec]\n', toc(tf));
-                end
+                    
+                case 'new'
+                    %% Prep adjacency matrix from raw seedling coordinates
+                    RS   = cat(1, rs{:});
+                    CRDS = cell2mat(arrayfun(@(x) x.Coordinates, ...
+                        RS, 'UniformOutput', 0));
+                    DD   = pdist2(CRDS, CRDS);
+                    dmsk = DD < 150;
+                    ddm  = DD .* dmsk;
+                    
+                    % Make digraph and determine clusters
+                    gr        = digraph(ddm);
+                    nidxs     = gr.conncomp; % Total seedlings groups
+                    re        = cellfun(@isempty, rs);
+                    lidx      = 1:numel(rs(~re));
+                    [ii , jj] = ind2sub(size(rs), lidx);
+                    clst      = [lidx' , ii' , jj' , CRDS , nidxs'];
+                    
+                    %% Detect collisions and remove both guilty parties
+                    strt = cell2mat(cellfun(@(x) x.Coordinates, ...
+                        rs(1,:)', 'UniformOutput', 0));
+                    uq   = unique(clst(:,end));
+                    rm   = [];
+                    for e = 1 : numel(uq)
+                        fidx  = find(clst(:,end) == uq(e));
+                        tmpcm = clst(fidx,4:5);
+                        tmp   = intersect(tmpcm, strt, 'rows');
+                        
+                        if size(tmp,1) > 1
+                            rm = [rm , uq(e)];
+                            clst(fidx,end) = nan;
+                        end
+                    end
+                    
+                    %% Make RawSeedling arrays from valid groups
+                    sgrps = unique(clst(:,end));
+                    sgrps(isnan(sgrps)) = [];
+                    
+                    R = cell(1, numel(sgrps));
+                    for r = 1 : numel(sgrps)
+                        sidx = sgrps(r);
+                        ww   = sortrows(clst(clst(:,end) == sidx, :),2);
+                        tmp  = arrayfun(@(x,y) rs(x,y), ww(:,2), ww(:,3));
+                        R{r} = cat(1, tmp{:})';
+                    end
+                    
+                    % Create empty Seedling array
+                    nsdls = numel(R);
+                    mkSdl = @(x) Seedling('SeedlingName', ...
+                        sprintf('Seedling_{%s}', num2str(x)));
+                    sdls  = arrayfun(@(x) mkSdl(x), ...
+                        1 : nsdls, 'UniformOutput', 0)';
+                    sdls  = cat(1, sdls{:});
+                    
+                    %% Add child Seedlings to this Genotype
+                    for ns = 1 : nsdls
+                        if v
+                            tf = tic;
+                            fprintf('\n[Seedling %02d of %02d] | ', ns, nsdls);
+                        end
+                        
+                        r     = R{ns};
+                        sdl   = sdls(ns);
+                        nfrms = numel(r);
+                        for nf = 1 : nfrms
+                            t = r(nf);
+                            
+                            if sdl.getLifetime == 0
+                                sdl.setFrame(t.getFrame('b'), 'b');
+                            elseif sdl.getFrame('d') <= t.getFrame('b')
+                                sdl.setFrame(t.getFrame('b'), 'd');
+                            else
+                                break;
+                            end
+                            
+                            % Add data to Seedling
+                            sdl.increaseLifetime;
+                            sdl.setCoordinates(sdl.getLifetime, t.getCoordinates(1));
+                            sdl.setAnchorPoints(sdl.getLifetime, t.getAnchorPoints(1));
+                            sdl.setContour(sdl.getLifetime, t.getContour(1));
+                            sdl.setPData(sdl.getLifetime, t.getPData);
+                            sdl.setParent(obj);
+                            
+                            if v
+                                fprintf('%02d | ', nf);
+                            end
+                        end
+                        
+                        if v
+                            fprintf('DONE! [%.03f sec]\n', toc(tf));
+                        end
+                    end
             end
             
-            %%
             obj.Seedlings = sdls;
         end
         
@@ -613,9 +710,6 @@ classdef Genotype < handle
             dflts.MinMaxObject = sz;
             dflts.Sensitivity  = sens;
             dflts.Method       = mth;
-            
         end
-        
-        
     end
 end

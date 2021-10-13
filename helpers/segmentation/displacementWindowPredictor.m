@@ -108,7 +108,7 @@ else
 end
 
 switch vis
-    case 2        
+    case 2
         nn   = deblank(repmat('%.03f ', 1, pz.NumberOfPCs));
         n(2) = fprintf(['[' , nn , ']'], zpre.score_initial);
         jprintf('', toc(t), 1, 80 - sum(n));
@@ -123,9 +123,9 @@ switch vis
     case 2
         % Compact
         titrs = tic;
-        fprintf('Predicting through %d iterations |', nitrs);        
+        fprintf('Predicting through %d iterations |', nitrs);
     case 3
-        % Verbose        
+        % Verbose
 end
 
 for itr = 1 : nitrs
@@ -224,7 +224,7 @@ for itr = 1 : nitrs
             sdir = sprintf('displacementvector_%smethod_predictions/%s/curve%03dof%03d', ...
                 fmth, tset, cidx, ncrvs);
             fnms = sprintf('%s_iteration%02dof%02d', tdate, itr, nitrs);
-            saveFiguresJB(fidx, {fnms}, 0, 'png', sdir);
+            saveFiguresJB(fidx, {fnms}, sdir);
         end
     end
     
@@ -234,11 +234,11 @@ for itr = 1 : nitrs
             if mod(itr,m)
                 fprintf('.');
             else
-                fprintf('%d|', itr);                
+                fprintf('%d|', itr);
             end
         case 3
             jprintf('', toc(t), 1, 80 - n);
-        
+            
             % End of Iteration
             nitr = fprintf('Finished Iteration %d of %d', itr, nitrs);
             jprintf('', toc(titr), 1, 80 - nitr);
@@ -251,7 +251,7 @@ end
 if vis == 2
     fprintf('\n');
     n = fprintf('Finished %d Iterations', nitrs);
-    jprintf('', toc(titrs), 1, 80 - n);    
+    jprintf('', toc(titrs), 1, 80 - n);
 end
 
 % ------------------------------ Final Outputs ------------------------------- %
@@ -261,7 +261,14 @@ if vis > 1
     n = fprintf('Storing final outputs [alt_return = %s]', alt_return);
 end
 
-cpre             = cpre(:,1:2);
+
+cpre = cpre(:,1:2);
+% Close contour if open
+if ~any(cpre(1,:) == cpre(end,:), 'all')
+    cpre = [cpre ; cpre(1,:)];
+end
+
+%
 zpre.final       = contour2corestructure(cpre, nsplt);
 zpre.score_final = pcaProject(zVectorConversion( ...
     zpre.final(:,1:4), nsegs, 1, 'prep'), pz.EigVecs, pz.MeanVals, 'sim2scr');
@@ -302,7 +309,7 @@ if vis == 1
     if sav
         sdir = sprintf('displacementvector_%smethod_predictions/%s/', ...
             fmth, tset);
-        saveFiguresJB(fidx, {fnms}, 0, 'png', sdir);
+        saveFiguresJB(fidx, {fnms}, sdir);
     end
 end
 

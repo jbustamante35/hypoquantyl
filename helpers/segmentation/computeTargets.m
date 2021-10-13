@@ -32,29 +32,41 @@ if par == 2
     parfor tr = allCrvs
         aff       = tb2affine(zvecs{tr}, [1 , 1], toShape);
         dvecs{tr} = computeDVector(aff, permute(trgs{tr}, [2 1]))';
-    end
-    
+    end    
     dvecs = cat(3, dvecs{:});
     
 else
     switch par
         case 0
-            %% Single-thread but use from cell arrays
-            nCrvs   = numel(trgs);
-            allCrvs = 1 : nCrvs;
-            nVecs   = size(zvecs{1},1);
-            allVecs = 1 : nVecs;
-            
-            taff = cellfun(@(z) tb2affine(z, [1 , 1], toShape), ...
-                zvecs, 'UniformOutput', 0);
-            
-            dvecs = cell(nCrvs, nVecs);
-            for c = allCrvs
-                for n = allVecs
-                    dvecs{c,n} = (squeeze(taff{c}(n,:,:)) * trgs{c}(:,:,n)')';
+            %% Single-thread
+            if iscell(zvecs)
+                % If cell array
+                nCrvs   = numel(trgs);
+                allCrvs = 1 : nCrvs;
+                nVecs   = size(zvecs{1},1);
+                allVecs = 1 : nVecs;
+                
+                taff = cellfun(@(z) tb2affine(z, [1 , 1], toShape), ...
+                    zvecs, 'UniformOutput', 0);
+                
+                dvecs = cell(nCrvs, nVecs);
+                for c = allCrvs
+                    for n = allVecs
+                        dvecs{c,n} = (squeeze(taff{c}(n,:,:)) * trgs{c}(:,:,n)')';
+                    end
+                end
+                dvecs = cat(3, dvecs{:});
+            else
+                % If single image
+                nCrvs   = size(trgs,3);
+                allCrvs = 1 : nCrvs;
+                dvecs   = zeros(size(trgs));
+                for tr = allCrvs
+                    aff           = tb2affine(zvecs(:,:,tr), [1 , 1], toShape);
+                    dvecs(:,:,tr) = computeDVector( ...
+                        aff, permute(trgs(:,:,tr), [2 , 1]))';
                 end
             end
-            dvecs = cat(3, dvecs{:});
             
         otherwise
             %% Run with single-thread
@@ -63,7 +75,8 @@ else
             dvecs   = zeros(size(trgs));
             for tr = allCrvs
                 aff           = tb2affine(zvecs(:,:,tr), [1 , 1], toShape);
-                dvecs(:,:,tr) = computeDVector(aff, permute(trgs(:,:,tr), [2 , 1]))';
+                dvecs(:,:,tr) = computeDVector( ...
+                    aff, permute(trgs(:,:,tr), [2 , 1]))';
             end
     end
 end
@@ -76,7 +89,6 @@ if toShape
 else
     dsz = size(dvecs);
 end
-
 end
 
 function dvecs = computeDVector(aff, trg)
@@ -100,5 +112,4 @@ for e = 1 : size(aff,1)
     taff       = squeeze(aff(e,:,:));
     dvecs(:,e) = taff * trg(:,e);
 end
-
 end

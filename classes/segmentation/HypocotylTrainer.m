@@ -13,6 +13,8 @@ classdef HypocotylTrainer < handle
         Splits
         
         % Curve Segment Properties
+        ContourVsn
+        ImageFnc
         SegmentSize
         SegmentSteps
         
@@ -98,10 +100,12 @@ classdef HypocotylTrainer < handle
             prps   = properties(class(obj));
             deflts = { ...
                 % Curve Properties
-                'HTName'              , []  ; ...
-                'SaveDirectory'       , pwd ; ...
-                'SegmentSize'         , 25  ; ...
-                'SegmentSteps'        , 1   ; ...
+                'HTName'              , []     ; ...
+                'SaveDirectory'       , pwd    ; ...
+                'SegmentSize'         , 25     ; ...
+                'SegmentSteps'        , 1      ; ...
+                'ContourVsn'          , 'Clip' ; ...
+                'ImageFnc'            , 'left' ; ...
                 
                 % Dataset Splitting
                 'TrainingPct'         , 0.8 ; ...
@@ -119,7 +123,7 @@ classdef HypocotylTrainer < handle
                 % Z-Vector Attributes
                 'AddMid'              , 0    ; ...
                 'ZRotate'             , 0    ; ...
-                'ZRotateType'         , 'na' ; ...
+                'ZRotateType'         , 'rad' ; ...
                 'Split2Stitch'        , 0    ; ...
                 'NSplt'               , 25   ; ...
                 
@@ -187,17 +191,10 @@ classdef HypocotylTrainer < handle
                 % Get indices of split datasets
                 numCrvs    = numel(obj.Curves);
                 obj.Splits = splitDataset(1 : numCrvs, ...
-                    obj.TrainingPct, obj.ValidationPct, obj.TestingPct);
-                
+                    obj.TrainingPct, obj.ValidationPct, obj.TestingPct);                
             else
                 n = fprintf('Data already split');
             end
-            
-            % Split Curves into specific sets
-            obj.SplitCurves = struct( ...
-                'training',   obj.Curves(obj.getSplits.trnIdx) , ...
-                'validation', obj.Curves(obj.getSplits.valIdx), ...
-                'testing',    obj.Curves(obj.getSplits.tstIdx));
             
             jprintf(' ', toc(t), 1, 80 - n);
         end
@@ -206,20 +203,17 @@ classdef HypocotylTrainer < handle
             %% Run PCA functions
             % PCA can be run with method 1 (training only) or method 2
             % (training and validation, testing untouched [default])
-            if nargin < 2
-                mth = 'withval';
-            end
+            if nargin < 2; mth = 'withval'; end % With training and validation
             
             switch mth
                 case 'trn'
                     % Run with only training set
-                    C = obj.getSplitCurves('training');
+                    C = obj.getCurves('trnIdx');
                     
                 case 'withval'
                     % Run with training and validation sets
                     % Order is training in front, validation in back
-                    C = [obj.getSplitCurves('training') ; ...
-                        obj.getSplitCurves('validation')];
+                    C = [obj.getCurves('trnIdx') ; obj.getCurves('valIdx')];
                     
                 otherwise
                     fprintf(2, 'Method %d not implemented [trn|withval]\n', mth);
@@ -227,14 +221,14 @@ classdef HypocotylTrainer < handle
             end
             
             [px, py, pz, pp] = hypoquantylPCA(C, obj.Save, ...
+                'vsn', obj.ContourVsn, 'fnc', obj.ImageFnc, ...
                 'pcx', obj.NPX, 'pcy', obj.NPY, 'pcz', obj.NPZ, 'pcp', obj.NZP, ...
                 'addMid', obj.AddMid, 'zrotate', obj.ZRotate, ...
                 'rtyp', obj.ZRotateType, 'znorm', obj.ZNorm, 'zshp', obj.ZShape, ...
                 'split2stitch', obj.Split2Stitch, 'nsplt', obj.NSplt, ...
                 'sdir', obj.SaveDirectory);
             
-            obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp);
-            
+            obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp);            
         end
         
         function obj = TrainZVectors(obj)
@@ -243,19 +237,19 @@ classdef HypocotylTrainer < handle
             
             if obj.Split2Stitch
                 n    = fprintf('Preparing %d images and [%d|%d] Z-Vectors PC scores', ...
-                    numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ{1}, obj.NPZ{2});
+                    numel(obj.getSplits('trnIdx')), obj.NPZ{1}, obj.NPZ{2});
                 flds = fieldnames(obj.PCA.pz);
                 vtyp = flds{end};
             else
                 n = fprintf('Preparing %d images and %d Z-Vectors PC scores', ...
-                    numel(obj.Curves(obj.Splits.trnIdx)), obj.NPZ);
+                    numel(obj.getSplits('trnIdx')), obj.NPZ);
             end
             
             if ~isempty(obj.Images)
                 IMGS = obj.Images(obj.Splits.trnIdx);
                 IMGS = cat(4, IMGS{:});
             else
-                IMGS = arrayfun(@(c) c.getImage, ...
+                IMGS = arrayfun(@(c) c.getImage(obj.ImageFnc), ...
                     obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
                 IMGS = cat(4, IMGS{:});
             end
@@ -270,8 +264,12 @@ classdef HypocotylTrainer < handle
             
             jprintf(' ', toc(t), 1, 80 - n);
             
-            % TODO: Need the neural net parmeters optimized for each PC
+            %%
             [IN , OUT] = deal(cell(1, size(ZSCRS,2)));
+            
+            if isempty(obj.isOptimized)
+                obj.isOptimized.znn = 0;
+            end
             
             if obj.isOptimized.znn
                 % Set PC-optimized parameters if not already
@@ -302,8 +300,7 @@ classdef HypocotylTrainer < handle
                 end
             end
             
-            obj.ZVectors = struct('ZIN', IN, 'ZOUT', OUT);
-            
+            obj.ZVectors = struct('ZIN', IN, 'ZOUT', OUT);            
         end
         
         function obj = TrainDVectors(obj)
@@ -312,10 +309,10 @@ classdef HypocotylTrainer < handle
             n = fprintf('Training D-Vectors through %d recursive iterations [%s folding]', ...
                 obj.Iterations, obj.FoldMethod);
             
-            IMGS  = arrayfun(@(c) double(c.getImage), ...
-                obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
-            CNTRS = arrayfun(@(c) c.getTrace, ...
-                obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
+            IMGS  = arrayfun(@(c) c.getImage(obj.ImageFnc), ...
+                obj.getCurves('trnIdx'), 'UniformOutput', 0);
+            CNTRS = arrayfun(@(c) c.getTrace(obj.ContourVsn, obj.ImageFnc), ...
+                obj.getCurves('trnIdx'), 'UniformOutput', 0);
             
             nfigs           = numel(obj.Figures);
             cidxs           = pullRandom(obj.Splits.trnIdx, nfigs, 0);
@@ -326,8 +323,7 @@ classdef HypocotylTrainer < handle
             jprintf(' ', toc(t), 1, 80 - n);
             
             obj.DVectors = struct('DIN', IN, 'DOUT', OUT);
-            obj.FigNames = fnms;
-            
+            obj.FigNames = fnms;            
         end
         
         function obj = TrainSVectors(obj)
@@ -336,34 +332,25 @@ classdef HypocotylTrainer < handle
             n = fprintf('Training S-Vectors using %d-layer neural net', ...
                 obj.SLayers);
             
-            [SSCR , ZSLC] = prepareSVectors(obj);
-            
-            [IN, OUT] = snnTrainer(SSCR, ZSLC, obj.SLayers, ...
+            [SSCR , ZSLC] = prepareSVectors(obj);            
+            [IN, OUT]     = snnTrainer(SSCR, ZSLC, obj.SLayers, ...
                 obj.Splits, obj.Save, obj.Parallel);
             
             jprintf(' ', toc(t), 1, 80 - n);
             
-            obj.SVectors = struct('SIN', IN, 'SOUT', OUT);
-            
+            obj.SVectors = struct('SIN', IN, 'SOUT', OUT);            
         end
         
         function obj = RunFullPipeline(obj, training2run, toSplit)
             %% Run full training pipeline
-            if nargin < 2
-                % Default to not train S-Vectors and splitting sets
-                training2run = [1 , 1 , 0];
-                toSplit      = 1;
-            end
+            if nargin < 2; training2run = [1 , 1 , 0]; end % Don't train S-Vectors 
+            if nargin < 3; toSplit      = 1;           end % Split sets
             
             if obj.Save
-                %                 currDir = pwd;
-                saveDir = obj.SaveDirectory;
-                
+                saveDir = obj.SaveDirectory;                
                 if ~isfolder(saveDir)
                     mkdir(saveDir);
                 end
-                
-                %                 cd(saveDir);
             end
             
             obj.ProcessCurves;
@@ -376,32 +363,30 @@ classdef HypocotylTrainer < handle
             
             if obj.Save
                 obj.SaveTrainer(saveDir);
-            end
-            
+            end            
         end
         
         function obj = SaveTrainer(obj, dnm)
             %% Save this object into a .mat file
+            if nargin < 2; dnm = obj.SaveDirectory; end
+            
             if ~isfolder(dnm)
                 mkdir(dnm);
             end
             
             % Remove Curves
-            crvs  = obj.Curves;
-            csplt = obj.SplitCurves;
-            [obj.Curves , obj.SplitCurves] = deal([]);
+            crvs       = obj.Curves;
+            obj.Curves = [];
             
             HT  = obj;
             fnm = sprintf('%s%s%s', dnm, filesep, obj.HTName);
             save(fnm, '-v7.3', 'HT');
             
             % Replace Curves after saving
-            obj.Curves      = crvs;
-            obj.SplitCurves = csplt;
-            
+            obj.Curves = crvs;            
         end
         
-        function obj = OptimizeParameters(obj, mth, pc)
+        function OptimizeParameters(obj, mth, pc)
             %% Optimize parameters if given a range of values
             % Input:
             %   obj: this object
@@ -410,9 +395,8 @@ classdef HypocotylTrainer < handle
             %
             % Output:
             %   params: optimized values from range of parameters
-            if nargin < 3
-                pc = 0; % Default to picking up from last PC
-            end
+            if nargin < 2; mth = 'znn'; end % Z-Vector
+            if nargin < 3; pc  = 0;     end % Pick up from last PC
             
             switch mth
                 case 'znn'
@@ -439,15 +423,15 @@ classdef HypocotylTrainer < handle
                         ];
                     
                     % Get training and validation images and scores
-%                     if isempty(obj.Images)
+                    %                     if isempty(obj.Images)
                     if obj.toStore
                         obj.storeImages;
-                        imgs  = obj.Images;
+                        imgs = obj.Images;
                     else
-                        imgs  = arrayfun(@(x) x.getImage, ...
-                        obj.Curves, 'UniformOutput', 0);
+                        imgs = arrayfun(@(x) x.getImage(obj.ImageFnc), ...
+                            obj.Curves, 'UniformOutput', 0);
                     end
-                                        
+                    
                     zscrs = obj.getPCA('pz').PCAScores;
                     ntrn  = numel(obj.getSplits.trnIdx);
                     
@@ -519,23 +503,19 @@ classdef HypocotylTrainer < handle
                     
                 case 'dnn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
-                    return;
-                    
                 case 'snn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
-                    return;
-                    
                 otherwise
                     fprintf(2, 'Incorrect method %s [znn|dnn|snn]\n', mth);
-                    return;
-            end
-            
+            end            
         end
         
         function SetOptimizedParameters(obj, req)
             %% Set parameters to best values after optimization
             % Each PC should have it's own set of optimized parameters
             % NOTE: Rename properties to actual parameter names (get rid of XRange)
+            if nargin < 2; req = 'znn'; end % Z-Vector
+            
             switch req
                 case 'znn'
                     %% Backup original ranges/values
@@ -578,15 +558,10 @@ classdef HypocotylTrainer < handle
                     
                 case 'dnn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
-                    return;
-                    
                 case 'snn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
-                    return;
-                    
                 otherwise
                     fprintf(2, 'Incorrect method %s [znn|dnn|snn]\n', mth);
-                    return;
             end
         end
         
@@ -607,22 +582,23 @@ classdef HypocotylTrainer < handle
             end
         end
         
-        function crvs = getSplitCurves(obj, typ)
+        function crvs = getCurves(obj, typ)
             %% Return Curves from split datasets
             if nargin < 2
-                % Return full structure
-                crvs = obj.SplitCurves;
+                % Return full structure                                
+                crvs.trnIdx = obj.Curves(obj.getSplits.trnIdx);
+                crvs.valIdx = obj.Curves(obj.getSplits.valIdx);
+                crvs.tstIdx = obj.Curves(obj.getSplits.tstIdx);
             else
                 % Return specific set of Curves
                 try
-                    crvs = obj.SplitCurves.(typ);
+                    crvs = obj.Curves(obj.getSplits.(typ));
                 catch
                     fprintf(2, ...
-                        'Incorrect type %s [training|validation|testing]\n', typ);
+                        'Incorrect type %s [trnIdx|valIdx|tstIdx]\n', typ);
                     crvs = [];
                 end
             end
-            
         end
         
         function pca = getPCA(obj, req)
@@ -662,9 +638,14 @@ classdef HypocotylTrainer < handle
             end
         end
         
-        function s = getSVector(obj)
+        function s = getSVector(obj, req)
             %% Return S-Vector training results
-            s = obj.SVectors;
+            switch nargin
+                case 1
+                    s = obj.SVectors;
+                case 2
+                    s = obj.SVectors(req);
+            end
         end
         
         function [bay , objfn , params] = getOptimizer(obj, req)
@@ -673,6 +654,7 @@ classdef HypocotylTrainer < handle
                 req = 'all';
             end
             
+            [bay , objfn , params] = deal([]);
             switch req
                 case 'znn'
                     % Return parameters for Z-Vector training
@@ -680,17 +662,20 @@ classdef HypocotylTrainer < handle
                     objfn  = obj.ZFnc;
                     params = obj.ZParams;
                     
+                    if nargout < 2
+                        bay = struct( ...
+                            'bay', bay, 'objfn', objfn, 'params', params);
+                    end
+                    
                 case 'dnn'
                     % Return parameters for D-Vector training
                 case 'snn'
                     % Return parameters for S-Vector training
                 case 'all'
-                    % Return all parameters
-                    [bay , objfn , params] = deal([]);
+                    % Return all parameters                    
                 otherwise
                     fprintf(2, 'Error requesting optimization parameters %s\n', ...
                         req);
-                    [bay , objfn , params] = deal([]);
             end
             
         end
@@ -709,7 +694,7 @@ classdef HypocotylTrainer < handle
             switch req
                 case 'set'
                     % Store images in property
-                    imgs  = arrayfun(@(x) x.getImage, ...
+                    imgs  = arrayfun(@(x) x.getImage(obj.ImageFnc), ...
                         obj.Curves, 'UniformOutput', 0);
                     obj.Images = imgs;
                     
@@ -718,7 +703,7 @@ classdef HypocotylTrainer < handle
                     obj.Images = [];
                     
                 otherwise
-                    fprintf(2, 'Error with req %s [get|kill]\n', req);
+                    fprintf(2, 'Error with req %s [set|kill]\n', req);
                     return;
             end
             
@@ -761,8 +746,8 @@ classdef HypocotylTrainer < handle
             
             if nargin <= 2
                 % Cell arrays not inputted, so extract them from dataset
-                rin  = arrayfun(@(c) c.getImage, ...
-                    obj.getSplitCurves(typ), 'UniformOutput', 0);
+                rin  = arrayfun(@(c) c.getImage(obj.ImageFnc), ...
+                    obj.getCurves(typ), 'UniformOutput', 0);
                 rout = obj.getPCA.pz.PCAScores(typidx);
                 
             else
@@ -778,6 +763,25 @@ classdef HypocotylTrainer < handle
             
             obj.ZVectors.IN.(typ).IMGS  = din;
             obj.ZVectors.IN.(typ).ZSCRS = dout;
+        end
+        
+        function prp = getProperty(obj, prp)
+            %% Return property of this object
+            try
+                prp = obj.(prp);
+            catch e
+                fprintf(2, 'Property %s does not exist\n%s\n', ...
+                    prp, e.getReport);
+            end
+        end
+        
+        function obj = setProperty(obj, req, val)
+            %% Set requested property if it exists [for private properties]
+            try
+                obj.(req) = val;
+            catch e
+                fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
+            end
         end
     end
     
@@ -805,10 +809,12 @@ classdef HypocotylTrainer < handle
             
             if obj.Split2Stitch
                 htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02-%02ddpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
-                    tdate, ncrvs, ntrnd, npx, npy, npz{1}, npz{2}, nzp, nzp, npf, npd, rot, rtyp, itrs);
+                    tdate, ncrvs, ntrnd, npx, npy, npz{1}, npz{2}, ...
+                    nzp, nzp, npf, npd, rot, rtyp, itrs);
             else
                 htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
-                    tdate, ncrvs, ntrnd, npx, npy, npz, nzp, npf, npd, rot, rtyp, itrs);
+                    tdate, ncrvs, ntrnd, npx, npy, npz, nzp, npf, ...
+                    npd, rot, rtyp, itrs);
             end
             
         end
@@ -884,9 +890,7 @@ classdef HypocotylTrainer < handle
                 
                 save(fnm, '-v7.3', 'BAYES');
                 cons = [];
-                
             end
-            
         end
     end
 end

@@ -195,7 +195,7 @@ for itr = 1 : nitrs
                     tdate, idx, itr, nitrs);
                 ndir       = sprintf('displacementvector_%smethod_training/curve%03dof%03d', ...
                     fmth, idx, ncrvs);
-                saveFiguresJB(fidx, fnms(fidx), 0, 'png', ndir);
+                saveFiguresJB(fidx, fnms(fidx), ndir);
             end
             
         end

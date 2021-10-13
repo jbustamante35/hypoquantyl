@@ -7,9 +7,9 @@ function [ht , nclps , uidxs] = full2clipped(clps, ht, C, IMGS, toReplace, nrts,
 %       toReplace, nrts, rlen, npts)
 %
 % Input:
-%   ht: HypocotylTrainer object
-%   c: full dataset of Curve objects to replace contours
 %   clps: clipped versions of contours
+%   ht: HypocotylTrainer object
+%   C: full dataset of Curve objects to replace contours
 %   toReplace: replace contours in Curve objects
 %   nrts: number of sections to split contours
 %   rlen: length of each section
@@ -27,26 +27,17 @@ switch nargin
         IMGS      = arrayfun(@(c) c.getImage, C, 'UniformOutput', 0)';
         toReplace = 1;
         nrts      = 4;                   % Number of anchor points
-        rlen      = [53 ; 52 ; 53 ; 52]; % Length between each anchor point
+        rlen      = [53 ; 52 ; 53 ; 51]; % Length between each anchor point
         npts      = 210;                 % Interpolation size
     case 4
         toReplace = 1;
         nrts      = 4;                   % Number of anchor points
-        rlen      = [53 ; 52 ; 53 ; 52]; % Length between each anchor point
+        rlen      = [53 ; 52 ; 53 ; 51]; % Length between each anchor point
         npts      = 210;                 % Interpolation size
     case 5
         nrts      = 4;                   % Number of anchor points
-        rlen      = [53 ; 52 ; 53 ; 52]; % Length between each anchor point
+        rlen      = [53 ; 52 ; 53 ; 51]; % Length between each anchor point
         npts      = 210;                 % Interpolation size
-        %     otherwise
-        %         fprintf(2, 'Error with %d inputs\n', nargin);
-        %         [ht , nclps , uidxs] = deal([]);
-        %         return;
-end
-
-% Remove useless plot function
-for n = 1 : numel(clps)
-    clps(n).plot = [];
 end
 
 % ---------------------------------------------------------------------------- %
@@ -87,8 +78,7 @@ if toReplace
     % This sets the new contours in the parent CircuitJB, since a Curve object
     % doesn't contain any contours on it's own.
     d = arrayfun(@(x) x, d, 'UniformOutput', 0);
-    cellfun(@(x,y) x.setFullOutline(y, 0), d, cntrs, 'UniformOutput', 0);
-    cellfun(@(x,y) x.setProperty('InterpOutline', y), d, cntrs, 'UniformOutput', 0);
+    cellfun(@(x,y) x.setOutline(y, 'Clip'), d, cntrs, 'UniformOutput', 0);
 end
 
 % ---------------------------------------------------------------------------- %
@@ -97,46 +87,34 @@ ht.Curves = c;
 
 end
 
-function cntr = redoContour(cntr, nroutes, rlen, mth)
+function cntr = redoContour(cntr, nroutes, rlen)
 %% Redo contour with proper separation of segments
 switch nargin
     case 1
         nroutes = 4;
-        rlen    = [53 ; 52 ; 53 ; 52];
-        mth     = 1;
+        rlen    = [53 ; 52 ; 53 ; 51];
     case 2
-        rlen = [53 ; 52 ; 53 ; 52];
-        mth  = 1;
-    case 3
-        mth = 1;
+        rlen = [53 ; 52 ; 53 ; 51];
 end
 
-if mth
-    %% New way that works with the unaltered clipped contours
-    % Remove duplicate corners except for the last point
-    len  = round(size(cntr, 1) / nroutes, -1);
-    segs = arrayfun(@(x) ((len * x) + 1 : (len * (x + 1)))', ...
-        0 : (nroutes - 1), 'UniformOutput', 0)';
-    crns = cellfun(@(x) x(end), segs(1:end));
-    
-    cinit = [1 ; crns(1 : nroutes-1) + 1];
-    cends = crns - 1;
-    
-    rts = arrayfun(@(i,e,l) interpolateOutline(cntr(i:e,:), l), ...
-        cinit, cends, rlen, 'UniformOutput', 0);
-    
-    cntr = cat(1, rts{:});
-    
-else
-    %% Old way that is wrong and will be deleted
-    len = round(size(cntr, 1) / nroutes, -1);
-    segs = arrayfun(@(x) ((len * x) + 1 : (len * (x + 1)))', ...
-        0 : (nroutes - 1), 'UniformOutput', 0)';
-    
-    rts = cellfun(@(x,r) interpolateOutline(cntr(x,:), r), ...
-        segs, rlen, 'UniformOutput', 0);
-    
-    cntr = cat(1, rts{:});
+%% Remove duplicate corners except for the last point
+len  = round(size(cntr, 1) / nroutes, -1);
+segs = arrayfun(@(x) ((len * x) + 1 : (len * (x + 1)))', ...
+    0 : (nroutes - 1), 'UniformOutput', 0)';
+crns = cellfun(@(x) x(end), segs(1:end));
+
+cinit = [1 ; crns(1 : nroutes-1) + 1];
+cends = crns - 1;
+
+rts = arrayfun(@(i,e,l) interpolateOutline(cntr(i:e,:), l), ...
+    cinit, cends, rlen, 'UniformOutput', 0);
+
+% Close contour
+cntr = cat(1, rts{:});
+
+if sum(cntr(1,:) ~= cntr(end,:))
+    cntr = [cntr ; cntr(1,:)];
 end
+
 end
 

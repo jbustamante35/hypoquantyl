@@ -50,16 +50,16 @@ ncrvs = numel(C);
 
 for n = 1 : ncrvs
     c = C(n);
-    
+
     if auto
         %% Prime midlines using distance transform
         % NOTE: This only works with one curve at a time for now
         img   = c.getImage;
         cntr  = c.getTrace;
         pline = primeMidline(img, cntr);
-        c.setRawMidline(pline);
+        c.setMidline(pline);
         c.FixMidline(fidx);
-        
+
     else
         %% Trace midline from scratch
         if isempty(c.getMidline)
@@ -69,7 +69,7 @@ for n = 1 : ncrvs
                 c.DrawMidline(fidx);
             end
         end
-        
+
     end
 end
 

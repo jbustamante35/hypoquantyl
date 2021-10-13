@@ -1,101 +1,74 @@
-function showHypocotylPrediction(img, cntr, znrm, simg, idx, trnIdx, mth, sav, fIdxs)
+function [fnm , mcc , p] = showHypocotylPrediction(img, cpre, ctru, fidx, cidx, nflts, tset, zpre, zgrade, zcnv)
 %% showHypocotylPredictions: visualization to show 2-step neural net result
 %
 %
 % Usage:
-%   showHypocotylPrediction(img, cntr, znrm, simg, idx, trnIdx, mth, sav, fIdxs)
+%   [fnm , mcc , p] = showHypocotylPrediction( ...
+%       img, cpre, ctru, fidx, cidx, nflts, tset, zpre, zgrade, zcnv)
 %
 % Input:
 %   img: image used for predictor
 %   cntr: contour predicted from image
-%   znrms: Z-Vector in raw form [1st neural net]
-%   simg: cell array of S-Vectors in image reference frame [2nd neural net]
-%   idx: index in dataset for title purposes
-%   trnIdx: training set indices for title purposes
-%   mth: method used for prediction
-%   sav: boolean to save figure
-%   fIdxs: figure handle indices to plot onto [set 2]
 %
-% Output: n/a
+% Output:
+%   fnm: Figure name for saving later
+%   mcc: Matthew's Corellation Coefficient of contour
+%   p: Probability of Z-Vector PC scores
 %
 
-%% Check the results from two-step neural net
-smth = 'svec';
-dmth = 'dvec';
+%%
+% [mtru , mpre , mcc , p] = deal([]);
+% if ~isempty(ztru); mtru = ztru(:,1:2); end
+% if ~isempty(zpre); mpre = zpre(:,1:2); end
 
-% Check set
-if ismember(idx, trnIdx)
-    cSet = 'training';
-else
-    cSet = 'validation';
+[fnm , mcc , p] = deal([]);
+% Matthew's Corellation Coefficient of contour
+if ~isempty(ctru)
+    isz = size(img);
+    mcc = computeMatthewsCorellation(ctru, cpre, isz);
 end
 
-% Scale tangent and normal vectors
-SCL  = 3;
-mid  = znrm(:,1:2);
-tng  = znrm(:,3:4);
-nrm  = znrm(:,5:6);
-
-switch mth
-    case smth
-        tng  = (SCL * (tng - mid)) + mid;
-        nrm  = (SCL * (nrm - mid)) + mid;
-    case dmth
-        tng  = (SCL * (tng)) + mid;
-        nrm  = (SCL * (nrm)) + mid;
-    otherwise
-        fprintf(2, 'Method %s must be [%s|%s]\n', mth, smth, dmth);
-        return;
+% Probability of Z-Vector PC scores
+if ~isempty(zgrade) && ~isempty(zcnv) && ~isempty(zpre)
+    scr = zcnv(zpre);
+    p   = zgrade(scr);
 end
 
-ttng = arrayfun(@(x) [mid(x,:) ; tng(x,:)], 1:length(mid), 'UniformOutput', 0);
-tnrm = arrayfun(@(x) [mid(x,:) ; nrm(x,:)], 1:length(mid), 'UniformOutput', 0);
-
-%% Show Z-Vector and Contour
-figclr(fIdxs(1));
-
-myimagesc(img);
-hold on;
-plt(mid, 'g.', 3);
-cellfun(@(x) plt(x, 'r-', 1), ttng, 'UniformOutput', 0);
-cellfun(@(x) plt(x, 'b-', 1), tnrm, 'UniformOutput', 0);
-plt(cntr, 'g-', 2);
-plt(cntr(1,:), 'r.', 10);
-
-ttl = sprintf('Neural Net Prediction [%s Method]\nHypocotyl %d [%s set]', ...
-    mth, idx, cSet);
-title(ttl);
-
-fnms{1} = sprintf('%s_%sMethodPrediction_Hypocotyl%d_%s', ...
-    tdate, mth, idx, cSet);
-
-%% Show individual segments or contours through each iteration
-figclr(fIdxs(2));
-
-myimagesc(img);
-hold on;
-cellfun(@(x) plt(x, '-', 1), simg, 'UniformOutput', 0);
-
-if strcmpi(mth, smth)
-    ttl = sprintf('%d Segments [%s Method]\nHypocotyl %d [%s set]', ...
-        numel(simg), mth, idx, cSet);
-    title(ttl);
+%% Show predictions (fidx > 0) or Just compute MCC and Probability (fidx = 0)
+if fidx
+    figclr(fidx);
+    myimagesc(img);
+    hold on;
+    plt(ctru, 'b-', 2);
+    plt(cpre, 'g-', 2);
+    % plt(mtru, 'r.', 3);
+    % plt(mpre, 'y.', 3);
     
-    fnms{2} = sprintf('%s_%dSegments_%sMethod_Hypocotyl%d_%s', ...
-        tdate, numel(simg), mth, idx, cSet);
-else
-    ttl = sprintf('%d Iterations [%s Method]\nHypocotyl %d [%s set]', ...
-        numel(simg), mth, idx, cSet);
-    title(ttl);
+    if ~isempty(ctru)
+        lgn = {'Ground Truth' , 'Predicted'};
+    else
+        lgn = 'Predicted';
+    end
     
-    fnms{2} = sprintf('%s_%dIterations_%sMethod_Hypocotyl%d_%s', ...
-        tdate, numel(simg), mth, idx, cSet);
+    if ~isempty(mcc) && ~isempty(p)
+        % Both mcc and p
+        ttl = sprintf('Curve %d of %d [%s set]\nMCC %.03f | P %.03f', ...
+            cidx, nflts, tset, mcc, p);
+    elseif isempty(mcc) && ~isempty(p)
+        % Only p [no mcc]
+        ttl = sprintf('Curve %d of %d [%s set]\nP %.03f', ...
+            cidx, nflts, tset, p);
+    else
+        ttl = sprintf('Curve %d of %d [%s set]', cidx, nflts, tset);
+    end
+    
+    legend(lgn, 'FontSize', 10, 'Location', 'southeast');
+    title(ttl, 'FontSize', 10);
+    
+    drawnow;
+    
+    % Store figure name to save later
+    fnm = sprintf('%s_predictions_clip_left_filtered_curve%03dof%03d_%s', ...
+        tdate, cidx, nflts, tset);
 end
-
-%% Save figures as .fig and .tif images
-if sav
-    saveFiguresJB(fIdxs, fnms, 0);
 end
-
-end
-

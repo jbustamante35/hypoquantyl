@@ -37,4 +37,8 @@ for i = 1 : num_anchors
     end
 end
 
+% Remove duplicate points
+trc = arrayfun(@(x) unique(trc(:,:,x), 'rows'), ...
+    1 : num_anchors, 'UniformOutput', 0);
+
 end

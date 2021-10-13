@@ -84,7 +84,7 @@ try
             if ~isempty(fnm)
                 fprintf('Saving frame %d of %d as png...', frm, frms);
                 fnms = {sprintf('%s_frame%03dof%03d', fnm, frm, frms)};
-                saveFiguresJB(fidx, fnms, 0, 'png');
+                saveFiguresJB(fidx, fnms);
                 fprintf('DONE!...');
             end
             
