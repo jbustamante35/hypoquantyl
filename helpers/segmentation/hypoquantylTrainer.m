@@ -153,7 +153,7 @@ if sav
     tt = tic;
     n  = fprintf('Saving %d figures after D-Vector training', nfigs);
     
-    saveFiguresJB(figs, fnms, 0);
+    saveFiguresJB(figs, fnms);
     
     jprintf(' ', toc(tt), 1, 80 - n);
     

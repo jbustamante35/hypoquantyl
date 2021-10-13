@@ -91,7 +91,7 @@ for e = 1 : naffs
                 sdir = sprintf('tbsampler_curve%03d', sidx);
                 fnm = sprintf('%s_tbsampler_dims[%d-%d]_scale%02dof%02d_zvec%03dof%03d_%s', ...
                     tdate, domSize, s, nscls, e, naffs, dshp);
-                saveFiguresJB(vis ,{fnm}, 0, 'png', sdir);
+                saveFiguresJB(vis, {fnm}, sdir);
             end
         end
     end

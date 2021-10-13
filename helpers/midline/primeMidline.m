@@ -3,7 +3,7 @@ function [trc , skltn] = primeMidline(img, cntr, INTRP, TERMPCT, PADLENGTH)
 % Description
 %
 % Usage:
-%   trc = primeMidline(img, cntr, INTRP, TERMPCT)
+%   trc = primeMidline(img, cntr, INTRP, TERMPCT, PADLENGTH)
 %
 % Input:
 %   img: image associated with contour
@@ -19,22 +19,9 @@ function [trc , skltn] = primeMidline(img, cntr, INTRP, TERMPCT, PADLENGTH)
 %
 
 %% Skeletonize, dijkstras, anchor, then interpolate
-switch nargin
-    case 2
-        INTRP     = 50;
-        TERMPCT   = 0.70;
-        PADLENGTH = 20;
-    case 3
-        TERMPCT   = 0.70;
-        PADLENGTH = 20;
-    case 4
-        PADLENGTH = 20;
-    case 5
-    otherwise
-        fprintf(2, 'Incorrect number of inputs (%d of %d)\n', nargin, 5);
-        [trc , skltn] = deal([]);
-        return;
-end
+if nargin < 3; INTRP     = 50;   end
+if nargin < 4; TERMPCT   = 0.70; end
+if nargin < 5; PADLENGTH = 20;   end
 
 baki = img;
 bakc = cntr;

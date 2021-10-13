@@ -13,7 +13,7 @@ function apts = bwAnchorPoints(bw, ln)
 %   apts: [p x 2] vector defining x-/y-coordinates of p anchor points
 %
 
-bw      = imcomplement(bw);
+% bw      = imcomplement(bw);
 dd      = bwconncomp(bw);
 p       = 'PixelList';
 props   = regionprops(dd, p);

@@ -40,7 +40,7 @@ X  = [I , F];
 % imgsz = size(X{1});
 BW = cellfun(@(x) segmentObjectsHQ(x, SMOOTH_MASK), X, 'UniformOutput', 0);
 
-% Extract contours for all images and remove all overlapping poings
+% Extract contours for all images and remove all overlapping points
 CJB = cellfun(@(x) extractContour( ...
     x, SEGMENTATION_SIZE, 'alt', 'alt', 'Normalized'), BW, 'UniformOutput', 0);
 CNT = cellfun(@(x) unique(x, 'rows', 'stable'), CJB, 'UniformOutput', 0);
@@ -94,18 +94,16 @@ if vis
         fig2 = figure(fIdx(2));
     end
     
-    set(0, 'CurrentFigure', fig1); cla;clf;
-    set(0, 'CurrentFigure', fig2); cla;clf;
+    figclr(fig1);
+    figclr(fig2);
     
     %% Gallery of selected Hypocotyls with auto-generated contour on image
     [n , o] = deal(1 : numel(G));
     p       = deal(horzcat(n,o));
     tot     = numel(X);
     rows    = ceil(tot / 10); % Rows of 10
-    cols    = ceil(tot / rows);
-    
-    for slot = 1 : tot
-        
+    cols    = ceil(tot / rows);    
+    for slot = 1 : tot        
         % Grayscale images with contour and start points
         set(0, 'CurrentFigure', fig1);
         subplot(rows, cols, slot);
@@ -131,7 +129,7 @@ if vis
         title(ttl, 'FontSize', 6);
     end
     
-    figs = [fig1 fig2];
+    figs = [fig1 , fig2];
     if sav
         fnms{1} = sprintf('%s_AutoTraining_gray_%dImages', tdate('s'), tot);
         fnms{2} = sprintf('%s_AutoTraining_bw_%dImages',   tdate('s'), tot);
@@ -218,8 +216,7 @@ if flipme
     % Set flipped orientation of Circuit or Contour
     forg = sprintf('flip_%s', org);
     flp  = setOutline(obj, forg, cntr, pts);
-    crc  = [];
-    
+    crc  = [];    
     if typ
         obj.setCircuit(frm, flp, 'flp');
     else
@@ -228,8 +225,7 @@ if flipme
 else
     % Set original orientation of Circuit or Contour
     crc = setOutline(obj, org, cntr, pts);
-    flp = [];
-    
+    flp = [];    
     if typ
         obj.setCircuit(frm, crc, 'org');
     else
@@ -249,5 +245,4 @@ crc.checkFlipped;
 crc.setRawOutline(cntr);
 crc.setRawPoints(pts);
 crc.ConvertRawPoints;
-
 end

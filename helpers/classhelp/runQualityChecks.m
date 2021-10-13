@@ -1,7 +1,7 @@
 function goodFrmIdx = runQualityChecks(sdl, tests)
 %% runQualityChecks: run tests on Seedling to determine frames with good data
-% Run quality checks on various Seedling data. User determines which tests to run based on the
-% indices marked 'true' in the test_idx parameter.
+% Run quality checks on various Seedling data. User determines which tests to 
+% run based on the indices marked 'true' in the 'tests' parameter.
 %
 % Current tests:
 %   1) Empty coordinates
@@ -16,13 +16,13 @@ function goodFrmIdx = runQualityChecks(sdl, tests)
 %
 % Input:
 %   sdl: full Seedling object to be tested
-%   tests: [1 x n] logical array defining which tests should be run (see description above)
+%   tests: [1 x n] array defining tests to run (see description above)
 %
 % Output:
-%   goodFrmIdx: [1 x t] array defining the input Seedling's frames that passed all tests
+%   goodFrmIdx: [1 x t] array defining frames that passed all tests
 %
 
-% Vectorized data structures
+%% Vectorize data structure
 goodFrmIdx = zeros(sum(tests), sdl.getLifetime);
 
 %% 1) Check empty or NaN coordinates
@@ -58,38 +58,8 @@ if tests(num)
     dat      = sdl.getImage;
     datFinal = cellfun(@isempty, dat) == false;
     goodFrmIdx(num, datFinal) = 1;
-%     datChk = struct2logical(dat);
-%     datIdx = structfun(@(x) find(x == 1), datChk, 'UniformOutput', 0);
-%     
-%     fn     = fieldnames(datIdx);
-%     datMtc = zeros(numel(fn), sdl.getLifetime);
-%     for d = 1 : numel(fn)
-%         fld = fn{d}(~isspace(fn{d}));
-%         datMtc(d, datIdx.(fld)) = 1;
-%     end
-%     
-%     datFinal                  = sum(datMtc,1) == numel(fn);
-%     goodFrmIdx(num, datFinal) = 1;
 end
 num = num + 1;
-
-% %% 3) Check for empty gray and bw image and ContourJB data
-% if tests(num)
-%     dat    = sdl.getImage(':');
-%     datChk = struct2logical(dat);
-%     datIdx = structfun(@(x) find(x == 1), datChk, 'UniformOutput', 0);
-%     
-%     fn     = fieldnames(datIdx);
-%     datMtc = zeros(numel(fn), sdl.getLifetime);
-%     for d = 1 : numel(fn)
-%         fld = fn{d}(~isspace(fn{d}));
-%         datMtc(d, datIdx.(fld)) = 1;
-%     end
-%     
-%     datFinal                  = sum(datMtc,1) == numel(fn);
-%     goodFrmIdx(num, datFinal) = 1;
-% end
-% num = num + 1;
 
 %% 4) Check for empty AnchorPoints
 if tests(num)
@@ -109,10 +79,9 @@ num = num + 1;
 
 %% 6) Check contours for collisions
 if tests(num)
-    % Collision is true if 
+    % Collision is true if
 end
-
-num = 1;
+num = num + 1;
 
 % Test Assessment: Check number of passing frames
 goodFrmIdx = find(sum(goodFrmIdx,1) == sum(tests));

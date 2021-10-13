@@ -17,6 +17,7 @@ classdef Experiment < handle
         HYPOCOTYLLENGTH = 250 % Distance to set cutoff for hypocotyl
     end
     
+    %% ------------------------- Primary Methods --------------------------- %%
     methods (Access = public)
         %% Constructor and main methods
         function obj = Experiment(varargin)
@@ -39,12 +40,9 @@ classdef Experiment < handle
             
         end
         
-        %         function obj = AddGenotypes(varargin)
         function AddGenotypes(obj, ext)
             %% Add Genotype to Experiment
-            if nargin < 2
-                ext = '.TIF';
-            end
+            if nargin < 2; ext = '.TIF'; end
             
             % Get all directories (exclude . and ..)
             fld   = dir(obj.ExperimentPath);
@@ -61,20 +59,18 @@ classdef Experiment < handle
                     'image_extension', ext), fldrs, 'UniformOutput', 0);
                 G = cat(1, G{:});
                 
-                obj.Genotypes = G;
+                obj.Genotypes         = G;
                 obj.NumberOfGenotypes = numel(G);
             catch
                 fprintf(2, '\nError adding Genotype %d\n', ...
                     obj.NumberOfGenotypes);
             end
-            
         end
         
-        function sdls = FindSeedlingAllGenotypes(obj, v, par)
+        function sdls = FindSeedlingAllGenotypes(obj, v, mth)
             %% Extract Seedling from every frame of each Genotype
-            if nargin < 3
-                par = 0;
-            end
+            if nargin < 2; v   = 0;     end % Verbosity
+            if nargin < 3; mth = 'new'; end % Old method or with collision detection
             
             try
                 if v
@@ -84,40 +80,22 @@ classdef Experiment < handle
                 end
                 
                 % Find and Sort Seedlings
-                gens   = arrayfun(@(g) g, obj.Genotypes, 'UniformOutput', 0);
+                G      = obj.combineGenotypes(1);
                 hypLen = obj.HYPOCOTYLLENGTH;
                 
                 % Set RawSeedlings to empty cell array
                 frms = cellfun(@(g) (1 : g.TotalImages)', ...
-                    gens, 'UniformOutput', 0);
+                    G, 'UniformOutput', 0);
                 rs   = cellfun(@(g,f) cell(numel(f), 1), ...
-                    gens, frms, 'UniformOutput', 0);
+                    G, frms, 'UniformOutput', 0);
                 cellfun(@(g,f,r) g.setRawSeedlings(f,1,r), ...
-                    gens, frms, rs, 'UniformOutput', 0);
+                    G, frms, rs, 'UniformOutput', 0);
                 
-                if par
-                    %% Run with parallelization [NOT TESTED]
-                    sdls = cell(numel(gens), 1);
-                    parfor g = 1 : numel(gens)
-                        gen     = gens{g};
-                        sdls{g} = gen.FindSeedlings( ...
-                            1 : gen.TotalImages, hypLen, v);
-                    end
-                    
-                    % For some reason parallelization can't set properties
-                    nsdls = cellfun(@(s) (1 : size(s,2))', ...
-                        sdls, 'UniformOutput', 0);
-                    cellfun(@(g,f,s,r) g.setRawSeedlings(f,s,r), ...
-                        gens, frms, nsdls, sdls, 'UniformOutput', 0);
-                    
-                else
-                    %% Run on single-thread
-                    sdls = cellfun(@(g) g.FindSeedlings( ...
-                        1:g.TotalImages, hypLen, v), gens, 'UniformOutput', 0);
-                end
+                sdls = cellfun(@(g) g.FindSeedlings( ...
+                    1:g.TotalImages, hypLen, v), G, 'UniformOutput', 0);
                 
                 % Filter and Sort
-                cellfun(@(x) x.SortSeedlings(v), gens, 'UniformOutput', 0);
+                cellfun(@(x) x.SortSeedlings(v, mth), G, 'UniformOutput', 0);
                 
                 if v
                     fprintf('[%.02f sec] Extracted Seedlings from %s\n', ...
@@ -134,14 +112,14 @@ classdef Experiment < handle
                     fprintf(2, '[%.02f sec]\n', toc(t));
                 end
             end
-            
         end
         
         function hyps = FindHypocotylAllGenotypes(obj, v)
             %% Extract Hypocotyl from every frame of each Seedling from
             % all Genotypes from this Experiment object
+            if nargin < 2; v = 0; end % Verbosity
+            
             try
-                
                 if v
                     fprintf('Extracting Hypocotyls from %s\n', ...
                         obj.ExperimentName);
@@ -167,20 +145,28 @@ classdef Experiment < handle
             end
         end
         
-        function obj = SaveExperiment(obj)
+        function SaveExperiment(obj)
             %% Prune superfluous data, dereference parents, then save
+            tPrune = tic;
             % Remove RawSeedlings and PreHypocotyls
             g = obj.combineGenotypes;
             arrayfun(@(x) x.PruneSeedlings, g, 'UniformOutput', 0);
             
             s = obj.combineSeedlings;
             arrayfun(@(x) x.PruneHypocotyls, s, 'UniformOutput', 0);
+            fprintf('[%.02f sec] Pruned %d Seedlings and %d Hypocotyls\n', ...
+                toc(tPrune), numel(s), numel(h));
             
             % Save full Experiment object
-            
+            tSave = tic;
+            nm = sprintf('%s_%s_%dGenotypes', ...
+                tdate, obj.ExperimentName, obj.NumberOfGenotypes);
+            ex = obj;
+            save(nm, '-v7.3', 'ex');
+            fprintf('[%.02f sec] Saved dataset %s\n', toc(tSave), nm);
         end
         
-        function obj = LoadExperiment(obj)
+        function LoadExperiment(obj)
             %% Recursively set references back to Child objects
             g = obj.combineGenotypes;
             arrayfun(@(x) x.setParent(obj), g, 'UniformOutput', 0);
@@ -193,12 +179,11 @@ classdef Experiment < handle
             cellfun(@(x) ref(x), X, 'UniformOutput', 0);
         end
         
-        function obj = ChangeBasePath(obj, p)
+        function ChangeBasePath(obj, p)
             %% Change base path to data
             % I'm an idiot and changed the directory to the base data, and it
             % messed up the entire dataset. This should allow flexibility in
             % the path to data.
-            
             try
                 % Set this object's new name and path
                 obj.ExperimentPath = char(p);
@@ -213,12 +198,14 @@ classdef Experiment < handle
             end
         end
         
-        function IMGS = PrepareHypocotylImages(obj, SCALE)
+        function IMGS = PrepareHypocotylImages(obj, RESCALE)
             %% Prepare hypocotyl images for CNN
+            if nargin < 2; RESCALE = 1; end % Rescale hypocotyl image size
+            
             CRVS = obj.combineContours;
             
             % Resize hypocotyl images to isz x isz
-            isz      = ceil(size(CRVS(1).getImage('gray')) * SCALE);
+            isz      = ceil(size(CRVS(1).getImage('gray')) * RESCALE);
             imgs_raw = arrayfun(@(x) x.getImage('gray'), CRVS, 'UniformOutput', 0);
             imgs_rsz = cellfun(@(x) imresize(x, isz), imgs_raw, 'UniformOutput', 0);
             imgs     = cat(3, imgs_rsz{:});
@@ -226,14 +213,12 @@ classdef Experiment < handle
             
             % Reshape image data as X values and use Midpoint PCA scores as Y values
             IMGS = double(reshape(imgs, [imSize(1:2), 1, imSize(3)]));
-            
         end
-        
     end
     
+    %% ------------------------- Helper Methods ---------------------------- %%
     methods (Access = public)
         %% Various helper methods for other classes to use
-        
         function g = getGenotype(obj, idx)
             %% Returns genotype at desired index
             try
@@ -248,15 +233,21 @@ classdef Experiment < handle
             end
         end
         
-        function G = combineGenotypes(obj)
+        function G = combineGenotypes(obj, asCell)
             %% Combine all Genotypes into single object array
-            G = obj.getGenotype(':');
+            if nargin < 2; asCell = 0; end % Default output as array
+            
+            if asCell
+                G = arrayfun(@(x) obj.getGenotype(x), ...
+                    (1 : obj.NumberOfGenotypes)', 'UniformOutput', 0);
+            else
+                G = obj.getGenotype;            
+            end            
         end
         
         function [g, i] = search4Genotype(obj, nm)
             %% Return specific Genotype by GenotypeName
             gts = obj.getGenotype(':')';
-            
             for i = 1 : numel(gts)
                 mtc = gts(i).GenotypeName;
                 if isequal(nm, mtc)
@@ -266,54 +257,64 @@ classdef Experiment < handle
             end
         end
         
-        function S = combineSeedlings(obj)
+        function S = combineSeedlings(obj, asCell)
             %% Combine all Seedlings into single object array
-            G = obj.combineGenotypes;
-            S = arrayfun(@(x) x.getSeedling(':'), G, 'UniformOutput', 0);
-            S = cat(1, S{:});
+            if nargin < 2; asCell = 0; end % Default output as array
+            
+            G = obj.combineGenotypes(asCell);  
+            if asCell
+                S = cellfun(@(x) x.getSeedling, G, 'UniformOutput', 0);
+            else
+                S = arrayfun(@(x) x.getSeedling, G, 'UniformOutput', 0);
+                S = cat(1, S{:});
+            end
         end
         
-        function H = combineHypocotyls(obj, req)
+        function H = combineHypocotyls(obj, req, asCell)
             %% Combine all Hypocotyls into single object array
             % CHANGE THIS WHEN I FIX HOW HYPOCOTYLS ARE STORED IN SEEDLINGS
             % Each Seedling will have a single Hypocotyl, derived from data
             % from the combination of good frames of each PreHypocotyl.
-            S = obj.combineSeedlings;
+            if nargin < 2; req    = 'post'; end % Pre or Post sorting
+            if nargin < 3; asCell = 0;      end % Array or Cell array
             
+            S = obj.combineSeedlings(0);
             try
                 switch req
                     case 'pre'
-                        H = arrayfun(@(x) x.getAllPreHypocotyls, S, 'UniformOutput', 0);
+                        H = arrayfun(@(x) x.getAllPreHypocotyls, ...
+                            S, 'UniformOutput', 0);
                         H = cat(2, H{:});
                     case 'post'
-                        H = arrayfun(@(x) x.MyHypocotyl, S, 'UniformOutput', 0);
-                        H = cat(2, H{:});
+                        H = arrayfun(@(x) x.MyHypocotyl, S);
                     otherwise
-                        H = arrayfun(@(x) x.MyHypocotyl, S, 'UniformOutput', 0);
-                        H = cat(2, H{:});
+                        H = arrayfun(@(x) x.MyHypocotyl, S);
                 end
             catch
-                H = arrayfun(@(x) x.MyHypocotyl, S, 'UniformOutput', 0);
-                H = cat(2, H{:});
+                fprintf(2, 'Error extracting Hypocotyls\n');
+                H = [];
+                return;
             end
             
+            if asCell
+                H = arrayfun(@(x) x, H, 'UniformOutput', 0);
+            end
         end
         
-        function [D, org, flp] = combineContours(obj, getCrvs)
+        function [D, org, flp] = combineContours(obj, getCrvs, ver)
             %% Return all Hypocotyls with manually-drawn CircuitJB objects
             % Returns both original and flipped versions of each. I'm not sure
             % if it would work if some don't have flipped versions.
-            if nargin < 2
-                getCrvs = 1;
-            end
+            if nargin < 2; getCrvs = 1;      end
+            if nargin < 3; ver     = 'Full'; end
             
             H   = obj.combineHypocotyls;
-            org = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'org'),  ...
+            org = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'org', ver),  ...
                 1:x.Lifetime, 'UniformOutput', 0), H, 'UniformOutput', 0);
             org = cat(2, org{:});
             org = cat(1, org{:});
             
-            flp = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'flp'),  ...
+            flp = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'flp', ver),  ...
                 1:x.Lifetime, 'UniformOutput', 0), H, 'UniformOutput', 0);
             flp = cat(2, flp{:});
             flp = cat(1, flp{:});
@@ -334,7 +335,6 @@ classdef Experiment < handle
             C = obj.combineContours;
             D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
             D = cat(1, D{:});
-            
             if mod(numel(D),2)
                 nms   = arrayfun(@(x) x.Parent.Origin, D, 'UniformOutput', 0);
                 hlfSz = ceil(length(nms) / 2);
@@ -361,8 +361,6 @@ classdef Experiment < handle
             hyIdx = str2double(noflp(aa + 1 : bb - 1));
             sdl   = gen.getSeedling(hyIdx);
             hyp   = sdl.MyHypocotyl;
-            
-            %             x{numel(x) + abs(numel(x) - numel(y))} = '';
         end
         
         function P = combineParameters(obj)
@@ -379,7 +377,16 @@ classdef Experiment < handle
             % obj: this Experiment
             % frm: frame of time-lapse
             % s  : Seedling to check
-            
+        end
+        
+        function setProperty(obj, req, val)
+            %% Returns a property of this Genotype object
+            try
+                obj.(req) = val;
+            catch e
+                fprintf(2, 'Property %s does not exist\n%s\n', ...
+                    req, e.message);
+            end
         end
         
         function prp = getProperty(obj, req)
@@ -396,7 +403,5 @@ classdef Experiment < handle
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
         %% Private helper methods for this class
-        
-        
     end
 end

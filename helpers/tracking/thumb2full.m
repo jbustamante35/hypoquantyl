@@ -27,16 +27,16 @@ switch nargin
         frm   = d.getFrame;
         img   = c.getImage;
         cntr  = c.getTrace;
-        mline = c.getMidline('int', 'auto');
+        mline = c.getMidline('auto', 'int');
         rgn   = 'upper';
-        
+
     case 4
         % Untrained Hypocotyl object with contour and midline
         h   = c;
         d   = [];
         img = h.getImage(frm);
         rgn = 'upper';
-        
+
     otherwise
         fprintf(2, 'Error with %d inputs\n', nargin);
         [rcntr , rmline , minfo] = deal([]);
@@ -52,10 +52,10 @@ if ~isempty(d)
     csz  = size(cntr,1);
     msz  = size(mline,1);
     isz  = size(img,1);
-    
+
     cslide = [repmat(isz, csz, 1) , zeros(csz, 1)];
     mslide = [repmat(isz, msz, 1) , zeros(msz, 1)];
-    
+
     % Flip and Slide coordinates if using flipped training data
     if d.isFlipped
         cntr  = (fliplr(cntr) * Rmat(90)) + cslide;

@@ -44,7 +44,6 @@ classdef Hypocotyl < handle
                 'Lifetime', 0 ; ...
                 'Frame'   , [0 0]};
             obj    = classInputParser(obj, prps, deflts, vargs);
-            
         end
         
         function img = FlipMe(obj, frm, req, buf)
@@ -57,13 +56,11 @@ classdef Hypocotyl < handle
             %   obj: this Hypocotyl object
             %   frm: time point to extract image from
             %   buf: boolean to return buffered region around image
-            
             if buf > 0
                 img = flip(obj.getImage(frm, req, buf), 2);
             else
                 img = flip(obj.getImage(frm, req), 2);
             end
-            
         end
         
         function obj = DerefParents(obj)
@@ -73,15 +70,12 @@ classdef Hypocotyl < handle
             obj.Parent = [];
             obj.Host   = [];
             obj.Origin = [];
-            
         end
         
         function obj = RefChild(obj)
             %% Set reference back to Children [ after use of DerefParents ]
             %arrayfun(@(x) x.setParent(obj), obj.CircuitJB, 'UniformOutput', 0);
-            
         end
-        
     end
     
     %% ------------------------- Primary Methods --------------------------- %%
@@ -103,17 +97,14 @@ classdef Hypocotyl < handle
                 switch req
                     case 'b'
                         obj.Frame(1) = frm;
-                        
                     case 'd'
                         obj.Frame(2) = frm;
-                        
                     otherwise
                         fprintf(2, 'Request must be ''b'' or ''d''\n');
                 end
             catch
                 fprintf(2, 'No data at frame %d\n', frm);
             end
-            
         end
         
         function frm = getFrame(obj, req)
@@ -122,13 +113,10 @@ classdef Hypocotyl < handle
                 switch req
                     case 'a'
                         frm = obj.Frame;
-                        
                     case 'b'
                         frm = obj.Frame(1);
-                        
                     case 'd'
                         frm = obj.Frame(2);
-                        
                     otherwise
                         fprintf(2, 'Request must be ''b'' or ''d''\n');
                         frm = [];
@@ -137,7 +125,6 @@ classdef Hypocotyl < handle
                 fprintf(2, 'Request must be ''b'' or ''d''\n');
                 frm = [];
             end
-            
         end
         
         function obj = setImage(obj, req, dat)
@@ -162,7 +149,6 @@ classdef Hypocotyl < handle
             % to this object's RESCALE property
             obj   = varargin{1};
             sclsz = obj.Parent.getScaleSize;
-            
             switch nargin
                 case 1
                     %% Return grayscale images at all time points
@@ -184,7 +170,6 @@ classdef Hypocotyl < handle
                     %% Return grayscale image(s) at specific time point(s)
                     try
                         frm = varargin{2};
-                        
                         if numel(frm) > 1
                             img = obj.Parent.getImage(frm);
                             bnd = num2cell(...
@@ -209,7 +194,6 @@ classdef Hypocotyl < handle
                     try
                         frm = varargin{2};
                         req = varargin{3};
-                        
                         if ismember(req, {'gray' , 'bw'})
                             %% Get grayscale or bw image
                             % Always get upper region
@@ -226,7 +210,7 @@ classdef Hypocotyl < handle
                             img = obj.Parent.getImage(frm, req);
                             bnd = num2cell(...
                                 obj.getCropBox(frm, rgn), 2)';
-                            crp = cellfun(@(i,b) imcrop(i,b), ...
+                            crp = cellfun(@(i,b) imcrop(i,b), ...f
                                 img, bnd, 'UniformOutput', 0);
                             dat = cellfun(@(x) imresize(x, sclsz), ...
                                 crp, 'UniformOutput', 0);
@@ -247,14 +231,12 @@ classdef Hypocotyl < handle
                         frm = varargin{2};
                         req = varargin{3};
                         flp = varargin{4};
-                        
                         if flp
                             % Extract image from parent Seedling
                             dat = obj.FlipMe(frm, req, 0);
                         else
                             dat = obj.getImage(frm, req);
                         end
-                        
                     catch
                         fprintf(2, 'Requested field must be either: [b|d]\n');
                         dat = [];
@@ -268,7 +250,6 @@ classdef Hypocotyl < handle
                         req = varargin{3};
                         flp = varargin{4};
                         buf = varargin{5};
-                        
                         if flp
                             % Extract image from parent Seedling
                             img = obj.FlipMe(frm, req, 0);
@@ -293,10 +274,9 @@ classdef Hypocotyl < handle
                         else
                             dat = img;
                         end
-                        
                     catch
                         fprintf(2, ...
-                            'Requested field must be either: gray | bw\n');
+                            'Requested field must be either [gray|bw]\n');
                         dat = [];
                         return;
                     end
@@ -309,16 +289,18 @@ classdef Hypocotyl < handle
         
         function obj = setParent(obj, p)
             %% Set Seedling parent | Genotype host| Experiment origin
+            % Seedling
             obj.Parent       = p;
             obj.SeedlingName = p.SeedlingName;
             
+            % Genotype
             obj.Host         = p.Parent;
             obj.GenotypeName = obj.Host.GenotypeName;
             
+            % Experiment
             obj.Origin         = obj.Host.Parent;
             obj.ExperimentName = obj.Origin.ExperimentName;
             obj.ExperimentPath = obj.Origin.ExperimentPath;
-            
         end
         
         function setCropBox(obj, frms, bbox, rgn)
@@ -403,7 +385,33 @@ classdef Hypocotyl < handle
                     fprintf(2, 'Error returning ContourJB\n');
                     crc = [];
             end
+        end
+        
+        function cc = copyCircuit(obj, frm, req, ver)
+            %% Copy counterpart of CircuitJB at same frame
+            % Original or flipped direction
+            switch req
+                case 'org'
+                    flp = 1;
+                case 'flp'
+                    flp = 2;
+                otherwise
+                    fprintf(2, 'Error setting %s direction\n', req);
+            end
             
+            % Whole or clipped contour
+            switch ver
+                case 'Full'
+                    clp = 1;
+                case 'Clip'
+                    clp = 2;
+                otherwise
+                    fprintf(2, 'Error setting %s version\n', req);
+            end
+            
+            % Make copy
+            crc = obj.Circuit(frm, flp, clp);
+            cc  = crc.copy;
         end
         
         function obj = setCircuit(obj, frm, crc, req, ver)
@@ -411,9 +419,9 @@ classdef Hypocotyl < handle
             switch nargin
                 case 3
                     req = 'org';
-                    ver = 'whole';
+                    ver = 'Full';
                 case 4
-                    ver = 'whole';
+                    ver = 'Full';
             end
             
             % Original or flipped direction
@@ -428,9 +436,9 @@ classdef Hypocotyl < handle
             
             % Whole or clipped contour
             switch ver
-                case 'whole'
+                case 'Full'
                     clp = 1;
-                case 'clipped'
+                case 'Clip'
                     clp = 2;
                 otherwise
                     fprintf(2, 'Error setting %s version\n', req);
@@ -438,26 +446,43 @@ classdef Hypocotyl < handle
             
             % Forcibly set final Circuit
             try
-                obj.Circuit(frm, flp, clp) = crc;
-                crc.trainCircuit(true);
+                % Make copy of 'whole' version if 'clipped' not yet set
+                cc = obj.Circuit(frm, flp, clp);
+                if isempty(cc.Origin)
+                    cc = obj.copyCircuit(frm, req, 'Full');
+                    cc.setOutline(crc, 'Clip');
+                end
+                cc.trainCircuit(true);
             catch
-                obj.Circuit(frm, flp, clp) = crc;
+                cc                         = obj.copyCircuit(frm, req, 'Full');
+                obj.Circuit(frm, flp, clp) = cc;
+                cc.setOutline(crc, 'Clip');
                 crc.trainCircuit(true);
             end
         end
         
         function crc = getCircuit(obj, frm, req, ver)
             %% Return original or flipped version of CircuitJB object
+            %             if nargin < 2; frm = 1 : size(obj.Circuit,1); end
+            if nargin < 2; frm = 0;      end % First available CircuitJB
+            if nargin < 3; req = 'org';  end
+            if nargin < 4; ver = 'Full'; end
+            
+            crc = [];
             if ~isempty(obj.Circuit)
-                switch nargin
-                    case 2
-                        req = 'org';
-                        ver = 'whole';
-                    case 3
-                        ver = 'whole';
+                % Find first available frame
+                if ~frm
+                    cc  = arrayfun(@(x) ~isempty(x.Origin), obj.Circuit(:,1,1));
+                    cc  = find(cc);
+                    frm = cc(1);
                 end
                 
-                crc = [];
+                % Make sure frame is available
+                if frm > size(obj.Circuit,1)
+                    return;
+                end
+                
+                % Get original or flipped version
                 switch req
                     case 'org'
                         flp = 1;
@@ -471,22 +496,52 @@ classdef Hypocotyl < handle
                 
                 % Get whole contour or clipped version
                 switch ver
-                    case 'whole'
+                    case 'Full'
                         clp = 1;
-                    case 'clipped'
+                    case 'Clip'
                         clp = 2;
                     otherwise
-                        fprintf(2, 'Error returning %s version [whole|clipped]\n', ...
+                        fprintf(2, 'Error returning %s version [Full|Clip]\n', ...
                             ver);
+                        return;
                 end
                 
-                % Return only if it is trained...why did I do this?
-                c = obj.Circuit(frm, flp, clp);
-                if c.isTrained
-                    crc = c;
+                try
+                    c = obj.Circuit(frm, flp, clp);
+                    
+                    % Add 3rd dimension if it doesn't exist
+                    if ndims(obj.Circuit) < 3
+                        obj.Circuit(1,1,2) = eval(class(obj.Circuit(1,1,1)));
+                    end
+                    
+                    % Set isTrained status to false if not yet set
+                    if isempty(c.isTrained)
+                        c.trainCircuit(false);
+                    end
+                    
+                    if isvalid(c) && c.isTrained
+                        crc = c;
+                    end
+                catch
+                    return;
                 end
             else
                 crc = [];
+            end
+        end
+        
+%         function fixLifetime(obj)
+%             %% Fix Lifetime property to number of CircuitJB available
+%             obj.Lifetime = size(obj.Circuit,1);
+%         end
+        
+        function setProperty(obj, req, val)
+            %% Set property to a value
+            try
+                obj.(req) = val;
+            catch e
+                fprintf(2, 'Can''t set %s to %s\n%s', ...
+                    req, num2str(val), e.message);
             end
         end
         
@@ -506,14 +561,11 @@ classdef Hypocotyl < handle
             % orientation and assumes that the flipped orientation will give
             % the same result.
             try
-                %                 frms_all = 1 : obj.Lifetime;
-                frms_all = 1 : size(obj.Circuit,1);
+                frms_all = ~cellfun(@isempty, arrayfun(@(x) x.isTrained, ...
+                    obj.Circuit, 'UniformOutput', 0));
                 
-                orgs = cell2mat(arrayfun(@(x) ~isempty(obj.getCircuit(x, 'org')), ...
-                    frms_all, 'UniformOutput', 0));
-                
-                trained_frames   = frms_all(orgs);
-                untrained_frames = frms_all(~orgs);
+                trained_frames   = find(frms_all(:,1));
+                untrained_frames = find(~frms_all(:,1));
             catch e
                 fprintf(2, 'Error returning untrained frames\n%s', e.message);
                 untrained_frames = [];
@@ -528,12 +580,10 @@ classdef Hypocotyl < handle
             end
             
             s     = obj.Parent;
-            %             imgs  = s.getImage(frms, 'bw');
             imgs  = s.getImage(frms);
             apts  = s.getAnchorPoints(frms);
             scl   = s.getProperty('SCALESIZE');
             nfrms = numel(frms);
-            
             if nfrms > 1
                 [tm , tb , lm , lb] = deal(cell(nfrms, 1));
                 for f = 1 : nfrms
@@ -543,7 +593,6 @@ classdef Hypocotyl < handle
                 
                 tb = cat(1, tb{:});
                 lb = cat(1, lb{:});
-                
             else
                 [~ , tb , ~ , lb] = cropFromAnchorPoints(imgs, apts, scl);
             end
@@ -557,7 +606,5 @@ classdef Hypocotyl < handle
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
         % Private helper methods
-        
     end
-    
 end

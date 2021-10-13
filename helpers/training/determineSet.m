@@ -35,6 +35,9 @@ elseif ismember(idx, validx)
     tset = 'validation';
 elseif ismember(idx, tstidx)
     tset = 'testing';
+elseif ismatrix(idx)
+    tset = arrayfun(@(x) determineSet(x, trnidx, validx, tstidx), ...
+        idx, 'UniformOutput', 0)';
 else
     tset = 'na';
 end

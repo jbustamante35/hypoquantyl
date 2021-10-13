@@ -31,8 +31,8 @@ msize = c(1).MidlineSize;
 cmsize = csize + msize;
 
 % Concatenate and rasterize contour-midline complexes
-m  = arrayfun(@(idx) [c(idx).getTrace('norm') ; c(idx).getMidline('norm')], ...
-    1 : numel(c), 'UniformOutput', 0);
+m  = arrayfun(@(idx) [c(idx).getTrace('norm') ; ...
+    c(idx).getMidline('auto', 'int')], 1 : numel(c), 'UniformOutput', 0);
 M  = cat(3, m{:});
 R  = reshape(M, [cmsize * 2 , nmids])';
 
