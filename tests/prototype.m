@@ -64,23 +64,23 @@ if doTraining
     flp = 1;
     sv  = 1;
     vis = 1;
-    
+
     CRCS = randomCircuits(ex, num, typ, flp, sv, vis);
-    
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Process manually-drawn contours
     % Generate Curve objects and convert between reference frames
     C = ex.combineContours;
-    
-    arrayfun(@(x) x.CreateCurves('redo', par), C, 'UniformOutput', 0);
+
+    arrayfun(@(x) x.CreateCurves('redo'), C, 'UniformOutput', 0);
     D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
     D = cat(1, D{:});
-    
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Display gallery of manually-drawn contours
     g  = ex.combineGenotypes;
     g1 = g(1);
-    
+
     figclr(figs(2));
     if doonce
         % Just check the first image of first Genotype

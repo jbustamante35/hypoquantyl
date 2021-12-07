@@ -46,6 +46,11 @@ classdef Hypocotyl < handle
             obj    = classInputParser(obj, prps, deflts, vargs);
         end
         
+%         function FixGenotypeName(obj)
+%             sdl = obj.Parent;
+%             obj.GenotypeName = sdl.GenotypeName;
+%         end
+        
         function img = FlipMe(obj, frm, req, buf)
             %% Store a flipped version of each Hypocotyl
             % Flipped version allows equal representation of all orientations of
@@ -360,6 +365,37 @@ classdef Hypocotyl < handle
             end
             
             bbox = obj.CropBox(frm, :, r);
+        end
+        
+        function FixCropBox(obj, hyplen)
+            %% Fix CropBox [e.g. if frame has [0 , 0 , NaN , NaN]
+            if nargin < 2; hyplen = obj.Origin.getProperty('HYPOCOTYLLENGTH'); end
+            
+            % Find CropBoxes with NaN
+            cbox       = obj.getCropBox;
+            [rows , ~] = find(isnan(cbox));
+            nan_frms   = unique(rows);
+            
+            % Fix AnchorPoints in parent Seedling, then set new CropBox
+            sdl = obj.Parent;
+            if isempty(nan_frms)
+                % No frames with NaN
+                return;
+            elseif numel(nan_frms) > 1
+                % Work on multiple frames
+                simg = sdl.getImage(nan_frms);
+                apts = cellfun(@(x) bwAnchorPoints(x, hyplen), ...
+                    simg, 'UniformOutput', 0);
+                apts = cat(3, apts{:});
+                sdl.setAnchorPoints(nan_frms, apts);
+                sdl.setHypocotylCropBox(nan_frms);
+            else
+                % Work on 1 frame
+                simg = sdl.getImage(nan_frms);
+                apts = bwAnchorPoints(simg, hyplen);
+                sdl.setAnchorPoints(nan_frms, apts);
+                sdl.setHypocotylCropBox(nan_frms);
+            end
         end
         
         function obj = setContour(obj, frm, ctr)

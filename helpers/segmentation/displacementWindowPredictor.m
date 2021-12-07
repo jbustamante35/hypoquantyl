@@ -60,7 +60,7 @@ if ~isempty(splts)
     trnIdx  = splts.trnIdx;
     valIdx  = splts.valIdx;
     tstIidx = splts.tstIdx;
-    tset  = determineSet(cidx, trnIdx, valIdx, tstIidx);
+    tset    = determineSet(cidx, trnIdx, valIdx, tstIidx);
 else
     tset = [];
 end
@@ -85,22 +85,17 @@ if vis > 1
 end
 
 if isempty(z)
-    if vis > 1
-        n = fprintf('Predicting Z-Vector from image');
-    end
-    
+    if vis > 1; n = fprintf('Predicting Z-Vector from image'); end
+    %% TODO: Displace by B-Vector
     [zpre.initial , zpre.score_initial] = predictZvectorFromImage(img, Nz, pz);
-    ptru                        = ...
-        sampleCorePatches(img, zpre.initial, scls, doms, dszs, par);
+    ptru = sampleCorePatches(img, zpre.initial, scls, doms, dszs, par);
 else
-    if vis > 1
-        n = fprintf('Sampling given Z-Vector');
-    end
-    
+    if vis > 1; n = fprintf('Sampling given Z-Vector'); end
+
     zpre.initial       = z;
     zpre.score_initial = ...
         zVectorProjection(z, nsegs, pz.EigVecs, pz.MeanVals, 3);
-    
+
     % Sample if no ptru
     if ~sum(ptru)
         ptru = sampleCorePatches(img, zpre.initial, scls, doms, dszs, par);
@@ -129,7 +124,7 @@ switch vis
 end
 
 for itr = 1 : nitrs
-    % ------------------------- Sample Patches ----------------------------------- %
+    % ----------------------- Sample Patches --------------------------------- %
     %% Sample Patches
     if vis == 3
         fprintf('Iteration %d of %d\n', itr, nitrs);
@@ -137,7 +132,7 @@ for itr = 1 : nitrs
         t    = tic;
         n    = fprintf('Sampling patches from Z-Vector');
     end
-    
+
     if itr == 1
         % Use initial Z-Vector and patches
         z    = zpre.initial;
@@ -148,43 +143,40 @@ for itr = 1 : nitrs
         z    = curve2framebundle(cpre(:,1:2));
         ptch = sampleCorePatches(img, z, scls, doms, dszs, par);
     end
-    
+
     % Project patches into PCA space
     pprj = pcaProject(ptch, pdp.EigVecs{itr}, pdp.MeanVals{itr}, 'sim2scr');
-    
-    if vis == 3
-        jprintf('', toc(t), 1, 80 - n);
-    end
-    
+
+    if vis == 3; jprintf('', toc(t), 1, 80 - n); end
+
     % ------------------------- Predict D-Vectors -------------------------------- %
     %% Predict D-Vectors and back-project into image space
     if vis == 3
         t = tic;
         n = fprintf('Predicting D-Vector and Back-Projecting');
     end
-    
+
     nstr = sprintf('N%d', itr);
     dtmp = Nd.(nstr)(pprj')';
-    
+
     if size(dtmp,2) == 2
         dpre = [dtmp, ones(size(dtmp,1), 1)];
     else
         dpre = dtmp;
     end
-    
-    cpre = computeTargets(dpre, z, 0, par);
-    
-    if vis == 3
-        jprintf('', toc(t), 1, 80 - n);
-    end
-    
-    % --------------------------- Smooth Contour --------------------------------- %
+
+    %     cpre = computeTargets(dpre, z, 0, par);
+    cpre = computeTargets(dpre, z, toShape, toFix, seg_lengths, par);
+
+    if vis == 3; jprintf('', toc(t), 1, 80 - n); end
+
+    % -------------------------- Smooth Contour ------------------------------ %
     %% PCA smooth predictions
     if vis == 3
         t = tic;
         n = fprintf('Smoothing contour');
     end
-    
+
     switch fmth
         case 'whole'
             cpre = wholeSmoothing(cpre, [pdx , pdy]);
@@ -193,18 +185,32 @@ for itr = 1 : nitrs
             cpre = localSmoothing(cpre, nsplt, pdw);
         otherwise
     end
-    
-    if vis == 3
-        jprintf('', toc(t), 1, 80 - n);
+
+    %% Straighten top and bottom sections [not great yet]
+    if toFix
+        % Index of top and bottom
+        L    = cumsum([1 , seg_lengths]);
+        sTop = cpre(L(2) : L(3), :);
+        sBot = cpre(L(4) : L(5)-1, :);
+
+        % Interpolate corners to segment lengths
+        fTop = interpolateOutline(sTop([1,end],:), size(sTop,1));
+        fBot = interpolateOutline(sBot([1,end],:), size(sBot,1));
+
+        % Replace with straightened sections
+        cpre(L(2) : L(3),:)   = fTop;
+        cpre(L(4) : L(5)-1,:) = fBot;
     end
-    
-    % ------------------------------- Display Predictions ------------------------ %
+
+    if vis == 3; jprintf('', toc(t), 1, 80 - n); end
+
+    % --------------------------- Display Predictions ------------------------ %
     %% Show and Save iterative predictions
     if vis == 3
         t = tic;
         n = fprintf('Save Image [%d] | Save Data [%d]', vis, sav);
     end
-    
+
     if vis == 1
         figclr(fidx);
         myimagesc(img);
@@ -216,9 +222,9 @@ for itr = 1 : nitrs
         ttl = sprintf('Curve %d of %d [%s set]\nIteration %d of %d', ...
             cidx, ncrvs, tset, itr, nitrs);
         title(ttl, 'FontSize', 10);
-        
+
         drawnow;
-        
+
         % Save each iteration
         if sav == 2
             sdir = sprintf('displacementvector_%smethod_predictions/%s/curve%03dof%03d', ...
@@ -227,7 +233,7 @@ for itr = 1 : nitrs
             saveFiguresJB(fidx, {fnms}, sdir);
         end
     end
-    
+
     switch vis
         case 2
             m = 5;
@@ -238,16 +244,16 @@ for itr = 1 : nitrs
             end
         case 3
             jprintf('', toc(t), 1, 80 - n);
-            
+
             % End of Iteration
             nitr = fprintf('Finished Iteration %d of %d', itr, nitrs);
             jprintf('', toc(titr), 1, 80 - nitr);
             fprintf('%s\n\n', strH);
     end
-    
+
 end
 
-% End of iterations
+%% End of iterations
 if vis == 2
     fprintf('\n');
     n = fprintf('Finished %d Iterations', nitrs);
@@ -261,27 +267,21 @@ if vis > 1
     n = fprintf('Storing final outputs [alt_return = %s]', alt_return);
 end
 
-
 cpre = cpre(:,1:2);
 % Close contour if open
-if ~any(cpre(1,:) == cpre(end,:), 'all')
+if ~all(cpre(1,:) == cpre(end,:))
     cpre = [cpre ; cpre(1,:)];
 end
 
-%
+% Make Z-Vector and Z-Vector PC score from final contour
 zpre.final       = contour2corestructure(cpre, nsplt);
 zpre.score_final = pcaProject(zVectorConversion( ...
     zpre.final(:,1:4), nsegs, 1, 'prep'), pz.EigVecs, pz.MeanVals, 'sim2scr');
 zpre.vector      = z;
 
-% Return requested variable
-if nargout == 1
-    cpre = eval(alt_return);
-end
-
-if vis > 1
-    jprintf('', toc(t), 1, 80 - n);
-end
+% Return requested variable [either contour or z-vector]
+if nargout == 1; cpre = eval(alt_return);        end
+if vis > 1;      jprintf('', toc(t), 1, 80 - n); end
 
 % ------------------------- Display Final Iterations ------------------------- %
 %% Show final iteration
@@ -294,18 +294,16 @@ if vis == 1
     figclr(fidx);
     myimagesc(img);
     hold on;
-    %     plt(ztru, 'r+', 5);
-    %     plt(zpre.initial(:,1:2), 'ro', 3);
     plt(ctru, 'g-', 2);
     plt(cpre, 'y--', 2);
     ttl = sprintf('Curve %d of %d [%s set]', cidx, ncrvs, tset);
     title(ttl, 'FontSize', 10);
-    
+
     drawnow;
-    
+
     fnms = sprintf('%s_curve%03dof%03d_finalprediction', ...
         tdate, cidx, ncrvs);
-    
+
     if sav
         sdir = sprintf('displacementvector_%smethod_predictions/%s/', ...
             fmth, tset);
@@ -345,6 +343,9 @@ p.addOptional('model_manifest', {'dnnout' , 'pcadp' , ...
     'pcadx' , 'pcady' , 'pcadw' , 'znnout' , 'pz'});
 
 % Miscellaneous Options
+p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
+p.addOptional('toFix', 0);
+p.addOptional('toShape', 0);
 p.addOptional('par', 0);
 p.addOptional('sav', 0);
 p.addOptional('vis', 0);
@@ -376,8 +377,4 @@ function args = loadModels(args, model_manifest)
 
 %%
 mdir = '/home/jbustamante/Dropbox/EdgarSpalding/labdata/development/HypoQuantyl/datasets/matfiles';
-
-
-
-
 end

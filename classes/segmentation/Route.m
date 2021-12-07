@@ -1,4 +1,4 @@
-%% Circuit: class for holding sections of contours between anchor points for CircuitJB object
+%% Route: class for holding sections of contours between anchor points for CircuitJB object
 % Descriptions
 
 classdef Route < handle
@@ -30,17 +30,15 @@ classdef Route < handle
                 for k = fn'
                     obj.(cell2mat(k)) = args.(cell2mat(k));
                 end
-                
             else
                 % Set default properties for empty object
             end
-            
         end
         
         function obj = InterpolateTrace(obj)
             %% Convert RawTrace to InterpTrace
             rT = obj.RawTrace;
-            sz = obj.INTERPOLATIONSIZE;            
+            sz = obj.INTERPOLATIONSIZE;
             iT = interpolateOutline(rT, sz);
             
             obj.InterpTrace = iT;
@@ -57,7 +55,6 @@ classdef Route < handle
             [obj.NormalTrace, obj.Pmat, obj.MidPoint] = midpointNorm(obj.InterpTrace);
             obj.Ppar = [computePpar(obj.Pmat(2), obj.Pmat(1)) obj.MidPoint];
         end
-        
     end
     
     methods (Access = public)
@@ -86,45 +83,41 @@ classdef Route < handle
             %% Return one or both Anchors for this Route
             try
                 if isempty(req)
-                        % Both Anchors
-                        apt = obj.Anchors;
-                        
+                    % Both Anchors
+                    apt = obj.Anchors;
                 elseif isnumeric(req)
-                        % Request specifically indexed AnchorPoint
-                        apt  = obj.Anchors(req,:);
-                        
+                    % Request specifically indexed AnchorPoint
+                    apt = obj.Anchors(req,:);
                 elseif ischar(req)
-                        % Request raw or mean-subtracted Birth or Death Anchor
-                        switch req
-                            case 'b'
-                                % Starting Anchor
-                                apt  = obj.Anchors(1,:);
-                            case 'd'
-                                % Ending Anchor
-                                apt  = obj.Anchors(2,:);
-                                
-                            case 'b2'
-                                % Mean subtracted Starting Anchor
-                                apt = obj.Anchors(3,:);
-                                
-                            case 'd2'
-                                % Mean subtracted, Zero-set Ending Anchor
-                                apt = obj.Anchors(4,:);
-                                
-                            otherwise
-                                fprintf(2, 'No Anchor specified \n');
-                                apt = [];
-                        end
-                        
+                    % Request raw or mean-subtracted Birth or Death Anchor
+                    switch req
+                        case 'b'
+                            % Starting Anchor
+                            apt  = obj.Anchors(1,:);
+                        case 'd'
+                            % Ending Anchor
+                            apt  = obj.Anchors(2,:);
+                            
+                        case 'b2'
+                            % Mean subtracted Starting Anchor
+                            apt = obj.Anchors(3,:);
+                            
+                        case 'd2'
+                            % Mean subtracted, Zero-set Ending Anchor
+                            apt = obj.Anchors(4,:);
+                            
+                        otherwise
+                            fprintf(2, 'No Anchor specified \n');
+                            apt = [];
+                    end
                 else
                     % Both Anchors
-                        apt = obj.Anchors;
+                    apt = obj.Anchors;
                 end
             catch
                 fprintf(2, 'Error returning Anchors.\n');
                 apt = [];
             end
-            
         end
         
         function obj = setRawTrace(obj, trc)
@@ -193,30 +186,10 @@ classdef Route < handle
             end
         end
         
-        % Pmat should only be set with NormalizeTrace method
-        %         function obj = setPmat(obj, Pm)
-        %             %% Set conversion matrix
-        %             if isequal(sum(size(obj.Pmat)), sum(size(Pm)))
-        %                 obj.Pmat = Pm;
-        %             else
-        %                 fprintf(2, 'Pmat must be size [%d %d]\n', size(obj.Pmat));
-        %             end
-        %         end
-        
         function Pm = getPmat(obj)
             %% Return conversion matrix Pmat
             Pm = obj.Pmat;
         end
-        
-        % Ppar should only be set with NormalizeTrace method
-        %         function obj = setPpar(obj, Pp)
-        %             %% Set parameters matrix
-        %             if isequal(sum(size(obj.Ppar)), sum(size(Pp)))
-        %                 obj.Ppar = Pp;
-        %             else
-        %                 fprintf(2, 'Pmat must be size [%d %d]\n', size(obj.Ppar));
-        %             end
-        %         end
         
         function Pp = getPpar(obj)
             %% Return parameters Ppar
@@ -239,8 +212,7 @@ classdef Route < handle
             catch
                 fprintf(2, 'Error returning mean coordinate\n');
             end
-        end                
-        
+        end
     end
     
     methods (Access = private)
@@ -262,6 +234,4 @@ classdef Route < handle
             args = p.Results;
         end
     end
-    
 end
-

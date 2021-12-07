@@ -1,6 +1,8 @@
 function mcc = computeMatthewsCorellation(ctru, cpre, isz, lbl, fidxs)
 %% computeMatthewsCorellation: compute Matthew's Corellation Coefficient
-% Description
+% Computes the phi coefficient between two contours to estimate the closeness 
+% of the curves. The first step converts each curve into binary masks the size
+% of the 'isz' parameter. 
 %
 % % -------------------------------------------------------------------------- %
 %
@@ -35,11 +37,9 @@ function mcc = computeMatthewsCorellation(ctru, cpre, isz, lbl, fidxs)
 % Output:
 %   mcc: Matthew's Corellation Coefficient value
 %
-if nargin < 4
-    vis = 0;
-else
-    vis = 1;
-end
+
+if nargin < 4; lbl = [];    end
+if nargin < 5; fidxs = [];  end
 
 %% Convert to binary mask
 mtru = double(poly2mask(ctru(:,1), ctru(:,2), isz(1), isz(2)));
@@ -62,11 +62,11 @@ fn = G(1,2);
 mcc = MCC(tp, tn, fp, fn);
 
 %% Visualize results
-if vis
+if ~isempty(fidxs)
     % Show contours on masks
     rows = 1;
     cols = 2;
-    
+
     figclr(fidxs(1));
     subplot(rows, cols, 1);
     myimagesc(mtru);
@@ -75,7 +75,7 @@ if vis
     plt(cpre, 'y-', 2);
     ttl = sprintf('Expected');
     title(ttl, 'FontSize', 10);
-    
+
     subplot(rows, cols, 2);
     myimagesc(mpre);
     hold on;
@@ -83,7 +83,7 @@ if vis
     plt(cpre, 'y-', 2);
     ttl = sprintf('Predicted');
     title(ttl, 'FontSize', 10);
-    
+
     % Show confusion matrix
     set(0, 'CurrentFigure', fidxs(2)); clf;
     confusionchart(G, lbl);

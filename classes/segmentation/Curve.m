@@ -12,9 +12,9 @@ classdef Curve < handle & matlab.mixin.Copyable
         ApicalAngle
     end
     
-    properties (Constant)
-        SEGLENGTH = [53 , 52 , 53 , 51];
-    end
+    %     properties (Constant)
+    %         SEGLENGTH = [53 , 52 , 53 , 51];
+    %     end
     
     properties (Access = protected)
         SEGMENTSIZE    = 25;        % Number of coordinates per segment [default 200]
@@ -26,7 +26,7 @@ classdef Curve < handle & matlab.mixin.Copyable
         TOCENTER       = 1;         % Default center index for splitting segments
         MAINTRACE      = 'Clip';    % Default contour version
         MAINFUNC       = 'raw';     % Default contour direction
-        Trace
+        SEGLENGTH      = [53 , 52 , 53 , 51]; % Lengths of sections
         ManMidline
         AutoMidline
         NateMidline
@@ -48,6 +48,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             prps   = properties(class(obj));
             deflts = {...
                 'NumberOfSegments', 0 ; ...
+                'MidlineSize', 0      ; ...
                 'TraceSize', 0};
             obj    = classInputParser(obj, prps, deflts, vargs);
         end
@@ -133,8 +134,8 @@ classdef Curve < handle & matlab.mixin.Copyable
             %
             
             %% Parse inputs
-            [ndims , vsn , fnc , nsplt , midx , addMid , rot , rtyp , dpos] = ...
-                deal([]);
+            [ndims , vsn , fnc , nsplt , midx , addMid , rot , rtyp , dpos , ...
+                bdsp] = deal([]);
             obj  = varargin{1};
             args = parseInputs(varargin(2:end));
             for fn = fieldnames(args)'
@@ -162,6 +163,18 @@ classdef Curve < handle & matlab.mixin.Copyable
                 Z = zVectorConversion(Z, [], [], 'rot', rtyp, dpos);
             end
             
+            % Displace by midpoint of contour's base
+            if bdsp
+                if isempty(obj.BasePoint)
+                    obj.setBasePoint(vsn, fnc);                    
+                end                    
+                
+                bpt      = obj.BasePoint;
+                Z(:,1:2) = Z(:,1:2) - bpt;
+            end
+
+            obj.NumberOfSegments = size(Z,1);
+            
             %% Input Parser
             function args = parseInputs(varargin)
                 %% Parse input parameters
@@ -175,7 +188,8 @@ classdef Curve < handle & matlab.mixin.Copyable
                 p.addOptional('rot', 0);
                 p.addOptional('rtyp', 'rad');
                 p.addOptional('dpos', 1);
-                
+                p.addOptional('bdsp', 0);
+
                 % Parse arguments and output into structure
                 p.parse(varargin{1}{:});
                 args = p.Results;
@@ -532,7 +546,6 @@ classdef Curve < handle & matlab.mixin.Copyable
                         mline(1,:) = trc(bidx,:);
                         
                         obj.ManMidline = mline;
-                        skl            = [];
                     catch e
                         fprintf(2, 'Error setting ManMidline\n%s\n', ...
                             e.getReport);
@@ -563,45 +576,27 @@ classdef Curve < handle & matlab.mixin.Copyable
                 case 'nate'
                     %% Nathan Method [optimized equal distance to radius]
                     try
-                        % Contours need to be flipped and zero-centered
                         trc  = obj.getTrace(vsn, fnc);
-                        crns = cell2mat(arrayfun(@(x) ...
-                            obj.getCornerPoint(x, vsn, fnc), ...
-                            1 : 4, 'UniformOutput', 0)');
-                        
-                        % Pre-processing of contour and corners
-                        bpt  = obj.getBotMid(vsn, fnc);
-                        trc  = trc - bpt;
-                        crns = crns - bpt;
-                        trc  = [trc(:,1) , -trc(:,2)];
-                        crns = [crns(:,1) , -crns(:,2)];
-                        
-                        %
-                        %                         VIS  = 1; % DEBUG
-                        VIS  = 0;
-                        rho  = mline;
-                        edg  = 7;
-                        res  = 0.01;
-                        mpts = obj.MLINEINTRP;
-                        
-                        % Run midline algorithm
-                        if VIS
-                            figclr(VIS);
+                        mpts = obj.MLINEINTRP;      
+
+                        % If mline contains [rho , edg , res] values
+                        if ~isempty(mline)
+                            rho = mline(1);
+                            edg = mline(2);
+                            res = mline(3);
+                        else
+                            % Default parameters
+                            rho = 5;
+                            edg = 3;
+                            res = 0.1;
                         end
-                        
-                        skl   = hypoContour(trc, crns);
-                        intrp = linspace(0, 1, mpts);
-                        mobj  = skl.traceMidline(rho, edg, res, VIS);
-                        mline = mobj.eval(intrp, 'normalized');
-                        mline = squeeze(mline(:, 1:2, 3));
-                        
-                        % Flip and bring back to base point
-                        mline = [mline(:,1) , -mline(:,2)];
-                        mline = mline + bpt;
+
+                        [mline , skl] = nateMidline( ...
+                            trc, obj.SEGLENGTH, rho, edg, res, mpts);
                         
                         obj.NateMidline = mline;
                     catch e
-                        fprintf(2, 'Error setting midline [%s]\n%s\n', ...
+                        fprintf(2, 'Error setting NateMidline [%s]\n%s\n', ...
                             typ, e.getReport);
                     end
             end
@@ -631,15 +626,12 @@ classdef Curve < handle & matlab.mixin.Copyable
                     if ~isempty(mline)
                         pts   = obj.MLINEINTRP;
                         mline = interpolateOutline(mline, pts);
-                        
-                        obj.MidlineSize = pts;
                     else
-                        mline = [];
                         return;
                     end
                     
                 case 'raw'
-                    % Get raw coordinates
+                    % Keep raw coordinates
                     
                 case 'left'
                     % Force left-facing midline
@@ -647,13 +639,8 @@ classdef Curve < handle & matlab.mixin.Copyable
                     if isempty(drc); drc = obj.getDirection(1, vsn); end
                     
                     % Flip left if facing right
-                    if strcmpi(drc, 'right')
-                        bmid      = mline(1,:);
-                        dspl      = mline + (-bmid);
-                        dspl(:,1) = -dspl(:,1);
-                        f         = obj.SEGLENGTH(end);
-                        sld       = [f - bmid(1) , 0] * 2;
-                        mline     = dspl + sld + bmid;
+                    if strcmpi(drc, 'right')                      
+                        mline = flipLine(mline, obj.SEGLENGTH(end));
                     end
                     
                 case 'right'
@@ -663,12 +650,7 @@ classdef Curve < handle & matlab.mixin.Copyable
                     
                     % Flip left if facing right
                     if strcmpi(drc, 'left')
-                        bmid      = mline(1,:);
-                        dspl      = mline + (-bmid);
-                        dspl(:,1) = -dspl(:,1);
-                        f         = obj.SEGLENGTH(end);
-                        sld       = [f - bmid(1) , 0] * 2;
-                        mline     = dspl + sld + bmid;
+                        mline = flipLine(mline, obj.SEGLENGTH(end));
                     end
                     
                 case 'norm'
@@ -676,10 +658,13 @@ classdef Curve < handle & matlab.mixin.Copyable
                     mline = obj.normalizeCurve('midline', mth);
                     
                 otherwise
-                    fprintf(2, 'Midline type %s must be [int|raw|norm]\n', typ);
+                    fprintf(2, 'Midline type %s must be [int|raw|left|right|norm]\n', ...
+                        typ);
                     mline = [];
                     return;
             end
+            
+            obj.MidlineSize = size(mline, 1);
         end
         
         function [obj , mfix] = FixMidline(obj, fidx, interp_fixer, mth)
@@ -954,7 +939,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
         end
         
-        function obj = setProperty(obj, req, val)
+        function setProperty(obj, req, val)
             %% Set requested property if it exists [for private properties]
             try
                 obj.(req) = val;
@@ -963,7 +948,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
         end
         
-        function obj = resetProperty(obj, req)
+        function resetProperty(obj, req)
             %% Reset property back to original value
             try
                 cpy = Curve;

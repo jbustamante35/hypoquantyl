@@ -35,7 +35,8 @@ end
 %% Create crop box --> Crop image --> Rescale cropped image
 try
     % Upper region
-    tbox = [0 , 0 , anchor_points(4,1) + 1 , anchor_points(2,2)];
+%     tbox = [0 , 0 , anchor_points(4,1) + 1 , anchor_points(2,2)];
+    tbox = [0 , 0 , anchor_points(4,1), anchor_points(2,2)];
     tcrp = imcrop(img, tbox);
     timg = imresize(tcrp, scale_size);
 catch

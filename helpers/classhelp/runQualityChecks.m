@@ -1,6 +1,6 @@
 function goodFrmIdx = runQualityChecks(sdl, tests)
 %% runQualityChecks: run tests on Seedling to determine frames with good data
-% Run quality checks on various Seedling data. User determines which tests to 
+% Run quality checks on various Seedling data. User determines which tests to
 % run based on the indices marked 'true' in the 'tests' parameter.
 %
 % Current tests:
@@ -30,7 +30,7 @@ num = 1;
 if tests(num)
     crds    = sdl.getCoordinates(':');
     crdsIdx = ~isnan(sum(crds,2))';
-    
+
     goodFrmIdx(num, crdsIdx) = 1;
 end
 num = num + 1;
@@ -40,14 +40,14 @@ if tests(num)
     pdat    = sdl.getPData(':');
     pdatChk = struct2logical(pdat);
     pdatIdx = structfun(@(x) find(x == 1), pdatChk, 'UniformOutput', 0);
-    
+
     fn      = fieldnames(pdatIdx);
     pdatMtc = zeros(numel(fn), sdl.getLifetime);
     for p = 1 : numel(fn)
         fld = fn{p}(~isspace(fn{p}));
         pdatMtc(p, pdatIdx.(fld)) = 1;
     end
-    
+
     pdatFinal                  = sum(pdatMtc,1) == numel(fn);
     goodFrmIdx(num, pdatFinal) = 1;
 end
@@ -66,7 +66,7 @@ if tests(num)
     pts    = sdl.getAnchorPoints;
     ptsSum = sum(sum(permute(pts, [3 1 2]), 2),3);
     ptsIdx = ptsSum > 0;
-    
+
     goodFrmIdx(num, ptsIdx) = 1;
 end
 num = num + 1;
@@ -81,10 +81,8 @@ num = num + 1;
 if tests(num)
     % Collision is true if
 end
-num = num + 1;
+% num = num + 1;
 
 % Test Assessment: Check number of passing frames
 goodFrmIdx = find(sum(goodFrmIdx,1) == sum(tests));
-
-
 end

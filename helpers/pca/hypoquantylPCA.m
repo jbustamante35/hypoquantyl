@@ -1,17 +1,13 @@
-function [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, varargin)
+function [px , py , pz , pp , pm] = hypoquantylPCA(CRVS, sav, varargin)
 %% hypoquantylPCA: run PCA on x-/y-coordinates and z-vectors
 % Description
 %
 %
 % Usage:
-%   [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, ...
+%   [px , py , pz , pp , pm] = hypoquantylPCA(CRVS, sav, ...
 %       'pcx', pcx, 'pcy', pcy, 'pcz', pcz, 'pcp', pcp, ...
 %       'addMid', addMid, 'zrotate', zrotate, 'rtyp', rtyp, ...
 %       'znorm', znorm, 'zshp', zshp, 'split2stitch', split2stitch)
-%
-% OLD METHOD
-%   [px, py, pz, pp] = hypoquantylPCA(CRVS, sav, ...
-%       pcx, pcy, pcz, pcp, addMid, zrotate, rtyp, znorm, zshp, split2stitch)
 %
 % Input:
 %   CRVS array of Curve objects to extract data from (required)
@@ -76,14 +72,14 @@ if nargin < 2; sav = 0; end
 
 tAll = tic;
 if iscell(pcz)
-    fprintf('%s\nRunning HypoQuantyl PCA Pipeline [%d %ss | %d pcx | %d pcy | [%d-%d] pcz | %d pcp]\n%s\n', ...
-        sepA, ncrvs, class(CRVS), pcx, pcy, pcz{1}, pcz{2}, pcp, sepB);
+    fprintf('%s\nRunning HypoQuantyl PCA Pipeline [%d %ss | %d pcx | %d pcy | [%d-%d] pcz | %d pcp | %d pcm]\n%s\n', ...
+        sepA, ncrvs, class(CRVS), pcx, pcy, pcz{1}, pcz{2}, pcp, pcm, sepB);
 else
-    fprintf('%s\nRunning HypoQuantyl PCA Pipeline [%d %ss | %d pcx | %d pcy | %d pcz | %d pcp]\n%s\n', ...
-        sepA, ncrvs, class(CRVS), pcx, pcy, pcz, pcp, sepB);
+    fprintf('%s\nRunning HypoQuantyl PCA Pipeline [%d %ss | %d pcx | %d pcy | %d pcz | %d pcp | %d pcm]\n%s\n', ...
+        sepA, ncrvs, class(CRVS), pcx, pcy, pcz, pcp, pcm, sepB);
 end
 
-[px , py , pz , pp] = deal([]);
+[px , py , pz , pp , pm] = deal([]);
 
 %% Split and Midpoint-Normalize x-/y-coordinates [S-Vectors]
 % Rasterize S-Vectors
@@ -117,9 +113,9 @@ if zchk > 0
     midx = round(nsplt / 2);
     rZ   = arrayfun(@(c) c.getZVector(zdims, 'vsn', vsn, 'fnc', fnc, ...
         'addMid', addMid, 'rot', zrotate, 'rtyp', rtyp, 'dpos', dpos, ...
-        'nsplt', nsplt, 'midx', midx), CRVS, 'UniformOutput', 0);
-    Z  = cat(1, rZ{:});
-    pz = zvectorPCA(Z, sav, pcz, nsegs, ncrvs, ...
+        'nsplt', nsplt, 'midx', midx, 'bdsp', bdsp), CRVS, 'UniformOutput', 0);
+    Z   = cat(1, rZ{:});
+    pz  = zvectorPCA(Z, sav, pcz, nsegs, ncrvs, ...
         addMid, zrotate, rtyp, znorm.pz, zshp.pz, split2stitch);
 end
 jprintf(' ', toc(t), 1, 80 - n);
@@ -143,6 +139,21 @@ end
 jprintf(' ', toc(t), 1, 80 - n);
 
 % ---------------------------------------------------------------------------- %
+%% Generate Midlines and Midline Patches
+t = tic;
+n = fprintf('Generating Midline Patches');
+if pcm > 0
+    mI = arrayfun(@(x) x.getImage, CRVS, 'UniformOutput', 0);
+    mP = arrayfun(@(x) x.getMidline(mmth, mtyp), CRVS, 'UniformOutput', 0);
+    mp = cellfun(@(i,m) sampleMidline(i,m,0,psz,'full'), ...
+        mI, mP, 'UniformOutput', 0);
+    MP = cellfun(@(x) x(:)', mp, 'UniformOutput', 0);
+    MP = cat(1, MP{:});
+    pm = mpatchPCA(MP, ncrvs, pcm);
+end
+jprintf(' ', toc(t), 1, 80 - n);
+
+% ---------------------------------------------------------------------------- %
 %% Save datasets
 t = tic;
 n = fprintf('Saving PCA Datasets');
@@ -151,6 +162,7 @@ if sav
     if ~isempty(py); save([sdir , filesep , py.DataName], '-v7.3', 'py'); end
     if ~isempty(pz); save([sdir , filesep , pz.DataName], '-v7.3', 'pz'); end
     if ~isempty(pp); save([sdir , filesep , pp.DataName], '-v7.3', 'pp'); end
+    if ~isempty(pm); save([sdir , filesep , pm.DataName], '-v7.3', 'pm'); end
 end
 jprintf(' ', toc(t), 1, 80 - n);
 
@@ -172,7 +184,7 @@ py  = pcaAnalysis(Y, pcy, 0, ynm, ...
 end
 
 function pz = zvectorPCA(Z, sav, pcz, nsegs, ncrvs, addMid, zrotate, rtyp, znorm, zshp, split2stitch)
-%% Z-Vectors
+%% Z-Vectors: Midpoint-Tangent-Normals from contours
 if zrotate
     % Rotations
     vvec = 3;
@@ -189,21 +201,21 @@ if split2stitch
     ztngs = Z(:,vvec);
     vmids = zVectorConversion(zmids, nsegs, ncrvs, 'prep', addMid, rtyp);
     vtngs = zVectorConversion(ztngs, nsegs, ncrvs, 'prep', addMid, rtyp);
-    
+
     mnm = sprintf('z%dHypocotyls_midpoints', ncrvs);
     vnm = sprintf('z%dHypocotyls_%s', ncrvs, vtyp);
     pm  = pcaAnalysis(vmids, pcz{1}, 0, mnm, ...
         'ZScoreNormalize', znorm{1}, 'ZScoreReshape', zshp{1});
     pv  = pcaAnalysis(vtngs, pcz{2}, 0, vnm, ...
         'ZScoreNormalize', znorm{2}, 'ZScoreReshape', zshp{2});
-    
+
     pz = struct('mids', pm, vtyp, pv);
-    
+
     if sav
         znm = sprintf('z%dHypocotyls', ncrvs);
         save(znm, '-v7.3', 'pz');
     end
-    
+
 else
     % PCA with midpoints-tangents/rotations together (default)
     if iscell(Z)
@@ -213,7 +225,7 @@ else
     else
         Z = zVectorConversion(Z, nsegs, ncrvs, 'prep', rtyp);
     end
-    
+
     znm = sprintf('z%dHypocotyls', ncrvs);
     pz  = pcaAnalysis(Z, pcz, 0, znm, ...
         'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
@@ -228,6 +240,12 @@ pp  = pcaAnalysis(P, pcp, 0, pnm, ...
     'ZScoreNormalize', znorm, 'ZScoreReshape', zshp);
 end
 
+function pm = mpatchPCA(MP, ncrvs, pcm)
+%% Midline Patches
+mnm = sprintf('mp%dHypocotyls', ncrvs);
+pm  = pcaAnalysis(MP, pcm, 0, mnm);
+end
+
 function args = parseInputs(varargin)
 %% Parse input parameters
 p = inputParser;
@@ -235,10 +253,15 @@ p.addOptional('pcx', 6);
 p.addOptional('pcy', 6);
 p.addOptional('pcz', 10);
 p.addOptional('pcp', 10);
+p.addOptional('pcm', 20);
 p.addOptional('addMid', 0);
 p.addOptional('zrotate', 0);
 p.addOptional('rtyp', 'rad');
 p.addOptional('dpos', 0);
+p.addOptional('bdsp', 0);
+p.addOptional('mmth', 'nate');
+p.addOptional('mtyp', 'int');
+p.addOptional('psz', 20);
 p.addOptional('nsplt', 25);
 p.addOptional('znorm', struct('ps', 0, 'pz', 0, 'pp', 0));
 p.addOptional('zshp', struct('ps', 0, 'pz', 0, 'pp', 0));

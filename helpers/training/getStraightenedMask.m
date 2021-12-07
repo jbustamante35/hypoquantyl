@@ -5,13 +5,14 @@ function [smsk, sdata] = getStraightenedMask(crds, img, BNZ, SCL, BG)
 % midline.
 %
 % Usage:
-%   [smsk, sdata] = getStraightenedMask(crds, img, BNZ, SCL)
+%   [smsk, sdata] = getStraightenedMask(crds, img, BNZ, SCL, BG)
 %
 % Input:
 %   crds: x-/y-coordinates of curve to map
 %   img: image to interpolate pixels from coordinates
-%   bnz: boolean to binarize the final mask [for bw objects]
-%   dscl: scaler to extend normal to desired distance [in pixels]
+%   BNZ: boolean to binarize the final mask [for bw objects]
+%   SCL: scaler to extend normal to desired distance [in pixels]
+%   BG:
 %
 % Output:
 %   smsk: straightened image
@@ -19,15 +20,13 @@ function [smsk, sdata] = getStraightenedMask(crds, img, BNZ, SCL, BG)
 %
 
 try
+    %% Default parameters
+    if nargin < 3; BNZ = 1;                     end % Binarization on 
+    if nargin < 4; SCL = ceil(size(img,1) / 2); end % Envelope size half width of the image    
+    if nargin < 5; BG  = 0;                     end % No BG
+    
     %% Create envelope structure
     % Set unit length vector to place outer boundary
-    if nargin < 3
-        % Default binarization on and envelope size to half the width of the image
-        BNZ = 1;
-        SCL = ceil(size(img,1) / 2);
-        BG  = 0;
-    end
-    
     tng  = gradient(crds')';
     d2e  = sum((tng .* tng), 2).^(-0.5);
     ulng = bsxfun(@times, tng, d2e) * SCL;
