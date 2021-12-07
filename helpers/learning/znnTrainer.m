@@ -61,7 +61,7 @@ if isempty(splts)
     valPct = 0.1;
     tstPct = 0.1;
     splts  = splitDataset(1 : NCRVS, trnPct, valPct, tstPct);
-    
+
     X = IMGS(:,:,:,splts.trnIdx); % For CNN
     Y = ZSCRS(splts.trnIdx, :);
 else
@@ -124,9 +124,9 @@ regnm  = sprintf('reg_%d', pc);
 layers = [
     imageInputLayer([size(IMGS,1) , size(IMGS,2) , 1], ...
     'Name', imgnm, 'Normalization', 'none');
-    
+
     LAYERS ;
-    
+
     dropoutLayer(Dropout, 'Name', drpnm);
     fullyConnectedLayer(csz, 'Name', connnm);
     regressionLayer('Name', regnm);
@@ -165,12 +165,12 @@ OUT = struct('SplitSets', splts, 'Net', znet);
 % Save results in structure
 if Save
     pdir = sprintf('zvector_training/pcs');
-    
+
     if ~isfolder(pdir)
         mkdir(pdir);
         pause(0.5);
     end
-    
+
     pnm  = sprintf('%s/%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
         pdir, tdate, NCRVS, pc, PCZ);
     save(pnm, '-v7.3', 'IN', 'OUT');

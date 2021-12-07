@@ -13,10 +13,12 @@ function [zopt , fval , eflg , opts] = segmentationOptimizer(img, varargin)
 %       - Nz:
 %       - pz:
 %       - Nd:
+%       - Nb:
 %       - pdp:
 %       - pdx:
 %       - pdy:
 %       - pdw:
+%       - pm:
 %       - par:
 %       - nopts:
 %
@@ -33,59 +35,27 @@ for fn = fieldnames(args)'
     feval(@() assignin('caller', cell2mat(fn), args.(cell2mat(fn))));
 end
 
-%%
 %
-bwid  = 0.5;
-% msz   = 50;
-psz   = 20;
-scrs  = pp.PCAScores;
-pvecs = pp.EigVecs;
-pmns  = pp.MeanVals;
-zsegs = size(ctru,1) - 1;
-zvecs = pz.EigVecs;
-zmns  = pz.MeanVals;
-% scrs  = pz.PCAScores;
-% cmns  = mean(scrs);
-% cvar  = cov(scrs);
+[bpredict , bcnv , zpredict , zcnv, cpredict , ~ , ~ , ~ , ~ , ~ , mmaster] = ...
+    loadSegmentationFunctions(pz , pdp , pdx , pdy , pdw , pm , Nz , Nd , Nb, ...
+    'seg_lengths', seg_lengths, 'toFix', toFix, 'bwid', bwid, 'psz', psz, ...
+    'nopts', nopts, 'par', par, 'vis', vis);
 
-%
-zcnv      = @(x) zVectorProjection(x, zsegs, zvecs, zmns, 3);                         % Z-Vector PC Score to Vector
-zpredict  = @(i,r) predictZvectorFromImage(i, Nz, pz, r);                            % Z-Vector from Image
-cpredict  = @(i,zs) displacementWindowPredictor(i, 'Nz', Nz, 'pz', pz, 'Nd', Nd, ... % D-Vector from Z-Vector on Image
-    'pdp', pdp, 'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'z', zs, ...
-    'par', par, 'vis', vis);
-mline     = @(c) nateMidline(c);                                                     % Midline from D-Vectors
-msample   = @(i,m) sampleMidline(i, m, 0, psz, 'full');                              % Midline Patch from Midline
-% msample   = @(i)@(m) sampleMidline(i, m, 0, psz, 'full');                              % Midline Patch from Midline
-mcnv      = @(m) pcaProject(m(:)', pvecs, pmns, 'sim2scr');                               % Midline Patch Vector to PC Score
-mgrade    = computeKSdensity(scrs, bwid);                                            % Grade from Midline Patch PC Score Distribution
-% mmaster   = @(i,z)@(ms) mgrade(mcnv(msample(i,mline(cpredict(i,z)))));           % Optimize Midline Patch PC Score
-mmaster   = @(i)@(z) mgrade(mcnv(msample(i,mline(cpredict(i,zcnv(z))))));           % Optimize Midline Patch PC Score
+% Get initial guesses
+zscr  = zpredict(img,1);       % 1 for PC score
+zinit = zpredict(img,0);       % 0 for Vector
+zinit = bpredict(img,zinit,1); % 1 for Z-Vector
+cinit = cpredict(img,zinit);
 
-% DEPRECATED [optimization by minimization of Z-Vector PC score probability]
-% zgrade    = computeKSdensity(x, bwid);                       % Grade by Z-Vector PC distribution
-% zgrade    = @(x) -log(mvnpdf(x, cmns, cvar));                % Assume gaussians
-% zmaster   = @(i)@(zs) zgrade(zcnv(cpredict(i,zcnv(zs))));    % Optimize Z-Vector PC Score
-
-%%
-zpre  = zpredict(img,0);  % 0 for Z-Vector
-zscr  = zpredict(img,1); % 1 for PC score
-cinit = cpredict(img, zpre);
-% minit = mline(cinit);
-% pinit = msample(img, minit);
-% mscr  = mcnv(pinit(:)');
-
-% Run the optimizer!
-showBest = @(zs,aa,bb) showSegmentationOptimizer(img, ctru, cinit, zcnv(zs), ...
-    cpredict, aa, bb);
-options  = optimset('Display', 'iter', 'MaxIter', nopts, 'PlotFcns', showBest);
+%% Optimize Z-Vector from midline patch PC score probability
+showBest = @(zs,aa,bb) showSegmentationOptimizer(img, ctru, cinit, ...
+    bcnv(img,zcnv(zscr)), cpredict, aa, bb);
+options  = optimset('MaxIter', nopts, 'TolFun', tolfun, 'TolX', tolx, ...
+    'Display', 'iter', 'PlotFcns', showBest);
 
 % Run the optimizer!
 % Minimization of M-Patch PC scores
 [zopt , fval , eflg , opts] = fminsearch(mmaster(img), zscr, options);
-
-% Minimization of Z-Vector PC scores
-% [zopt , fval , eflg , opts] = fminsearch(zmaster(img), zscr, options); %
 
 % Minimization of Z-Vector PC scores using patternsearch [allows parallel]
 % Set upper and lower bounds set to sqrt or std from Z-Vector PC scores
@@ -94,13 +64,18 @@ options  = optimset('Display', 'iter', 'MaxIter', nopts, 'PlotFcns', showBest);
 % [zopt , fval , eflg , opts] = patternsearch(zmaster(img), zscr, ...
 %     [], [], [], [], [], [], [], options);
 
+%% Generate contour from optimized Z-Vector
+if z2c
+    zinit = bpredict(img, zcnv(zopt), 1);
+    zopt  = cpredict(img, zinit);
+end
 end
 
 function args = parseInputs(varargin)
 %% Parse input parameters for Constructor method
 % Required: ncycs
 % Model: Nz, pz, Nd, pdp, pdx, pdy, pdw, fmth, z, model_manifest
-% Misc: par, sav, vis
+% Misc: par, vis
 % Vis: fidx, cidx, ncrvs, splts, ctru, ztru, ptru, zoomLvl, toRemove
 
 % Required
@@ -109,25 +84,31 @@ p.addOptional('ncycs', 1);
 
 % Model Options
 p.addOptional('Nz', 'znnout');
-p.addOptional('pz', 'pz');
 p.addOptional('Nd', 'dnnout');
-p.addOptional('pdp', 'pcadp');
-p.addOptional('pdx', 'pcadx');
-p.addOptional('pdy', 'pcady');
-p.addOptional('pdw', 'pcadw');
+p.addOptional('Nb', 'bnnout');
+p.addOptional('pz', 'pz');
+p.addOptional('pm', 'pm');
+p.addOptional('pdp', 'pdp');
+p.addOptional('pdx', 'pdx');
+p.addOptional('pdy', 'pdy');
+p.addOptional('pdw', 'pdw');
 p.addOptional('fmth', 'local');
 p.addOptional('z', []);
-p.addOptional('model_manifest', {'dnnout' , 'pcadp' , ...
-    'pcadx' , 'pcady' , 'pcadw' , 'znnout' , 'pz'});
+p.addOptional('model_manifest', {'dnnout' , 'znnout' , 'bnnout' , ...
+    'pz' , 'pm' , 'pdp' , 'pdx' , 'pdy' , 'pdw'});
 
 % Optimization Options
 p.addOptional('bwid', 0.5);
-p.addOptional('pp', 'pp');
+p.addOptional('psz', 20);
+p.addOptional('toFix', 0);
+p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
 
 % Miscellaneous Options
-p.addOptional('nopts', 50);
+p.addOptional('z2c', 0);
+p.addOptional('nopts', 100);
+p.addOptional('tolfun', 1e-4);
+p.addOptional('tolx', 1e-4);
 p.addOptional('par', 0);
-p.addOptional('sav', 0);
 p.addOptional('vis', 0);
 
 % Visualization Options
@@ -144,5 +125,4 @@ p.addParameter('toRemove', 1);
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});
 args = p.Results;
-
 end

@@ -25,11 +25,14 @@ function mypca = pcaAnalysis(rawD, numC, sav, dName, varargin)
 
 %% PCA using my custom pca function and MATLAB's built-in pca function
 % Default to Method 1 and no visualization
-switch nargin
-    case nargin < 4
-        fprintf(2, 'Not enough input arguments [%d]\n', nargin);
-        mypca = [];
-        return;
+if nargin < 2; numC  = 3;              end
+if nargin < 3; sav   = 0;              end
+if nargin < 4; dName = sprintf('pca'); end
+
+if nargin < 2
+    fprintf(2, 'Not enough input arguments [%d]\n', nargin);
+    mypca = [];
+    return;
 end
 
 %%
@@ -41,5 +44,4 @@ fname = mypca.DataName;
 if sav
     save(fname, '-v7.3', 'mypca');
 end
-
 end

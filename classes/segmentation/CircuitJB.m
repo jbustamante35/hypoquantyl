@@ -20,9 +20,10 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
         RawPoints
         RawOutline
         ClipOutline
-        NUMBEROFANCHORS = 7     % DEPRECATED (but I might still have use for it)
-        Routes                  % DEPRECATED (but I might still have use for it)
-        AnchorPoints            % DEPRECATED (but I might still have use for it)
+        SEGLENGTH       = [53 , 52 , 53 , 51]; % Lengths of sections
+        NUMBEROFANCHORS = 4                    % Number of sections
+        Routes                                 % Coordinates of bottom-left-top-right sections
+        AnchorPoints                           % Coordinates of corners
     end
     
     %%
@@ -47,39 +48,25 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
         end
         
-        function CreateCurves(obj, overwrite, par)
+        function CreateCurves(obj, overwrite)
             %% Full Outline generates Curve objects around CircuitJB object
             % Generate InterpOutline and NormalOutline if not yet done
             % Set overwrite to 'skip' to skip curves that are already created
-            if nargin < 2
-                overwrite = 'redo';
-                par       = 0;
-                fprintf('Defaulting to parameters %s (overwrite) and %s (par)\n', ...
-                    char(overwrite), num2str(par));
-            end
+            if nargin < 2; overwrite = 'skip'; end
             
             switch overwrite
                 case 'redo'
                     % Redo pipeline even if already done
-                    chkEmpty = true;
+                    chkEmpty   = true;
                     obj.Curves = [];
                     
                 case 'skip'
                     % Run pipeline only if data is empty
                     chkEmpty = isempty(obj.Curves);
-                    
-                otherwise
-                    % Default to skip if already done
-                    chkEmpty = isempty(obj.Curves);
             end
             
-            if chkEmpty
-                if isempty(obj.InterpOutline)
-                    obj.ReconfigInterpOutline;
-                end
-                
-                obj.Curves = Curve('Parent', obj, 'Trace', obj.FullOutline);
-                obj.Curves.RunFullPipeline(par);
+            if chkEmpty                
+                obj.Curves = Curve('Parent', obj);
             else
                 fprintf('\nSkipping %s\n', obj.Origin);
             end
@@ -87,7 +74,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
         
         function CreateRoutes(obj)
             %% Interpolated Outline and Anchor Points create Route objects
-%             rts = obj.Routes;            
+            %             rts = obj.Routes;
             pts = obj.AnchorPoints;
             oL  = obj.getOutline;
             n   = obj.NUMBEROFANCHORS;
@@ -98,11 +85,10 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             mtch    = findIdx(oL, pts);
             
             % Split Outline into separate Trace between each AnchorPoints
-%             shp    = @(x) reshape(nonzeros(x), [nnz(x)/2 2]);
             traces = split2trace(oL, mtch, n);
             
             % Set data from this object's outline for all Routes
-            % Copy first anchor point to last index                        
+            % Copy first anchor point to last index
             newpts = [pts ; pts(1,:)];
             pn     = arrayfun(@(x) x, 1 : n, 'UniformOutput', 0);
             cellfun(@(r,p) r.setOrigin(sprintf('Route_%d', p)), ...
@@ -112,12 +98,6 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 rts, pn, 'UniformOutput', 0);
             cellfun(@(r) r.NormalizeTrace, rts, 'UniformOutput', 0);
             obj.Routes = cat(1, rts{:});
-%             newpts = [pts ; pts(1,:)];
-%             arrayfun(@(x) rts(x).setRawTrace(shp(traces(:,:,x))), ...
-%                 1:n, 'UniformOutput', 0);
-%             arrayfun(@(x) rts(x).setAnchors(newpts(x,:), newpts(x+1,:)), ...
-%                 1:n, 'UniformOutput', 0);
-%             arrayfun(@(x) rts(x).NormalizeTrace, 1:n, 'UniformOutput', 0);
         end
         
         function rts = getRoute(obj, n)
@@ -543,9 +523,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
         
         function pts = getRawPoints(obj, idx)
             %% Return RawPoints
-            if nargin < 2
-                idx = ':';
-            end
+            if nargin < 2; idx = ':'; end
             
             try
                 pts = obj.RawPoints(idx,:);
@@ -554,26 +532,15 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             end
         end
         
-        function pts = getAnchorPoints(varargin)
+        function pts = getAnchorPoints(obj, idx)
             %% Return all or specific set of AnchorPoints
+            if nargin < 2; idx = ':'; end
             try
-                obj = varargin{1};
-                if nargin == 1
-                    pts = obj.AnchorPoints;
-                else
-                    idx = varargin{2};
-                    pts = obj.AnchorPoints(idx, :);
-                end
-            catch e
-                fprintf(2, 'Error returning AnchorPoints\n%s\n', e.getReport);
+                pts = obj.AnchorPoints(idx,:);
+            catch
+                fprintf(2, 'Error returning AnchorPoint %d\n', idx);
                 pts = [];
             end
-        end
-        
-        function [X , Y] = rasterizeCurves(obj, req)
-            %% Rasterize all segments of requested type
-            % This method is used to prepare for Principal Components Analysis
-            [X , Y] = obj.Curves.rasterizeSegments(req);
         end
         
         function chk = checkFlipped(obj)
@@ -628,7 +595,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             % defined as the lower-left coordinate of the image. This is the
             % standardaized starting location for training hypocotyl images. The
             % alg parameter should be set to 1 or true to use this.
-            %            
+            %
             if strcmpi(init , 'default')
                 %% Use CarrotSweeper's anchor point
                 low = min(crds(:,1));

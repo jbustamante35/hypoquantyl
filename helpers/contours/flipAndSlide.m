@@ -1,6 +1,21 @@
-function trc = flipAndSlide(trc, seg_lengths)
-%% flipAndSlide
-if nargin < 2   
+function flp = flipAndSlide(trc, seg_lengths)
+%% flipAndSlide: flip contour along x-axis and slide to appropriate location
+% Only works on contours with sections. Not for use by any ordinary curve. Use
+% the flipCurve function.
+%
+% Usage:
+%   flp = flipAndSlide(trc, seg_lengths)
+%
+% Input:
+%   trc:
+%   seg_lengths:
+%
+% Output:
+%   flp:
+%
+
+%%
+if nargin < 2
     seg_lengths = [53 , 52 , 53 , 51];
 end
 
@@ -13,23 +28,22 @@ segs = arrayfun(@(n) getSegCoords(fdsp, seg_lengths, n), ...
     1 : 4, 'UniformOutput', 0);
 rvrs = reverseOrientation(segs);
 sld  = calcSlide(bmid, seg_lengths);
-trc  = displaceContour(rvrs, sld);
-
+flp  = displaceContour(rvrs, sld);
 end
 
 function bmid = getBotMid(trc, seg_lengths)
-%%
+%% Get midpoint of bottom section
 seg  = getSegCoords(trc, seg_lengths, 4);
 bmid = mean(seg,1);
 end
 
 function trc = displaceContour(trc, dsp)
-%% displaceContour:
+%% displaceContour: Translate contour to and from zero-centering
 trc = trc + dsp;
 end
 % ---------------------------------------------------------------------------- %
 function trc = flipContour(trc)
-%% flipContour
+%% flipContour: Flip along x-axis
 trc(:,1) = -trc(:,1);
 end
 
@@ -64,7 +78,7 @@ seg = trc(str:stp,:);
 end
 
 function trc = reverseOrientation(segs)
-%% reverseOrientation
+%% reverseOrientation: reset curve sections
 lft = segs{1};
 top = segs{2};
 rgt = segs{3};
@@ -83,7 +97,7 @@ trc = cat(1, rgt, top, lft, bot);
 end
 
 function sld = calcSlide(bmid, seg_lengths)
-%%
+%% calcSlide: calculate distance to slide flipped curve
 f   = seg_lengths(end);
 sld = [f - bmid(1) , 0] * 2;
 end

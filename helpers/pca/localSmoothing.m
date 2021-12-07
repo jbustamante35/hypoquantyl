@@ -15,7 +15,7 @@ function [trgs , pdw] = localSmoothing(trgs, nsplt, PF)
 %   pdw:
 %
 
-% Split and concatenate contours into segments
+%% Split and concatenate contours into segments
 SEGS  = arrayfun(@(x) split2Segments(trgs(:,1:2,x), nsplt), ...
     1 : size(trgs,3), 'UniformOutput', 0)';
 WX    = cellfun(@(x) squeeze(x(:,1,:))', SEGS, 'UniformOutput', 0);

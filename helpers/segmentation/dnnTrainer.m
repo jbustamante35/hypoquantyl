@@ -1,4 +1,4 @@
-function [DIN, DOUT, fnms] = dnnTrainer(IMGS, CNTRS, nitrs, nsplt, cidxs, fmth, NPF, NPD, NLAYERS, TRNFN, sav, vis, par)
+function [DIN, DOUT, fnms] = dnnTrainer(IMGS, CNTRS, nitrs, nsplt, cidxs, fmth, toFix, seg_lengths, NPF, NPD, NLAYERS, TRNFN, sav, vis, par)
 %% dnnTrainer: training algorithm for recursive displacement learning method
 % This is a description
 %
@@ -12,8 +12,9 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMGS, CNTRS, nitrs, nsplt, cidxs, fmth, 
 %   folding at the final iteration remains the same.
 %
 % Usage:
-%   [DIN, DOUT, fnms] = dnnTrainer(IMGS, CNTRS, nitrs, nsplt, cidxs, ...
-%       fmth, NPF, NPD, NLAYERS, TRNFN, sav, vis, par)
+%   [DIN, DOUT, fnms] = dnnTrainer(IMGS, CNTRS, ...
+%       nitrs, nsplt, cidxs, fmth, toFix, seg_lengths, ...
+%       NPF, NPD, NLAYERS, TRNFN, sav, vis, par)
 %
 % Input:
 %   IMGS: cell array of images to be trained
@@ -22,6 +23,8 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMGS, CNTRS, nitrs, nsplt, cidxs, fmth, 
 %   nsplt: size to set curve segsments from contours
 %   cidxs: data indices to show progress of training
 %   fmth: PCA smoothing method [whole|local|0] (default 'local')
+%   toFix: straighten top and bottom sections
+%   seg_lengths: lengths of sections
 %   NPF: principal components to smooth predictions
 %   NPD: principal components for sampling core patches (default 5)
 %   NLAYERS: number of layers to use with fitnet (default 5)
@@ -119,7 +122,7 @@ for itr = 1 : nitrs
     fprintf('Computing target values for %d segments of %d curves...', ...
         size(TRGS,1), size(TRGS,3));
     
-    [DVECS, dsz] = computeTargets(TRGS, ZVECS, 1, par);
+    [DVECS, dsz] = computeTargets(TRGS, ZVECS, 1, toFix, seg_lengths, par);
     
     fprintf('DONE! [%.02f sec]\n', toc(t));
     
@@ -139,7 +142,7 @@ for itr = 1 : nitrs
     fprintf('Computing target values for %d segments of %d curves...', ...
         size(dpre,1), size(dpre,3));
     
-    trgpre = computeTargets(dpre, ZVECS, 0, par);
+    trgpre = computeTargets(dpre, ZVECS, 0, toFix, seg_lengths, par);
     
     switch fmth
         case 'whole'

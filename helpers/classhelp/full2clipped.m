@@ -1,18 +1,18 @@
-function [ht , nclps , uidxs] = full2clipped(clps, ht, C, IMGS, toReplace, nrts, rlen, npts)
+function [ht , nclps , uidxs] = full2clipped(clps, ht, C, IMGS, toSet, nrts, rlen, npts)
 %% full2clipped: convert contours in Curves to clipped versions
 %
 %
 % Usage:
 %   [ht , nclps , uidxs] = full2clipped(clps, ht, C, IMGS, ...
-%       toReplace, nrts, rlen, npts)
+%       toSet, nrts, rlen, npts)
 %
 % Input:
 %   clps: clipped versions of contours
 %   ht: HypocotylTrainer object
 %   C: full dataset of Curve objects to replace contours
-%   toReplace: replace contours in Curve objects
+%   toSet: set Clipped contours in Curve objects
 %   nrts: number of sections to split contours
-%   rlen: length of each section
+%   rlen: lengths of each section
 %   npts: number of coordinates to interpolate contour (nrts * rlen)
 %
 % Output:
@@ -22,23 +22,11 @@ function [ht , nclps , uidxs] = full2clipped(clps, ht, C, IMGS, toReplace, nrts,
 %
 
 %%
-switch nargin
-    case 3
-        IMGS      = arrayfun(@(c) c.getImage, C, 'UniformOutput', 0)';
-        toReplace = 1;
-        nrts      = 4;                   % Number of anchor points
-        rlen      = [53 ; 52 ; 53 ; 51]; % Length between each anchor point
-        npts      = 210;                 % Interpolation size
-    case 4
-        toReplace = 1;
-        nrts      = 4;                   % Number of anchor points
-        rlen      = [53 ; 52 ; 53 ; 51]; % Length between each anchor point
-        npts      = 210;                 % Interpolation size
-    case 5
-        nrts      = 4;                   % Number of anchor points
-        rlen      = [53 ; 52 ; 53 ; 51]; % Length between each anchor point
-        npts      = 210;                 % Interpolation size
-end
+if nargin < 4; IMGS  = arrayfun(@(c) c.getImage, C, 'UniformOutput', 0)'; end
+if nargin < 5; toSet = 1;                                                 end
+if nargin < 6; nrts  = 4;                                                 end
+if nargin < 7; rlen  = [53 ; 52 ; 53 ; 51];                               end
+if nargin < 8; npts  = 210;                                               end
 
 % ---------------------------------------------------------------------------- %
 %% Pre-Process clipped contours
@@ -66,7 +54,7 @@ schk = cell2mat(schk);
 [~ , uidxs] = min(schk);
 c           = C(uidxs);
 nclps       = numel(c);
-if toReplace
+if toSet
     % Replace contours from Curves with clipped versions of contours
     d    = arrayfun(@(x) x.Parent, c);
     frms = arrayfun(@(x) x.getFrame, d);
@@ -88,14 +76,9 @@ ht.Curves = c;
 end
 
 function cntr = redoContour(cntr, nroutes, rlen)
-%% Redo contour with proper separation of segments
-switch nargin
-    case 1
-        nroutes = 4;
-        rlen    = [53 ; 52 ; 53 ; 51];
-    case 2
-        rlen = [53 ; 52 ; 53 ; 51];
-end
+%% redoContour: redo contour with proper separation of segments
+if nargin < 2; nroutes = 4;                   end
+if nargin < 3; rlen    = [53 ; 52 ; 53 ; 51]; end
 
 %% Remove duplicate corners except for the last point
 len  = round(size(cntr, 1) / nroutes, -1);
@@ -111,10 +94,7 @@ rts = arrayfun(@(i,e,l) interpolateOutline(cntr(i:e,:), l), ...
 
 % Close contour
 cntr = cat(1, rts{:});
-
 if sum(cntr(1,:) ~= cntr(end,:))
     cntr = [cntr ; cntr(1,:)];
 end
-
 end
-

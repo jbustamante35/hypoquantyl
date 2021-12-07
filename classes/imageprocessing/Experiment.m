@@ -146,16 +146,17 @@ classdef Experiment < handle
         end
         
         function SaveExperiment(obj)
-            %% Prune superfluous data, dereference parents, then save
-            tPrune = tic;
+            %% Prune superfluous data, dereference parents, then save            
             % Remove RawSeedlings and PreHypocotyls
-            g = obj.combineGenotypes;
+            tPrune = tic;
+            g      = obj.combineGenotypes;
             arrayfun(@(x) x.PruneSeedlings, g, 'UniformOutput', 0);
+            fprintf('[%.02f sec] Pruned %d Genotypes\n', toc(tPrune), numel(g));
             
-            s = obj.combineSeedlings;
+            tPrune = tic;
+            s      = obj.combineSeedlings;
             arrayfun(@(x) x.PruneHypocotyls, s, 'UniformOutput', 0);
-            fprintf('[%.02f sec] Pruned %d Seedlings and %d Hypocotyls\n', ...
-                toc(tPrune), numel(s), numel(h));
+            fprintf('[%.02f sec] Pruned %d Seedlings\n', toc(tPrune), numel(s));
             
             % Save full Experiment object
             tSave = tic;
@@ -259,12 +260,14 @@ classdef Experiment < handle
         
         function S = combineSeedlings(obj, asCell)
             %% Combine all Seedlings into single object array
-            if nargin < 2; asCell = 0; end % Default output as array
+            if nargin < 2; asCell = 0; end % Output as array (0) or cell (1)
             
             G = obj.combineGenotypes(asCell);  
             if asCell
+                % Split into cell array by Genotype
                 S = cellfun(@(x) x.getSeedling, G, 'UniformOutput', 0);
             else
+                % Combine as one array
                 S = arrayfun(@(x) x.getSeedling, G, 'UniformOutput', 0);
                 S = cat(1, S{:});
             end

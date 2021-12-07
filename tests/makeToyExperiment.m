@@ -104,7 +104,7 @@ D   = trainCircuits_automated(ex, cin, fIdx, sav, 0);
 
 % Generate Curve objects
 arrayfun(@(x) x.ReconfigInterpOutline, D, 'UniformOutput', 0);
-arrayfun(@(x) x.CreateCurves('redo', 0), D, 'UniformOutput', 0);
+arrayfun(@(x) x.CreateCurves('redo'), D, 'UniformOutput', 0);
 C       = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
 C       = cat(1, C{:});
 numCrvs = numel(C);

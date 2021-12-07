@@ -58,7 +58,7 @@ if par
     end
     D = cat(1, D{:});
 else
-    % Run on single-thread    
+    % Run on single-thread
     for n = 1 : N
         r = M(RAD);
         x = M(XC);
@@ -75,7 +75,7 @@ fprintf('DONE! [%.02f sec]\n', toc(t));
 t = tic;
 fprintf('Creating %d Curve objects from CircuitJB parents...', N);
 
-arrayfun(@(x) x.CreateCurves('redo', par), D, 'UniformOutput', 0);
+arrayfun(@(x) x.CreateCurves('redo'), D, 'UniformOutput', 0);
 C = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
 C = cat(1, C{:});
 

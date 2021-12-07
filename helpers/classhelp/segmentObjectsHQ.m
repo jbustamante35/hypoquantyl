@@ -22,27 +22,10 @@ function [msk , obs] = segmentObjectsHQ(img, smth, sz, sens, mth)
 % This version is for HypoQuantyl
 
 %% Use alternative function below [for automated training]
-switch nargin
-    case 1
-        smth = 0;
-        sz   = size(img);
-        sens = 0.6;
-        mth  = 3;
-    case 2
-        sz   = size(img);
-        sens = 0.6;
-        mth  = 3;
-    case 3
-        sens = 0.6;
-        mth = 3;
-    case 4
-        mth = 3;
-    case 5
-    otherwise
-        fprintf(2, 'Error with inputs. Expected 4 [%d]\n', nargin);
-        [msk , obs] = deal([]);
-        return;
-end
+if nargin < 2; smth = 0;         end
+if nargin < 3; sz   = size(img); end
+if nargin < 4; sens = 0.6;       end
+if nargin < 5; mth  = 3;         end
 
 switch mth
     case 1
@@ -50,18 +33,15 @@ switch mth
         % The sz parameter should be property data
         pdps        = sz;
         [msk , obs] = runMethod1(img, pdps);
-        
     case 2
         %
         [msk , obs] = runMethod2(img, sz);
-        
     case 3
         %
         [msk , obs] = runMethod3(img, sz, sens);
-        
     otherwise
         fprintf(2, 'Incorrect method %s\nShould be [1|2|3]\n', string(mth));
-        
+        [msk , obs] = deal([]);
 end
 
 %% Run smoothing kernel
@@ -71,7 +51,6 @@ if smth
     blr  = conv2(msk, krnl, 'same');
     msk  = blr > 0.5;
 end
-
 end
 
 function [msk , prps] = runMethod1(img, pdps)
@@ -80,7 +59,6 @@ msk  = imbinarize(img);
 flt  = bwareafilt(msk, 1);
 obs  = bwconncomp(flt);
 prps = regionprops(obs, img, pdps);
-
 end
 
 function [msk , obs] = runMethod2(img, fltsz, sensFix)
@@ -90,7 +68,7 @@ function [msk , obs] = runMethod2(img, fltsz, sensFix)
 % SZ = [100 , 1000000]; % [Min , Max] area of objects
 %
 
-% Initialize sensivity calibrator at 0
+%% Initialize sensivity calibrator at 0
 if nargin < 3
     sensFix = 0;
 end
@@ -121,7 +99,6 @@ if obs.NumObjects == 0
     sensFix     = sensFix + 0.1;
     [msk , obs] = runMethod2(img, fltsz, sensFix);
 end
-
 end
 
 function [msk , maxArea] = runMethod3(img, sz, sens)
@@ -139,16 +116,23 @@ function [msk , maxArea] = runMethod3(img, sz, sens)
 %
 
 %% Segmentation algorithm
-% Binarize
-adt = img;
-msk = imcomplement(imbinarize(adt, 'adaptive', 'Sensitivity', sens, ...
-    'ForegroundPolarity', 'dark'));
+% sens at 0.60 works best [0.59 and 0.61 are bad...]
+fg  = 'dark';
+% fg  = 'bright';
 
-% Extract largest object and resize to specified dimensions
+% Binarize
+% adt = img;
+adt = int32(img);
+
+msk = imcomplement(imbinarize(adt, 'adaptive', ...
+    'Sensitivity', sens, 'ForegroundPolarity', fg));
+% msk = imbinarize(adt, 'adaptive', ...
+%     'Sensitivity', sens, 'ForegroundPolarity', fg);
+
+%% Extract largest object and resize to specified dimensions
 prp                          = regionprops(msk, 'Area', 'PixelIdxList');
 [maxArea , maxIdx]           = max(cell2mat(arrayfun(@(x) x.Area, ...
     prp, 'UniformOutput', 0)));
 msk                           = zeros(sz);
 msk(prp(maxIdx).PixelIdxList) = 1;
-
 end
