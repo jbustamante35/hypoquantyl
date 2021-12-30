@@ -441,6 +441,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                         dat = obj.Parent.getImage(frm, req, flp, buf);
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);
+                        dat = [];
                     end
                     
                 otherwise

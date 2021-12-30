@@ -18,22 +18,13 @@ function [rIdxs , rx] = pullRandom(X, n, getrx)
 %
 
 %% Default to take 1 sample
-switch nargin
-    case 1
-        n     = 1;
-        getrx = 0;
-    case 2
-        getrx = 0;
-    case 3
-    otherwise
-        fprintf(2, 'Error with inputs\n');
-        [rIdxs , rx] = deal([]);
-        return;
-end
+if nargin < 1; X     = 1 : 100; end
+if nargin < 2; n     = 1;       end
+if nargin < 3; getrx = 0;       end
 
 %% Return random index and object
 % Check if Shuffle function is available
-if ~isempty(which('Shuffle'))
+if ~isempty(which('Shuffle')) && n <= numel(X)
     rIdxs = sort(Shuffle(length(X), 'index', n));
 else
     % No Shuffle function found

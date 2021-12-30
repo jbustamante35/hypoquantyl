@@ -51,6 +51,9 @@ if smth
     blr  = conv2(msk, krnl, 'same');
     msk  = blr > 0.5;
 end
+
+%% Convert to logical
+msk = logical(msk);
 end
 
 function [msk , prps] = runMethod1(img, pdps)

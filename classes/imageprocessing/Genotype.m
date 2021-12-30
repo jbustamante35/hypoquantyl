@@ -235,8 +235,8 @@ classdef Genotype < handle
             % reading from the path name and writing the data to memory. This
             % made the image processing pipeline very slow, and created
             % very large objects and data output [ .mat ] files.
-            obj = varargin{1};
-            obs = [];
+            obj         = varargin{1};
+            [img , obs] = deal([]);
 
             switch nargin
                 % -------------------------- Image Store --------------------- %
@@ -284,25 +284,24 @@ classdef Genotype < handle
 
                             otherwise
                                 fprintf(2, 'Error requesting %s image\n', req);
-                                img = [];
                         end
                     catch
                         fprintf(2, 'No image(s) at index/range %s \n', idx);
-                        img = [];
                     end
 
                     % ------------------------ Error ------------------------- %
                 otherwise
                     fprintf(2, 'Error returning images\n');
-                    img = [];
             end
 
             % ------------------- Convert to Double -------------------------- %
-            % Always convert images to double
-            if iscell(img)
-                img = cellfun(@(i) double(i), img, 'UniformOutput', 0);
-            else
-                img = double(img);
+            % Convert images to double, unless asking for binary mask
+            if strcmpi(req, 'gray')
+                if iscell(img)
+                    img = cellfun(@(i) double(i), img, 'UniformOutput', 0);
+                else
+                    img = double(img);
+                end
             end
         end
 

@@ -32,32 +32,13 @@ function [jmsg , strA , strB] = jprintf(msg, tt, v, len, estr, charA, charB)
 %
 
 %%
-switch nargin
-    case nargin < 2
-        fprintf(2, 'Not enough input arguments [%d]\n', nargin);
-        [jmsg , strA , strB] = deal([]);
-        return;
-    case 2
-        v     = 1;
-        len   = 80;
-        estr  = '.';
-        charA = '=';
-        charB = '-';
-    case 3
-        len   = 80;
-        estr  = '.';
-        charA = '=';
-        charB = '-';
-    case 4
-        estr  = '.';
-        charA = '=';
-        charB = '-';
-    case 5
-        charA = '=';
-        charB = '-';
-    case 6
-        charB = '-';
-end
+if nargin < 1; msg   = '';  end
+if nargin < 2; tt    = 0;   end
+if nargin < 3; v     = 1;   end
+if nargin < 4; len   = 80;  end
+if nargin < 5; estr  = '.'; end
+if nargin < 6; charA = '='; end
+if nargin < 7; charB = '-'; end
 
 %
 strA = repmat(charA, [1 , len]);

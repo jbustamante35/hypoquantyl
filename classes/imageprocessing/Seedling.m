@@ -580,18 +580,14 @@ classdef Seedling < handle
 
         function obj = setContour(obj, frm, crc)
             %% Set manually-drawn CircuitJB object at given frame
-            if isempty(obj.Contour)
-                obj.Contour = ContourJB;
-            end
+            if isempty(obj.Contour); obj.Contour = ContourJB; end
 
             obj.Contour(frm) = crc;
         end
 
         function crc = getContour(obj, frm)
             %% Return CircuitJB object at given frame
-            if nargin < 2
-                frm = ':';
-            end
+            if nargin < 2; frm = ':'; end
 
             crc = obj.Contour(frm);
         end
@@ -710,7 +706,5 @@ classdef Seedling < handle
                 hyp.setContour(frm, pre(frm).getContour(':'));
             end
         end
-
     end
-
 end

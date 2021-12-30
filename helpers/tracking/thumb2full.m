@@ -1,9 +1,9 @@
-function [rcntr , rmline, minfo] = thumb2full(c, frm, cntr, mline, rgn, rev)
+function [rcntr , rmline , minfo] = thumb2full(c, frm, cntr, mline, rgn, rev)
 %% thumb2full: remap coordinates from thumbnail image to full resolution image
 % Extract Images | Rescale and Remap coordinates
 %
 % Usage:
-%   [rcntr , rmline, minfo] = thumb2full(c, frm, cntr, mline, rev)
+%   [rcntr , rmline , minfo] = thumb2full(c, frm, cntr, mline, rev)
 %
 % Input:
 %   c: Curve or CircuitJB Object
