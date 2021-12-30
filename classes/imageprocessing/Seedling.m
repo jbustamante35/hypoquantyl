@@ -272,83 +272,111 @@ classdef Seedling < handle
             end
         end
 
-        function dat = getImage(varargin)
+        function dat = getImage(obj, frm, req)
             %% Return image data for Seedling at desired frame
             % User can specify which image from structure with 3rd parameter
-            obj = varargin{1};
-            rng = obj.getFrame('b') : obj.getFrame('d');
-            switch nargin
-                case 1
-                    % All grayscale images at all frames
-                    try
-                        img = obj.Parent.getImage(rng);
-                        bnd = obj.getPData(rng, 'BoundingBox');
-                        bnd = num2cell(bnd,2)';
-                        dat = cellfun(@(i,b) imcrop(i,b), ...
-                            img, bnd, 'UniformOutput', 0);
-                    catch
-                        fprintf(2, 'Error returning Image\n');
-                        dat = [];
-                    end
+            if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
+            if nargin < 3; req = 'gray';                                end
 
-                case 2
-                    % Grayscale image(s) at specific frame or range of frames
-                    % Convert requested index to index in this object's lifetime
-                    try
-                        frm = varargin{2};
-                        if numel(rng) > 1
-                            idx = rng(frm);
-                        else
-                            idx = rng;
-                        end
-
-                        img = obj.Parent.getImage(idx);
-                        if ~iscell(img)
-                            bnd = obj.getPData(frm, 'BoundingBox');
-                            dat = imcrop(img, bnd);
-                        else
-                            bnd = arrayfun(@(x) obj.getPData(x, ...
-                                'BoundingBox'), idx, 'UniformOutput', 0);
-                            dat = cellfun(@(i,b) imcrop(i,b), ...
-                                img, bnd, 'UniformOutput', 0);
-                        end
-
-                    catch
-                        fprintf(2, 'No image at frame %d indexed at %d \n', ...
-                            frm, idx);
-                        dat = [];
-                    end
-
-                case 3
-                    % Grayscale or bw image(s) at single or range of frames
-                    try
-                        frm = varargin{2};
-                        req = varargin{3};
-                        if numel(rng) > 1
-                            idx = rng(frm);
-                        else
-                            idx = obj.getFrame('b');
-                        end
-
-                        if numel(idx) > 1
-                            img = obj.Parent.getImage(idx, req);
-                            bnd = num2cell(...
-                                obj.getPData(frm, 'BoundingBox'), 2)';
-                            dat = cellfun(@(i,b) imcrop(i,b), ...
-                                img, bnd, 'UniformOutput', 0);
-                        else
-                            img = obj.Parent.getImage(idx, req);
-                            bnd = obj.getPData(frm, 'BoundingBox');
-                            dat = imcrop(img, bnd);
-                        end
-                    catch
-                        fprintf(2, ...
-                            'No %s image at frame %d indexed at %d \n', ...
-                            char(req), frm, idx);
-                        dat = [];
-                    end
+            try
+                rng = obj.getFrame('b') : obj.getFrame('d');
+                frm = rng(frm);
+                if numel(frm) > 1
+                    % Cell array
+                    img = obj.Parent.getImage(frm, req);
+                    bnd = num2cell(obj.getPData(frm, 'BoundingBox'), 2)';
+                    dat = cellfun(@(i,b) imcrop(i,b), ...
+                        img, bnd, 'UniformOutput', 0);
+                else
+                    % Single image
+                    img = obj.Parent.getImage(frm, req);
+                    bnd = obj.getPData(frm, 'BoundingBox');
+                    dat = imcrop(img, bnd);
+                end
+            catch
+                fprintf(2, 'Error returning image [%s|%s]\n', ...
+                    num2str(frm), req);
+                dat = [];
             end
         end
+
+        %         function dat = getImage(varargin)
+        %             %% Return image data for Seedling at desired frame
+        %             % User can specify which image from structure with 3rd parameter
+        %             obj = varargin{1};
+        %             rng = obj.getFrame('b') : obj.getFrame('d');
+        %             switch nargin
+        %                 case 1
+        %                     % All grayscale images at all frames
+        %                     try
+        %                         img = obj.Parent.getImage(rng);
+        %                         bnd = obj.getPData(rng, 'BoundingBox');
+        %                         bnd = num2cell(bnd,2)';
+        %                         dat = cellfun(@(i,b) imcrop(i,b), ...
+        %                             img, bnd, 'UniformOutput', 0);
+        %                     catch
+        %                         fprintf(2, 'Error returning Image\n');
+        %                         dat = [];
+        %                     end
+        %
+        %                 case 2
+        %                     % Grayscale image(s) at specific frame or range of frames
+        %                     % Convert requested index to index in this object's lifetime
+        %                     try
+        %                         frm = varargin{2};
+        %                         if numel(rng) > 1
+        %                             idx = rng(frm);
+        %                         else
+        %                             idx = rng;
+        %                         end
+        %
+        %                         img = obj.Parent.getImage(idx);
+        %                         if ~iscell(img)
+        %                             bnd = obj.getPData(frm, 'BoundingBox');
+        %                             dat = imcrop(img, bnd);
+        %                         else
+        %                             bnd = arrayfun(@(x) obj.getPData(x, ...
+        %                                 'BoundingBox'), idx, 'UniformOutput', 0);
+        %                             dat = cellfun(@(i,b) imcrop(i,b), ...
+        %                                 img, bnd, 'UniformOutput', 0);
+        %                         end
+        %
+        %                     catch
+        %                         fprintf(2, 'No image at frame %d indexed at %d \n', ...
+        %                             frm, idx);
+        %                         dat = [];
+        %                     end
+        %
+        %                 case 3
+        %                     % Grayscale or bw image(s) at single or range of frames
+        %                     try
+        %                         frm = varargin{2};
+        %                         req = varargin{3};
+        %                         if numel(rng) > 1
+        %                             idx = rng(frm);
+        %                         else
+        %                             idx = obj.getFrame('b');
+        %                         end
+        %
+        %                         if numel(idx) > 1
+        %                             img = obj.Parent.getImage(idx, req);
+        %                             bnd = num2cell(...
+        %                                 obj.getPData(frm, 'BoundingBox'), 2)';
+        %                             dat = cellfun(@(i,b) imcrop(i,b), ...
+        %                                 img, bnd, 'UniformOutput', 0);
+        %                         else
+        %                             img = obj.Parent.getImage(idx, req);
+        %                             bnd = obj.getPData(frm, 'BoundingBox');
+        %                             dat = imcrop(img, bnd);
+        %                         end
+        %                     catch
+        %                         fprintf(2, ...
+        %                             'No %s image at frame %d indexed at %d \n', ...
+        %                             char(req), frm, idx);
+        %                         dat = [];
+        %                     end
+        %             end
+        %         end
 
         function obj = setAutoHypocotyls(obj)
             %% Manually set a Hypocotyl child object at a given frame
