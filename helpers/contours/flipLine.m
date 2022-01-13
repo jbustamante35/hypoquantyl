@@ -18,5 +18,4 @@ dspl      = mline + (-bmid);
 dspl(:,1) = -dspl(:,1);
 sld       = [slen - bmid(1) , 0] * 2;
 flp       = dspl + sld + bmid;
-
 end

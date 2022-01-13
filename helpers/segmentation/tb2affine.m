@@ -23,9 +23,7 @@ function aff = tb2affine(tb, scls, affineInvert)
 %
 
 %%
-if nargin < 3
-    affineInvert = false;
-end
+if nargin < 3; affineInvert = false; end
 
 d2  = round(size(tb,2) / 2); %% NOTE: Change this when I implement rotation
 aff = zeros(size(tb,1), d2, d2);
@@ -36,7 +34,7 @@ for e = 1 : size(tb,1)
     tng = tng / norm(tng);
     nrm = tb(e,5:6);
     nrm = nrm / norm(nrm);
-    
+
     %% Run affine transformation for all tangent points for all scales
     % Create 3D matrix ordered as tangents-normals-midpoints
     aff0 = [[tng , 0]' , [nrm , 0]' , [mid , 1]'];
@@ -44,17 +42,13 @@ for e = 1 : size(tb,1)
         % Scale the transformation
         scl = diag([scls(s,:) , 1]);
         tmp = aff0 * scl;
-        
+
         % Return the inverse of the transformation
         if affineInvert
             tmp = inv(tmp);
         end
-        
+
         aff(e,:,:,s) = tmp;
-        
     end
-    
 end
-
 end
-

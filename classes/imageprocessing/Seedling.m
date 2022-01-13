@@ -272,81 +272,31 @@ classdef Seedling < handle
             end
         end
 
-        function dat = getImage(varargin)
+        function dat = getImage(obj, frm, req)
             %% Return image data for Seedling at desired frame
             % User can specify which image from structure with 3rd parameter
-            obj = varargin{1};
-            rng = obj.getFrame('b') : obj.getFrame('d');
-            switch nargin
-                case 1
-                    % All grayscale images at all frames
-                    try
-                        img = obj.Parent.getImage(rng);
-                        bnd = obj.getPData(rng, 'BoundingBox');
-                        bnd = num2cell(bnd,2)';
-                        dat = cellfun(@(i,b) imcrop(i,b), ...
-                            img, bnd, 'UniformOutput', 0);
-                    catch
-                        fprintf(2, 'Error returning Image\n');
-                        dat = [];
-                    end
+            if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
+            if nargin < 3; req = 'gray';                                end
 
-                case 2
-                    % Grayscale image(s) at specific frame or range of frames
-                    % Convert requested index to index in this object's lifetime
-                    try
-                        frm = varargin{2};
-                        if numel(rng) > 1
-                            idx = rng(frm);
-                        else
-                            idx = rng;
-                        end
-
-                        img = obj.Parent.getImage(idx);
-                        if ~iscell(img)
-                            bnd = obj.getPData(frm, 'BoundingBox');
-                            dat = imcrop(img, bnd);
-                        else
-                            bnd = arrayfun(@(x) obj.getPData(x, ...
-                                'BoundingBox'), idx, 'UniformOutput', 0);
-                            dat = cellfun(@(i,b) imcrop(i,b), ...
-                                img, bnd, 'UniformOutput', 0);
-                        end
-
-                    catch
-                        fprintf(2, 'No image at frame %d indexed at %d \n', ...
-                            frm, idx);
-                        dat = [];
-                    end
-
-                case 3
-                    % Grayscale or bw image(s) at single or range of frames
-                    try
-                        frm = varargin{2};
-                        req = varargin{3};
-                        if numel(rng) > 1
-                            idx = rng(frm);
-                        else
-                            idx = obj.getFrame('b');
-                        end
-
-                        if numel(idx) > 1
-                            img = obj.Parent.getImage(idx, req);
-                            bnd = num2cell(...
-                                obj.getPData(frm, 'BoundingBox'), 2)';
-                            dat = cellfun(@(i,b) imcrop(i,b), ...
-                                img, bnd, 'UniformOutput', 0);
-                        else
-                            img = obj.Parent.getImage(idx, req);
-                            bnd = obj.getPData(frm, 'BoundingBox');
-                            dat = imcrop(img, bnd);
-                        end
-                    catch
-                        fprintf(2, ...
-                            'No %s image at frame %d indexed at %d \n', ...
-                            char(req), frm, idx);
-                        dat = [];
-                    end
+            try
+                rng = obj.getFrame('b') : obj.getFrame('d');
+                frm = rng(frm);
+                if numel(frm) > 1
+                    % Cell array
+                    img = obj.Parent.getImage(frm, req);
+                    bnd = num2cell(obj.getPData(frm, 'BoundingBox'), 2)';
+                    dat = cellfun(@(i,b) imcrop(i,b), ...
+                        img, bnd, 'UniformOutput', 0);
+                else
+                    % Single image
+                    img = obj.Parent.getImage(frm, req);
+                    bnd = obj.getPData(frm, 'BoundingBox');
+                    dat = imcrop(img, bnd);
+                end
+            catch
+                fprintf(2, 'Error returning image [%s|%s]\n', ...
+                    num2str(frm), req);
+                dat = [];
             end
         end
 
@@ -580,18 +530,14 @@ classdef Seedling < handle
 
         function obj = setContour(obj, frm, crc)
             %% Set manually-drawn CircuitJB object at given frame
-            if isempty(obj.Contour)
-                obj.Contour = ContourJB;
-            end
+            if isempty(obj.Contour); obj.Contour = ContourJB; end
 
             obj.Contour(frm) = crc;
         end
 
         function crc = getContour(obj, frm)
             %% Return CircuitJB object at given frame
-            if nargin < 2
-                frm = ':';
-            end
+            if nargin < 2; frm = ':'; end
 
             crc = obj.Contour(frm);
         end
@@ -615,7 +561,7 @@ classdef Seedling < handle
             sclsz = obj.SCALESIZE;
         end
 
-        function [tbox , lbox] = setHypocotylCropBox(obj, frms)
+        function [ubox , lbox] = setHypocotylCropBox(obj, frms)
             %% Set CropBox for upper and lower region
             if nargin < 2; frms = 1 : obj.getLifetime; end
 
@@ -629,22 +575,25 @@ classdef Seedling < handle
                     %                     imgs = {imgs};
                     apts = arrayfun(@(x) apts(:,:,x), ...
                         1 : size(apts,3), 'UniformOutput', 0);
-                    [~ , tbox , ~ , lbox] = cellfun(@(img,apt) ...
+                    [~ , ubox , ~ , lbox] = cellfun(@(img,apt) ...
                         cropFromAnchorPoints(img, apt, obj.SCALESIZE), ...
                         imgs, apts, 'UniformOutput', 0);
-                    tbox = cat(1, tbox{:});
+                    ubox = cat(1, ubox{:});
                     lbox = cat(1, lbox{:});
                 else
-                    [~ , tbox , ~ , lbox] = cropFromAnchorPoints( ...
+                    [~ , ubox , ~ , lbox] = cropFromAnchorPoints( ...
                         imgs, apts, obj.SCALESIZE);
                 end
 
                 % Set CropBoxes
-                h.setCropBox(frms, tbox, 'upper');
+                h.setCropBox(frms, ubox, 'upper');
                 h.setCropBox(frms, lbox, 'lower');
+
+                % Set PData
+                
             catch
                 fprintf(2, 'Error setting CropBox');
-                [tbox , lbox] = deal([0 , 0 , 0 , 0]);
+                [ubox , lbox] = deal([0 , 0 , 0 , 0]);
             end
         end
 
@@ -710,7 +659,5 @@ classdef Seedling < handle
                 hyp.setContour(frm, pre(frm).getContour(':'));
             end
         end
-
     end
-
 end

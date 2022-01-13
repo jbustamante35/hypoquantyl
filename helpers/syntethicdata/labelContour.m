@@ -1,7 +1,7 @@
 function lbl = labelContour(cntr, rng)
 %% labelContour: labels the bottom of a curve with ones
 %
-% 
+%
 % Usage:
 %   lbl = labelContour(cntr, rng)
 %
@@ -14,12 +14,8 @@ function lbl = labelContour(cntr, rng)
 %
 
 %%
-if nargin < 2
-    rng = 2;
-end
+if nargin < 2; rng = 2; end
 
 wid = max(cntr(:,2)) - rng;
 lbl = cntr(:,2) >= wid;
-
 end
-

@@ -226,7 +226,7 @@ classdef Genotype < handle
             rs = obj.RawSeedlings;
         end
 
-        function [img , obs] = getImage(varargin)
+        function [img , obs] = getImage(obj, idx, req)
             %% Return requested image at index
             % This function draws from the ImageStore property that contains an
             % ImageDataStore to read an image into memory from it's path name.
@@ -235,74 +235,43 @@ classdef Genotype < handle
             % reading from the path name and writing the data to memory. This
             % made the image processing pipeline very slow, and created
             % very large objects and data output [ .mat ] files.
-            obj = varargin{1};
-            obs = [];
+            if nargin < 2; idx = 1 : obj.TotalImages; end
+            if nargin < 3; req = 'gray';              end
 
-            switch nargin
-                % -------------------------- Image Store --------------------- %
-                case 1
-                    % All grayscale images from this object
-                    img = obj.ImageStore.readall;
-
-                    % --------------------- Indexed Image -------------------- %
-                case 2
-                    % Grayscale image at index [can be a range of images]
-                    idx = varargin{2};
-                    try
-                        img = searchImageStore(obj.ImageStore, idx);
-                    catch
-                        fprintf(2, 'No image(s) at index/range %s \n', idx);
-                    end
-
-                    % ------------------- Image Type ------------------------- %
-                case 3
-                    % Requested image type at index or range
-                    idx = varargin{2};
-                    req = varargin{3};
-                    try
-                        imgs = searchImageStore(obj.ImageStore, idx);
-                        switch req
-                            case 'gray'
-                                img = imgs;
-
-                            case 'bw'
-                                obj.SegDefaults = obj.setSegDefaults;
-
-                                smth = obj.SegDefaults.SmoothFilter;
-                                sz   = obj.SegDefaults.MinMaxObject;
-                                sens = obj.SegDefaults.Sensitivity;
-                                mth  = obj.SegDefaults.Method;
-
-                                if iscell(imgs)
-                                    [img , obs] = cellfun(@(x) segmentObjectsHQ( ...
-                                        x, smth, sz, sens, mth), ...
-                                        imgs, 'UniformOutput', 0);
-                                else
-                                    [img , obs] = segmentObjectsHQ( ...
-                                        imgs, smth, sz, sens, mth);
-                                end
-
-                            otherwise
-                                fprintf(2, 'Error requesting %s image\n', req);
-                                img = [];
+            % Grayscale image at index [can be a range of images]
+            [img , obs] = deal([]);
+            try
+                imgs = searchImageStore(obj.ImageStore, idx);
+                switch req
+                    case 'gray'
+                        % Keep grayscale image(s) and force to be double
+                        if iscell(imgs)
+                            img = cellfun(@(i) double(i), ...
+                                imgs, 'UniformOutput', 0);
+                        else
+                            img = double(imgs);
                         end
-                    catch
-                        fprintf(2, 'No image(s) at index/range %s \n', idx);
-                        img = [];
-                    end
+                    case 'bw'
+                        % Segment to binary mask(s)
+                        obj.SegDefaults = obj.setSegDefaults;
 
-                    % ------------------------ Error ------------------------- %
-                otherwise
-                    fprintf(2, 'Error returning images\n');
-                    img = [];
-            end
+                        smth = obj.SegDefaults.SmoothFilter;
+                        sz   = obj.SegDefaults.MinMaxObject;
+                        sens = obj.SegDefaults.Sensitivity;
+                        mth  = obj.SegDefaults.Method;
 
-            % ------------------- Convert to Double -------------------------- %
-            % Always convert images to double
-            if iscell(img)
-                img = cellfun(@(i) double(i), img, 'UniformOutput', 0);
-            else
-                img = double(img);
+                        if iscell(imgs)
+                            [img , obs] = cellfun(@(x) ...
+                                segmentObjectsHQ(x, smth, sz, sens, mth), ...
+                                imgs, 'UniformOutput', 0);
+                        else
+                            [img , obs] = segmentObjectsHQ( ...
+                                imgs, smth, sz, sens, mth);
+                        end
+                end
+            catch
+                fprintf(2, 'Error requesting image [%d|%s]\n', idx, req);
+                return;
             end
         end
 
@@ -414,23 +383,19 @@ classdef Genotype < handle
             end
         end
 
-        function [tbox , lbox] = setHypocotylCropBox(obj, hidxs, frms, v)
+        function [ubox , lbox] = setHypocotylCropBox(obj, hidxs, frms, v)
             %% Compute CropBox for upper and lower regions of a Hypocotyl
-            switch nargin
-                case 1
-                    hidxs = 1 : obj.NumberOfSeedlings;
-                    frms  = arrayfun(@(s) 1:s.Lifetime, obj.getSeedling(hidxs), ...
-                        'UniformOutput', 0);
-                    v     = 0;
-                case 2
-                    frms = arrayfun(@(s) 1:s.Lifetime, obj.getSeedling(hidxs), ...
-                        'UniformOutput', 0);
-                    v    = 0;
-                case 3
-                    frms = arrayfun(@(f) f, frms, 'UniformOutput', 0);
-                    v    = 0;
+            if nargin < 2; hidxs = 1 : obj.NumberOfSeedlings; end
+            if nargin < 3; frms  = [];                        end
+            if nargin < 4; v     = 0;                         end
+            
+            %
+            if isempty(frms)
+                frms = arrayfun(@(s) 1 : s.Lifetime, ...
+                    obj.getSeedling(hidxs), 'UniformOutput', 0);
             end
 
+            %
             S = obj.getSeedling(hidxs);
             S = arrayfun(@(s) s, S, 'UniformOutput', 0);
 
@@ -440,13 +405,13 @@ classdef Genotype < handle
             end
 
             try
-                [tbox , lbox] = cellfun(@(s,f) s.setHypocotylCropBox(f), ...
+                [ubox , lbox] = cellfun(@(s,f) s.setHypocotylCropBox(f), ...
                     S, frms, 'UniformOutput', 0);
-                tbox = cat(1, tbox{:});
+                ubox = cat(1, ubox{:});
                 lbox = cat(1, lbox{:});
             catch
                 fprintf(2, 'Error setting CropBox\n');
-                [tbox , lbox] = deal([0 , 0 , 0 , 0]);
+                [ubox , lbox] = deal([0 , 0 , 0 , 0]);
             end
         end
 

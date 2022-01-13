@@ -24,4 +24,3 @@ L  = cumsum([0 ; dL]);
 oq = linspace(L(1), L(end), sz);
 oL = interp1(L, crds, oq);
 end
-

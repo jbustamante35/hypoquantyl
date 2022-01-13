@@ -23,12 +23,8 @@ function [Rm, R3] = Rmat(deg, rad, d)
 %   R3: 3-Dimensional rotation matrix in x, y, or z direction
 %
 
-switch nargin
-    case 1
-        [rad , d] = deal(0);
-    case 2
-        d = 0;
-end
+if nargin < 2; rad = 0; end
+if nargin < 3; d   = 0; end
 
 rotation_matrix = @(t) [[cos(t) ; -sin(t)], ...
     [sin(t) ; cos(t)]];
@@ -40,6 +36,7 @@ else
     Rm = rotation_matrix(deg2rad(deg));
 end
 
+R3 = [];
 if d
     switch d
         % 3D rotation matrix

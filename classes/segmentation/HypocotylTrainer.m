@@ -1025,40 +1025,33 @@ classdef HypocotylTrainer < handle
             end
         end
 
-        function [bpredict , zpredict , cpredict , mline , msample , mcnv , mgrade , sopt] = getFunctions(obj, seg_lengths, par, vis, toFix, bwid, psz, nopts, varargin)
+        function [bpredict , bcnv, zpredict , zcnv, cpredict , mline , msample , mcnv , mgrade , sopt , mmaster] = getFunctions(obj, seg_lengths, par, vis, toFix, bwid, psz, nopts, tolfun, tolx)
             %% getFunctions
             %
             %
+
+            %% Defaults
+            if nargin < 2;  seg_lengths = obj.Curves(1).getProperty('SEGLENGTH'); end
+            if nargin < 3;  par         = 0;                                      end
+            if nargin < 4;  vis         = 0;                                      end
+            if nargin < 5;  toFix       = 0;                                      end
+            if nargin < 6;  bwid        = 0.5;                                    end
+            if nargin < 7;  psz         = 20;                                     end
+            if nargin < 8;  nopts       = 200;                                    end
+            if nargin < 9;  tolfun      = 1e-4;                                   end
+            if nargin < 10; tolx        = 1e-4;                                   end
 
             %%
             [pz , pdp , pdx , pdy , pdw , pm , Nz , Nd , Nb] = ...
                 obj.loadHTNetworks;
 
             %
-            scrs  = pm.PCAScores;
-            pvecs = pm.EigVecs;
-            pmns  = pm.MeanVals;
+            [bpredict , bcnv, zpredict , zcnv, cpredict , mline , msample , ...
+                mcnv , mgrade , sopt , mmaster] = loadSegmentationFunctions( ...
+                pz, pdp, pdx, pdy, pdw, pm, Nz, Nd, Nb, 'par', par, 'vis', vis, ...
+                'seg_lengths', seg_lengths, 'psz', psz, 'toFix', toFix, ...
+                'bwid', bwid, 'nopts', nopts, 'tolfun', tolfun, 'tolx', tolx);
 
-            %
-            bpredict  = @(i,w) double(Nb.predict(i(w,:)));
-            zpredict  = @(i,r) predictZvectorFromImage(i, Nz, pz, r);
-            cpredict  = @(i,zs) displacementWindowPredictor(i, 'Nz', Nz, 'pz', pz, 'Nd', Nd, ...
-                'pdp', pdp, 'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'z', zs, ...
-                'toFix', toFix, 'seg_lengths', seg_lengths, 'par', par, 'vis', vis);
-            mline     = @(c) nateMidline(c);
-            msample   = @(i,m) sampleMidline(i, m, 0, psz, 'full');
-            mcnv      = @(m) pcaProject(m(:)', pvecs, pmns, 'sim2scr');
-            mgrade    = computeKSdensity(scrs, bwid);
-
-            % Optimize with nopts iterations
-            if nopts
-                sopt = @(i) segmentationOptimizer(i, 'Nz', Nz, 'pz', pz, 'Nd', Nd, ...
-                    'pdp', pdp, 'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'pm', pm, ...
-                    'toFix', toFix, 'seg_lengths', seg_lengths, 'bwid', bwid, ...
-                    'nopts', nopts, 'par', par, 'vis', vis, 'z2c', 1);
-            else
-                sopt = [];
-            end
         end
 
         function prp = getProperty(obj, prp)

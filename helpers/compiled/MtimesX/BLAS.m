@@ -1,0 +1,1 @@
+blas_lib = '/usr/local/MATLAB/R2012a/bin/glnxa64/libmwblas.so'

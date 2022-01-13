@@ -17,25 +17,11 @@ function [Z, L, segs, lbl] = contour2corestructure(cntr, len, stp, toCenter)
 %   segs: segments of the split contour
 %   lbl: labeled width of the base of the contour
 %
-%
 
 %% Set default segment length and step sizes
-switch nargin
-    case 1
-        len      = 25;
-        stp      = 1;
-        toCenter = round(len / 2);
-    case 2
-        stp      = 1;
-        toCenter = round(len / 2);
-    case 3
-        toCenter = round(len / 2);
-    case 4
-    otherwise
-        fprintf(2, 'Incorrect number of inputs (%d)\n', nargin);
-        [Z, L, segs, lbl] = deal([]);
-        return;
-end
+if nargin < 2; len      = 25;             end
+if nargin < 3; stp      = 1;              end
+if nargin < 4; toCenter = round(len / 2); end
 
 %% Label the base of the contour
 lbl = labelContour(cntr);
@@ -56,6 +42,4 @@ Z       = [mid' , coref1 , coref2];
 
 %% Compute the distance between anchor points
 L = (coremag.^-1)';
-
 end
-

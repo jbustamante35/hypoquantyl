@@ -6,26 +6,25 @@ function [ptch , imgSample , domSample] = tbSampler(img, aff, dom, domSize, vis,
 %
 % Usage:
 %   [ptch , imgSample , domSample] = tbSampler( ...
-%       img, aff, dom, domSize, vis, sidx)
+%       img, aff, dom, domSize, vis, sidx, dshp)
 %
 % Input:
 %   img: image to sample on
-%   aff: resulting coordinates of the affine transformation
+%   aff: affine transformation vector
 %   dom: domain shape to sample from
-%   domSize: size of the domain
-%   vis: figure handle index for visualizing image patches
-%   sidx: unique index value for saving filename
-%   dshp: shape of domains (for text output)
+%   domSize: dimensions of the domain
+%   vis: figure handle index for visualizing image patches [0 for no figure]
+%   sidx: unique index value for saving filename [0 for no save]
+%   dshp: shape of domains (for text output) [default '']
 %
 % Output:
 %   ptch: image patches sampled from the domains of the transformations
 %
 
 %%
-if nargin < 6
-    sidx = 0;
-    dshp = '';
-end
+if nargin < 5; vis  = 0;  end
+if nargin < 6; sidx = 0;  end
+if nargin < 7; dshp = ''; end
 
 %%
 ptch   = zeros([size(aff,1) , domSize , size(aff,4)]);
@@ -45,7 +44,7 @@ for e = 1 : naffs
         imgSample = ...
             ba_interp2(img, domSample(1,:) + padVal, domSample(2,:) + padVal);
         imgSample = reshape(imgSample, domSize);
-        
+
         if domSize(1) == domSize(2)
             % Rotate squares 90-degrees
             rots = 1;
@@ -56,10 +55,10 @@ for e = 1 : naffs
             % Don't flip vertical lines
             rots = 0;
         end
-        
+
         imgSample     = rot90(imgSample,rots);
         ptch(e,:,:,s) = imgSample;
-        
+
         z    = squeeze(aff(e,:,:,s));
         mid  = z(1:2,3)' + padVal;
         tng  = [(z(1:2,1)' + mid) ; mid];
@@ -74,7 +73,7 @@ for e = 1 : naffs
             plt(mpt, 'g.', 20);
             ttl = sprintf('Domain Size [%d %d]', domSize);
             title(ttl, 'FontSize', 10);
-            
+
             subplot(122);
             myimagesc(img);
             hold on;
@@ -84,9 +83,9 @@ for e = 1 : naffs
             plt(mid, 'y.', 20);
             ttl = sprintf('Image Padding [%d]', padVal);
             title(ttl, 'FontSize', 10);
-            
+
             drawnow;
-            
+
             if sidx
                 sdir = sprintf('tbsampler_curve%03d', sidx);
                 fnm = sprintf('%s_tbsampler_dims[%d-%d]_scale%02dof%02d_zvec%03dof%03d_%s', ...
@@ -96,5 +95,4 @@ for e = 1 : naffs
         end
     end
 end
-
 end

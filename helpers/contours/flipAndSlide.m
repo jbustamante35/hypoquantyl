@@ -1,7 +1,7 @@
 function flp = flipAndSlide(trc, seg_lengths)
 %% flipAndSlide: flip contour along x-axis and slide to appropriate location
 % Only works on contours with sections. Not for use by any ordinary curve. Use
-% the flipCurve function.
+% the flipCurve function for normal curves and lilnes.
 %
 % Usage:
 %   flp = flipAndSlide(trc, seg_lengths)

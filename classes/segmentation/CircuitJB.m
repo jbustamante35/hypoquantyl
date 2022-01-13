@@ -13,7 +13,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
         isTrained
         isFlipped
     end
-    
+
     properties (Access = private)
         INTERPOLATIONSIZE = 210 % [gives 1 points per pixel]
         Image
@@ -25,7 +25,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
         Routes                                 % Coordinates of bottom-left-top-right sections
         AnchorPoints                           % Coordinates of corners
     end
-    
+
     %%
     methods (Access = public)
         %% Constructor and primary methods
@@ -38,40 +38,40 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 % Set default properties for empty object
                 vargs = {};
             end
-            
+
             prps   = properties(class(obj));
             deflts = {...
                 'isTrained', false ; ...
                 'isFlipped', false};
             obj    = classInputParser(obj, prps, deflts, vargs);
-            
+
             obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
         end
-        
+
         function CreateCurves(obj, overwrite)
             %% Full Outline generates Curve objects around CircuitJB object
             % Generate InterpOutline and NormalOutline if not yet done
             % Set overwrite to 'skip' to skip curves that are already created
             if nargin < 2; overwrite = 'skip'; end
-            
+
             switch overwrite
                 case 'redo'
                     % Redo pipeline even if already done
                     chkEmpty   = true;
                     obj.Curves = [];
-                    
+
                 case 'skip'
                     % Run pipeline only if data is empty
                     chkEmpty = isempty(obj.Curves);
             end
-            
-            if chkEmpty                
+
+            if chkEmpty
                 obj.Curves = Curve('Parent', obj);
             else
                 fprintf('\nSkipping %s\n', obj.Origin);
             end
         end
-        
+
         function CreateRoutes(obj)
             %% Interpolated Outline and Anchor Points create Route objects
             %             rts = obj.Routes;
@@ -79,14 +79,14 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             oL  = obj.getOutline;
             n   = obj.NUMBEROFANCHORS;
             rts = arrayfun(@(x) Route, 1 : n, 'UniformOutput', 0);
-            
+
             % Get indices of Outline matching each Anchor Point
             findIdx = @(x,y) find(sum(ismember(x,y), 2) == 2);
             mtch    = findIdx(oL, pts);
-            
+
             % Split Outline into separate Trace between each AnchorPoints
             traces = split2trace(oL, mtch, n);
-            
+
             % Set data from this object's outline for all Routes
             % Copy first anchor point to last index
             newpts = [pts ; pts(1,:)];
@@ -99,20 +99,20 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             cellfun(@(r) r.NormalizeTrace, rts, 'UniformOutput', 0);
             obj.Routes = cat(1, rts{:});
         end
-        
+
         function rts = getRoute(obj, n)
             %% Return Route
             if nargin < 2; n = ':'; end
             rts = obj.Routes(n);
         end
-        
+
         function DeleteRoutes(obj)
             %% Delete the Route child objects
             % Because I don't use them and their dum
             obj.Routes        = [];
             obj.NormalOutline = [];
         end
-        
+
         function LabelAllPixels(obj, labelname)
             %% Labels all pixels inside contour as 'Hypocotyl'
             % This is to test out a method of deep learning for semantic
@@ -124,7 +124,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             lbl(obj.Image.bw ~= 1) = 'bg';
             obj.Image.labels       = lbl;
         end
-        
+
         function generateMasks(obj, buff)
             %% Create probability matrix from manually-drawn outline
             % This function generates a binary mask where the coordinates of
@@ -146,13 +146,13 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             %
             % tl;dr: I might be able to remove the buff parameter from here
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
+
             img = obj.getImage('gray');
             crd = obj.NormalOutline; % Use normalized coordinates
             msk = crds2mask(img, crd, buff);
             obj.setImage(1, 'mask', msk);
         end
-        
+
         function [obj , ofix] = FixContour(obj, fidx, interp_fixer, seg_smooth)
             %% Manually fix the contour
             switch nargin
@@ -166,14 +166,14 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 case 3
                     seg_smooth = 10;
             end
-            
+
             img  = obj.getImage;
             trc  = obj.getOutline;
             ofix = OutlineFixer('Object', obj, 'Image', img, ...
                 'Curve', trc, 'FigureIndex', fidx, ...
                 'InterpFix', interp_fixer, 'SegSmooth', seg_smooth);
         end
-        
+
         function DrawOutline(obj, buf)
             %% Draw RawOutline on this object's Image
             % The function crds2mask was changed (see generateMasks method for
@@ -199,7 +199,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                     frm, e.getReport);
             end
         end
-        
+
         function DrawAnchors(obj, buf, mth)
             %% Draw RawPoints on this object's Image
             % If the buf parameter is set to true, then the image returned from
@@ -210,14 +210,14 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             if nargin < 3
                 mth = 'man';
             end
-            
+
             switch mth
                 case 'auto'
                     % Make artificial anchor points by dividing into 7 sections
                     if isempty(obj.getOutline)
                         obj.ConvertRawOutlines;
                     end
-                    
+
                     segSz  = obj.INTERPOLATIONSIZE;
                     ancPts = obj.NUMBEROFANCHORS - 1;
                     endPts = obj.RawOutline(end,:);
@@ -225,7 +225,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                     pIdx   = [1 : ceil(segSz / ancPts) : segSz , 1];
                     apts   = [cntr(pIdx,:) ; endPts];
                     obj.setRawPoints(apts);
-                    
+
                 case 'man'
                     % Plot anchor points manually and store as RawPoints
                     try
@@ -238,41 +238,41 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                         fprintf(2, 'Error setting anchor points at frame %d\n%s', ...
                             frm, e.getReport);
                     end
-                    
+
                 otherwise
                     fprintf('No AnchorPoint method selected (%s)\n', mth);
             end
-            
+
         end
-        
+
         function DerefParents(obj)
             %% Remove reference to Parent property
             obj.Parent = [];
         end
-        
+
         function ResetReference(obj, exp)
             %% Searches inputted Experiment object to find parent Hypocotyl
             % Iteratively parse though Genotype -> Seedling -> Hypocotyl
             idxA = regexpi(obj.Origin, '{');
             idxB = regexpi(obj.Origin, '}');
             sIdx = obj.Origin(idxA(1) + 1 : idxB(1) - 1);
-            
+
             % Find Genotype
             gen = exp.search4Genotype(obj.GenotypeName);
             sdl = gen.getSeedling(str2double(sIdx));
             hyp = sdl.MyHypocotyl;
-            
+
             obj.setParent(hyp);
             if obj.isFlipped
                 toFlp = 'flp';
             else
                 toFlp = 'org';
             end
-            
+
             hyp.setCircuit(obj.getFrame, obj, toFlp);
-            
+
         end
-        
+
         function trc = InterpOutline(obj, pts, vsn)
             %% Interpolate outline
             switch  nargin
@@ -282,11 +282,11 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 case 2
                     vsn = 'Full';
             end
-            
+
             trc = obj.getOutline(vsn);
             trc = interpolateOutline(trc, pts);
         end
-        
+
         function [nrm , apt] = NormalOutline(obj, trc, init)
             %% Reindex coordinates to normalize start points to anchor point
             switch nargin
@@ -296,12 +296,12 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 case 2
                     init = 'alt';
             end
-            
+
             [apt, aidxs] = findAnchorPoint(obj, trc, init);
             nrm          = obj.repositionPoints(trc, aidxs, init);
-            
+
         end
-        
+
         function ConvertRawOutlines(obj)
             %% Convert contours from RawOutline to InterpOutline
             if iscell(obj.RawOutline)
@@ -309,29 +309,29 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             else
                 oL = obj.RawOutline;
             end
-            
+
             % Wrap contour back to first coordinate
             oL = [oL ; oL(1,:)];
             sz = obj.INTERPOLATIONSIZE;
             iL = interpolateOutline(oL, sz);
-            
+
             obj.InterpOutline = iL;
         end
-        
+
         function ConvertRawPoints(obj)
             %% Snap floating RawPoints onto drawn AnchorPoints
             % First interpolate manually-drawn outline
             if isempty(obj.InterpOutline)
                 obj.ConvertRawOutlines;
             end
-            
+
             iL   = obj.InterpOutline;
             pts  = obj.RawPoints;
             nPts = snap2curve(pts, iL);
-            
+
             obj.AnchorPoints = nPts;
         end
-        
+
         function ReconfigInterpOutline(obj)
             %% Convert interpolated outline to Route's interpolated traces
             % This will change the coordinates from this object's InterpOutline
@@ -339,7 +339,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             % This ensures that there is a segment defining the base segment.
             obj.FullOutline = obj.InterpOutline;
         end
-        
+
         function trainCircuit(obj, trainStatus)
             %% Set this object as 'trained' or 'untrained'
             try
@@ -353,7 +353,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             end
         end
     end
-    
+
     %% -------------------------- Helper Methods ---------------------------- %%
     methods (Access = public)
         %% Various helper methods
@@ -361,12 +361,12 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             %% Set parent of this CircuitJB
             obj.Origin = org;
         end
-        
+
         function org = getOrigin(obj)
             %% Return parent of this CircuitJB
             org = obj.Origin;
         end
-        
+
         function setParent(obj, p)
             %% Set this object's parent Hypocotyl object
             obj.Parent = p;
@@ -374,7 +374,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             obj.GenotypeName   = p.GenotypeName;
             obj.ExperimentName = p.ExperimentName;
         end
-        
+
         function frm = getFrame(obj)
             %% Return frame number of this object's parent Hypocotyl
             % The frame number is the last number in curly brackets from the
@@ -385,7 +385,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             bb  = strfind(nm, '}');
             frm = str2double(nm(aa(end) + 1 : bb(end) - 1));
         end
-        
+
         function setImage(obj, frm, req, img)
             %% Set grayscale or bw image at given frame [frm, req, img]
             try
@@ -394,61 +394,73 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 fprintf(2, 'Error setting %s image at frame %d\n', req, frm);
             end
         end
-        
-        function dat = getImage(varargin)
-            %% Return image data for ContourJB at desired frame [frm, req]
-            % User can specify which image from structure with 3rd parameter
-            % Frame number is automatically deterimend since it is the final
-            % bit of data in the name (Origin property). If I need frame number
-            % anywhere else then I'll make it a method.
-            obj = varargin{1};
-            switch nargin
-                case 1
-                    %% Grayscale image
-                    frm = obj.getFrame;
-                    flp = obj.checkFlipped;
-                    if flp
-                        dat = flip(obj.Parent.getImage(frm), 2);
-                    else
-                        dat = obj.Parent.getImage(frm);
-                    end
-                    
-                case 2
-                    %% Returns requested image type
-                    try
-                        req = varargin{2};
-                        frm = obj.getFrame;
-                        flp = obj.checkFlipped;
-                        if flp
-                            dat = flip(obj.Parent.getImage(frm, req), 2);
-                        else
-                            dat = obj.Parent.getImage(frm, req);
-                        end
-                    catch
-                        % Check if image is hard-set inside object
-                        dat = obj.Image.(req);
-                    end
-                    
-                case 3
-                    %% Returns buffered image [not implemented]
-                    % version of the image
-                    try
-                        req = varargin{2};
-                        buf = varargin{3};
-                        flp = obj.checkFlipped;
-                        
-                        frm = obj.getFrame;
-                        dat = obj.Parent.getImage(frm, req, flp, buf);
-                    catch
-                        fprintf(2, 'No image at frame %d \n', frm);
-                    end
-                    
-                otherwise
-                    fprintf(2, 'Error requesting data.\n');
-                    return;
-            end
+
+        function img = getImage(obj, req, rgn, flp, buf)
+            %% getImage: return image from CircuitJB object
+            if nargin < 2; req = 'gray';           end
+            if nargin < 3; rgn = 'upper';          end
+            if nargin < 4; flp = obj.checkFlipped; end
+            if nargin < 5; buf = 0;                end
+
+            frm = obj.getFrame;
+            img = obj.Parent.getImage(frm, req, rgn, flp, buf);
         end
-        
+
+        %         function dat = getImage(varargin)
+        %             %% Return image data for ContourJB at desired frame [frm, req]
+        %             % User can specify which image from structure with 3rd parameter
+        %             % Frame number is automatically deterimend since it is the final
+        %             % bit of data in the name (Origin property). If I need frame number
+        %             % anywhere else then I'll make it a method.
+        %             obj = varargin{1};
+        %             switch nargin
+        %                 case 1
+        %                     %% Grayscale image
+        %                     frm = obj.getFrame;
+        %                     flp = obj.checkFlipped;
+        %                     if flp
+        %                         dat = flip(obj.Parent.getImage(frm), 2);
+        %                     else
+        %                         dat = obj.Parent.getImage(frm);
+        %                     end
+        %
+        %                 case 2
+        %                     %% Returns requested image type
+        %                     try
+        %                         req = varargin{2};
+        %                         frm = obj.getFrame;
+        %                         flp = obj.checkFlipped;
+        %                         if flp
+        %                             dat = flip(obj.Parent.getImage(frm, req), 2);
+        %                         else
+        %                             dat = obj.Parent.getImage(frm, req);
+        %                         end
+        %                     catch
+        %                         % Check if image is hard-set inside object
+        %                         dat = obj.Image.(req);
+        %                     end
+        %
+        %                 case 3
+        %                     %% Returns buffered image [not implemented]
+        %                     % version of the image
+        %                     try
+        %                         req = varargin{2};
+        %                         buf = varargin{3};
+        %                         flp = obj.checkFlipped;
+        %
+        %                         frm = obj.getFrame;
+        %                         dat = obj.Parent.getImage(frm, req, flp, buf);
+        %                     catch
+        %                         fprintf(2, 'No image at frame %d \n', frm);
+        %                         dat = [];
+        %                     end
+        %
+        %                 otherwise
+        %                     fprintf(2, 'Error requesting data.\n');
+        %                     return;
+        %             end
+        %         end
+
         function setOutline(obj, crds, otyp)
             %% Set coordinates to an outline
             %  function setFullOutline(obj, crds)
@@ -456,14 +468,14 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 if nargin < 3
                     otyp = 'Full';
                 end
-                
+
                 oline       = sprintf('%sOutline', otyp);
                 obj.(oline) = crds;
             catch
                 fprintf(2, 'Error setting %sOutline\n', otyp);
             end
         end
-        
+
         function setRawOutline(obj, crds)
             %% Set coordinates for RawOutline at specific frame
             try
@@ -472,7 +484,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 fprintf(2, 'Error setting RawOutline\n%s\n', e.getReport);
             end
         end
-        
+
         function crds = getRawOutline(obj, idx)
             %% Return RawOutline at specific frame
             try
@@ -485,7 +497,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 crds = [];
             end
         end
-        
+
         function trc = getOutline(obj, idx, otyp)
             %% Return Interpolated Outline
             try
@@ -496,13 +508,13 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                     case 2
                         otyp = 'Full';
                 end
-                
+
                 % If idx input is outline type
                 if ischar(idx) && ~strcmpi(idx, ':')
                     otyp = idx;
                     idx  = ':';
                 end
-                
+
                 oL  = sprintf('%sOutline', otyp);
                 trc = obj.(oL)(idx,:);
             catch
@@ -511,7 +523,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 return;
             end
         end
-        
+
         function setRawPoints(obj, pts)
             %% Set coordinates pts to AnchorPoint
             try
@@ -520,18 +532,18 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 fprintf(2, 'Error setting RawPoints\n%s\n', e.getReport);
             end
         end
-        
+
         function pts = getRawPoints(obj, idx)
             %% Return RawPoints
             if nargin < 2; idx = ':'; end
-            
+
             try
                 pts = obj.RawPoints(idx,:);
             catch e
                 fprintf(2, 'Error returning RawPoints\n%s\n', e.getReport);
             end
         end
-        
+
         function pts = getAnchorPoints(obj, idx)
             %% Return all or specific set of AnchorPoints
             if nargin < 2; idx = ':'; end
@@ -542,13 +554,13 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 pts = [];
             end
         end
-        
+
         function chk = checkFlipped(obj)
             %% Returns TRUE if this object is the flipped version
             chk           = contains(obj.Origin, 'flip');
             obj.isFlipped = chk;
         end
-        
+
         function setProperty(obj, req, val)
             %% Set requested property if it exists [for private properties]
             try
@@ -557,7 +569,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
             end
         end
-        
+
         function prp = getProperty(obj, req)
             %% Returns requested property if it exists
             try
@@ -567,7 +579,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             end
         end
     end
-    
+
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
         %% Private helper methods
@@ -580,7 +592,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             R = arrayfun(@(x) x.getPpar, obj.Routes, 'UniformOutput', 0);
             P = cat(1, R{:});
         end
-        
+
         function [apt, idx] = findAnchorPoint(obj, crds, init)
             %% findAnchorPoint: find anchor point coordinate
             % The definition of the anchor point is determined by the algorithm
@@ -600,7 +612,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 %% Use CarrotSweeper's anchor point
                 low = min(crds(:,1));
                 rng = round(crds(crds(:,1) == low, :), 4);
-                
+
                 % Get median of column range
                 if mod(size(rng,1), 2)
                     mtc = median(rng, 1);
@@ -609,7 +621,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                     nrng = rng(1:end-1, :);
                     mtc  = median(nrng, 1);
                 end
-                
+
                 % Get index of Anchor Point
                 idx = find(ismember(round(crds, 4), round(mtc, 4), 'rows'));
                 if ~isempty(idx > 1)
@@ -633,11 +645,11 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 bidxs    = find(b);
                 idx      = bidxs(end);
             end
-            
+
             %% Pull out the anchor point from the coordinates
             apt = crds(idx, :);
         end
-        
+
         function shft = repositionPoints(obj, crds, idx, init)
             %% Shift contour points around AnchorPoint coordinate
             if strcmpi(init, 'default')
