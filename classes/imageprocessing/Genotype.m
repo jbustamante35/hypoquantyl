@@ -383,23 +383,19 @@ classdef Genotype < handle
             end
         end
 
-        function [tbox , lbox] = setHypocotylCropBox(obj, hidxs, frms, v)
+        function [ubox , lbox] = setHypocotylCropBox(obj, hidxs, frms, v)
             %% Compute CropBox for upper and lower regions of a Hypocotyl
-            switch nargin
-                case 1
-                    hidxs = 1 : obj.NumberOfSeedlings;
-                    frms  = arrayfun(@(s) 1:s.Lifetime, obj.getSeedling(hidxs), ...
-                        'UniformOutput', 0);
-                    v     = 0;
-                case 2
-                    frms = arrayfun(@(s) 1:s.Lifetime, obj.getSeedling(hidxs), ...
-                        'UniformOutput', 0);
-                    v    = 0;
-                case 3
-                    frms = arrayfun(@(f) f, frms, 'UniformOutput', 0);
-                    v    = 0;
+            if nargin < 2; hidxs = 1 : obj.NumberOfSeedlings; end
+            if nargin < 3; frms  = [];                        end
+            if nargin < 4; v     = 0;                         end
+            
+            %
+            if isempty(frms)
+                frms = arrayfun(@(s) 1 : s.Lifetime, ...
+                    obj.getSeedling(hidxs), 'UniformOutput', 0);
             end
 
+            %
             S = obj.getSeedling(hidxs);
             S = arrayfun(@(s) s, S, 'UniformOutput', 0);
 
@@ -409,13 +405,13 @@ classdef Genotype < handle
             end
 
             try
-                [tbox , lbox] = cellfun(@(s,f) s.setHypocotylCropBox(f), ...
+                [ubox , lbox] = cellfun(@(s,f) s.setHypocotylCropBox(f), ...
                     S, frms, 'UniformOutput', 0);
-                tbox = cat(1, tbox{:});
+                ubox = cat(1, ubox{:});
                 lbox = cat(1, lbox{:});
             catch
                 fprintf(2, 'Error setting CropBox\n');
-                [tbox , lbox] = deal([0 , 0 , 0 , 0]);
+                [ubox , lbox] = deal([0 , 0 , 0 , 0]);
             end
         end
 

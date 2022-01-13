@@ -561,7 +561,7 @@ classdef Seedling < handle
             sclsz = obj.SCALESIZE;
         end
 
-        function [tbox , lbox] = setHypocotylCropBox(obj, frms)
+        function [ubox , lbox] = setHypocotylCropBox(obj, frms)
             %% Set CropBox for upper and lower region
             if nargin < 2; frms = 1 : obj.getLifetime; end
 
@@ -575,22 +575,25 @@ classdef Seedling < handle
                     %                     imgs = {imgs};
                     apts = arrayfun(@(x) apts(:,:,x), ...
                         1 : size(apts,3), 'UniformOutput', 0);
-                    [~ , tbox , ~ , lbox] = cellfun(@(img,apt) ...
+                    [~ , ubox , ~ , lbox] = cellfun(@(img,apt) ...
                         cropFromAnchorPoints(img, apt, obj.SCALESIZE), ...
                         imgs, apts, 'UniformOutput', 0);
-                    tbox = cat(1, tbox{:});
+                    ubox = cat(1, ubox{:});
                     lbox = cat(1, lbox{:});
                 else
-                    [~ , tbox , ~ , lbox] = cropFromAnchorPoints( ...
+                    [~ , ubox , ~ , lbox] = cropFromAnchorPoints( ...
                         imgs, apts, obj.SCALESIZE);
                 end
 
                 % Set CropBoxes
-                h.setCropBox(frms, tbox, 'upper');
+                h.setCropBox(frms, ubox, 'upper');
                 h.setCropBox(frms, lbox, 'lower');
+
+                % Set PData
+                
             catch
                 fprintf(2, 'Error setting CropBox');
-                [tbox , lbox] = deal([0 , 0 , 0 , 0]);
+                [ubox , lbox] = deal([0 , 0 , 0 , 0]);
             end
         end
 

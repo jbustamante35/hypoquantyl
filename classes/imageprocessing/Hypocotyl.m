@@ -166,10 +166,14 @@ classdef Hypocotyl < handle
 
             % Buffer with median background intensity
             if buf
-                if buf > 1
-                    buffpct = buf;
+                if buf >= 1
+                    % Buffer by pixels
+                    buffval = buf;
                 else
-                    buffpct = obj.BUFF_PCT;
+                    % Buffer by percentage
+                    scl     = obj.Parent.getProperty('SCALESIZE');
+                    isz     = scl(1);
+                    buffval = round(buf * isz);
                 end
 
                 % Get masks first
@@ -186,7 +190,7 @@ classdef Hypocotyl < handle
                     end
 
                     % Buffer them
-                    crp = cellfun(@(i,b,m) cropWithBuffer(i,b,buffpct,m), ...
+                    crp = cellfun(@(i,b,m) cropWithBuffer(i,b,buffval,m), ...
                         fimg, bnd, medBg, 'UniformOutput', 0);
                     dat = cellfun(@(x) imresize(x, sclsz), ...
                         crp, 'UniformOutput', 0);
@@ -195,18 +199,17 @@ classdef Hypocotyl < handle
                     if flp
                         dat = cellfun(@(x) flip(x,2), dat, 'UniformOutput', 0);
                     end
-
                 else
                     % Single image
                     bnd = obj.getCropBox(frm, rgn);
                     if strcmpi(req, 'bw')
                         medBg = 0;
                     else
-                        medBg = median(fimg(fmsk == 1));
+                        medBg = median(fimg(fmsk == 0));
                     end
 
                     % Buffer it
-                    crp = cropWithBuffer(fimg, bnd, buffpct, medBg);
+                    crp = cropWithBuffer(fimg, bnd, buffval, medBg);
                     dat = imresize(crp, sclsz);
 
                     % Flip it
@@ -261,10 +264,7 @@ classdef Hypocotyl < handle
 
         function setCropBox(obj, frms, bbox, rgn)
             %% Set vector for bounding box
-            switch nargin
-                case 3
-                    rgn = 'upper';
-            end
+            if nargin < 3; rgn = 'upper'; end
 
             switch rgn
                 case 'upper'
@@ -344,29 +344,46 @@ classdef Hypocotyl < handle
             end
         end
 
-        function obj = setContour(obj, frm, ctr)
+        function setContour(obj, frm, ctr, rgn)
             %% Store ContourJB at frame
+            if nargin < 4; rgn = 'upper'; end
+
+            % Set upper or lower region
+            switch rgn
+                case 'upper'
+                    r = 1;
+                case 'lower'
+                    r = 2;
+                otherwise
+                    fprintf(2, 'Region %s should be [upper|lower]\n', rgn);
+                    return;
+            end
+
             if isempty(obj.Contour)
                 obj.Contour = ctr;
             else
-                obj.Contour(frm) = ctr;
+                obj.Contour(frm,r) = ctr;
             end
         end
 
-        function crc = getContour(varargin)
+        function crc = getContour(obj, frm, rgn)
             %% Return all ContourJB objects or ContourJB at frame
-            obj = varargin{1};
+            if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
+            if nargin < 3; rgn = 'upper';                               end
 
-            switch nargin
-                case 1
-                    crc = obj.Contour;
-                case 2
-                    frm = varargin{2};
-                    crc = obj.Contour(frm);
+            % Get upper or lower region
+            switch rgn
+                case 'upper'
+                    r = 1;
+                case 'lower'
+                    r = 2;
                 otherwise
-                    fprintf(2, 'Error returning ContourJB\n');
+                    fprintf(2, 'Region %s should be [upper|lower]\n', rgn);
                     crc = [];
+                    return;
             end
+
+            crc = obj.Contour(frm, r);
         end
 
         function cc = copyCircuit(obj, frm, req, ver)
@@ -538,15 +555,14 @@ classdef Hypocotyl < handle
             % orientation and assumes that the flipped orientation will give
             % the same result.
             try
-                frms_all = ~cellfun(@isempty, arrayfun(@(x) x.isTrained, ...
-                    obj.Circuit, 'UniformOutput', 0));
-
-                trained_frames   = find(frms_all(:,1));
-                untrained_frames = find(~frms_all(:,1));
+                crcs             = obj.Circuit(:,1,1);
+                trained_frames   = ind2sub(size(crcs), ...
+                    find(arrayfun(@(x) x.isTrained, crcs)));
+                untrained_frames = ...
+                    find(~ismember(1 : numel(crcs), trained_frames))';
             catch e
                 fprintf(2, 'Error returning untrained frames\n%s', e.message);
-                untrained_frames = [];
-                trained_frames   = [];
+                [untrained_frames , trained_frames] = deal([]);
             end
         end
 

@@ -9,7 +9,7 @@ classdef ContourJB < handle
         Outline
         InterpSize
     end
-    
+
     properties (Access = private)
         Image
         AnchorPoint
@@ -18,7 +18,7 @@ classdef ContourJB < handle
         Dists
         Sums
     end
-    
+
     methods (Access = public)
         %% Constructor and primary methods
         function obj = ContourJB(varargin)
@@ -26,55 +26,44 @@ classdef ContourJB < handle
             % Parse inputs to set class properties
             args = obj.parseConstructorInput(varargin);
             fn   = fieldnames(args);
-            
+
             for k = fn'
                 obj.(cell2mat(k)) = args.(cell2mat(k));
             end
-            
         end
-        
+
         function intrp = InterpOutline(obj, npts, ncrd)
             %% Interpolate outline to adjust number of coordinates
-            switch nargin
-                case 1
-                    npts = obj.InterpSize;
-                    ncrd = ':';
-                case 2
-                    ncrd = ':';
-            end
-            
+            if nargin < 2; npts    = obj.InterpSize; end
+            if nargin < 3; ncrd    = ':';            end
+
             intrp = interpolateOutline(obj.Outline, npts);
             intrp = intrp(ncrd,:);
-            
         end
-        
+
         function nrm = NormalizeOutline(obj, init)
             %% Use alternative initial points
-            if nargin < 2
-                init = obj.AltInit;
-            end
-            
+            if nargin < 2; init = obj.AltInit; end
+
             %% Reindex coordinates to normalize start points
             intrp = obj.InterpOutline;
-            
+
             [obj.AnchorPoint, obj.AnchorIndex] = ...
-                findAnchorPoint(obj, intrp, obj.AltInit);
-            
+                findAnchorPoint(obj, intrp, init);
+
             nrm = obj.repositionPoints(intrp, obj.AnchorIndex, init);
-            
         end
-        
+
         function crds = Normal2Raw(obj)
             %% Convert NormalizedOutline to un-indexed InterpOutline
             crds = norm2raw(obj.NormalizeOutline, ...
                 obj.AnchorPoint, obj.AnchorIndex);
-            
         end
     end
-    
+
     methods (Access = public)
         %% Accessible helper methods
-        function obj = setImage(obj, frm, req, img)
+        function setImage(obj, frm, req, img)
             %% Set grayscale or bw image at given frame
             try
                 obj.Image(frm).(req) = img;
@@ -82,26 +71,26 @@ classdef ContourJB < handle
                 fprintf(2, 'Error setting %s image at frame %d\n', req, frm);
             end
         end
-        
-        function typ = getImage(varargin)
+
+        function dat = getImage(varargin)
             %% Return image data for ContourJB at desired frame
             % User can specify which image from structure with 3rd parameter
             switch nargin
                 case 1
                     % Full structure of image data at all frames
                     obj = varargin{1};
-                    typ = obj.Image;
-                    
+                    dat = obj.Image;
+
                 case 2
                     % All image data at frame
                     try
                         obj = varargin{1};
                         frm = varargin{2};
-                        typ = obj.Image(frm);
+                        dat = obj.Image(frm);
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);
                     end
-                    
+
                 case 3
                     % Specific image type at frame
                     % Check if frame exists
@@ -109,61 +98,57 @@ classdef ContourJB < handle
                         obj = varargin{1};
                         frm = varargin{2};
                         req = varargin{3};
-                        typ = obj.Image(frm);
+                        dat = obj.Image(frm);
                     catch
                         fprintf(2, 'No image at frame %d \n', frm);
                     end
-                    
+
                     % Get requested image type
                     try
                         dfm = obj.Image(frm);
-                        typ = dfm.(req);
+                        dat = dfm.(req);
                     catch
                         fn  = fieldnames(dfm);
                         str = sprintf('%s, ', fn{:});
                         fprintf(2, 'Requested field must be either: %s\n', str);
                     end
-                    
+
                 otherwise
                     fprintf(2, 'Error requesting data.\n');
                     return;
             end
-            
         end
-        
-        function obj = setParent(obj, p)
+
+        function setParent(obj, p)
             %% Designate origin of contour
             obj.Parent = p;
             obj.Host   = p.Parent;
             obj.Origin = p.Parent.Parent;
         end
-        
+
         function org = getParent(obj)
             %% Returns origin of contour
             org = obj.Parent;
         end
-        
+
         function apt = getAnchorPoint(obj)
             %% Return Anchor Point of this contour
             apt = obj.AnchorPoint;
         end
-        
+
         function idx = getAnchorIndex(obj)
             %% Return Anchor Point index
             idx = obj.AnchorIndex;
         end
-        
-        function obj = setInterpSize(obj, npts)
+
+        function setInterpSize(obj, npts)
             %% Set number of coordinates to interpolate to
-            if nargin < 2
-                npts = obj.InterpSize;
-            end
-            
+            if nargin < 2; npts = obj.InterpSize; end
+
             obj.InterpSize = npts;
         end
-        
     end
-    
+
     methods (Access = private)
         %% Private helper methods
         function args = parseConstructorInput(varargin)
@@ -182,12 +167,12 @@ classdef ContourJB < handle
             p.addOptional('Host', []);
             p.addOptional('Image', struct('gray', [], 'bw', []));
             p.addOptional('AltInit', 'default');
-            
+
             % Parse arguments and output into structure
             p.parse(varargin{2}{:});
             args = p.Results;
         end
-        
+
         function [apt, idx] = findAnchorPoint(obj, crds, init)
             %% findAnchorPoint: find anchor point coordinate
             % The definition of the anchor point is determined by the algorithm
@@ -203,12 +188,12 @@ classdef ContourJB < handle
             % standardaized starting location for training hypocotyl images. The
             % alg parameter should be set to 1 or true to use this.
             %
-            
+
             if strcmpi(init , 'default')
                 %% Use CarrotSweeper's anchor point
                 low = min(crds(:,1));
                 rng = round(crds(crds(:,1) == low, :), 4);
-                
+
                 % Get median of column range
                 if mod(size(rng,1), 2)
                     mtc = median(rng, 1);
@@ -217,7 +202,7 @@ classdef ContourJB < handle
                     nrng = rng(1:end-1, :);
                     mtc  = median(nrng, 1);
                 end
-                
+
                 % Get index of Anchor Point
                 idx = find(ismember(round(crds, 4), round(mtc, 4), 'rows'));
                 if ~isempty(idx > 1)
@@ -228,7 +213,7 @@ classdef ContourJB < handle
                     %idx = find(crds == rng);
                     idx = find(ismember(round(crds), round(rng), 'rows'));
                 end
-                
+
             else
                 %% Use HypoQuantyl's anchor point
                 % Get the initial starting point for contours and shift indexing
@@ -242,15 +227,13 @@ classdef ContourJB < handle
                 bidxs    = find(b);
                 idx      = bidxs(end);
             end
-            
+
             %% Pull out the anchor point from the coordinates
             apt = crds(idx, :);
-            
         end
-        
+
         function shft = repositionPoints(obj, crds, idx, init)
             %% Shift contour points around AnchorPoint coordinate
-            
             if strcmpi(init, 'default')
                 %% Re-index and Re-Center around AnchorPoint
                 subt = crds - crds(idx,:);
@@ -260,6 +243,5 @@ classdef ContourJB < handle
                 shft = circshift(crds, -idx+1);
             end
         end
-        
     end
 end
