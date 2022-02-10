@@ -36,10 +36,13 @@ for fn = fieldnames(args)'
 end
 
 %
-[bpredict , bcnv , zpredict , zcnv, cpredict , ~ , ~ , ~ , ~ , ~ , mmaster] = ...
-    loadSegmentationFunctions(pz , pdp , pdx , pdy , pdw , pm , Nz , Nd , Nb, ...
-    'seg_lengths', seg_lengths, 'toFix', toFix, 'bwid', bwid, 'psz', psz, ...
-    'nopts', nopts, 'par', par, 'vis', vis);
+if isempty(mmaster)
+    [bpredict , bcnv , zpredict , zcnv, cpredict , mline , ...
+        msample , mcnv , mgrade , sopt , mmaster] = loadSegmentationFunctions( ...
+        pz , pdp , pdx , pdy , pdw , pm , Nz , Nd , Nb, ...
+        'seg_lengths', seg_lengths, 'toFix', toFix, 'bwid', bwid, 'psz', psz, ...
+        'nopts', nopts, 'par', par, 'vis', vis);
+end
 
 % Get initial guesses
 zscr  = zpredict(img,1);       % 1 for PC score
@@ -65,10 +68,7 @@ options  = optimset('MaxIter', nopts, 'TolFun', tolfun, 'TolX', tolx, ...
 %     [], [], [], [], [], [], [], options);
 
 %% Generate contour from optimized Z-Vector
-if z2c
-    zinit = bpredict(img, zcnv(zopt), 1);
-    zopt  = cpredict(img, zinit);
-end
+if z2c; zopt = cpredict(img, bpredict(img, zcnv(zopt), 1)); end
 end
 
 function args = parseInputs(varargin)
@@ -83,19 +83,30 @@ p = inputParser;
 p.addOptional('ncycs', 1);
 
 % Model Options
-p.addOptional('Nz', 'znnout');
-p.addOptional('Nd', 'dnnout');
-p.addOptional('Nb', 'bnnout');
-p.addOptional('pz', 'pz');
-p.addOptional('pm', 'pm');
-p.addOptional('pdp', 'pdp');
-p.addOptional('pdx', 'pdx');
-p.addOptional('pdy', 'pdy');
-p.addOptional('pdw', 'pdw');
+p.addOptional('Nz', []);
+p.addOptional('Nd', []);
+p.addOptional('Nb', []);
+p.addOptional('pz', []);
+p.addOptional('pm', []);
+p.addOptional('pdp', []);
+p.addOptional('pdx', []);
+p.addOptional('pdy', []);
+p.addOptional('pdw', []);
 p.addOptional('fmth', 'local');
 p.addOptional('z', []);
 p.addOptional('model_manifest', {'dnnout' , 'znnout' , 'bnnout' , ...
     'pz' , 'pm' , 'pdp' , 'pdx' , 'pdy' , 'pdw'});
+
+% Optimzation function handles
+p.addOptional('zcnv', []);
+p.addOptional('zpredict', []);
+p.addOptional('bpredict', []);
+p.addOptional('cpredict', []);
+p.addOptional('mline', []);
+p.addOptional('msample', []);
+p.addOptional('mcnv', []);
+p.addOptional('mgrade', []);
+p.addOptional('mmaster', []);
 
 % Optimization Options
 p.addOptional('bwid', 0.5);
@@ -104,10 +115,10 @@ p.addOptional('toFix', 0);
 p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
 
 % Miscellaneous Options
-p.addOptional('z2c', 0);
 p.addOptional('nopts', 100);
 p.addOptional('tolfun', 1e-4);
 p.addOptional('tolx', 1e-4);
+p.addOptional('z2c', 0);
 p.addOptional('par', 0);
 p.addOptional('vis', 0);
 

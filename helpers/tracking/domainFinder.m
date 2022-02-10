@@ -73,9 +73,7 @@ slen = 1.5;
 n    = 1000;
 alen = ws.calculatelength(psrc, 1, n);
 
-if isempty(ppct)
-    dlt = 20; % Default distance to set lower bound
-else
+if ~isempty(ppct)
     % Set lower bound to the distance to previous percentage
     blen = ws.calculatelength(ppct, 1, n);
     dlt  = blen - alen;
@@ -105,6 +103,7 @@ p.addOptional('spts', 20);   % Interpolation size for stretch array
 p.addOptional('symin', 0.9); % Min stretch value
 p.addOptional('symax', 1.2); % Max stretch value
 p.addOptional('ppct', []);   % Percentage for previous point
+p.addOptional('dlt', 20);    % Default distance to set lower bound 
 % p.addOptional('psrc', 0.0);  % Max stretch value
 
 % Parse arguments and output into structure

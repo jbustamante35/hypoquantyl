@@ -43,14 +43,12 @@ end
 %% NOTE: need to handle edge case that upper box takes up entire image
 try
     % Lower region
-%     lbox = abs([0 , anchor_points(2,2) + 1, anchor_points(4,1) + 1, ...
-%         (size(img, 1) - anchor_points(2,2)) - 1]);
     lbox = abs([0 , anchor_points(2,2) + 1, size(img,2), ...
         (size(img,1) - anchor_points(2,2)) - 1]);
     lcrp = imcrop(img, lbox);
     limg = imresize(lcrp, scale_size);
 catch
-    fprintf(2, 'Error cropping lower region');
+    %     fprintf(2, 'Error cropping lower region');
     lbox = [0 , 0 , 0 , 0];
     limg = [];
 end

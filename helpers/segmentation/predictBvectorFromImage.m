@@ -31,12 +31,8 @@ bx   = double(bnet.predict(wimg));
 bvec = [bx , by];
 
 zout = [];
-if ~isempty(zin)
-    zout = [zin(:,1:2) + bvec , zin(:,3:end)];
-end
+if ~isempty(zin); zout = [zin(:,1:2) + bvec , zin(:,3:end)]; end
 
 % Return B-Vector or Z-Vector as first output
-if alt_return
-    bvec = zout;
-end
+if alt_return; bvec = zout; end
 end

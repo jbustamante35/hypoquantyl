@@ -26,7 +26,7 @@ if nargin < 5; res        = 0.1 ;                end % Originally 0.01
 if nargin < 6; mpts       = 50;                  end % Interpolation size of midline
 if nargin < 7; fidx       = 0;                   end % (0) no visual or (1) show midline walk
 
-%% Pre-processing of contour and corners 
+%% Pre-processing of contour and corners
 crns = cell2mat(arrayfun(@(x) getCornerPoint(trc, x, seg_length), ...
     1 : 4, 'UniformOutput', 0)');
 bpt  = getBotMid(trc, seg_length);
@@ -36,9 +36,7 @@ trc  = [trc(:,1) , -trc(:,2)];
 crns = [crns(:,1) , -crns(:,2)];
 
 %% Run midline algorithm
-if fidx
-    figclr(fidx);
-end
+if fidx; figclr(fidx); end
 
 skl   = hypoContour(trc, crns);
 intrp = linspace(0, 1, mpts);
@@ -49,7 +47,6 @@ mline = squeeze(mline(:, 1:2, 3));
 % Flip and bring back to base point
 mline = [mline(:,1) , -mline(:,2)];
 mline = mline + bpt;
-
 end
 
 function crn = getCornerPoint(trc, num, seg_length)
@@ -92,5 +89,4 @@ switch idx
 end
 
 seg = trc(str:stp,:);
-
 end

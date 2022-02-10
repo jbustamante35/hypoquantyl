@@ -12,6 +12,9 @@ function flp = flipLine(mline, slen)
 % Output:
 %   flp:
 %
+
+if nargin < 2; slen = 51; end
+
 %%
 bmid      = mline(1,:);
 dspl      = mline + (-bmid);

@@ -78,8 +78,11 @@ end
 num = num + 1;
 
 %% 6) Check contours for collisions
+% UPDATE [02.03.2020]: this check happens upstream
 if tests(num)
-    % Collision is true if
+    % if sdl.going_to_collide(other_sdl)
+    %   sdl.do_not_collide(other_sdl);
+    % end
 end
 % num = num + 1;
 

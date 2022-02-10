@@ -250,7 +250,6 @@ for itr = 1 : nitrs
             jprintf('', toc(titr), 1, 80 - nitr);
             fprintf('%s\n\n', strH);
     end
-
 end
 
 %% End of iterations
@@ -315,7 +314,6 @@ if vis > 1
     jprintf('', toc(t), 1, 80 - n);
     fprintf('%s\nFinished! [%.02f sec]\n%s\n', strS, toc(tAll), strH);
 end
-
 end
 
 function args = parseInputs(varargin)
@@ -366,7 +364,6 @@ p.addParameter('toRemove', 1);
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});
 args = p.Results;
-
 end
 
 function args = loadModels(args, model_manifest)

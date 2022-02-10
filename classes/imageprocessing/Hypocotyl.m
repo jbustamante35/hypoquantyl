@@ -46,10 +46,10 @@ classdef Hypocotyl < handle
             obj    = classInputParser(obj, prps, deflts, vargs);
         end
 
-        %         function FixGenotypeName(obj)
-        %             sdl = obj.Parent;
-        %             obj.GenotypeName = sdl.GenotypeName;
-        %         end
+        function FixGenotypeName(obj)
+            sdl = obj.Parent;
+            obj.GenotypeName = sdl.GenotypeName;
+        end
 
         function img = FlipMe(obj, frm, req, rgn, buf)
             %% Store a flipped version of each Hypocotyl
@@ -262,6 +262,24 @@ classdef Hypocotyl < handle
             obj.ExperimentPath = obj.Origin.ExperimentPath;
         end
 
+        function [fnm , ttl , itr] = makeName(obj)
+            %% makeTitle: make a simple title for this object
+            gnm  = obj.GenotypeName;
+            gttl = fixtitle(gnm);
+            sidx = obj.Parent.getSeedlingIndex;
+            nfrm = obj.Lifetime;
+
+            % For files names
+            fnm = sprintf('%s_%s_seedling%02d_%02dframes', ...
+                tdate, gnm, sidx, nfrm);
+
+            % For figure titles
+            ttl = sprintf('%s\nSeedling %d [%d Frames]', gttl, sidx, nfrm);
+
+            % For console output
+            itr = sprintf('%s | Seedling %d | %d Frames', gnm, sidx, nfrm);
+        end
+
         function setCropBox(obj, frms, bbox, rgn)
             %% Set vector for bounding box
             if nargin < 3; rgn = 'upper'; end
@@ -296,10 +314,12 @@ classdef Hypocotyl < handle
 
             % Defaults
             if nargin < 2; frm = ':';     end
-            if nargin < 3; rgn = 'upper'; end
+            if nargin < 3; rgn = 1; end
 
             % Region dimension
             switch rgn
+                case 1
+                    r = 1 : 2;
                 case 'upper'
                     r = 1;
                 case 'lower'
@@ -362,6 +382,10 @@ classdef Hypocotyl < handle
             if isempty(obj.Contour)
                 obj.Contour = ctr;
             else
+                if size(obj.Contour,1) < size(obj.Contour,2)
+                    obj.Contour = obj.Contour';
+                end
+
                 obj.Contour(frm,r) = ctr;
             end
         end
