@@ -15,9 +15,7 @@ function flp = flipAndSlide(trc, seg_lengths)
 %
 
 %%
-if nargin < 2
-    seg_lengths = [53 , 52 , 53 , 51];
-end
+if nargin < 2; seg_lengths = [53 , 52 , 53 , 51]; end
 
 bmid = getBotMid(trc, seg_lengths);
 dspl = displaceContour(trc, -bmid);

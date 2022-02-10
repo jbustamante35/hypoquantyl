@@ -1,5 +1,5 @@
 %% ContourJB: my customized class for generating contours
-% Class description [you really need to document this] test
+% Class description [you really need to document this]
 
 classdef ContourJB < handle
     properties (Access = public)

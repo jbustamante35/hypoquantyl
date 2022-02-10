@@ -14,10 +14,9 @@ function apts = bwAnchorPoints(bw, ln)
 %
 
 % bw      = imcomplement(bw);
-dd      = bwconncomp(bw);
-p       = 'PixelList';
-props   = regionprops(dd, p);
-pList   = props.PixelList;
-apts = calcAnchorPoints(pList, ln);
-
+dd    = bwconncomp(bw);
+p     = 'PixelList';
+props = regionprops(dd, p);
+pList = props.PixelList;
+apts  = calcAnchorPoints(pList, ln);
 end

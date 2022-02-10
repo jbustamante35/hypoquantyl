@@ -28,9 +28,9 @@ classdef Seedling < handle
         SCALESIZE    = [101 , 101]
         %         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'Centroid', 'WeightedCentroid', 'Orientation'};
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
-        CONTOURSIZE  = 500		% number of points to normalize Hypocotyl contours
-        IMAGEBUFFER  = 40		% percentage of image size to extend image for creating Hypocotyl objects
-        TESTS2RUN    = [1 1 1 1 0 0];	% manifest to determine which quality checks to run
+        CONTOURSIZE  = 250 % number of points to normalize Hypocotyl contours
+        IMAGEBUFFER  = 40  % percentage of image size to extend image for creating Hypocotyl objects
+        TESTS2RUN    = [0 , 0 , 0 , 0 , 0 , 0];	% manifest to determine which quality checks to run
     end
 
     %% ------------------------- Primary Methods --------------------------- %%
@@ -92,28 +92,19 @@ classdef Seedling < handle
             if nargin < 2; v = 0; end % Verbosity
 
             try
-                if v
-                    fprintf('Extracting Hypocotyls from %s\n', ...
-                        obj.SeedlingName);
-                    tic;
-                end
+                if v; t = tic; fprintf('%s |', obj.SeedlingName); end
 
                 rng = 1 : obj.Lifetime;
                 hyp = arrayfun(@(x) obj.extractHypocotyl(x, v), ...
                     rng, 'UniformOutput', 0);
 
-                if v
-                    fprintf('[%.02f sec] Extracted Hypocotyl from %s\n', ...
-                        toc, obj.SeedlingName);
-                end
+                if v; fprintf('| %d [%.02f sec]\n', numel(hyp), toc(t)); end
 
             catch e
                 fprintf(2, 'Error extracting Hypocotyl from %s\n%s', ...
                     obj.SeedlingName, e.getReport);
 
-                if v
-                    fprintf('[%.02f sec]\n', toc);
-                end
+                if v; fprintf('[%.02f sec]\n', toc); end
             end
         end
 
@@ -224,7 +215,7 @@ classdef Seedling < handle
                 apts = obj.getAnchorPoints(frm);
 
                 % Crop out and resize PreHypocotyl for use as training data
-                [~, tbox , ~ , lbox] = cropFromAnchorPoints( ...
+                [~, ubox , ~ , lbox] = cropFromAnchorPoints( ...
                     obj.getImage(frm, 'bw'), apts, obj.SCALESIZE);
 
                 % Instance new Hypocotyl at frame
@@ -233,7 +224,7 @@ classdef Seedling < handle
                 bb  = strfind(sn, '}');
                 nm  = sprintf('PreHypocotyl_Sdl{%s}_Frm{%d}', ...
                     sn(aa + 1 : bb - 1), frm);
-                hyp = makeNewHypocotyl(obj, nm, frm, tbox, lbox);
+                hyp = makeNewHypocotyl(obj, nm, frm, ubox, lbox);
 
                 % Set this Seedlings AnchorPoints and PreHypocotyl
                 if isempty(obj.PreHypocotyl)
@@ -243,13 +234,12 @@ classdef Seedling < handle
                 end
 
                 if vrb
-                    fprintf('Extracted hypocotyl from %s frame %d\n', ...
-                        obj.SeedlingName, frm);
+                    if ~sum(lbox); fprintf(2, '.'); else; fprintf('.'); end
                 end
 
-            catch e
-                fprintf(2, 'No data %s Frame %d \n%s\n', ...
-                    obj.getSeedlingName, frm, e.getReport);
+            catch
+                fprintf(2, 'No data %s Frame %02d\n%s\n', ...
+                    obj.getSeedlingName, frm);
             end
         end
 
@@ -279,8 +269,8 @@ classdef Seedling < handle
             if nargin < 3; req = 'gray';                                end
 
             try
-                rng = obj.getFrame('b') : obj.getFrame('d');
-                frm = rng(frm);
+                %                 rng = obj.getFrame('b') : obj.getFrame('d');
+                %                 frm = rng(frm);
                 if numel(frm) > 1
                     % Cell array
                     img = obj.Parent.getImage(frm, req);
@@ -590,7 +580,7 @@ classdef Seedling < handle
                 h.setCropBox(frms, lbox, 'lower');
 
                 % Set PData
-                
+
             catch
                 fprintf(2, 'Error setting CropBox');
                 [ubox , lbox] = deal([0 , 0 , 0 , 0]);
@@ -655,8 +645,10 @@ classdef Seedling < handle
 
             %% [TODO] Change Hypocotyl methods to include Frame number
             for frm = 1 : numel(pre)
-                hyp.setCropBox(frm, pre(frm).getCropBox(':'));
-                hyp.setContour(frm, pre(frm).getContour(':'));
+                hyp.setCropBox(frm, pre(frm).getCropBox(1, 'upper'), 'upper');
+                hyp.setCropBox(frm, pre(frm).getCropBox(1, 'lower'), 'lower');
+                %                 hyp.setCropBox(frm, pre(frm).getCropBox(':'));
+                %                 hyp.setContour(frm, pre(frm).getContour(':'));
             end
         end
     end

@@ -1,4 +1,4 @@
-function [bpredict , bcnv, zpredict , zcnv, cpredict , mline , msample , mcnv , mgrade , sopt , mmaster] = loadSegmentationFunctions(varargin)
+function [bpredict , bcnv , zpredict , zcnv, cpredict , mline , msample , mcnv , mgrade , sopt , mmaster] = loadSegmentationFunctions(varargin)
 %% loadSegmentationFunctions: load function handles
 %
 %
@@ -17,18 +17,18 @@ zvecs = pz.EigVecs;
 zmns  = pz.MeanVals;
 
 %
-bpredict  = @(i,z,r) predictBvectorFromImage(i,Nb,z,r);
-zpredict  = @(i,r) predictZvectorFromImage(i, Nz, pz, r);
-cpredict  = @(i,zs) displacementWindowPredictor(i, 'Nz', Nz, 'pz', pz, 'Nd', Nd, ...
+bpredict = @(i,z,r) predictBvectorFromImage(i,Nb,z,r);
+zpredict = @(i,r) predictZvectorFromImage(i, Nz, pz, r);
+cpredict = @(i,zs) displacementWindowPredictor(i, 'Nz', Nz, 'pz', pz, 'Nd', Nd, ...
     'pdp', pdp, 'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'z', zs, ...
     'toFix', toFix, 'seg_lengths', seg_lengths, 'par', par, 'vis', vis);
-mline     = @(c) nateMidline(c);
-msample   = @(i,m) sampleMidline(i, m, 0, psz, 'full');
-bcnv      = @(i,z) bpredict(i,z,1);
-zcnv      = @(x) zVectorProjection(x, zsegs, zvecs, zmns, 3);
-mcnv      = @(m) pcaProject(m(:)', pvecs, pmns, 'sim2scr');
-mgrade    = computeKSdensity(pscrs, bwid);
-mmaster   = @(i)@(z) ...
+mline    = @(c) nateMidline(c);
+msample  = @(i,m) sampleMidline(i, m, 0, psz, 'full');
+bcnv     = @(i,z) bpredict(i,z,1);
+zcnv     = @(x) zVectorProjection(x, zsegs, zvecs, zmns, 3);
+mcnv     = @(m) pcaProject(m(:)', pvecs, pmns, 'sim2scr');
+mgrade   = computeKSdensity(pscrs, bwid);
+mmaster  = @(i)@(z) ...
     mgrade(mcnv(msample(i,mline(cpredict(i,bpredict(i,zcnv(z),1))))));
 %     mgrade(mcnv(msample(i,mline(cpredict(i,bpredict(i,zpredict(i,0),1))))));
 
@@ -38,11 +38,10 @@ if nopts
         'pdp', pdp, 'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'pm', pm, 'Nb', Nb, ...
         'toFix', toFix, 'seg_lengths', seg_lengths, 'bwid', bwid, ...
         'nopts', nopts, 'tolfun', tolfun, 'tolx', tolx, ...
-        'par', par, 'vis', vis, 'z2c', 0);
+        'par', par, 'vis', vis, 'z2c', z2c);
 else
     sopt = [];
 end
-
 end
 
 function args = parseInputs(varargin)
@@ -69,6 +68,7 @@ p.addOptional('toFix', 0);
 p.addOptional('nopts', 100);
 p.addOptional('tolfun', 1e-4);
 p.addOptional('tolx', 1e-4);
+p.addOptional('z2c', 0);
 
 % Misc
 p.addOptional('par', 0);
@@ -77,6 +77,4 @@ p.addOptional('vis', 0);
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});
 args = p.Results;
-
 end
-

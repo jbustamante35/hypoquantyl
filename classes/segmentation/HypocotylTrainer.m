@@ -1058,18 +1058,23 @@ classdef HypocotylTrainer < handle
             %% Return property of this object
             try
                 prp = obj.(prp);
-            catch e
-                fprintf(2, 'Property %s does not exist\n%s\n', ...
-                    prp, e.getReport);
+            catch
+                fprintf(2, 'Property %s does not exist\n', prp);
             end
         end
 
-        function obj = setProperty(obj, req, val)
+        function setProperty(obj, req, val, subreq)
             %% Set requested property if it exists [for private properties]
+            if nargin < 3; subreq = []; end
+
             try
-                obj.(req) = val;
-            catch e
-                fprintf(2, 'Property %s not found\n%s\n', req, e.getReport);
+                if isempty(subreq)
+                    obj.(req) = val;
+                else
+                    obj.(req).(subreq) = val;
+                end
+            catch
+                fprintf(2, 'Property %s.%s not found\n', req, subreq);
             end
         end
     end
@@ -1172,9 +1177,7 @@ classdef HypocotylTrainer < handle
                 BAYES  = struct('Net', net, 'Error', valErr, ...
                     'Params', table2struct(params));
 
-                if ~isfolder(outdir)
-                    mkdir(outdir);
-                end
+                if ~isfolder(outdir); mkdir(outdir); end
 
                 save(fnm, '-v7.3', 'BAYES');
                 cons = [];

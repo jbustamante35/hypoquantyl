@@ -12,10 +12,6 @@ classdef Curve < handle & matlab.mixin.Copyable
         ApicalAngle
     end
 
-    %     properties (Constant)
-    %         SEGLENGTH = [53 , 52 , 53 , 51];
-    %     end
-
     properties (Access = protected)
         SEGMENTSIZE    = 25;        % Number of coordinates per segment [default 200]
         SEGMENTSTEPS   = 1;         % Size of step to next segment [default 50]
@@ -69,7 +65,7 @@ classdef Curve < handle & matlab.mixin.Copyable
                     trc  = interpolateOutline(trc, npts);
 
                 case 'reverse'
-                    % Flip and Slide to opposite direction
+                    % Flip and Slide back to centered position
                     seg_lengths = obj.SEGLENGTH;
                     trc         = flipAndSlide(trc, seg_lengths);
 
@@ -107,7 +103,7 @@ classdef Curve < handle & matlab.mixin.Copyable
 
                 otherwise
                     fprintf(2, 'Trace %s must be [raw|interp|reverse|repos|norm|back]\n', ...
-                        req);
+                        fnc);
                     trc = [];
                     return;
             end
@@ -157,17 +153,13 @@ classdef Curve < handle & matlab.mixin.Copyable
             if ~ndims; ndims  = ':'; end
             Z = Z(:, ndims);
 
-            % Convert tangent-normal to rotation vector
-            if rot
-                % Convert to radians (default) or degrees
-                Z = zVectorConversion(Z, [], [], 'rot', rtyp, dpos);
-            end
+            % Convert tangent-normal to rotation vector (default) and
+            % convert to radians (default) or degrees (rot = 1)
+            if rot; Z = zVectorConversion(Z, [], [], 'rot', rtyp, dpos); end
 
             % Displace by midpoint of contour's base
             if bdsp
-                if isempty(obj.BasePoint)
-                    obj.setBasePoint(vsn, fnc);
-                end
+                if isempty(obj.BasePoint); obj.setBasePoint(vsn, fnc); end
 
                 bpt      = obj.BasePoint;
                 Z(:,1:2) = Z(:,1:2) - bpt;
@@ -326,12 +318,12 @@ classdef Curve < handle & matlab.mixin.Copyable
             nrm = [tng(2) , -tng(1)];
         end
 
-        function plotNorms(obj, fidx, ovr, vsn, fnc)
+        function plotNorms(obj, fidx, vsn, fnc, clr)
             %%
-            if nargin < 2; fidx = 1;             end
-            if nargin < 3; ovr  = 1;             end
-            if nargin < 4; vsn  = obj.MAINTRACE; end
-            if nargin < 5; fnc  = obj.MAINFUNC;  end
+            if nargin < 2; fidx = 1;             end            
+            if nargin < 3; vsn  = obj.MAINTRACE; end
+            if nargin < 4; fnc  = obj.MAINFUNC;  end
+            if nargin < 5; clr  = 0;             end
 
             tmid          = obj.getTopMid(vsn, fnc);
             bmid          = obj.getBotMid(vsn, fnc);
@@ -339,7 +331,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             [bnrm , btng] = obj.getBotNorm(vsn, fnc);
             bnrm = -bnrm;
 
-            if ~ovr
+            if clr
                 figclr(fidx);
                 myimagesc(obj.getImage);
                 hold on;
@@ -351,16 +343,18 @@ classdef Curve < handle & matlab.mixin.Copyable
             quiver(bmid(1), bmid(2), btng(1), btng(2), 30, 'Color', 'r');
         end
 
-        function plotSegments(obj, fidx, sidx, vsn, fnc)
+        function plotSegments(obj, fidx, sidx, vsn, fnc, clr)
             %%
             if nargin < 2; fidx = 1;             end
             if nargin < 3; sidx = 1 : 4;         end
             if nargin < 4; vsn  = obj.MAINTRACE; end
             if nargin < 5; fnc  = obj.MAINFUNC;  end
+            if nargin < 6; clr  = 0;             end
 
-            figclr(fidx);
-            myimagesc(obj.getImage(fnc));
+            if clr; figclr(fidx); else; set(0, 'CurrentFigure', fidx); end
+            myimagesc(obj.getImage('gray', 'upper', fnc));
             hold on;
+
             clrs = {'r-' , 'g-' , 'b-' , 'y-'};
             for e = sidx
                 seg = obj.getSegment(e, vsn, fnc);
@@ -368,18 +362,18 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
         end
 
-        function plotCorners(obj, fidx, sidx, ovr, vsn, fnc)
+        function plotCorners(obj, fidx, sidx, vsn, fnc, clr)
             %%
             if nargin < 2; fidx = 1;             end
-            if nargin < 3; sidx = 1 : 4;         end
-            if nargin < 4; ovr  = 1;             end
-            if nargin < 5; vsn  = obj.MAINTRACE; end
-            if nargin < 6; fnc  = obj.MAINFUNC;  end
+            if nargin < 3; sidx = 1 : 4;         end            
+            if nargin < 4; vsn  = obj.MAINTRACE; end
+            if nargin < 5; fnc  = obj.MAINFUNC;  end
+            if nargin < 6; clr  = 0;             end
 
             clrs = {'r.' , 'g.' , 'b.' , 'y.'};
-            if ~ovr
+            if clr
                 figclr(fidx);
-                myimagesc(obj.getImage);
+                myimagesc(obj.getImage('gray', 'upper', fnc));
                 hold on;
             end
 
@@ -390,16 +384,16 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
         end
 
-        function plotMidline(obj, fidx, ovr, vsn, fnc)
+        function plotMidline(obj, fidx, vsn, fnc, clr)
             %%
-            if nargin < 2; fidx = 1;             end
-            if nargin < 3; ovr  = 1;             end
-            if nargin < 4; vsn  = 'nate';        end
-            if nargin < 5; fnc  = obj.MAINFUNC;  end
+            if nargin < 2; fidx = 1;             end            
+            if nargin < 3; vsn  = 'nate';        end
+            if nargin < 4; fnc  = obj.MAINFUNC;  end
+            if nargin < 5; clr  = 0;             end
 
-            if ~ovr
+            if clr
                 figclr(fidx);
-                myimagesc(obj.getImage(fnc));
+                myimagesc(obj.getImage('gray', 'upper', fnc));
                 hold on;
             end
 
@@ -407,22 +401,35 @@ classdef Curve < handle & matlab.mixin.Copyable
             plt(mline, 'r--', 2);
         end
 
-        function plotHypocotyl(obj, fidx, vsn, fnc, mid)
+        function plotHypocotyl(obj, fidx, vsn, fnc, mid, clr, ttl)
             %% plotHypocotyl
             if nargin < 2; fidx = 1;             end
             if nargin < 3; vsn  = obj.MAINTRACE; end
             if nargin < 4; fnc  = obj.MAINFUNC;  end
             if nargin < 5; mid  = 'nate';        end
+            if nargin < 6; clr  = 0;             end
+            if nargin < 7; ttl  = [];            end
 
-            obj.plotSegments(fidx, 1 : 4, vsn, fnc);
-            obj.plotCorners(fidx, 1 : 4, 1, vsn, fnc);
-            obj.plotNorms(fidx, 1, vsn, fnc);
+            segs = 1 : 4;
+            obj.plotSegments(fidx, segs, vsn, fnc, clr);
+            obj.plotCorners(fidx, segs, vsn, fnc, clr);
+            obj.plotNorms(fidx, vsn, fnc, clr);
 
             if ~isempty(mid)
-                obj.plotMidline(fidx, 1, mid, fnc);
+                obj.plotMidline(fidx, mid, fnc, clr);
             end
 
+            if isempty(ttl)
+                gnm  = obj.Parent.GenotypeName;
+                gttl = fixtitle(gnm);
+                sidx = obj.Parent.Parent.Parent.getSeedlingIndex;
+                frm  = obj.Parent.getFrame;
+                ttl  = sprintf('%s\nSeedling %d Frame %d', gttl, sidx, frm);
+            end
+
+            title(ttl, 'FontSize', 10);
             drawnow;
+            hold off;
         end
 
         function lng = getSegmentLength(obj, num, vsn, fnc, trc)
@@ -453,9 +460,7 @@ classdef Curve < handle & matlab.mixin.Copyable
                 drc2 = 'right';
             end
 
-            if toSet
-                obj.Direction = drc2;
-            end
+            if toSet; obj.Direction = drc2; end
         end
 
         function setBasePoint(obj, vsn, fnc)
@@ -615,8 +620,7 @@ classdef Curve < handle & matlab.mixin.Copyable
                 case 'auto'; mline = obj.AutoMidline;
                 case 'nate'; mline = obj.NateMidline;
                 otherwise
-                    fprintf(2, 'Midline method %s must be [man|auto|nate]\n', ...
-                        vsn);
+                    fprintf(2, 'Method %s must be [man|auto|nate]\n', vsn);
             end
 
             % Get interpolated, raw, or origin-centered midline
@@ -765,12 +769,7 @@ classdef Curve < handle & matlab.mixin.Copyable
         function obj = reconfigMidline(obj)
             %% Reset 1st midline coordinates to base of contours
             mline = obj.getMidline('auto', 'raw');
-
-            if ~isempty(mline)
-                obj.setMidline(mline, 'auto');
-            else
-                return;
-            end
+            if ~isempty(mline); obj.setMidline(mline, 'auto'); else; return; end
         end
 
         function [sp , sd] = getSPatch(varargin)
@@ -899,6 +898,26 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
         end
 
+        function [fnm , ttl , itr] = makeName(obj)
+            %% makeTitle: make a simple title for this object
+            gnm  = obj.Parent.GenotypeName;
+            gttl = fixtitle(gnm);
+            sidx = obj.Parent.Parent.Parent.getSeedlingIndex;
+            frm  = obj.Parent.getFrame;
+            drc  = obj.Direction;
+
+            % For files names
+            fnm = sprintf('%s_%s_seedling%02d_frame%02d_face%s', ...
+                    tdate, gnm, sidx, frm, drc);
+            
+            % For figure titles
+            ttl = sprintf('%s\nSeedling %d Frame %d', gttl, sidx, frm);
+
+            % For console output
+            itr = sprintf('%s | Seedling %d | Frame %d | Face %s', ...
+                gnm, sidx, frm, drc);
+        end
+
         function img = getImage(obj, req, rgn, drc, flp, buf)
             %% getImage: return image data for Curve
             if nargin < 2; req = 'gray';        end
@@ -908,9 +927,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             if nargin < 6; buf = 0;             end
 
             % Use default flip direction
-            if isempty(flp)
-                flp = obj.Parent.checkFlipped;
-            end
+            if isempty(flp); flp = obj.Parent.checkFlipped; end
 
             img = obj.Parent.getImage(req, rgn, flp, buf);
             if ~strcmpi(drc, obj.Direction)
@@ -918,39 +935,9 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
         end
 
-        %         function img = getImage(varargin)
-        %             %% Return image data for Curve at desired frame
-        %             obj = varargin{1};
-        %             switch nargin
-        %                 case 1
-        %                     % Get image from ImageDataStore
-        %                     img = obj.Parent.getImage;
-        %                 case 2
-        %                     req = varargin{2};
-        %                     if sum(strcmpi(req, {'gray' , 'bw'}))
-        %                         % Get grayscale or bw image
-        %                         img = obj.Parent.getImage(req);
-        %                     elseif sum(strcmpi(req, {'left' , 'right'}))
-        %                         % Get left-facing or right-facing [default to grayscale]
-        %                         img = obj.Parent.getImage;
-        %                         if ~strcmpi(req, obj.Direction)
-        %                             img = fliplr(img);
-        %                         end
-        %                     else
-        %                         img = obj.Parent.getImage;
-        %                     end
-        %                 case 3
-        %                     req = varargin{2};
-        %                     buf = varargin{3}; % Buffer image
-        %                     img = obj.Parent.getImage(req, buf);
-        %                 otherwise
-        %                     fprintf(2, 'Error getting image\n');
-        %             end
-        %         end
-
         function fnm = showCurve(varargin)
             %% showCurve: display features of this object
-            [fidx , sav , clr , req , rgn , flp , buf , vsn , fnc , mth] = ...
+            [fidx , sav , clr , req , rgn , buf , vsn , fnc , mth] = ...
                 deal([]);
 
             obj  = varargin{1};
@@ -960,11 +947,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
 
             %
-            if clr
-                figclr(fidx);
-            end
-
-            %
+            if clr; figclr(fidx); else; set(0, 'CurrentFigure', fidx); end
             img   = obj.getImage(req, rgn, fnc, buf);
             cntr  = obj.getTrace(vsn, fnc);
             mline = obj.getMidline(mth, fnc);
@@ -975,14 +958,20 @@ classdef Curve < handle & matlab.mixin.Copyable
             hold on;
             plt(cntr, 'g-', 2);
             plt(mline, 'r-', 2);
-            plt(bvec, 'b.', 20);
+            plt(bvec, 'c.', 20);
+            plt(bvec, 'ko', 5);
             hold off;
 
             %
+            gnm  = obj.Parent.GenotypeName;
+            gttl = fixtitle(gnm);
+            sidx = obj.Parent.Parent.Parent.getSeedlingIndex;
+            frm  = obj.Parent.getFrame;
+            ttl  = sprintf('%s\nSeedling %d Frame %d', gttl, sidx, frm);
+            title(ttl, 'FontSize', 10);
+
+            %
             if sav
-                gnm  = obj.Parent.GenotypeName;
-                sidx = obj.Parent.Parent.Parent.getSeedlingIndex;
-                frm  = obj.Parent.getFrame;
                 cdir = 'showcurves';
                 fnm  = sprintf('%s_%s_seedling%02d_frame%02d_face%s', ...
                     tdate, gnm, sidx, frm, fnc);
@@ -999,10 +988,9 @@ classdef Curve < handle & matlab.mixin.Copyable
                 p.addOptional('clr', 0);
                 p.addOptional('req', 'gray');
                 p.addOptional('rgn', 'upper');
-                p.addOptional('flp', 0);
                 p.addOptional('buf', 0);
                 p.addOptional('vsn', obj.MAINTRACE);
-                p.addOptional('fnc', obj.MAINFUNC);
+                p.addOptional('fnc', obj.Direction);
                 p.addOptional('mth', 'nate');
 
                 % Parse arguments and output into structure

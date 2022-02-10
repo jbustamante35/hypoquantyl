@@ -45,7 +45,8 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 'isFlipped', false};
             obj    = classInputParser(obj, prps, deflts, vargs);
 
-            obj.Image  = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
+            %
+            obj.Image = struct('gray', [], 'bw', [], 'mask', [], 'labels', []);
         end
 
         function CreateCurves(obj, overwrite)
@@ -113,19 +114,25 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             obj.NormalOutline = [];
         end
 
-        function LabelAllPixels(obj, labelname)
+        function LabelAllPixels(obj, labelname, rgn, flp, buf)
             %% Labels all pixels inside contour as 'Hypocotyl'
             % This is to test out a method of deep learning for semantic
             % segmentation See ref (Long, Shelhammer, Darrell, CVF 2015, 2015)
             % book and MATLAB tutorial at
             % https://www.mathworks.com/help/vision/examples/semantic-segmentation-using-deep-learning.html
-            lbl = repmat("", size(obj.Image.bw));
-            lbl(obj.Image.bw == 1) = labelname;
-            lbl(obj.Image.bw ~= 1) = 'bg';
-            obj.Image.labels       = lbl;
+            if nargin < 2; labelname = 1;       end
+            if nargin < 3; rgn       = 'upper'; end
+            if nargin < 4; flp       = [];      end
+            if nargin < 5; buf       = 0;       end
+
+            msk              = obj.getImage('bw', rgn, flp, buf);
+            lbl              = repmat("", size(msk));
+            lbl(msk == 1)    = labelname;
+            lbl(msk ~= 1)    = 'bg';
+            obj.Image.labels = lbl;
         end
 
-        function generateMasks(obj, buff)
+        function generateMasks(obj, buf)
             %% Create probability matrix from manually-drawn outline
             % This function generates a binary mask where the coordinates of
             % the manually-drawn outline are set to 1 and the rest of the image
@@ -147,34 +154,32 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             % tl;dr: I might be able to remove the buff parameter from here
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-            img = obj.getImage('gray');
+            if nargin < 2; buf = 0;       end
+            if nargin < 3; rgn = 'upper'; end
+            if nargin < 4; flp = [];      end
+
+            img = obj.getImage('gray', rgn, flp, buf);
             crd = obj.NormalOutline; % Use normalized coordinates
-            msk = crds2mask(img, crd, buff);
+            msk = crds2mask(img, crd, buf);
             obj.setImage(1, 'mask', msk);
         end
 
-        function [obj , ofix] = FixContour(obj, fidx, interp_fixer, seg_smooth)
+        function [obj , ofix] = FixContour(obj, fidx, interp_fixer, seg_smooth, flp, buf)
             %% Manually fix the contour
-            switch nargin
-                case 1
-                    fidx         = 1;
-                    interp_fixer = 40;
-                    seg_smooth   = 10;
-                case 2
-                    interp_fixer = 40;
-                    seg_smooth   = 10;
-                case 3
-                    seg_smooth = 10;
-            end
+            if nargin < 2; fidx         = 1;  end
+            if nargin < 3; interp_fixer = 40; end
+            if nargin < 4; seg_smooth   = 10; end
+            if nargin < 5; flp          = []; end
+            if nargin < 6; buf          = 0;  end
 
-            img  = obj.getImage;
+            img  = obj.getImage('gray', rgn, flp, buf);
             trc  = obj.getOutline;
             ofix = OutlineFixer('Object', obj, 'Image', img, ...
                 'Curve', trc, 'FigureIndex', fidx, ...
                 'InterpFix', interp_fixer, 'SegSmooth', seg_smooth);
         end
 
-        function DrawOutline(obj, buf)
+        function DrawOutline(obj, buf, rgn, flp)
             %% Draw RawOutline on this object's Image
             % The function crds2mask was changed (see generateMasks method for
             % this class) to include a buffering size parameter. When creating
@@ -186,9 +191,13 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             %
             % If the flp parameter is set to true, then the FlipMe method is
             % called before prompting user to draw contour.
+            if nargin < 2; buf = 0;       end
+            if nargin < 2; rgn = 'upper'; end
+            if nargin < 2; flp = 0;       end
+
             try
                 % Trace outline and store as RawOutline
-                img = obj.getImage('gray', buf);
+                img = obj.getImage('gray', rgn, flp, buf);
                 str = sprintf('Outline\n%s', fixtitle(obj.Origin));
                 c   = drawPoints(img, 'y', str);
                 crd = c.Position;
@@ -200,16 +209,17 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             end
         end
 
-        function DrawAnchors(obj, buf, mth)
+        function DrawAnchors(obj, buf, mth, rgn, flp)
             %% Draw RawPoints on this object's Image
             % If the buf parameter is set to true, then the image returned from
             % the parent Hypocotyl contains a buffered region around the image.
             %
             % If the flp parameter is set to true, then the FlipMe method is
             % called before prompting user to draw contour.
-            if nargin < 3
-                mth = 'man';
-            end
+            if nargin < 2; buf = 0;       end
+            if nargin < 3; mth = 'man';   end
+            if nargin < 4; rgn = 'upper'; end
+            if nargin < 5; flp = 0;       end
 
             switch mth
                 case 'auto'
@@ -229,7 +239,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 case 'man'
                     % Plot anchor points manually and store as RawPoints
                     try
-                        img = obj.getImage('gray', buf);
+                        img = obj.getImage('gray', rgn, flp, buf);
                         str = sprintf('%d AnchorPoints\n%s\n', ...
                             obj.NUMBEROFANCHORS, fixtitle(obj.Origin));
                         p   = drawPoints(img, 'b', str);
@@ -397,69 +407,18 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
 
         function img = getImage(obj, req, rgn, flp, buf)
             %% getImage: return image from CircuitJB object
-            if nargin < 2; req = 'gray';           end
-            if nargin < 3; rgn = 'upper';          end
-            if nargin < 4; flp = obj.checkFlipped; end
-            if nargin < 5; buf = 0;                end
+            if nargin < 2; req = 'gray';  end
+            if nargin < 3; rgn = 'upper'; end
+            if nargin < 4; flp = [];      end
+            if nargin < 5; buf = 0;       end
+
+            if isempty(flp)
+                flp = obj.checkFlipped;
+            end
 
             frm = obj.getFrame;
             img = obj.Parent.getImage(frm, req, rgn, flp, buf);
         end
-
-        %         function dat = getImage(varargin)
-        %             %% Return image data for ContourJB at desired frame [frm, req]
-        %             % User can specify which image from structure with 3rd parameter
-        %             % Frame number is automatically deterimend since it is the final
-        %             % bit of data in the name (Origin property). If I need frame number
-        %             % anywhere else then I'll make it a method.
-        %             obj = varargin{1};
-        %             switch nargin
-        %                 case 1
-        %                     %% Grayscale image
-        %                     frm = obj.getFrame;
-        %                     flp = obj.checkFlipped;
-        %                     if flp
-        %                         dat = flip(obj.Parent.getImage(frm), 2);
-        %                     else
-        %                         dat = obj.Parent.getImage(frm);
-        %                     end
-        %
-        %                 case 2
-        %                     %% Returns requested image type
-        %                     try
-        %                         req = varargin{2};
-        %                         frm = obj.getFrame;
-        %                         flp = obj.checkFlipped;
-        %                         if flp
-        %                             dat = flip(obj.Parent.getImage(frm, req), 2);
-        %                         else
-        %                             dat = obj.Parent.getImage(frm, req);
-        %                         end
-        %                     catch
-        %                         % Check if image is hard-set inside object
-        %                         dat = obj.Image.(req);
-        %                     end
-        %
-        %                 case 3
-        %                     %% Returns buffered image [not implemented]
-        %                     % version of the image
-        %                     try
-        %                         req = varargin{2};
-        %                         buf = varargin{3};
-        %                         flp = obj.checkFlipped;
-        %
-        %                         frm = obj.getFrame;
-        %                         dat = obj.Parent.getImage(frm, req, flp, buf);
-        %                     catch
-        %                         fprintf(2, 'No image at frame %d \n', frm);
-        %                         dat = [];
-        %                     end
-        %
-        %                 otherwise
-        %                     fprintf(2, 'Error requesting data.\n');
-        %                     return;
-        %             end
-        %         end
 
         function setOutline(obj, crds, otyp)
             %% Set coordinates to an outline

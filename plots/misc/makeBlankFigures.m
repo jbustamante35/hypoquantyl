@@ -15,27 +15,20 @@ function [figs , fnms] = makeBlankFigures(nf, clr)
 % Author Julian Bustamante <jbustamante@wisc.edu>
 
 %% Set figure handle index and place-holder names
-if nargin < 2
-    clr = 0;
-end
+if nargin < 1; nf  = 4; end
+if nargin < 2; clr = 0; end
 
 figs = 1 : nf;
 fnms = cell(nf, 1);
-
 for n = 1 : nf
     if isempty(figure(figs(n)))
         figs(n) = figure;
     else
         figclr(n);
-        
-        if clr
-            colormap gray;
-        end
+        if clr; colormap gray; end
     end
-    
+
     fnms{n} = sprintf('%s_blank', tdate('s'));
 end
-
 set(figs, 'Color', 'w');
-
 end

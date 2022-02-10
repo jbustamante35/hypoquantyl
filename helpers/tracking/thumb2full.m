@@ -137,5 +137,4 @@ rmline = rmlines + (gbox(1:2) + sbox(1:2));
 %% Get some miscellaneous data for visualizing info
 minfo = struct('frm', frm, 'img', img, 'himg', himg, 'simg', simg, 'gimg', gimg, ...
     'cntr', cntr, 'mline', mline);
-
 end

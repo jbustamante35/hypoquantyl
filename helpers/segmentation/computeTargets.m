@@ -38,7 +38,7 @@ if par == 2
         dvecs{tr} = computeDVector(aff, permute(trgs{tr}, [2 1]))';
     end
     dvecs = cat(3, dvecs{:});
-    
+
 else
     switch par
         case 0
@@ -49,10 +49,10 @@ else
                 allCrvs = 1 : nCrvs;
                 nVecs   = size(zvecs{1},1);
                 allVecs = 1 : nVecs;
-                
+
                 taff = cellfun(@(z) tb2affine(z, [1 , 1], toShape), ...
                     zvecs, 'UniformOutput', 0);
-                
+
                 dvecs = cell(nCrvs, nVecs);
                 for c = allCrvs
                     for n = allVecs
@@ -71,7 +71,7 @@ else
                         aff, permute(trgs(:,:,tr), [2 , 1]))';
                 end
             end
-            
+
         otherwise
             %% Run with single-thread
             nCrvs   = size(trgs,3);
@@ -95,10 +95,7 @@ else
 end
 
 %% Straighten top and bottom sections
-if toFix
-    dvecs = straightenSegment(dvecs, seg_lengths);
-end
-
+if toFix; dvecs = straightenSegment(dvecs, seg_lengths); end
 end
 
 function dvecs = computeDVector(aff, trg)
