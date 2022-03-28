@@ -53,7 +53,7 @@ classdef Genotype < handle
             if nargin < 2; rng   = 1 : obj.TotalImages;                       end % Range of images
             if nargin < 3; sdlsz = obj.Parent.getProperty('SEEDLINGSIZE');    end % Seedling area cutoff
             if nargin < 4; hypln = obj.Parent.getProperty('HYPOCOTYLLENGTH'); end % Hypocotyl cutoff length
-            if nargin < 5; v     = 0;                                         end % Verbosity
+            if nargin < 5; v     = 1;                                         end % Verbosity
 
             if v
                 t = tic;
@@ -116,7 +116,7 @@ classdef Genotype < handle
             % out empty time points [to obtain true lifetime]. This function
             % calls an assortment of helper functions that filters out empty
             % frames and aligns Seedling objects through subsequent frames.
-            if nargin < 2; v   = 0;     end
+            if nargin < 2; v   = 1;     end
             if nargin < 3; mth = 'new'; end
 
             rs   = obj.getRawSeedling;
@@ -251,6 +251,10 @@ classdef Genotype < handle
             % very large objects and data output [ .mat ] files.
             if nargin < 2; idx = 1 : obj.TotalImages; end
             if nargin < 3; req = 'gray';              end
+
+            if strcmpi(idx, ':')
+                idx = obj.getFrame('b') : obj.getFrame('d'); 
+            end
 
             % Grayscale image at index [can be a range of images]
             [img , obs] = deal([]);
@@ -492,8 +496,6 @@ classdef Genotype < handle
             for sidx = 1 : nsdls
                 nm  = sprintf('Raw_%d', sidx);
                 sdl = Seedling('SeedlingName', nm);
-                %                 sdl.setPData(frm, prp(sidx));
-                %                 sdl.setContour(frm, ctrs{sidx});
                 sdl.setPData(1, prp(sidx));
                 sdl.setContour(1, ctrs{sidx});
                 sdl.setParent(obj);
@@ -502,21 +504,9 @@ classdef Genotype < handle
                 sdl.setFrame(frm, 'b');
                 sdl.setFrame(frm, 'd');
                 sdl.setCoordinates(1, prp(sidx).WeightedCentroid);
-
-%                 if ~all(isnan(prp(sidx).WeightedCentroid))
-                    %                     sdl.setCoordinates(frm, prp(sidx).WeightedCentroid);
-%                     sdl.setCoordinates(1, prp(sidx).WeightedCentroid);
-%                 else
-                    %                     sdl.setCoordinates(frm, prp(sidx).Centroid);
-%                     sdl.setCoordinates(1, prp(sidx).Centroid);
-%                 end
-
-                %                 simg = sdl.getImage(frm, 'bw');
-%                 smsk = sdl.getImage(1, 'bw');
                 smsk = bws{sidx};
                 smsk = bwareaopen(smsk, bopen); % Clean image of specks [09.17.2021]
                 pts  = bwAnchorPoints(smsk, hypln);
-                %                 sdl.setAnchorPoints(frm, pts);
                 sdl.setAnchorPoints(1, pts);
                 sdls{sidx} = sdl;
 
@@ -587,14 +577,10 @@ classdef Genotype < handle
                             sdl.setPData(sdl.getLifetime, t.getPData);
                             sdl.setParent(obj);
 
-                            if v
-                                fprintf('%02d | ', nf);
-                            end
+                            if v; fprintf('%02d | ', nf); end
                         end
 
-                        if v
-                            fprintf('DONE! [%.03f sec]\n', toc(tf));
-                        end
+                        if v; fprintf('DONE! [%.03f sec]\n', toc(tf)); end
                     end
 
                 case 'new'
@@ -607,11 +593,10 @@ classdef Genotype < handle
                     ddm  = DD .* dmsk;
 
                     % Make digraph and determine clusters
-                    gr        = digraph(ddm);
-                    nidxs     = gr.conncomp; % Total seedlings groups
-                    re        = cellfun(@isempty, rs);
-                    lidx      = 1:numel(rs(~re));
-                    %                     [ii , jj] = ind2sub(size(rs), lidx);
+                    gr    = digraph(ddm);
+                    nidxs = gr.conncomp; % Total seedlings groups
+                    re    = cellfun(@isempty, rs);
+                    lidx  = 1:numel(rs(~re));
 
                     hh   = arrayfun(@(x) find(~re(:,x)), 1 : size(rs,2), ...
                         'UniformOutput', 0);
@@ -650,6 +635,13 @@ classdef Genotype < handle
                         R{r} = cat(1, tmp{:})';
                     end
 
+                    % Remove Seedlings with fewer images than total [02.18.2022]
+                    % Don't deal with problem of seedlings colliding at any
+                    % point and having different indices of images
+                    nimgs = obj.TotalImages;
+                    sfrms = cellfun(@numel, R);
+                    R     = R(sfrms == nimgs);
+
                     % Create empty Seedling array
                     nsdls = numel(R);
                     mkSdl = @(x) Seedling('SeedlingName', ...
@@ -687,9 +679,7 @@ classdef Genotype < handle
                             sdl.setPData(sdl.getLifetime, t.getPData);
                             sdl.setParent(obj);
 
-                            if v
-                                fprintf('%02d | ', nf);
-                            end
+                            if v; fprintf('%02d | ', nf); end
                         end
 
                         if v; fprintf('DONE! [%.03f sec]', toc(tf)); end

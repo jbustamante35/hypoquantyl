@@ -9,7 +9,6 @@ classdef MyNN < handle
         function obj = MyNN(nn, script)
             %%
             if nargin < 2
-                %                 script = ['m' , strrep(char(java.util.UUID.randomUUID), '-', '')];
                 script = sprintf('m%s', ...
                     strrep(char(java.util.UUID.randomUUID), '-', ''));
             end
@@ -17,31 +16,12 @@ classdef MyNN < handle
             obj.script = script;
             obj.Compile(nn);
             obj.fnc = str2func(['@(varargin)' obj.script '(varargin{:})']);
-
-            %             fprintf('\nCurrent Directory: %s\n', pwd);
-            %             fprintf('DirectoryContents:\n%s\n', ls(pwd));
-
         end
 
         function Compile(obj, nn)
             %%
-            %             cmpdir = 'compiled';
-            %             if isfolder(cmpdir)
-            %                 mkdir(cmpdir);
-            %             end
-            % Compile in separate directory
-            %             s = sprintf('%s/%s', cmpdir, obj.script);
-            %             genFunction(nn, s, 'ShowLinks', 'no');
-            %             cstr = sprintf('mcc -m -v -R -singleCompThread -a %s.m -d %s', ...
-            %                 s, cmpdir);
-
             % Compile in current directory
             genFunction(nn, obj.script, 'ShowLinks', 'no');
-            %             cstr = sprintf('mcc -m -v -R -singleCompThread -a %s.m -d %s', ...
-            %                 obj.script, cmpdir);
-
-            %             eval(cstr);
-
         end
 
         function out = predict(obj, varargin)

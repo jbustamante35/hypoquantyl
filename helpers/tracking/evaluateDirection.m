@@ -3,11 +3,20 @@ function [toFlip , eout , fnm] = evaluateDirection(img, bpredict, zpredict, cpre
 %
 %
 % Usage:
-%   [toFlip , eout , fnm] = evaluateDirection(img, bpredict, zpredict, ...
-%       cpredict, mline, msample, mcnv, mgrade, fidx, sav)
+%   [toFlip , eout , fnm] = evaluateDirection(img, ...
+%       bpredict, zpredict, cpredict, mline, msample, mcnv, mgrade, fidx, sav)
 %
 % Input:
 %   img:
+%   bpredict:
+%   zpredict:
+%   cpredict:
+%   mline:
+%   msample:
+%   mcnv:
+%   mgrade:
+%   fidx:
+%   sav:
 %
 % Output:
 %   toFlip:
@@ -15,7 +24,7 @@ function [toFlip , eout , fnm] = evaluateDirection(img, bpredict, zpredict, cpre
 %   fnm:
 %
 
-% ---------------------------------------------------------------------------- %
+%%
 if nargin < 9;  fidx = 0; end
 if nargin < 10; sav  = 0; end
 
@@ -36,11 +45,12 @@ fprintf('Segmenting original direction | ');
 fprintf('Sampling Midline | ');
 porg = msample(iorg, morg);
 
-fprintf('Grading Midline Patch | ');
+fprintf('Grading Midline Patch');
 gorg = mgrade(mcnv(porg));
 
-fprintf('DONE! [%.03f sec]\n', toc(t));
+fprintf(' [%.03f] | DONE! [%.03f sec]\n', gorg, toc(t));
 
+% ---------------------------------------------------------------------------- %
 % Flipped
 t = tic;
 fprintf('Segmenting flipped direction | ');
@@ -50,10 +60,10 @@ fprintf('Segmenting flipped direction | ');
 fprintf('Sampling Midline | ');
 pflp = msample(iflp, mflp);
 
-fprintf('Grading Midline Patch | ');
+fprintf('Grading Midline Patch');
 gflp = mgrade(mcnv(pflp));
 
-fprintf('DONE! [%.03f sec]\n', toc(t));
+fprintf(' [%.03f] | DONE! [%.03f sec]\n', gflp, toc(t));
 
 % ---------------------------------------------------------------------------- %
 %% Evaluate Direction [get left-facing]
