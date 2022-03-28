@@ -1,5 +1,22 @@
 function [cntr , cinit , segs , T] = raw2clipped(cntr, mth, nroutes, rlen, fidx)
 %% redoContour: redo contour with proper separation of segments
+%
+%
+% Usage:
+%   [cntr , cinit , segs , T] = raw2clipped(cntr, mth, nroutes, rlen, fidx)
+%
+% Input:
+%   cntr: input contour
+%   mth: method to find corners [default 1]
+%   nroutes: number of regions to set [default 4]
+%   rlen: length of each route [default [53 , 52 , 53 , 51]]
+%   fidx: figure handle index to display to [default 0]
+%
+% Output:
+%   cntr: proessed contour
+%   cinit: coordinate indices for starts of corners
+%   segs: coordinates for each segment
+%   T: table of results from brute force method [method 2 only]
 if nargin < 2; mth     = 1;                   end
 if nargin < 3; nroutes = 4;                   end
 if nargin < 4; rlen    = [53 , 52 , 53 , 51]; end
@@ -9,49 +26,49 @@ if nargin < 5; fidx    = 0;                   end
 [T , shft] = deal(0);
 switch mth
     case 1
-        %% Search for corners
+        %% Get top-bottom sections, then left-right sections [best]
+        [blbl , tlbl] = labelContour(cntr, 1, 2);
+
+        bidxs = find(blbl);
+        tidxs = find(tlbl);
+        lidxs = [1 ; tidxs(1)];
+
+        % Right section: closest bottom section index to end of top section
+        [~ , rend] = min(abs(tidxs(end) - bidxs));
+        ridxs      = [tidxs(end) ; bidxs(rend)];
+
+        % Corners are sorted left and right indices
+        crns = sort([lidxs ; ridxs]);
+    case 2
+        %% Brute force search
         % Constant parameterrs
         mph = 0.03; % Minimum peak height
 
-        %         % Total iterations for each parameter
-        %         nflts  = 4; % Curvature filter size
-        %         nshfts = 5; % Coordinate shifting
-        %         nmpds  = 5; % Minimum peak distance
-        %
-        %         % Increase factor for each parameter
-        %         ffac   = 2; % Curvature filter size
-        %         sfac   = 3; % Coordinate shifting
-        %         dfac   = 3; % Minimum peak distance
-
+        % Filter size
         min_flts  = 1;
         max_flts  = 10;
         itr_flts  = 2;
 
+        % Coordinate shifting
         min_shfts = 1;
         max_shfts = 15;
         itr_shfts = 4;
 
+        % Minimum peak distance
         min_mpds  = 10;
         max_mpds  = 30;
         itr_mpds  = 6;
 
-        flts  = min_flts : round(max_flts / itr_flts) : max_flts;
+        flts  = min_flts  : round(max_flts  / itr_flts)  : max_flts;
         shfts = min_shfts : round(max_shfts / itr_shfts) : max_shfts;
-        mpds  = min_mpds : round(max_mpds / itr_mpds) : max_mpds;
+        mpds  = min_mpds  : round(max_mpds  / itr_mpds)  : max_mpds;
 
         % Tracking parameter values and outputs
-        %         T      = zeros(itr_shfts * itr_mpds * itr_flts, 9);
         T      = zeros(numel(flts) * numel(shfts) * numel(mpds), 9);
         itr    = 1;
         npeaks = nroutes;
 
         if fidx; figclr(fidx); end
-        %         for nf = 1 : nflts
-        %             for ns = 1 : nshfts
-        %                 for nm = 1 : nmpds
-        %                     flt  = nf * ffac;
-        %                     shft = ns * sfac;
-        %                     mpd  = nm * dfac;
         for flt = flts
             for shft = shfts
                 for mpd = mpds
@@ -93,23 +110,8 @@ switch mth
         [~ , crns] = findpeaks(kw, 'NPeaks', npeaks,...
             'MinPeakHeight', mph, 'MinPeakDistance', mpd);
         cntr       = circshift(cntr, -shft);
-    case 2
-        %% Get top-bottom sections, then left-right sections
-        [blbl , tlbl] = labelContour(cntr, 1, 2);
-
-        bidxs = find(blbl);
-        tidxs = find(tlbl);
-        %         lidxs = [bidxs(1) ; tidxs(1)];
-        lidxs = [1 ; tidxs(1)];
-
-        % Right section: closest bottom section index to end of top section
-        [~ , rend] = min(abs(tidxs(end) - bidxs));
-        ridxs      = [tidxs(end) ; bidxs(rend)];
-
-        % Corners are sorted left and right indices
-        crns = sort([lidxs ; ridxs]);
     case 3
-        %% Remove duplicate corners except for the last point
+        %% Remove duplicate corners except for the last point [old]
         len  = round(size(cntr, 1) / nroutes, -1);
         segs = arrayfun(@(x) ((len * x) + 1 : (len * (x + 1)))', ...
             0 : (nroutes - 1), 'UniformOutput', 0)';
@@ -125,13 +127,11 @@ segs  = arrayfun(@(i,e,l) interpolateOutline(cntr(i:e,:), l), ...
 
 % Close contour
 cntr = cat(1, segs{:});
-if sum(cntr(1,:) ~= cntr(end,:))
-    cntr = [cntr ; cntr(1,:)];
-end
+if sum(cntr(1,:) ~= cntr(end,:)); cntr = [cntr ; cntr(1,:)]; end
 end
 
 function showClips(fidx, cntr, kw, crns, flt, shft, mpd, ncrns)
-%% showClippers
+%% showClip:
 %
 set(0, 'CurrentFigure', fidx);
 

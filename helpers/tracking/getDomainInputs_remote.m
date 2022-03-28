@@ -1,25 +1,24 @@
-function [gmid , gsrc , hsrc] = getDomainInputs_remote(simg, uimg, lmsk, gbox, ubox, lbox, toFlip, bpredict, zpredict, cpredict, mline, varargin)
+function [gmid , gsrc , hsrc] = getDomainInputs_remote(simg, uimg, lmsk, gbox, ubox, lbox, toFlip, varargin)
 %% getDomainInputs_remote:
 %
 %
 % Usage:
-%   [gmid , gimg , gsrc , hsrc] = getDomainInputs_remote(g, hidx, frm, ...
-%       toFlip, bpredict, zpredict, cpredict, mline, varargin)
+%   [gmid , gimg , gsrc , hsrc] = getDomainInputs_remote(simg, uimg, lmsk, ...
+%       gbox, ubox, lbox, toFlip, mline, varargin)
 %
 % Input:
 %   g:
 %   hidx:
 %   frm:
 %   toFlip:
-%   bpredict:
-%   zpredict:
-%   cpredict:
-%   mline:
-%   varargin:
+%   varargin: various options
+%       bpredict:
+%       zpredict:
+%       cpredict:
+%       mline:
 %
 % Output:
 %   gmid:
-%   gimg:
 %   gsrc:
 %   hsrc:
 %
@@ -39,13 +38,13 @@ if isempty(hcupp)
 end
 
 % Lower regions
-if ~isempty(lmsk)
-    [~ , hclow] = extractContour(lmsk, npts, init, creq);
-    hclow       = [smooth(hclow(:,1), smth) , smooth(hclow(:,2), smth)];
-    hclow       = raw2clipped(hclow, mth, 4, slens, fidx);
-    hmlow       = mline(hclow);
-else
-    [hclow , hmlow] = deal([]);
+if isempty(hclow)
+    if ~isempty(lmsk)
+        [hclow , hmlow] = mask2clipped(lmsk, ...
+            dsz, npts, init, creq, mth, smth, slens, fidx);
+    else
+        [hclow , hmlow] = deal([]);
+    end
 end
 
 % ---------------------------------------------------------------------------- %
@@ -76,17 +75,24 @@ end
 function args = parseInputs(varargin)
 %% Parse input parameters for Constructor method
 p = inputParser;
+p.addOptional('bpredict', []);
+p.addOptional('zpredict', []);
+p.addOptional('cpredict', []);
+p.addOptional('mline', []);
+p.addOptional('dsz', 3);
 p.addOptional('npts', 210);
 p.addOptional('init', 'alt');
 p.addOptional('creq', 'Normalize');
+p.addOptional('mth', 1);
+p.addOptional('smth', 1);
 p.addOptional('slens', [53 , 52 , 53 , 51]);
 p.addOptional('slen', 51);
 p.addOptional('msz', 50);
 p.addOptional('fidx', 0);
-p.addOptional('smth', 1);
-p.addOptional('mth', 2);
 p.addOptional('hcupp', []);
 p.addOptional('hmupp', []);
+p.addOptional('hclow', []);
+p.addOptional('hmlow', []);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

@@ -160,6 +160,12 @@ classdef Hypocotyl < handle
             if nargin < 5; flp = 0;                                     end
             if nargin < 6; buf = 0;                                     end
 
+            if isempty(frm); [dat , fmsk] = deal([]); return; end            
+            if strcmpi(frm, ':')
+                frm = obj.getFrame('b') : obj.getFrame('d'); 
+            end
+            if size(frm,1) > size(frm,2); frm = frm'; end 
+
             % Get full image
             sclsz = obj.Parent.getScaleSize;
             fimg  = obj.Parent.getImage(frm, req);

@@ -18,7 +18,7 @@ function [fa , tpt] = domainFinder(isrc, itrg, msrc, mtrg, psrc, varargin)
 %   G) Map source to target with best corellation score
 %
 % Usage:
-%   [nopt , sopt , scorr , S , T] = domainFinder( ...
+%   [fa , tpt]] = domainFinder( ...
 %       isrc, itrg, msrc, mtrg, nsrc, varargin)
 %
 % Input:
@@ -29,11 +29,8 @@ function [fa , tpt] = domainFinder(isrc, itrg, msrc, mtrg, psrc, varargin)
 %   psrc: percentage along source midline
 %
 % Output:
-%   nopt: optimal matching index on target midline
-%   sopt: optimal stretch value for source domain
-%   scorr: corellation matrix comparing stretched source with target image
-%   S: stretched source images and domains
-%   T: target images and domains
+%   fa: [tracked percentage , stretch value]
+%   tpt: tracked coordinate
 %
 
 %% Parse inputs, Load models, Separate sets
@@ -58,8 +55,8 @@ zsrc = [zs(:,1:2,3) , zs(:,1:2,1) , zs(:,1:2,2)];
 vsrc = zsrc(1:2);
 
 % Sample source image to get source domain
-[~ , ~ , dsrc]  = sampleAtDomain(isrc, zsrc, scl, rdom, dsz);
-xdom            = [(dsrc(1:2,:))' - vsrc , ones(size(dsrc,2),1)];
+[~ , ~ , dsrc] = sampleAtDomain(isrc, zsrc, scl, rdom, dsz);
+xdom           = [(dsrc(1:2,:))' - vsrc , ones(size(dsrc,2),1)];
 
 % Function handles for stretching, sampling, and grading
 S      = makeOperations;
@@ -74,9 +71,33 @@ n    = 1000;
 alen = ws.calculatelength(psrc, 1, n);
 
 if ~isempty(ppct)
-    % Set lower bound to the distance to previous percentage
+    % Set lower bound to the distance to previous percentage + delta
+    % UPDATE [03.11.2022]
+    %   Dynamically set delta (dlt) based on distance from tip. This would limit
+    %   the size of jumps along the bottom - where less differentiation is
+    %   expected - and larger jumps around the hook - where we expect more cell
+    %   division events to be occur.
     blen = ws.calculatelength(ppct, 1, n);
-    dlt  = blen - alen;
+
+    %     switch psrc
+    %         case psrc >= 0.7 & psrc < 1.0
+    %             pdlt = 0.5;
+    %             fprintf('here');
+    %         case psrc >= 0.4 & psrc < 0.7
+    %             pdlt = 1.0;
+    %         case psrc > 0    & psrc < 0.4
+    %             pdlt = 2.0;
+    %     end
+
+    if     psrc >= 0.7 && psrc < 1.0; pdlt = 2.0;
+    elseif psrc >= 0.4 && psrc < 0.7; pdlt = 1.5;
+    elseif psrc > 0    && psrc < 0.4; pdlt = 1.0;
+    else;                             pdlt = 1.5;
+    end
+
+    dlt  = (blen - alen) / pdlt;
+else
+    ppct = 0;
 end
 
 ub = [wt.getApexLength(alen) , slen];
@@ -86,9 +107,52 @@ lb = [wt.getApexLength(alen + dlt) , 1];
 % fa  = fminsearch(dgrade(isrc, ws, itrg, wt, psrc), [psrc , 1]);
 % fa  = patternsearch(dgrade(isrc, ws, itrg, wt, psrc), [psrc , 1]);
 options = optimset('Display', 'off');
-fa  = patternsearch(dgrade(isrc, ws, itrg, wt, psrc), [psrc , 1], ...
+fa      = patternsearch(dgrade(isrc, ws, itrg, wt, psrc), [psrc , 1], ...
     [], [], [], [], lb, ub, options);
-tpt = ws.evalCurve(fa(1), 'normalized');
+tpt     = wt.evalCurve(fa(1), 'normalized');
+
+%%
+if fidx
+    if ~psrc
+        figclr(fidx);
+        myimagesc(itrg);
+        hold on;
+        plt(msrc, 'b-', 2);
+        plt(mtrg, 'r-', 2);
+    end
+
+    plt(ws.evalCurve(ub(1), 'normalized'), 'bo', 15);
+    plt(wt.evalCurve(ub(1), 'normalized'), 'bo', 15);
+
+    plt(ws.evalCurve(psrc, 'normalized'), 'r.', 25);
+    plt(wt.evalCurve(psrc, 'normalized'), 'r.', 25);
+
+    plt(ws.evalCurve(lb(1), 'normalized'), 'co', 10);
+    plt(wt.evalCurve(lb(1), 'normalized'), 'co', 10);
+
+    plt(ws.evalCurve(ppct, 'normalized'), 'g.', 15);
+    plt(wt.evalCurve(ppct, 'normalized'), 'g.', 15);
+
+    if ~psrc
+        dsrc = drawellipse('Center', ws.evalCurve(psrc, 'normalized'), ...
+            'SemiAxes', [15 , 15], 'Color', 'r');
+        dtrg = drawellipse('Center', wt.evalCurve(fa(1), 'normalized'), ...
+            'SemiAxes', [15 , (15 * fa(2))], 'Color', 'g');
+    else
+        chl  = arrayfun(@(x) x.Children, gca, 'UniformOutput', 0);
+        chls = arrayfun(@(x) class(x), chl{1}, 'UniformOutput', 0);
+        didx = cellfun(@(x) contains(x, 'Ellipse'), chls);
+        dd   = chl{1}(didx);
+        dtrg = dd(1);
+        dsrc = dd(2);
+
+        dsrc.Center   = ws.evalCurve(psrc, 'normalized');
+        dsrc.SemiAxes = [15 , 15];
+        dtrg.Center   = wt.evalCurve(fa(1), 'normalized');
+        dtrg.SemiAxes = [15 , (15 * fa(2))];
+    end
+    drawnow;
+end
 end
 
 function args = parseInputs(varargin)
@@ -103,7 +167,8 @@ p.addOptional('spts', 20);   % Interpolation size for stretch array
 p.addOptional('symin', 0.9); % Min stretch value
 p.addOptional('symax', 1.2); % Max stretch value
 p.addOptional('ppct', []);   % Percentage for previous point
-p.addOptional('dlt', 20);    % Default distance to set lower bound 
+p.addOptional('dlt', 20);    % Default distance to set lower bound above point
+p.addOptional('fidx', 0);    % Default distance to set lower bound
 % p.addOptional('psrc', 0.0);  % Max stretch value
 
 % Parse arguments and output into structure

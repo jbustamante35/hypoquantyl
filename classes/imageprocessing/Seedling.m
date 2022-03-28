@@ -79,8 +79,8 @@ classdef Seedling < handle
             %   6) Collisions
 
             % Get index of good frames, then remove bad frames
-            good_frames    = runQualityChecks(obj, obj.TESTS2RUN);
-            obj.Lifetime   = numel(good_frames);
+            good_frames  = runQualityChecks(obj, obj.TESTS2RUN);
+            obj.Lifetime = numel(good_frames);
             obj.setFrame(min(good_frames), 'b');
             obj.setFrame(max(good_frames), 'd');
             obj.GoodFrames = good_frames;
@@ -268,6 +268,10 @@ classdef Seedling < handle
             if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
             if nargin < 3; req = 'gray';                                end
 
+            if strcmpi(frm, ':')
+                frm = obj.getFrame('b') : obj.getFrame('d'); 
+            end
+            
             try
                 %                 rng = obj.getFrame('b') : obj.getFrame('d');
                 %                 frm = rng(frm);

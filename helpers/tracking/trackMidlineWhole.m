@@ -1,9 +1,9 @@
-function [fa , tpt] = trackMidlineWhole(gimgs, gmids, ipcts, ifrm, ffrm, skp, fidx, sav)
+function [fa , tpt , fnm] = trackMidlineWhole(gimgs, gmids, ipcts, ifrm, ffrm, skp, fidx, sav)
 %% trackMidlineWhole: Follow all points through all frames
 %
 %
 % Usage:
-%   [fa , tpt] = trackMidlineWhole(gimgs, gmids, ...
+%   [fa , tpt , fnm] = trackMidlineWhole(gimgs, gmids, ...
 %       ipcts, ifrm, ffrm, skp, fidx, sav)
 %
 % Input:
@@ -14,11 +14,12 @@ function [fa , tpt] = trackMidlineWhole(gimgs, gmids, ipcts, ifrm, ffrm, skp, fi
 %   ffrm:
 %   skp:
 %   fidx:
-%   sav
+%   sav:
 %
 % Output:
 %   fa:
 %   tpt:
+%   fnm:
 %
 
 %%
@@ -32,7 +33,6 @@ if nargin < 8; sav   = 0;                              end
 %
 wsrcs = ifrm : skp : ffrm; % With skipping
 if wsrcs(end) ~= ffrm; wsrcs = [wsrcs , ffrm]; end
-wtrgs = wsrcs(1 : end - 1) + skp;
 
 %
 isrcs = gimgs(wsrcs);
@@ -69,8 +69,8 @@ for frm = wsrcs
         t = tic;
         fprintf('Finding matching point for point %.04f on frames %d and %d...', ...
             ipct, fsrc, ftrg);
-        [fa{frm,pct} , tpt{frm,pct}] = domainFinder( ...
-            isrcs{frm}, itrgs{frm}, msrcs{frm}, mtrgs{frm}, ipct, 'ppct', ppct);
+        [fa{frm,pct} , tpt{frm,pct}] = domainFinder(isrcs{frm}, itrgs{frm}, ...
+            msrcs{frm}, mtrgs{frm}, ipct, 'ppct', ppct, 'fidx', fidx);
         fprintf('DONE! (target at %.04f) [%.03f sec]\n', ...
             fa{frm,pct}(1), toc(t));
     end
@@ -90,8 +90,8 @@ end
 function fnm = showTrackingFrame(tsrcs, fa, ws, wt, npcts, isrc, msrc, mtrg, fsrc, ftrg, fidx, sav)
 %% showTrackingFrame:
 %
-if nargin < 11; fidx = 1; end;
-if nargin < 12; sav  = 0; end;
+if nargin < 11; fidx = 1; end
+if nargin < 12; sav  = 0; end
 
 ttrgs = fa(:,1);
 psrcs = ws.evalCurve(tsrcs, 'normalized');
