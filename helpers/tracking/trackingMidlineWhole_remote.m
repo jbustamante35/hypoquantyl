@@ -39,15 +39,16 @@ catch err
     err.getReport;
 end
 
-%% Output structure
+%% Output
 info = struct('GenotypeName', GenotypeName, 'GenotypeIndex', GenotypeIndex, ...
     'SeedlingIndex', SeedlingIndex, 'Frames', Frames, 'TPercents', ipcts);
 out  = struct('info', info, 'fa', fa, 'tpt', tpt, ...
     'err', err, 'isgood', isgood);
 
 if sav
-    mkdir('output');
-    outnm = sprintf('output/%s_results_tracking_whole', tdate);
+    if ~isfolder('output'); mkdir('output'); end
+    outnm = sprintf('output/%s_results_%s_genotype%02d_seedling%d_%02dframes_trackingwhole', ...
+        tdate, GenotypeName, GenotypeIndex, SeedlingIndex, Frames);
     save(outnm, '-v7.3', 'out');
 end
 end
@@ -71,7 +72,7 @@ p.addOptional('Frames', 0);
 % Visualization Options
 p.addOptional('dbug', 0);
 p.addOptional('fidx', 0);
-p.addOptional('sav', 0);
+p.addOptional('sav', 1);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

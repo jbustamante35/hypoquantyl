@@ -63,7 +63,6 @@ if split2stitch
     end
 
     Zrevs = [mrevs , vrevs];
-
 else
     % Determine size of dataset and number of segments
     if iscell(img)
@@ -84,7 +83,6 @@ else
     % Unfold and Reshape Z-Vector from prepped to raw form and add normal vectors
     Zprep = pcaProject(Zscrs, pz.EigVecs, pz.MeanVals, 'scr2sim');
     Zrevs = zVectorConversion(Zprep, nsegs, ncrvs, 'rev');
-
 end
 
 %% Determine if final Z-Vector should be in rotations or tangent-normals
@@ -97,20 +95,15 @@ else
 end
 
 %% [TODO] Add B-Vector
-
+if bvec
+    if size(bvec,2) ~= size(Znrms,2); bvec = [bvec , 0 , 0 , 0 , 0]; end
+    Znrms = Znrms + bvec;
+end
 
 %% Convert outputs to double
-if ~strcmpi(Znrms, 'double')
-    Znrms = double(Znrms);
-end
-
-if ~strcmpi(Zscrs, 'double')
-    Zscrs = double(Zscrs);
-end
+if ~strcmpi(Znrms, 'double'); Znrms = double(Znrms); end
+if ~strcmpi(Zscrs, 'double'); Zscrs = double(Zscrs); end
 
 % Return Z-Vector PC scores instead of vector
-if alt_return
-    Znrms = Zscrs;
-end
-
+if alt_return; Zalt = Znrms; Znrms = Zscrs; Zscrs = Zalt; end
 end

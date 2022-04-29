@@ -30,12 +30,14 @@ ngens = numel(gens);
 [GMIDS , GSRCS , HSRCS] = deal(cell(size(HOUT)));
 for gidx = 1 : ngens
     % Extract genotype data
-    hout  = cell2mat(HOUT{gidx});
-    g     = gens(gidx);
-    gnm   = g.GenotypeName;
-    sgud  = arrayfun(@(x) x.info.SeedlingIndex, hout(1,:));
-    s     = g.getSeedling(sgud);
-    h     = arrayfun(@(x) x.MyHypocotyl, s);
+    hout = HOUT{gidx};
+    if iscell(hout); hout  = cell2mat(hout); end
+
+    g    = gens(gidx);
+    gnm  = g.GenotypeName;
+    sgud = arrayfun(@(x) x.info.SeedlingIndex, hout(1,:));
+    s    = g.getSeedling(sgud);
+    h    = arrayfun(@(x) x.MyHypocotyl, s);
 
     [nhyps , nsdls]         = size(hout);
     [gmids , gsrcs , hsrcs] = deal(cell(nhyps,nsdls));

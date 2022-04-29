@@ -252,17 +252,20 @@ classdef Experiment < handle
             end
         end
 
-        function S = combineSeedlings(obj, asCell)
+        function S = combineSeedlings(obj, asCell, getGood)
             %% Combine all Seedlings into single object array
-            if nargin < 2; asCell = 0; end % Output as array (0) or cell (1)
+            if nargin < 2; asCell  = 0; end % Output as array (0) or cell (1)
+            if nargin < 3; getGood = 0; end
 
             G = obj.combineGenotypes(asCell);
             if asCell
                 % Split into cell array by Genotype
-                S = cellfun(@(x) x.getSeedling, G, 'UniformOutput', 0);
+                S = cellfun(@(x) x.getSeedling(':', getGood), ...
+                    G, 'UniformOutput', 0);
             else
                 % Combine as one array
-                S = arrayfun(@(x) x.getSeedling, G, 'UniformOutput', 0);
+                S = arrayfun(@(x) x.getSeedling(':', getGood), ...
+                    G, 'UniformOutput', 0);
                 S = cat(1, S{:});
             end
         end

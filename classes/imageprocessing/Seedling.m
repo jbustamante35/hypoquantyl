@@ -14,6 +14,7 @@ classdef Seedling < handle
         Lifetime
         Coordinates
         MyHypocotyl
+        Status
     end
 
     properties (Access = private)
@@ -25,6 +26,7 @@ classdef Seedling < handle
         Image
         PData
         Contour
+        RawName
         SCALESIZE    = [101 , 101]
         %         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'Centroid', 'WeightedCentroid', 'Orientation'};
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
@@ -156,10 +158,15 @@ classdef Seedling < handle
 
     %% ------------------------- Helper Methods ---------------------------- %%
     methods (Access = public) %% Various methods for this class
-        function obj = setSeedlingName(obj, sn)
+        function obj = setSeedlingName(obj, sn, setRaw)
             %% Set name for Seedling
-            %             obj.SeedlingName = string(sn);
-            obj.SeedlingName = char(sn);
+            if nargin < 3; setRaw = 0; end
+            
+            if ~setRaw
+                obj.SeedlingName = char(sn);
+            else
+                obj.RawName = char(sn);
+            end
         end
 
         function sn = getSeedlingName(obj)
@@ -392,6 +399,23 @@ classdef Seedling < handle
                 fprintf(2, 'Error: input must be ''b'' or ''d''\n');
                 frm = [];
                 return;
+            end
+        end
+
+        function toggleStatus(obj, st)
+            %% Toggle or set Status to Show or Hide
+            if nargin < 2; st = []; end
+
+            if isempty(st)
+                % Toggle from current
+                if obj.Status
+                    obj.Status = 0;
+                else
+                    obj.Status = 1;
+                end
+            else
+                % Set to any status
+                obj.Status = st;
             end
         end
 

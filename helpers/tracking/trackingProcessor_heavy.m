@@ -1,9 +1,9 @@
-function [pout , pstat , pinn] = trackingProcessor(fa, tpt, w, ipcts, varargin)
-%% trackingProcessor: process tracking data
+function [pout , pstat , pinn] = trackingProcessor_heavy(fa, tpt, w, ipcts, varargin)
+%% trackingProcessor_heavy: heavier alternative to process tracking data
 %
 %
 % Usage:
-%   [pout , pstat , pinn] = trackingProcessor(fa, tpt, w, ipcts, varargin)
+%   [pout , pstat , pinn] = trackingProcessor_heavy(fa, tpt, w, ipcts, varargin)
 %
 % Input:
 %   fa:
