@@ -35,7 +35,6 @@ nprf = prf;
 
 % Output fixed profile
 nprf(cat(1, ridx{:})) = cat(2, pfix{:});
-
 end
 
 % If I want to switch to single-fix

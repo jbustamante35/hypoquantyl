@@ -11,9 +11,12 @@ function out = segmentUpperHypocotyl(img, varargin)
 %       [ -- see below for full list of options -- ]
 %
 % Output:
-%   info: metadata about input image
-%   init: results from initial guess
-%   opt: results from optimization
+%   out: segmentation results structure
+%       info: metadata about input image
+%       init: results from initial guess
+%       opt: results from optimization
+%       err: error structure
+%       isgood: success (1) or error (0) from upper-lower segmentation
 %
 
 try
@@ -24,27 +27,37 @@ try
     end
 
     % Convert Network to MyNN
-    if strcmpi(class(Nd.N1), 'network')
+    ndclass = class(Nd.N1);
+    fprintf('\n\nEvaluating D-Vector Network Model\nPre-Nd class == %s | ', ...
+        ndclass);
+    if strcmpi(ndclass, 'network')
         if path2subs
             % Or draw from stored versions
+            fprintf('Substituting to MyNN from %s | ', ndclass);
             Nd = substituteNd(Nd, path2subs);
         else
             % Generate new set
+            fprintf('Converting to MyNN | ');
             Nd = MyNN.fromStruct(Nd);
         end
+
+        ndclass = class(Nd.N1);
+    else
+        fprintf('No changes needed | ');
     end
+    fprintf('Nd class == %s\n\n', ndclass);
 
     %% Function Handles
-    [bpredict , ~ , zpredict , zcnv, cpredict , mline , msample , mcnv , mgrade , ...
-        sopt , ~] = loadSegmentationFunctions(pz, pdp, pdx, pdy, pdw, pm, ...
-        Nz, Nd, Nb, 'seg_lengths', seg_lengths, 'toFix', toFix, 'bwid', bwid, ...
-        'psz', psz, 'nopts', nopts, 'tolfun', tolfun, 'tolx', tolx, 'z2c', z2c, ...
-        'par', par, 'vis', vis);
+    [bpredict , ~ , zpredict , zcnv, cpredict , mline , msample , mcnv , ...
+        mgrade , sopt , ~] = loadSegmentationFunctions(pz, pdp, pdx, pdy, pdw, ...
+        pm, Nz, Nd, Nb, 'seg_lengths', seg_lengths, 'toFix', toFix, ...
+        'bwid', bwid, 'psz', psz, 'nopts', nopts, 'tolfun', tolfun, ...
+        'tolx', tolx, 'z2c', z2c, 'par', par, 'vis', vis);
 
-    % ---------------------------------------------------------------------------- %
+    % ------------------------------------------------------------------------ %
     %% Evaluate 1st frame and get initial guess
     tE = tic;
-    fprintf('Evaluating first frames | ');
+    fprintf('Evaluating direction | ');
 
     [toFlip , eout] = evaluateDirection(img, bpredict, zpredict, ...
         cpredict, mline, msample, mcnv, mgrade, fidx, sav);
@@ -58,9 +71,9 @@ try
     ginit = eout.gpre;
     hkeep = eout.keep;
 
-    fprintf('Evaluated first frame - keep %s [%.03f sec]\n\n', hkeep, toc(tE));
+    fprintf('Evaluated direction - keep %s [%.03f sec]\n\n', hkeep, toc(tE));
 
-    % ---------------------------------------------------------------------------- %
+    % ------------------------------------------------------------------------ %
     %% Run Optimizer
     %     [copt , mopt , zopt , bopt , gopt] = deal([]); % Empty if no optimization
     if nopts
@@ -87,7 +100,7 @@ try
         gopt = ginit;
     end
 
-    % ---------------------------------------------------------------------------- %
+    % ------------------------------------------------------------------------ %
     %% Flip Contour and Midline if using flipped image
     if toFlip
         % Flip Z-Vectors, Contours, Midlines
@@ -111,7 +124,7 @@ try
         bopt  = bflps{2};
     end
 
-    % ---------------------------------------------------------------------------- %
+    % ------------------------------------------------------------------------ %
     %% Output if good
     init   = struct('z', zinit, 'c', cinit, 'm', minit, 'b', binit, 'g', ginit); % Initial Guesses
     opt    = struct('z', zopt,  'c', copt,  'm', mopt,  'b', bopt,  'g', gopt);  % Optimized

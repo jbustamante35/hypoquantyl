@@ -25,7 +25,7 @@ classdef Genotype < handle
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
     end
 
-    %% ------------------------- Primary Methods --------------------------- %%
+    %% ------------------------- Primary Methods ---------------------------- %%
     methods (Access = public)
         %% Constructor and main methods
         function obj = Genotype(varargin)
@@ -139,6 +139,43 @@ classdef Genotype < handle
             obj.RawSeedlings = [];
         end
 
+        function HideBadSeedlings(obj, nfrms, rev)
+            %% Hide Seedlings with too few frames
+            if nargin < 2; nfrms = obj.TotalImages; end
+            if nargin < 3; rev   = 0;               end
+
+            %
+            sdls   = obj.Seedlings;
+            isGood = logical(arrayfun(@(x) x.Lifetime == nfrms, sdls));
+
+            %
+            if isempty(obj.RawSeedlings)
+                s    = arrayfun(@(x) x, sdls, 'UniformOutput', 0);
+                snms = cellfun(@(x) x.SeedlingName, s, 'UniformOutput', 0);
+                cellfun(@(x,y) x.setSeedlingName(y, 1), s, snms);
+                arrayfun(@(x,y) x.toggleStatus(y), sdls, isGood);
+                obj.RawSeedlings = sdls;
+            end
+
+            %
+            gdls  = arrayfun(@(x) x, sdls(isGood), 'UniformOutput', 0);
+            ngood = numel(gdls);
+            sidxs = 1 : ngood;
+            gnms  = arrayfun(@(x) sprintf('Seedling_{%d}', x), ...
+                sidxs', 'UniformOutput', 0);
+            cellfun(@(x,y) x.setSeedlingName(y), gdls, gnms);
+
+            %
+            if rev
+                obj.Seedlings = obj.RawSeedlings;
+            else
+                obj.Seedlings = cat(1, gdls{:});
+            end
+
+            %
+            obj.NumberOfSeedlings = numel(obj.Seedlings);
+        end
+
         function hyps = FindHypocotylAllSeedlings(obj, v)
             %% Extract Hypocotyl from all Seedlings from this Genotype
             if nargin < 2; v = 0; end % Verbosity
@@ -149,7 +186,7 @@ classdef Genotype < handle
                     [~ , sprA , sprB] = jprintf(' ', 0, 0, 80);
                     gnm               = obj.GenotypeName;
                     ngen              = obj.Parent.NumberOfGenotypes;
-                    [~ , gidx]        = obj.Parent.search4Genotype(gnm);                    
+                    [~ , gidx]        = obj.Parent.search4Genotype(gnm);
                     fprintf('\n%s\n%s [%02d of %02d] [%d Seedlings]\n%s\n', ...
                         sprA, gnm, gidx, ngen, obj.NumberOfSeedlings, sprB);
                 end
@@ -253,7 +290,7 @@ classdef Genotype < handle
             if nargin < 3; req = 'gray';              end
 
             if strcmpi(idx, ':')
-                idx = obj.getFrame('b') : obj.getFrame('d'); 
+                idx = obj.getFrame('b') : obj.getFrame('d');
             end
 
             % Grayscale image at index [can be a range of images]
@@ -376,14 +413,19 @@ classdef Genotype < handle
             end
         end
 
-        function s = getSeedling(obj, num)
+        function sdl = getSeedling(obj, num, getGood)
             %% Returns indexed seedling at desired index
             try
-                if nargin < 2
-                    num = ':';
-                end
+                if nargin < 2; num     = ':'; end
+                if nargin < 3; getGood = 1; end
 
-                s = obj.Seedlings(num);
+                sdl = obj.Seedlings(num);
+
+                % Get only good Seedlings
+                if getGood
+                    gud = logical(arrayfun(@(x) x.Status, sdl));
+                    sdl = sdl(gud);
+                end
             catch
                 fprintf(2, 'No Seedling at index %d \n', num);
             end

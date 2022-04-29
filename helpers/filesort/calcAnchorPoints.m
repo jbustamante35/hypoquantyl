@@ -18,7 +18,11 @@ function apts = calcAnchorPoints(pList, ln)
 
 %% Filter pixel coordinate range to limit search to upper region only
 apts   = zeros(4, 2);
-rowRng = pList(pList(:,2) <= ln, :);
+% rowRng = pList(pList(:,2) <= ln, :);
+
+minIdx = min(pList);
+ytop   = minIdx(2);
+rowRng = pList(pList(:,2) <= ytop + ln, :);
 
 %% Make separate Helper function for all 4 anchor points
 % Point A: highest pixel (minimum row coordinate)
@@ -36,5 +40,4 @@ apts(3,:) = ceil([min(mincol(:,1)) median(mincol(:,2))]);
 % Point D: right-most pixel
 maxcol    = rowRng(rowRng(:,1) == max(rowRng(:,1)), :);
 apts(4,:) = ceil([max(maxcol(:,1)) median(maxcol(:,2))]);
-
 end

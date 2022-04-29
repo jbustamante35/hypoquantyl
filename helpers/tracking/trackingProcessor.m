@@ -1,4 +1,4 @@
-function [pout , pstat , pinn] = trackingProcessor2(fa, tpt, w, ipcts, varargin)
+function [pout , pstat , pinn] = trackingProcessor(fa, tpt, w, ipcts, varargin)
 %% trackingProcessor: process tracking data
 %
 %
@@ -103,14 +103,14 @@ plen = cellfun(@(x) flipud(x'), plen, 'UniformOutput', 0);
 prep = cellfun(@(x) flipud(x'), prep, 'UniformOutput', 0);
 vlen = cellfun(@(x) flipud(x'), vlen, 'UniformOutput', 0);
 vrep = cellfun(@(x) flipud(x'), vrep, 'UniformOutput', 0);
-llen          = cellfun(@(x) interpolateGrid(x, ftrp, ltrp, smth), ...
-    plen, 'UniformOutput', 0);
-lrep          = cellfun(@(x) interpolateGrid(x, ftrp, ltrp, smth), ...
-    prep, 'UniformOutput', 0);
-[elen , tlen] = cellfun(@(x) measureREGR(x, smth, ftrp, ltrp), ...
-    vlen, 'UniformOutput', 0);
-[erep , trep] = cellfun(@(x) measureREGR(x, smth, ftrp, ltrp), ...
-    vrep, 'UniformOutput', 0);
+llen          = cellfun(@(x) interpolateGrid(x, ...
+    'xtrp', ftrp, 'ytrp', ltrp, 'fsmth', smth), plen, 'UniformOutput', 0);
+lrep          = cellfun(@(x) interpolateGrid(x, ...
+    'xtrp', ftrp, 'ytrp', ltrp, 'fsmth', smth), prep, 'UniformOutput', 0);
+[elen , tlen] = cellfun(@(x) measureREGR(x, ...
+    'xtrp', ftrp, 'ytrp', ltrp, 'fsmth', smth), vlen, 'UniformOutput', 0);
+[erep , trep] = cellfun(@(x) measureREGR(x, ...
+    'xtrp', ftrp, 'ytrp', ltrp, 'fsmth', smth), vrep, 'UniformOutput', 0);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Store and save results
@@ -187,8 +187,8 @@ function [nidxs , nchk] = findBadArclengths(Ls, nwin, lthrsh)
 if nargin < 3; lthrsh = 10; end % Threshold for arclength drop
 
 % Find problem frames
-nchk   = true(1, nwin);
-nchks  = numel(nchk) - 1;
+nchk  = true(1, nwin);
+nchks = numel(nchk) - 1;
 for ncur = 1 : nchks
     % Check if comparison should be made
     if nchk(ncur)
@@ -207,7 +207,6 @@ for ncur = 1 : nchks
 
                 % Stop if at last frame
                 if nnxt > nchks; break; end
-
                 lnxt = Ls(nnxt);
                 lchk = lcur < lnxt;
             end
@@ -220,7 +219,7 @@ nchk(end) = true; % Last frame is always good
 nidxs     = find(nchk);
 rr        = regionprops(nchk, 'PixelIdxList');
 for e = 1 : numel(rr)
-    tmpi           = rr(e).PixelIdxList(1);
+    tmpi = rr(e).PixelIdxList(1);
     if tmpi > 1; nchk(tmpi - 1) = true; end
 end
 end
