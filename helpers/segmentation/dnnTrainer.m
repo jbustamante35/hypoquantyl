@@ -207,8 +207,7 @@ for itr = 1 : nitrs
     % Done with the iteration
     fprintf('DONE! [%.02f sec]\n%s\n', toc(t), sprB);
     fprintf('Ran Iteration %d of %d: %.02f sec\n%s\n', ...
-        itr, nitrs, toc(tItr), sprA);
-    
+        itr, nitrs, toc(tItr), sprA);   
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -252,5 +251,4 @@ if sav
         tdate, nitrs, fmth, ncrvs);
     save(dnm, '-v7.3', 'TN');
 end
-
 end

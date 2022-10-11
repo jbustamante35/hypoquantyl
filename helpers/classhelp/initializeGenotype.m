@@ -34,6 +34,8 @@ Imgs = imageDatastore([ex.ExperimentPath , filesep,  gName], ...
     'IncludeSubfolders', add_sub_dirs, 'FileExtensions', image_extension);
 genotype.storeImages(Imgs);
 
+% Set Segmentation Defaults
+genotype.setSegDefaults;
 end
 
 function args = parseInputs(varargin)

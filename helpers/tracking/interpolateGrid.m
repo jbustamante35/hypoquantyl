@@ -27,8 +27,8 @@ if isempty(xtrp); xtrp = xin; end
 if isempty(ytrp); ytrp = yin; end
 
 % Generate interpolated spaces
-[pt , pu]   = ndgrid(1 : xin, linspace(0, 1, yin));
-[gt , gu]   = ndgrid(linspace(1, xin, xtrp), linspace(0, 1, ytrp));
+[pt , pu] = ndgrid(1 : xin, linspace(0, 1, yin));
+[gt , gu] = ndgrid(linspace(1, xin, xtrp), linspace(0, 1, ytrp));
 
 % Smoothing if specified
 if fsmth; gin = imfilter(gin, fspecial(smooth_shape, fsmth), 'replicate'); end

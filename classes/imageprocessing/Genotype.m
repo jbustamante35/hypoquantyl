@@ -130,6 +130,7 @@ classdef Genotype < handle
             sdls                  = obj.filterSeedlings(rs, ns, v, mth);
             obj.NumberOfSeedlings = numel(sdls);
             arrayfun(@(x) x.RemoveBadFrames, sdls, 'UniformOutput', 0);
+            arrayfun(@(x) x.toggleStatus(1), sdls);
 
             if v; fprintf('Finished Aligning! [%.03f sec]\n\n', toc(t)); end
         end
@@ -308,7 +309,9 @@ classdef Genotype < handle
                         end
                     case 'bw'
                         % Segment to binary mask(s)
-                        obj.SegDefaults = obj.setSegDefaults;
+                        if isempty(obj.SegDefaults)
+                            obj.SegDefaults = obj.setSegDefaults;
+                        end
 
                         smth = obj.SegDefaults.SmoothFilter;
                         sz   = obj.SegDefaults.MinMaxObject;
@@ -473,6 +476,22 @@ classdef Genotype < handle
                 fprintf(2, 'Error setting CropBox\n');
                 [ubox , lbox] = deal([0 , 0 , 0 , 0]);
             end
+        end
+
+        function setSegDefaults(obj, smth, sz, sens, mth)
+            %% Set default segmentation parameters
+            if nargin < 2
+                smth = 0;
+                sz   = obj.MASKSIZE;
+%                 sens = 0.5;
+                sens = 'dark';
+                mth  = 2;
+            end
+
+            obj.SegDefaults.SmoothFilter = smth;
+            obj.SegDefaults.MinMaxObject = sz;
+            obj.SegDefaults.Sensitivity  = sens;
+            obj.SegDefaults.Method       = mth;
         end
 
         function setProperty(obj, req, val)
@@ -650,8 +669,10 @@ classdef Genotype < handle
                     clst = [lidx' , ii' , jj' , CRDS , nidxs'];
 
                     %% Detect collisions and remove both guilty parties
-                    strt = cell2mat(cellfun(@(x) x.Coordinates, ...
-                        rs(1,:)', 'UniformOutput', 0));
+%                     strt = cell2mat(cellfun(@(x) x.Coordinates, ...
+%                         rs(1,:)', 'UniformOutput', 0));
+                    strt = cell2mat(arrayfun(@(x) x.Coordinates, ...
+                        cat(1, rs{1,:}), 'UniformOutput', 0));
                     uq   = unique(clst(:,end));
                     rm   = [];
                     for e = 1 : numel(uq)
@@ -730,21 +751,6 @@ classdef Genotype < handle
 
             if v; fprintf('\n'); end
             obj.Seedlings = sdls;
-        end
-
-        function dflts = setSegDefaults(obj, smth, sz, sens, mth)
-            %% Set default segmentation parameters
-            if nargin < 2
-                smth = 0;
-                sz   = obj.MASKSIZE;
-                sens = 0.5;
-                mth  = 2;
-            end
-
-            dflts.SmoothFilter = smth;
-            dflts.MinMaxObject = sz;
-            dflts.Sensitivity  = sens;
-            dflts.Method       = mth;
         end
     end
 end

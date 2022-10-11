@@ -55,9 +55,8 @@ parfor frm = 1 : frms
         mpre = mpres{frm};
         [rcntrs{frm} , rmlines{frm}] = thumb2full(h, frm, cpre, mpre);
         fprintf('Finished Frame %02d of %02d [%.03f sec]\n', frm, frms, toc(t));
-    catch
+    catch       
         fprintf(2, 'Error with frame %02d [%.03f sec]\n', frm, toc(t));
     end
 end
-
 end

@@ -48,10 +48,11 @@ end
 uhyp = segmentUpperHypocotyl(uimg, 'Nb', Nb, 'Nz', Nz, 'Nd', Nd, 'pz', pz, ...
     'pdp', pdp, 'pdw', pdw, 'pdx', pdx, 'pdy', pdy, 'pm', pm, 'toFix', toFix, ...
     'bwid', bwid, 'seg_lengths', seg_lengths, 'nopts', nopts, 'sav', 0, ...
-    'par', par, 'vis', vis, 'GenotypeName', GenotypeName, ...
+    'par', par, 'vis', vis, 'fidx', fidx, 'GenotypeName', GenotypeName, ...
     'GenotypeIndex', GenotypeIndex, 'SeedlingIndex', SeedlingIndex, ...
-    'Frame', Frame);
+    'Frame', Frame, 'toFlip', toFlip);
 
+if isempty(lmsk); fprintf('\n\nLower mask empty\n\n'); end
 lhyp = segmentLowerHypocotyl(lmsk, 'seg_lengths', seg_lengths, 'sav', 0, ...
     'GenotypeName', GenotypeName, 'GenotypeIndex', GenotypeIndex, ...
     'SeedlingIndex', SeedlingIndex, 'Frame', Frame);
@@ -63,7 +64,7 @@ out = struct('info', uhyp.info, 'uhyp', uhyp, 'lhyp', lhyp, ...
 if sav
     if ~isfolder('output'); mkdir('output'); end
     outnm = sprintf('output/%s_results_%s_genotype%02d_seedling%d_frame%02d_segmentation', ...
-        tdate, GenotypeName, GenotypeIndex, SeedlingIndex, Frame);
+        edate, GenotypeName, GenotypeIndex, SeedlingIndex, Frame);
     save(outnm, '-v7.3', 'out');
 end
 end
@@ -92,8 +93,11 @@ p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
 
 % Miscellaneous Options
 p.addOptional('sav', 0);
-p.addOptional('vis', 0);
 p.addOptional('par', 0);
+p.addOptional('vis', 0);
+p.addOptional('fidx', 0);
+p.addOptional('edate', tdate);
+p.addOptional('toFlip', []);
 
 % Information Options
 p.addOptional('GenotypeName', 'genotype');

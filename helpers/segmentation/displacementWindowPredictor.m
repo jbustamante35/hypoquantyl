@@ -80,9 +80,7 @@ end
 
 % ---------------------------------------------------------------------------- %
 %% Get Z-Vector from image
-if vis > 1
-    t = tic;
-end
+if vis > 1; t = tic; end
 
 if isempty(z)
     if vis > 1; n = fprintf('Predicting Z-Vector from image'); end
@@ -237,11 +235,7 @@ for itr = 1 : nitrs
     switch vis
         case 2
             m = 5;
-            if mod(itr,m)
-                fprintf('.');
-            else
-                fprintf('%d|', itr);
-            end
+            if mod(itr,m); fprintf('.'); else; fprintf('%d|', itr); end
         case 3
             jprintf('', toc(t), 1, 80 - n);
 
@@ -267,10 +261,9 @@ if vis > 1
 end
 
 cpre = cpre(:,1:2);
+
 % Close contour if open
-if ~all(cpre(1,:) == cpre(end,:))
-    cpre = [cpre ; cpre(1,:)];
-end
+if ~all(cpre(1,:) == cpre(end,:)); cpre = [cpre ; cpre(1,:)]; end
 
 % Make Z-Vector and Z-Vector PC score from final contour
 zpre.final       = contour2corestructure(cpre, nsplt);
@@ -280,7 +273,7 @@ zpre.vector      = z;
 
 % Return requested variable [either contour or z-vector]
 if nargout == 1; cpre = eval(alt_return);        end
-if vis > 1;      jprintf('', toc(t), 1, 80 - n); end
+if vis > 1     ; jprintf('', toc(t), 1, 80 - n); end
 
 % ------------------------- Display Final Iterations ------------------------- %
 %% Show final iteration

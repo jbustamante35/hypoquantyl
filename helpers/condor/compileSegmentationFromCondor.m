@@ -61,10 +61,27 @@ for gidx = 1 : ngens
             sbox = s(sidx).getPData(hidx, 'BoundingBox');
 
             % Upper region
-            uimg   = h(sidx).getImage(hidx, 'gray', 'upper');
-            ubox   = h(sidx).getCropBox(hidx, 'upper');
-            hcupp  = uout.opt.c;
-            hmupp  = uout.opt.m;
+            try
+                uimg   = h(sidx).getImage(hidx, 'gray', 'upper');
+                ubox   = h(sidx).getCropBox(hidx, 'upper');               
+                hcupp  = uout.opt.c;
+                hmupp  = uout.opt.m;
+
+                if isempty(hcupp)
+                    % Make an attempt at segmentation
+                    if ~isempty(hhist)
+                        uimg       = double(imhistmatch(uint8(uimg), ...
+                            uint8(hhist.Data), hhist.NumBins, 'method', 'uniform'));
+                    end
+
+                    [~ , eout] = evaluateDirection(uimg, ...
+                        bpredict, zpredict, cpredict, mline, msample, mcnv, mgrade);
+                    hcupp = eout.cpre;
+                    hmupp = eout.mpre;
+                end
+            catch
+                [uimg , ubox , hcupp , hmupp] = deal([]);
+            end
 
             % Lower region
             try
@@ -73,9 +90,9 @@ for gidx = 1 : ngens
                 hclow = lout.c;
                 hmlow = lout.m;
             catch
-                [lmsk , lbox] = deal([]);
-                hclow         = lout.c;
-                hmlow         = lout.m;
+                [lmsk , lbox , hclow , hmlow] = deal([]);
+                %                 hclow         = lout.c;
+                %                 hmlow         = lout.m;
             end
 
             % Check for errors
@@ -143,6 +160,7 @@ p.addOptional('hcupp', []);
 p.addOptional('hmupp', []);
 p.addOptional('hclow', []);
 p.addOptional('hmlow', []);
+p.addOptional('hhist', []);
 p.addOptional('gset', 'gset');
 p.addOptional('fidx', 0);
 p.addOptional('sav', 0);

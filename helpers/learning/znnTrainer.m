@@ -185,7 +185,7 @@ n = fprintf('Making predictions from %d-layer model [Validation %d]', ...
 
 % Predictions from model
 ypre = double(znet.predict(IMGS));
-yerr = mean((cnnY - ypre).^2, 1) .^ 0.5;
+yerr = mean((ZSCRS - ypre).^2, 1) .^ 0.5;
 
 % Compute error of validation set (if given)
 if ~isempty(Vimgs)

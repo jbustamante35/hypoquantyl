@@ -1,5 +1,22 @@
-%% Experiment: class containing multiple image stacks stored as separate Genotype objects
+%% Experiment: class for image stacks stored as separate Genotype objects
 % Class description
+%
+% Usage:
+%   ex = Experiment(varargin)
+%
+% Input:
+%   edir: path to sub-directories of time-lapse images
+%   varargin: various inputs [see below]
+%       
+%
+% Output:
+%   ex: Experiment object
+%
+% Example:
+%   enm  = 'experiment_name';
+%   edir = '/home/user/path/to/subdirectores/';
+%   ex   = Experiment('ExperimentName', enm, 'ExperimentPath', edir)
+%
 
 classdef Experiment < handle
     properties (Access = public)
@@ -242,14 +259,24 @@ classdef Experiment < handle
 
         function [g, i] = search4Genotype(obj, nm)
             %% Return specific Genotype by GenotypeName
-            gts = obj.getGenotype(':')';
-            for i = 1 : numel(gts)
-                mtc = gts(i).GenotypeName;
-                if isequal(nm, mtc)
-                    g = gts(i);
-                    return;
-                end
+            gts  = obj.getGenotype;
+            gnms = arrayfun(@(x) x.GenotypeName, gts, 'UniformOutput', 0)';
+            mtc  = strmatch(nm, gnms, 'exact');
+            if ~isempty(mtc)
+                g = gts(mtc);
+                i = mtc;
+            else
+                g = [];
+                i = [];
             end
+            
+%             for i = 1 : numel(gts)
+%                 mtc = gnms{i};                
+%                 if isequal(nm, mtc)
+%                     g = gts(i);
+%                     return;
+%                 end
+%             end
         end
 
         function S = combineSeedlings(obj, asCell, getGood)

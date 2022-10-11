@@ -20,23 +20,23 @@ switch nargin
         crd = varargin{1};
         typ = [];
         sz  = [];
-        
+
     case 2
         crd = varargin{1};
         typ = varargin{2};
         sz  = [];
-        
+
     case 3
         crd = varargin{1};
         typ = varargin{2};
         sz  = varargin{3};
-        
+
     case 4
         % Drawnow [calls this function recursively, so it might screw up]
         crd = varargin{1};
         typ = varargin{2};
         sz  = varargin{3};
-        
+
         plt(crd, typ, sz);
         drawnow;
     otherwise
@@ -66,16 +66,16 @@ switch nd
     case 1
         % Coordinates are a single column
         D{nd} = crd;
-        
+
     case 2
         % Data are x-/y-coordinates as column
         D = {crd(:,1) , crd(:,2)};
-        
+
     case nd > 2
         % Check if transposing would work
         crd2 = crd';
         nd2  = size(crd2,2);
-        
+
         switch nd2
             case 1
                 D{nd2} = crd2;
@@ -85,7 +85,7 @@ switch nd
                 % There's something wrong with the input
                 D = {crd2};
         end
-        
+
     otherwise
         % There's something wrong with the input
         D = {crd};
@@ -133,9 +133,8 @@ else
 %     ln = {};
 end
 
-% Return marker types 
+% Return marker types
 M = [clr , mrk , ln];
-
 end
 
 function S = parseSizes(sz)
@@ -143,26 +142,25 @@ function S = parseSizes(sz)
 nargs = numel(sz);
 mstr  = 'MarkerSize';
 lstr  = 'LineWidth';
-        
+
 switch nargs
     case 1
         % If only 1 argument, set both to same size
         msz = {mstr , sz};
         lsz = {lstr , sz};
-        
+
     case 2
         % Marker Size should come first
         msz = {mstr , sz(1)};
         lsz = {lstr , sz(2)};
-        
+
     otherwise
         % Use Matlab's default sizes
         msz = {};
         lsz = {};
 end
 
-% Return marker sizes 
+% Return marker sizes
 S = [msz , lsz];
-
 end
 

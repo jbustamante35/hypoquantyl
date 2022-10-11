@@ -1,5 +1,13 @@
-function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz, pdp, Nz, Nd, z, v, varargin)
-%% recursiveDisplacementPredictor: predict displacement vectors
+function [Cntr , Znrms , Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz, pdp, Nz, Nd, z, v, varargin)
+%% recursiveDisplacementPredictor: predict displacement vectors [DEPRECATED]
+%
+% NOTE [08-09-2022]
+% This function is now outdated for being too complicated. It was replaced by
+% both 'predictZVectorFromImage' and 'displacementWindowPredictor', since those
+% independently predict the Z-Vector and contour of an image. I prefer 2
+% separate functions because of the flexibility I get when running these on
+% cloud servers.
+%
 % This function runs the full pipeline for the recursive neural net algorithm
 % that returns the contour in the image reference frame from a grayscale image
 % of a hypocotyl. It uses an initial neural net that first predicts the Z-Vector
@@ -18,7 +26,7 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz
 % Recursively use D-Vectors as input for Z-Vector to further predict D-Vectors
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, ...
+%   [Cntr , Znrms , Simg] = recursiveDisplacementPredictor(imgs, ...
 %       pdx, pdy, pz, pdp, Nz, Nd, z, v, varargin)
 %
 % Input:
@@ -41,42 +49,34 @@ function [Cntr, Znrms, Simg] = recursiveDisplacementPredictor(imgs, pdx, pdy, pz
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Determine inputs
-switch nargin
-    case 7
-        z = [];
-        v = 0;
-    case 8
-        v = 0;
-end
+if nargin > 8; z = []; end
+if nargin > 9; v = 0;  end
 
 % Parse through miscllaneous inputs
 if nargin > 8
     args = parseInputs(varargin);
     for fn = fieldnames(args)'
         feval(@() assignin('caller', cell2mat(fn), args.(cell2mat(fn))));
-    end
-    
+    end    
 else
     LEN             = 25;
     STP             = 1;
     DVIS            = false; % Visualize image patches (you don't want this)
-    toRemove        = 1;
-    % zoomLvl         = [0.5 , 1.5];
-    zoomLvl         = [];
-    foldPredictions = 1; % PCA folding at each iteration
-    lastFrmFold     = 1; % PCA folding at final interation
+    toRemove        = 1;   
+    zoomLvl         = [];    % Usually [0.5 , 1.5]
+    foldPredictions = 1;     % PCA folding at each iteration
+    lastFrmFold     = 1;     % PCA folding at final interation
 end
 
 %% Constants and Parameters
 % Message string separators
-sprA    = repmat('=', 1, 80);
-sprB    = repmat('-', 1, 80);
-npc     = size(pdx.EigVecs,2);
-nItrs   = numel(pdp.EigVecs);
-allItrs = 1 : nItrs;
+[~ , sprA , sprB] = jprintf(' ', 0, 0, 80);
+npc               = size(pdx.EigVecs,2);
+nItrs             = numel(pdp.EigVecs);
+allItrs           = 1 : nItrs;
 
 % Domains
-[scls, dom, domSize] = setupParams('toRemove', toRemove, 'zoomLvl', zoomLvl);
+[scls , dom , domSize] = setupParams('toRemove', toRemove, 'zoomLvl', zoomLvl);
 
 %% Get initial frame bundle and image patches
 switch v
@@ -348,7 +348,6 @@ function args = parseInputs(varargin)
 %% Parse input parameters for Constructor method
 % Need descriptions for all these parameters
 % pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
-
 p = inputParser;
 p.addParameter('LEN', 25);
 p.addParameter('STP', 1);

@@ -106,24 +106,33 @@ classdef EvaluatorJB < handle & matlab.mixin.Copyable
             if nargin < 3; trc        = obj.Trace;          end
             if nargin < 4; seg_length = obj.SegmentLengths; end
 
-            switch idx
-                case 1
-                    str = obj.getIndex(1, seg_length);
-                    stp = obj.getIndex(2, seg_length);
-                case 2
-                    str = obj.getIndex(2, seg_length);
-                    stp = obj.getIndex(3, seg_length);
-                case 3
-                    str = obj.getIndex(3, seg_length);
-                    stp = obj.getIndex(4, seg_length);
-                case 4
-                    str = obj.getIndex(4, seg_length);
-                    stp = obj.getIndex(5, seg_length);
-                otherwise
-                    fprintf(2, '');
-                    seg = [];
-                    return;
+            try
+                str = obj.getIndex(idx, seg_length);
+                stp = obj.getIndex(idx+1, seg_length);
+            catch
+                fprintf(2, '');
+                seg = [];
+                return;
             end
+
+            %             switch idx
+            %                 case 1
+            %                     str = obj.getIndex(1, seg_length);
+            %                     stp = obj.getIndex(2, seg_length);
+            %                 case 2
+            %                     str = obj.getIndex(2, seg_length);
+            %                     stp = obj.getIndex(3, seg_length);
+            %                 case 3
+            %                     str = obj.getIndex(3, seg_length);
+            %                     stp = obj.getIndex(4, seg_length);
+            %                 case 4
+            %                     str = obj.getIndex(4, seg_length);
+            %                     stp = obj.getIndex(5, seg_length);
+            %                 otherwise
+            %                     fprintf(2, '');
+            %                     seg = [];
+            %                     return;
+            %             end
 
             seg = trc(str:stp,:);
         end

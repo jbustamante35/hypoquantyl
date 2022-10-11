@@ -9,11 +9,11 @@ function [msk , obs] = segmentObjectsHQ(img, smth, sz, sens, mth)
 %  [msk , obs] = segmentObjectsHQ(img, smth, sz, sens, mth)
 %
 % Input:
-%	img: grayscale image
-%   smth: filter size to smooth binary image with convolution filter
-%	sz: [2 x 1] array defining minimum and maximum range to search for objects
+%	img: grayscale image [recommended to use uint8]
+%   smth: smoothing filter size [default 0]
+%	sz: [min,max] range defining size to search for objects [default size(img)]
 %	sens: sensitivity for alternative algorithm [recommended 0.6]
-%	mth: method to use [default to method 1]
+%	mth: method to use [default to method 3]
 %
 % Output:
 %	msk: binarized bw image
@@ -35,7 +35,7 @@ switch mth
         [msk , obs] = runMethod1(img, pdps);
     case 2
         %
-        [msk , obs] = runMethod2(img, sz);
+        [msk , obs] = runMethod2(img, sz, sens);
     case 3
         %
         [msk , obs] = runMethod3(img, sz, sens);
@@ -64,7 +64,7 @@ obs  = bwconncomp(flt);
 prps = regionprops(obs, img, pdps);
 end
 
-function [msk , obs] = runMethod2(img, fltsz, sensFix)
+function [msk , obs] = runMethod2(img, fltsz, fg, sensFix)
 %% runMethod2: deprecated method to segment grayscale images
 %
 % Some constants to play around with
@@ -72,35 +72,41 @@ function [msk , obs] = runMethod2(img, fltsz, sensFix)
 %
 
 %% Initialize sensivity calibrator at 0
-if nargin < 3
-    sensFix = 0;
-end
+if nargin < 4; sensFix = 0; end
 
 % Figure out if dark or bright foreground
-gt = graythresh(img);
-if gt >= 0.5
-    % Foreground is darker; lower sensitivity parameter
-    sens = 0.5 - sensFix;
-    %     fg   = 'dark';
-    fg   = 'bright';
-else
-    % Foreground is brighter; raise sensitivity parameter
-    sens = 0.5 + sensFix;
-    %     fg   = 'bright';
-    fg   = 'dark'; % I guess just always use dark foreground?
+sens = 0.5;
+if isempty(fg)
+    gt = graythresh(img);
+    if gt >= 0.5
+        % Foreground is darker; lower sensitivity parameter
+        sens = 0.5 - sensFix;
+        %     fg   = 'dark';
+        fg   = 'bright';
+    else
+        % Foreground is brighter; raise sensitivity parameter
+        sens = 0.5 + sensFix;
+        %     fg   = 'bright';
+        fg   = 'dark'; % I guess just always use dark foreground?
+    end
 end
 
 %
-msk  = imcomplement(imbinarize(img, 'adaptive', ...
-    'Sensitivity', sens, 'ForegroundPolarity', fg));
-% flt  = bwareafilt(imcomplement(msk), fltsz);
-flt  = bwareafilt(msk, fltsz);
-obs  = bwconncomp(flt);
+msk = imcomplement(imbinarize(img, 'adaptive', 'Sensitivity', ...
+    sens, 'ForegroundPolarity', fg));
+flt = bwareafilt(msk, fltsz);
+obs = bwconncomp(flt);
 
 % Recursive fix to calibrate sensitivity
 if obs.NumObjects == 0
-    sensFix     = sensFix + 0.1;
-    [msk , obs] = runMethod2(img, fltsz, sensFix);
+    switch fg
+        case 'bright'
+            sensFix = sensFix + 0.1;
+        case 'dark'
+            sensFix = sensFix - 0.1;
+    end
+
+    [msk , obs] = runMethod2(img, fltsz, fg, sensFix);
 end
 end
 
