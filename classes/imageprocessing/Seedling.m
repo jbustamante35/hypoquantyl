@@ -169,6 +169,11 @@ classdef Seedling < handle
             end
         end
 
+        function gi = getGenotypeIndex(obj)
+            %% Return index of the Genotype
+            [~ , gi] = obj.Host.search4Genotype(obj.GenotypeName);
+        end
+
         function sn = getSeedlingName(obj)
             %% Return name for Seedling
             sn = obj.SeedlingName;

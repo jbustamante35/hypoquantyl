@@ -22,5 +22,4 @@ fnm5 = sprintf('%s_InputSim_ConvertedContour', datestr(now, 'yymmdd'));
 figs = [fig1 fig2 fig3 fig4 fig5];
 fnms = {fnm1, fnm2, fnm3, fnm4, fnm5};
 set(figs, 'Color', 'w');
-
 end

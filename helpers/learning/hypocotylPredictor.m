@@ -16,6 +16,7 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 % Usage:
 %   [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, ...
 %       px, py, pz, pp, Nz, Ns, zseed, psx, psy, v, varargin)
+%
 % Input:
 %   imgs: grayscale image or cell array of hypocotyl images
 %   par: boolean to run single thread (0) or with parallelization (1)
@@ -37,9 +38,7 @@ function [Cntr, Znrms, Simg] = hypocotylPredictor(imgs, par, mth, px, py, pz, pp
 %   Znrms: Z-Vector predicted from the image
 %   Simg: cell array of segments [svec] or iterative contours [dvec]
 
-if nargin < 13
-    v = 0;
-end
+if nargin < 13; v = 0; end
 
 try
     %% Select Algorithm
@@ -271,16 +270,12 @@ sptA = repmat('=', 1, 80);
 sptB = repmat('-', 1, 80);
 
 if iscell(imgs)
-    ncrvs = numel(imgs);
-    
-    if isempty(zseeds)
-        zseeds = cell(ncrvs, 1);
-    end
-        
+    ncrvs = numel(imgs);   
+    if isempty(zseeds); zseeds = cell(ncrvs, 1); end
 else
     ncrvs = 1;
-    I     = imgs;
-    Z     = zseeds;
+    I = imgs;
+    Z = zseeds;
     clear imgs zseeds;
     imgs{1}   = I;
     zseeds{1} = Z;

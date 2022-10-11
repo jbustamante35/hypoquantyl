@@ -1,8 +1,8 @@
-function [uregr , regr , vprf] = averageTracking(t, gidx, ftrp, ltrp, lthr, smth, vis, raw)
+function [uregr , uvprf , regr , vprf] = averageTracking(t, gidx, ftrp, ltrp, lthr, smth, vis, raw)
 %% averageTracking: compile tracking data and compute average REGR
 %
 % Usage:
-%   [uregr , regr , vprf] = averageTracking(t, gidx, ...
+%   [uregr , uvprf , regr , vprf] = averageTracking(t, gidx, ...
 %       ftrp, ltrp, lthr, smth, vis, raw)
 %
 % Input:
@@ -17,6 +17,7 @@ function [uregr , regr , vprf] = averageTracking(t, gidx, ftrp, ltrp, lthr, smth
 %
 % Output:
 %   uregr: mean REGR of top 'lthr' pixels from tip
+%   uvprf: mean velocity profile of top 'lthr' pixels from tip
 %   regr: REGR per seedling
 %   vprf: velocity profile per seedling
 %
@@ -65,6 +66,7 @@ end
 regr  = cellfun(@(x) measureREGR(x, 'fsmth', smth, ...
     'xtrp', ftrp, 'ytrp', ltrp), vprf, 'UniformOutput', 0);
 uregr = mean(cat(3, regr{:}),3);
+uvprf = mean(cat(3, vprf{:}),3);
 
 % Show averaged REGR across seedlings
 if vis

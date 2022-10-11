@@ -9,8 +9,12 @@ classdef HypocotylTrainer < handle
     properties (Access = public)
         Curves
         HTName
+        UniqueName
         SaveDirectory
         Splits
+
+        % Image Normalizations
+        Histogram
 
         % Curve Segment Properties
         ContourVsn
@@ -121,6 +125,7 @@ classdef HypocotylTrainer < handle
             deflts = { ...
                 % Curve Properties
                 'HTName'              , []     ; ...
+                'UniqueName'          , []     ; ...
                 'SaveDirectory'       , pwd    ; ...
                 'SegmentSize'         , 25     ; ...
                 'SegmentSteps'        , 1      ; ...
@@ -131,6 +136,9 @@ classdef HypocotylTrainer < handle
                 'TrainingPct'         , 0.8 ; ...
                 'ValidationPct'       , 0.1 ; ...
                 'TestingPct'          , 0.1 ; ...
+
+                % Histogram
+                'Histogram'           , struct('Data', [], 'Tag', '', 'NumBins', 0) ; ...
 
                 % PCA Parametersrunning
                 'NPX'                 , 0 ; ... % 6
@@ -194,10 +202,8 @@ classdef HypocotylTrainer < handle
 
             obj = classInputParser(obj, prps, deflts, vargs);
 
-            if isempty(obj.HTName)
-                % Auto-Generate Name
-                obj.HTName = makeName(obj);
-            end
+            % Auto-Generate Name
+            if isempty(obj.HTName); obj.HTName = makeName(obj); end
 
         end
 
@@ -256,12 +262,12 @@ classdef HypocotylTrainer < handle
             end
 
             [px , py , pz , pp , pm] = hypoquantylPCA(C, obj.Save, ...
-                'vsn', obj.ContourVsn, 'fnc', obj.ImageFnc, ...
-                'pcx', obj.NPX, 'pcy', obj.NPY, 'pcz', obj.NPZ, 'pcp', obj.NZP, ...
-                'pcm', obj.NPM, 'addMid', obj.AddMid, 'zrotate', obj.ZRotate, ...
-                'rtyp', obj.ZRotateType, 'znorm', obj.ZNorm, 'zshp', obj.ZShape, ...
-                'split2stitch', obj.Split2Stitch, 'nsplt', obj.NSplt, ...
-                'bdsp', obj.BasePoint, 'sdir', obj.SaveDirectory);
+                'vsn', obj.ContourVsn, 'fnc', obj.ImageFnc, 'pcx', obj.NPX, ...
+                'pcy', obj.NPY, 'pcz', obj.NPZ, 'pcp', obj.NZP, 'pcm', obj.NPM, ...
+                'addMid', obj.AddMid, 'znorm', obj.ZNorm, 'zshp', obj.ZShape, ...
+                'bdsp', obj.BasePoint, 'nsplt', obj.NSplt, 'zrotate', obj.ZRotate, ...
+                'hhist', obj.Histogram, 'rtyp', obj.ZRotateType, ...
+                'split2stitch', obj.Split2Stitch, 'sdir', obj.SaveDirectory);
 
             obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp, 'pm', pm);
         end
@@ -282,12 +288,22 @@ classdef HypocotylTrainer < handle
 
             if ~isempty(obj.Images)
                 IMGS = obj.Images(obj.Splits.trnIdx);
-                IMGS = cat(4, IMGS{:});
             else
-                IMGS = arrayfun(@(c) c.getImage(obj.ImageFnc), ...
+                IMGS = arrayfun(@(c) ...
+                    c.getImage('gray', 'upper', obj.ImageFnc), ...
                     obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
-                IMGS = cat(4, IMGS{:});
             end
+
+            % Normalize images to histogram
+            if ~isempty(obj.Histogram)
+                href  = obj.Histogram.Data;
+                hmth  = obj.Histogram.Tag;
+                nbins = obj.Histogram.NumBins;
+                IMGS  = cellfun(@(x) normalizeImageWithHistogram( ...
+                    x, href, hmth, nbins), IMGS, 'UniformOutput', 0);
+            end
+
+            IMGS = cat(4, IMGS{:});
 
             % Stitch midpoints-tangents
             if obj.Split2Stitch
@@ -302,9 +318,7 @@ classdef HypocotylTrainer < handle
             %%
             [IN , OUT] = deal(cell(1, size(ZSCRS,2)));
 
-            if isempty(obj.isOptimized)
-                obj.isOptimized.znn = 0;
-            end
+            if isempty(obj.isOptimized); obj.isOptimized.znn = 0; end
 
             if obj.isOptimized.znn
                 % Set PC-optimized parameters if not already
@@ -344,14 +358,23 @@ classdef HypocotylTrainer < handle
             n = fprintf('Training D-Vectors through %d recursive iterations [%s folding]', ...
                 obj.Iterations, obj.FoldMethod);
 
-            IMGS  = arrayfun(@(c) c.getImage(obj.ImageFnc), ...
+            IMGS  = arrayfun(@(c) c.getImage('gray', 'upper', obj.ImageFnc), ...
                 obj.getCurves('trnIdx'), 'UniformOutput', 0);
             CNTRS = arrayfun(@(c) c.getTrace(obj.ContourVsn, obj.ImageFnc), ...
                 obj.getCurves('trnIdx'), 'UniformOutput', 0);
 
-            nfigs           = numel(obj.Figures);
-            cidxs           = pullRandom(obj.Splits.trnIdx, nfigs, 0);
-            [IN, OUT, fnms] = dnnTrainer(IMGS, CNTRS, obj.Iterations, ...
+            % Normalize images to histogram
+            if ~isempty(obj.Histogram)
+                href  = obj.Histogram.Data;
+                hmth  = obj.Histogram.Tag;
+                nbins = obj.Histogram.NumBins;
+                IMGS  = cellfun(@(x) normalizeImageWithHistogram( ...
+                    x, href, hmth, nbins), IMGS, 'UniformOutput', 0);
+            end
+
+            nfigs             = numel(obj.Figures);
+            cidxs             = pullRandom(obj.Splits.trnIdx, nfigs, 0);
+            [IN , OUT , fnms] = dnnTrainer(IMGS, CNTRS, obj.Iterations, ...
                 obj.NSplt, cidxs, obj.FoldMethod, obj.toFix, obj.SegLengths, ...
                 obj.NPF, obj.NPD, obj.DLayers, obj.DTrainFnc, ...
                 obj.Save, obj.Visualize, obj.Parallel);
@@ -370,12 +393,22 @@ classdef HypocotylTrainer < handle
 
             if ~isempty(obj.Images)
                 IMGS = obj.Images(obj.Splits.trnIdx);
-                IMGS = cat(4, IMGS{:});
             else
-                IMGS = arrayfun(@(c) c.getImage(obj.ImageFnc), ...
+                IMGS = arrayfun(@(c) ...
+                    c.getImage('gray', 'upper', obj.ImageFnc), ...
                     obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
-                IMGS = cat(4, IMGS{:});
             end
+
+            % Normalize images to histogram
+            if ~isempty(obj.Histogram)
+                href  = obj.Histogram.Data;
+                hmth  = obj.Histogram.Tag;
+                nbins = obj.Histogram.NumBins;
+                IMGS  = cellfun(@(x) normalizeImageWithHistogram( ...
+                    x, href, hmth, nbins), IMGS, 'UniformOutput', 0);
+            end
+
+            IMGS = cat(4, IMGS{:});
 
             nrows = obj.BaseRows;
             isz   = size(IMGS(:,:,:,1), 1);
@@ -387,8 +420,24 @@ classdef HypocotylTrainer < handle
 
             jprintf(' ', toc(t), 1, 80 - n);
 
-            %%
-            [IN , OUT] = znnTrainer(IMGS, BPTS, obj.Splits, 1, ...
+            %% Randomly shift BasePoint left and right
+            % Broaden range of values and inflate data
+            bimgs = IMGS;
+            bpts  = BPTS;
+            bsht  = randi([-40 , 40], 1, 10, 'double');
+            for nb = 1 : numel(bsht)
+                tmpx = circshift(IMGS, bsht(nb),2);
+                tmpy = BPTS + bsht(nb);
+
+                bimgs = cat(4, bimgs, tmpx);
+                bpts  = cat(1, bpts, tmpy);
+            end
+
+            IMGS = bimgs;
+            BPTS = bpts;
+
+            %% Fix training splits
+            [IN , OUT] = znnTrainer(IMGS, BPTS, [], 1, ...
                 'Save', obj.Save, 'FltRng', obj.BaseFilterRange, ...
                 'NumFltRng', obj.BaseNumFilterRange, ...
                 'MBSize', obj.BaseMiniBatchSize, 'Dropout', obj.BaseDropoutLayer, ...
@@ -420,9 +469,7 @@ classdef HypocotylTrainer < handle
 
             if obj.Save
                 saveDir = obj.SaveDirectory;
-                if ~isfolder(saveDir)
-                    mkdir(saveDir);
-                end
+                if ~isfolder(saveDir); mkdir(saveDir); end
             end
 
             obj.ProcessCurves;
@@ -434,18 +481,14 @@ classdef HypocotylTrainer < handle
             if training2run(3); obj.TrainBVectors; end
             if training2run(4); obj.TrainSVectors; end
 
-            if obj.Save
-                obj.SaveTrainer(saveDir);
-            end
+            if obj.Save; obj.SaveTrainer(saveDir); end
         end
 
         function obj = SaveTrainer(obj, dnm)
             %% Save this object into a .mat file
             if nargin < 2; dnm = obj.SaveDirectory; end
 
-            if ~isfolder(dnm)
-                mkdir(dnm);
-            end
+            if ~isfolder(dnm); mkdir(dnm); end
 
             % Remove Curves
             crvs       = obj.Curves;
@@ -505,21 +548,29 @@ classdef HypocotylTrainer < handle
                         ];
 
                     % Get training and validation images and scores
-                    %                     if isempty(obj.Images)
                     if obj.toStore
                         obj.storeImages;
-                        imgs = obj.Images;
+                        IMGS = obj.Images;
                     else
-                        imgs = arrayfun(@(x) x.getImage(obj.ImageFnc), ...
-                            obj.Curves, 'UniformOutput', 0);
+                        IMGS = arrayfun(@(x) x.getImage('gray', 'upper', ...
+                            obj.ImageFnc), obj.Curves, 'UniformOutput', 0);
+                    end
+
+                    % Normalize images to histogram
+                    if ~isempty(obj.Histogram)
+                        href  = obj.Histogram.Data;
+                        hmth  = obj.Histogram.Tag;
+                        nbins = obj.Histogram.NumBins;
+                        IMGS  = cellfun(@(x) normalizeImageWithHistogram( ...
+                            x, href, hmth, nbins), IMGS, 'UniformOutput', 0);
                     end
 
                     zscrs = obj.getPCA('pz').PCAScores;
                     ntrn  = numel(obj.getSplits.trnIdx);
 
-                    Timgs = cat(4, imgs{obj.getSplits.trnIdx});
+                    Timgs = cat(4, IMGS{obj.getSplits.trnIdx});
                     Tscrs = zscrs(1 : ntrn, :);
-                    Vimgs = cat(4, imgs{obj.getSplits.valIdx});
+                    Vimgs = cat(4, IMGS{obj.getSplits.valIdx});
                     Vscrs = zscrs((ntrn + 1) : end, :);
 
                     % Determine which PC to start from
@@ -575,11 +626,7 @@ classdef HypocotylTrainer < handle
                     % Save object afterwards
                     if obj.Save
                         saveDir = obj.SaveDirectory;
-
-                        if ~isfolder(saveDir)
-                            mkdir(saveDir);
-                        end
-
+                        if ~isfolder(saveDir); mkdir(saveDir); end
                         obj.SaveTrainer(saveDir);
                     end
 
@@ -610,18 +657,18 @@ classdef HypocotylTrainer < handle
                     %                     if isempty(obj.Images)
                     if obj.toStore
                         obj.storeImages;
-                        imgs = obj.Images;
+                        IMGS = obj.Images;
                     else
-                        imgs = arrayfun(@(x) x.getImage(obj.ImageFnc), ...
-                            obj.Curves, 'UniformOutput', 0);
+                        IMGS = arrayfun(@(x) x.getImage('gray', 'upper', ...
+                            obj.ImageFnc), obj.Curves, 'UniformOutput', 0);
                     end
 
                     zscrs = obj.getPCA('pz').PCAScores;
                     ntrn  = numel(obj.getSplits.trnIdx);
 
-                    Timgs = cat(4, imgs{obj.getSplits.trnIdx});
+                    Timgs = cat(4, IMGS{obj.getSplits.trnIdx});
                     Tscrs = zscrs(1 : ntrn, :);
-                    Vimgs = cat(4, imgs{obj.getSplits.valIdx});
+                    Vimgs = cat(4, IMGS{obj.getSplits.valIdx});
                     Vscrs = zscrs((ntrn + 1) : end, :);
 
                     % Determine which PC to start from
@@ -888,8 +935,8 @@ classdef HypocotylTrainer < handle
             switch req
                 case 'set'
                     % Store images in property
-                    imgs  = arrayfun(@(x) x.getImage(obj.ImageFnc), ...
-                        obj.Curves, 'UniformOutput', 0);
+                    imgs = arrayfun(@(x) x.getImage('gray', 'upper', ...
+                        obj.ImageFnc), obj.Curves, 'UniformOutput', 0);
                     obj.Images = imgs;
 
                 case 'kill'
@@ -939,7 +986,7 @@ classdef HypocotylTrainer < handle
 
             if nargin <= 2
                 % Cell arrays not inputted, so extract them from dataset
-                rin  = arrayfun(@(c) c.getImage(obj.ImageFnc), ...
+                rin  = arrayfun(@(c) c.getImage('gray', 'upper', obj.ImageFnc), ...
                     obj.getCurves(typ), 'UniformOutput', 0);
                 rout = obj.getPCA.pz.PCAScores(typidx);
             else
@@ -1015,12 +1062,16 @@ classdef HypocotylTrainer < handle
             % ---------------------------------------------------------------------------- %
             % Load B-Vector model
             bout = obj.getBVector('BOUT');
+
+%             bnet = load('/home/jbustamante/Dropbox/EdgarSpalding/labdata/development/HypoQuantyl/datasets/matfiles/netoutputs/bnnout.mat');
+%             bnet = bnet.OUT.Net;
+%             bout.Net = bnet;
             Nb   = bout.Net;
 
             if nargout == 1
                 splts = struct('trnIdx', trnIdx , 'valIdx', valIdx , 'tstIdx', tstIdx);
-                hout  = {pz   , pdp   , pdx   , pdy   , pdw   , Nz   , Nd   , splts}';
-                flds  = {'pz' , 'pdp' , 'pdx' , 'pdy' , 'pdw' , 'Nz' , 'Nd' , 'splts'}';
+                hout  = {pz   ,  pdp  ,  pdx  ,  pdy  ,  pdw  ,  Nz  ,  Nd  ,  Nb  ,  splts}';
+                flds  = {'pz' , 'pdp' , 'pdx' , 'pdy' , 'pdw' , 'Nz' , 'Nd' , 'Nb' , 'splts'}';
                 pz    = cell2struct(hout, flds);
             end
         end
@@ -1046,12 +1097,11 @@ classdef HypocotylTrainer < handle
                 obj.loadHTNetworks;
 
             %
-            [bpredict , bcnv, zpredict , zcnv, cpredict , mline , msample , ...
+            [bpredict , bcnv , zpredict , zcnv , cpredict , mline , msample , ...
                 mcnv , mgrade , sopt , mmaster] = loadSegmentationFunctions( ...
                 pz, pdp, pdx, pdy, pdw, pm, Nz, Nd, Nb, 'par', par, 'vis', vis, ...
                 'seg_lengths', seg_lengths, 'psz', psz, 'toFix', toFix, ...
                 'bwid', bwid, 'nopts', nopts, 'tolfun', tolfun, 'tolx', tolx);
-
         end
 
         function prp = getProperty(obj, prp)
@@ -1065,7 +1115,7 @@ classdef HypocotylTrainer < handle
 
         function setProperty(obj, req, val, subreq)
             %% Set requested property if it exists [for private properties]
-            if nargin < 3; subreq = []; end
+            if nargin < 4; subreq = []; end
 
             try
                 if isempty(subreq)
@@ -1094,7 +1144,12 @@ classdef HypocotylTrainer < handle
             rot   = obj.ZRotate;
             rtyp  = obj.ZRotateType;
             itrs  = obj.Iterations;
+            unm   = obj.UniqueName;
 
+            % Has Histogram to Normalize to
+            h = ~isempty(obj.Histogram);
+
+            % Dataset Splits
             if ~isempty(obj.Splits)
                 ntrnd = numel(obj.getSplits('trnIdx'));
             else
@@ -1102,14 +1157,16 @@ classdef HypocotylTrainer < handle
             end
 
             if obj.Split2Stitch
-                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02-%02ddpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
+                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02-%02ddpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%dhistogram_%diterations', ....
                     tdate, ncrvs, ntrnd, npx, npy, npz{1}, npz{2}, ...
-                    nzp, nzp, npf, npd, rot, rtyp, itrs);
+                    nzp, nzp, npf, npd, rot, rtyp, h, itrs);
             else
-                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%diterations', ....
+                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%dhistogram_%diterations', ....
                     tdate, ncrvs, ntrnd, npx, npy, npz, nzp, npf, ...
-                    npd, rot, rtyp, itrs);
+                    npd, rot, rtyp, h, itrs);
             end
+
+            if ~isempty(unm); htname = sprintf('%s_%s', htname, unm); end
         end
 
         function [SSCR , ZSLC] = prepareSVectors(obj)

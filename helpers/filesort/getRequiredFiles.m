@@ -15,9 +15,7 @@ function [flist , plist] = getRequiredFiles(fin, opt)
 %   plist: MATLAB products required to run program
 %
 
-if nargin < 2
-    opt = [];
-end
+if nargin < 2; opt = []; end
 
 if isempty(opt)
     [flist , plist] = matlab.codetools.requiredFilesAndProducts(fin);
@@ -27,6 +25,5 @@ end
 
 flist = flist';
 plist = plist';
-
 end
 

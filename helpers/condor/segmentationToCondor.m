@@ -48,7 +48,7 @@ end
 % Check mode
 if dbug
     % Debug mode
-    CFLO = 'dbug on';
+    [HYPS , CFLO] = deal('dbug on');
 else
     % Create cFlow object
     CFLO = cFlow('segmentFullHypocotyl');
@@ -85,8 +85,10 @@ nsdls = numel(sgud);
 
 % ---------------------------------------------------------------------------- %
 % For each seedling
-HDOR = cell(mhyps,nsdls);
-for ns = 1 : nsdls
+HDOR  = cell(mhyps,nsdls);
+if isempty(fsdl); fsdl = nsdls; end
+asdls = isdl : fsdl;
+for ns = asdls
     sidx  = sidxs(ns);
     s     = sgud(ns);
     h     = s.MyHypocotyl;
@@ -94,31 +96,40 @@ for ns = 1 : nsdls
 
     % ------------------------------------------------------------------------ %
     % For each frame
-    for hidx = 1 : nhyps
+    if isempty(fhyp); fhyp = nhyps; end
+    ahyps = ihyp : fhyp;
+    for hidx = ahyps
         t = tic;
         fprintf('\n%s\nLoading cFlow object | %s | Genotype %02d | Seedling %02d of %02d | Frame %03d of %03d\n%s\n', ...
             sprA, gnm, gidx, sidx, nsdls, hidx, nhyps, sprB);
 
         % Upper Region
-        fprintf('Upper Hypocotyl | ');
+        fprintf('Upper Hypocotyl ');
         try
             uimg = h.getImage(hidx, 'gray', 'upper');
+            if ~isempty(hhist)
+                href  = hhist.Data;
+                hmth  = hhist.Tag;
+                nbins = hhist.NumBins;
+                uimg  = normalizeImageWithHistogram(uimg, href, hmth, nbins);
+            end
+
             fprintf('| %s | gidx %02d | sidx %02d | hidx %02d | [good] |\n', ...
                 gnm, gidx, sidx, hidx);
         catch
-            fprintf(2, 'No upper image [%s | gidx %02d | sidx %02d | hidx %02d |\n', ...
+            fprintf(2, '| %s | gidx %02d | sidx %02d | hidx %02d | [No upper image] |\n', ...
                 gnm, gidx, sidx, hidx);
             uimg = [];
         end
 
         % Lower Region
-        fprintf('Lower Hypocotyl | ');
+        fprintf('Lower Hypocotyl ');
         try
-            lmsk = h.getImage(hidx, 'bw', 'lower');
+            lmsk = h.getImage(hidx, 'bw', 'lower');%
             fprintf('| %s | gidx %02d | sidx %02d | hidx %02d | [good] |\n', ...
                 gnm, gidx, sidx, hidx);
         catch
-            fprintf(2, 'No lower mask [%s | gidx %02d | sidx %02d | hidx %02d |\n', ...
+            fprintf(2, '| %s | gidx %02d | sidx %02d | hidx %02d | [No lower mask] |\n', ...
                 gnm, gidx, sidx, hidx);
             lmsk = [];
         end
@@ -128,7 +139,7 @@ for ns = 1 : nsdls
         switch dbug
             case 0
                 % Load Condor object
-                HDOR{hidx,ns} = CFLO(uimg, lmsk, ...
+                HDOR{hidx,ns} = CFLO(uimg, lmsk, 'edate', edate, ...
                     'Nb', Nb, 'Nz', Nz, 'pz', pz, 'Nd', Nd, 'pdp', pdp, ...
                     'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'pm', pm, ...
                     'toFix', toFix, 'bwid', bwid, 'nopts', nopts, ...
@@ -145,13 +156,34 @@ for ns = 1 : nsdls
             case 2
                 % Run locally without optimization
                 nopts = 0;
-                HDOR{hidx,ns} = segmentFullHypocotyl(uimg, lmsk, ...
+
+                % Force direction determined from frame 1
+                try
+                    if hidx > 1; toFlip = HDOR{1,ns}.info.toFlip; end
+                catch
+                    try
+                        % Use consensus
+                        zz = cat(1, HDOR{:,ns});
+                        yy = arrayfun(@(x) x.info.toFlip, zz, 'UniformOutput', 0);
+                        xx = cat(1, yy{:});
+                        ww = sum(xx) / numel(xx);
+
+                        if ww >= 0.5; toFlip = 1; else; toFlip = 0; end
+                    catch
+                        % Just figure it out as usual
+                        toFlip = [];
+                    end
+                end
+
+                % Segmentation
+                HDOR{hidx,ns} = segmentFullHypocotyl(uimg, lmsk, 'edate', edate, ...
                     'Nb', Nb, 'Nz', Nz, 'pz', pz, 'Nd', Nd, 'pdp', pdp, ...
                     'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'pm', pm, ...
                     'toFix', toFix, 'bwid', bwid, 'nopts', nopts, ...
                     'seg_lengths', seg_lengths, 'par', par, 'vis', vis, ...
-                    'sav', sav, 'Frame', hidx, 'GenotypeName', gnm, ...
-                    'GenotypeIndex', gidx, 'SeedlingIndex', sidx);
+                    'fidx', fidx, 'sav', sav, 'Frame', hidx, ...
+                    'GenotypeName', gnm, 'GenotypeIndex', gidx, ...
+                    'SeedlingIndex', sidx, 'toFlip', toFlip);
         end
 
         fprintf('%s\nDONE! [%.03f sec]\n%s\n', sprB, toc(t), sprA);
@@ -186,6 +218,7 @@ p.addOptional('pdw', 'pdw');
 p.addOptional('bwid', 0.5);
 p.addOptional('toFix', 0);
 p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
+p.addOptional('hhist', []);
 
 % Miscellaneous Options
 p.addOptional('gidx', 0);
@@ -193,8 +226,14 @@ p.addOptional('nopts', 200);
 p.addOptional('dbug', 0);
 p.addOptional('edate', tdate);
 p.addOptional('par', 0);
-p.addOptional('vis', 0);
 p.addOptional('sav', 0);
+p.addOptional('vis', 0);
+p.addOptional('fidx', 0);
+p.addOptional('toFlip', []);
+p.addOptional('isdl', 1);
+p.addOptional('ihyp', 1);
+p.addOptional('fsdl', []);
+p.addOptional('fhyp', []);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

@@ -96,10 +96,7 @@ cla;clf;
 %% Image with Midpoints and Domain Coordinates
 % Image
 subplot(121);
-imagesc(img);
-colormap gray;
-axis image;
-axis off;
+myimagesc(img);
 hold on;
 
 % Plot Midpoints, Tangents, and Normals 
@@ -127,7 +124,7 @@ plt(mids(sIdx,:), 'ro', 10);
 % cellfun(@(m,x) plt([m ; x], 'g-', 1), midCrd, dnrm, 'UniformOutput', 0);
 
 % Plot domain coordinates
-hlf   = ceil(size(dCrds{1},1) / 2);
+hlf = ceil(size(dCrds{1},1) / 2);
 cellfun(@(x) plt(x(1:hlf,:), '.', 3), dCrds, 'UniformOutput', 0);
 cellfun(@(x) plt(x(hlf+1:end,:), '.', 3), dCrds, 'UniformOutput', 0);
 

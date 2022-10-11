@@ -7,9 +7,9 @@ function mpatch = sampleMidline(img, mline, midx, psz, mth)
 % Input:
 %   img: image
 %   mline: midline
-%   midx: index from midline to sample
-%   psz: size of patch (mth = 'patch') or distance to envelope (mth = 'full')
-%   mth: sampling method - by single pathes ('patch') or full midline ('full')
+%   midx: index from midline to sample [default 1]
+%   psz: size of patch (patch) or distance to envelope (full) [default 20]
+%   mth: sampling by single patches ('patch'), full midline ('full', default)
 %
 % Output:
 %   mpatch: cell array of patches (mth = 'patch') or full patch (mth = 'full')
@@ -28,16 +28,16 @@ switch mth
         [sq , s]            = deal([psz , psz]);
         [scls , doms , dsz] = setupParams( ...
             'toRemove', toRemove, 'squareScale', sq, 'squareDomain', s);
-        
+
         %% Sample image
         zm     = curve2framebundle(mline);
         cm     = sampleAtDomain(img, zm(midx,:), scls{1}, doms{1}, dsz{1}, 0);
         mpatch = reshape(cm, [sq , numel(midx)]);
-        
+
     case 'full'
         %% Patch from entire midline
         mpatch = getStraightenedMask(mline, img, 0, psz);
-        
+
     otherwise
         fprintf(2, 'Method %s must be [patch|full]\n', mth);
         mpatch = [];

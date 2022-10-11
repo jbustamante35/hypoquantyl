@@ -143,7 +143,17 @@ jprintf(' ', toc(t), 1, 80 - n);
 t = tic;
 n = fprintf('Generating Midline Patches');
 if pcm > 0
-    mI = arrayfun(@(x) x.getImage, CRVS, 'UniformOutput', 0);
+    % Get images and normalize with histogram if given
+    mI = arrayfun(@(x) x.getImage('gray', 'upper', fnc) , ...
+        CRVS, 'UniformOutput', 0);
+    if ~isempty(hhist)
+        href  = hhist.Data;
+        hmth  = hhist.Tag;
+        nbins = hhist.NumBins;
+        mI    = cellfun(@(x) normalizeImageWithHistogram( ...
+            x, href, hmth, nbins), mI, 'UniformOutput', 0);
+    end
+
     mP = arrayfun(@(x) x.getMidline(mmth, mtyp), CRVS, 'UniformOutput', 0);
     mp = cellfun(@(i,m) sampleMidline(i,m,0,psz,'full'), ...
         mI, mP, 'UniformOutput', 0);
@@ -260,7 +270,8 @@ p.addOptional('rtyp', 'rad');
 p.addOptional('dpos', 0);
 p.addOptional('bdsp', 0);
 p.addOptional('mmth', 'nate');
-p.addOptional('mtyp', 'int');
+% p.addOptional('mtyp', 'int');
+p.addOptional('mtyp', 'left');
 p.addOptional('psz', 20);
 p.addOptional('nsplt', 25);
 p.addOptional('znorm', struct('ps', 0, 'pz', 0, 'pp', 0));
@@ -270,6 +281,7 @@ p.addOptional('sdir', pwd);
 p.addOptional('zdims', 1 : 4);
 p.addOptional('vsn', 'Clip');
 p.addOptional('fnc', 'left');
+p.addOptional('hhist', []);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

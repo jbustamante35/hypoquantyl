@@ -442,7 +442,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             lng = sum(sum(diff(seg, 1, 1).^2, 2).^0.5);
         end
 
-        function [drc1 , drc2] = getDirection(obj, toSet, vsn)
+        function [drc1 , drc2] = getDirection(obj, toSet, vsn, fnc)
             %% getDirection
             if nargin < 2; toSet = 0;             end % Set Direction property
             if nargin < 3; vsn   = obj.MAINTRACE; end
@@ -713,13 +713,15 @@ classdef Curve < handle & matlab.mixin.Copyable
             zm               = curve2framebundle(mline);
             [cm  , ~ , smpd] = ...
                 sampleAtDomain(img, zm(midx,:), scls{1}, doms{1}, dsz{1}, 0);
-            ptch = reshape(cm, [sq , numel(midx)]);
+            ptch             = reshape(cm, [sq , numel(midx)]);
 
             if fidx
                 vscl = 5;
-                tng  = arrayfun(@(x) [(zm(x,3:4) * vscl) + zm(x,1:2) ; zm(x,1:2)], ...
+                tng  = arrayfun(@(x) ...
+                    [(zm(x,3:4) * vscl) + zm(x,1:2) ; zm(x,1:2)], ...
                     1 : size(zm,1), 'UniformOutput', 0)';
-                nrm  = arrayfun(@(x) [(zm(x,5:6) * vscl) + zm(x,1:2) ; zm(x,1:2)], ...
+                nrm  = arrayfun(@(x) ...
+                    [(zm(x,5:6) * vscl) + zm(x,1:2) ; zm(x,1:2)], ...
                     1 : size(zm,1), 'UniformOutput', 0)';
 
                 figclr(fidx);

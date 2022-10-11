@@ -55,23 +55,39 @@ try
         'tolx', tolx, 'z2c', z2c, 'par', par, 'vis', vis);
 
     % ------------------------------------------------------------------------ %
-    %% Evaluate 1st frame and get initial guess
+    %% Evaluate 1st frame and get initial guess or force a direction
     tE = tic;
     fprintf('Evaluating direction | ');
 
-    [toFlip , eout] = evaluateDirection(img, bpredict, zpredict, ...
-        cpredict, mline, msample, mcnv, mgrade, fidx, sav);
+    if isempty(toFlip)
+        % Compare both grade for both directions
+        [toFlip , eout] = evaluateDirection(img, bpredict, zpredict, ...
+            cpredict, mline, msample, mcnv, mgrade, fidx, sav, vis);
 
-    % Get initial guesses
-    img   = eout.img;
-    cinit = eout.cpre;
-    minit = eout.mpre;
-    zinit = eout.zpre;
-    binit = eout.bpre;
-    ginit = eout.gpre;
-    hkeep = eout.keep;
+        % Get initial guesses
+        img   = eout.img;
+        cinit = eout.cpre;
+        minit = eout.mpre;
+        zinit = eout.zpre;
+        binit = eout.bpre;
+        ginit = eout.gpre;
+        hkeep = eout.keep;
 
-    fprintf('Evaluated direction - keep %s [%.03f sec]\n\n', hkeep, toc(tE));
+        fprintf('DONE! - keep %s [%.03f sec]\n\n', hkeep, toc(tE));
+    else
+        % Use defined direction
+        hkeep = 'original';
+        if toFlip
+            img   = fliplr(img);
+            hkeep = 'flipped';
+        end
+
+        [cinit , minit , zinit , binit] = predictFromImage(img, ...
+            bpredict, zpredict, cpredict, mline);
+
+        ginit = mgrade(mcnv(msample(img, minit)));
+        fprintf('Forcing %s direction [%.03f sec]\n\n', hkeep, toc(tE));
+    end
 
     % ------------------------------------------------------------------------ %
     %% Run Optimizer
@@ -198,6 +214,7 @@ p.addOptional('fidx', 0);
 p.addOptional('par', 0);
 p.addOptional('vis', 0);
 p.addOptional('sav', 0);
+p.addOptional('toFlip', []);
 
 % Information Options
 p.addOptional('GenotypeName', 'genotype');

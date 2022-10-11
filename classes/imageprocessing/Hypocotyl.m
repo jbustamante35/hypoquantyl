@@ -46,7 +46,16 @@ classdef Hypocotyl < handle
             obj    = classInputParser(obj, prps, deflts, vargs);
         end
 
+        function FixSeedlingIndex(obj)
+            % Set correct index for when I messed up indexing
+            sdl               = obj.Parent;
+            obj.SeedlingName  = sdl.SeedlingName;
+            sidx              = obj.getSeedlingIndex;
+            obj.HypocotylName = sprintf('Hypocotyl_{%d}', sidx);
+        end
+
         function FixGenotypeName(obj)
+            % Set GenotypeName property for when it somehow clears
             sdl = obj.Parent;
             obj.GenotypeName = sdl.GenotypeName;
         end
@@ -202,8 +211,10 @@ classdef Hypocotyl < handle
                         crp, 'UniformOutput', 0);
 
                     % Flip them
-                    if flp
-                        dat = cellfun(@(x) flip(x,2), dat, 'UniformOutput', 0);
+                    if ~isempty(flp)
+                        if flp
+                            dat = cellfun(@(x) flip(x,2), dat, 'UniformOutput', 0);
+                        end
                     end
                 else
                     % Single image
@@ -219,9 +230,7 @@ classdef Hypocotyl < handle
                     dat = imresize(crp, sclsz);
 
                     % Flip it
-                    if flp
-                        dat = flip(dat, 2);
-                    end
+                    if flp; dat = flip(dat, 2); end
                 end
             else
                 % Don't buffer
@@ -245,9 +254,7 @@ classdef Hypocotyl < handle
                     dat = imresize(crp, sclsz);
 
                     % Flip it
-                    if flp
-                        dat = flip(dat, 2);
-                    end
+                    if flp; dat = flip(dat, 2); end
                 end
             end
         end
@@ -284,6 +291,19 @@ classdef Hypocotyl < handle
 
             % For console output
             itr = sprintf('%s | Seedling %d | %d Frames', gnm, sidx, nfrm);
+        end
+
+        function gi = getGenotypeIndex(obj)
+            %% Return index of the Genotype
+            [~ , gi] = obj.Origin.search4Genotype(obj.GenotypeName);
+        end
+
+        function si = getSeedlingIndex(obj)
+            %% Return index of the Seedling
+            sn = obj.SeedlingName;
+            aa = strfind(sn, '{');
+            bb = strfind(sn, '}');
+            si  = str2double(sn(aa+1:bb-1));
         end
 
         function setCropBox(obj, frms, bbox, rgn)
