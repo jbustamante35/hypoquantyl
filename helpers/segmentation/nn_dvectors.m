@@ -1,5 +1,5 @@
 function [dpre , dnet , evecs , mns] = nn_dvectors(inputs, targets, dsz, par, npd, nlayers, trnfn)
-%% nn_dvector: CNN to predict contour segments given a Z-Vector slice
+%% nn_dvector: train CNN model to predict D-Vector given a Z-Vector slice
 %
 %
 %
@@ -33,11 +33,10 @@ function [dpre , dnet , evecs , mns] = nn_dvectors(inputs, targets, dsz, par, np
 %
 
 %% Setup the net
-if nargin < 5
-    npd     = 10;
-    nlayers = 5;
-    trnfn   = 'trainlm';
-end
+if nargin < 4; par     = 0;         end
+if nargin < 5; npd     = 10;        end
+if nargin < 6; nlayers = 5;         end
+if nargin < 7; trnfn   = 'trainlm'; end
 
 % Use with parallelization or GPU
 % [NOTE 10.24.2019]
@@ -59,20 +58,19 @@ switch par
         % To run in parallel, with workers each assigned to a different unique
         % GPU, with extra workers running on CPU:
         pll = 'yes';
-%         gll = 'yes';
-%         trnfn = 'trainscg';
+        %         trnfn = 'trainscg';
         gll = 'no';
     case 3
         %
         % Using only workers with unique GPUs might result in higher speed, as
         % CPU workers might not keep up.
-        pll = 'yes';
-        gll = 'only';
+        pll   = 'yes';
+        gll   = 'only';
         trnfn = 'trainscg';
     case 4
         % No parallel, With GPU [don't see why you'd ever use this]
-        pll = 'no';
-        gll = 'yes';
+        pll   = 'no';
+        gll   = 'yes';
         trnfn = 'trainscg';
 end
 
@@ -91,6 +89,5 @@ dpre = dnet(scrs')';
 dpre = [dpre , ones(size(dpre,1),1)];
 dpre = reshape(dpre, dsz);
 dpre = ipermute(dpre, [1 , 3 , 2]);
-
 end
 

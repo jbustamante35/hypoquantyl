@@ -50,7 +50,7 @@ uhyp = segmentUpperHypocotyl(uimg, 'Nb', Nb, 'Nz', Nz, 'Nd', Nd, 'pz', pz, ...
     'bwid', bwid, 'seg_lengths', seg_lengths, 'nopts', nopts, 'sav', 0, ...
     'par', par, 'vis', vis, 'fidx', fidx, 'GenotypeName', GenotypeName, ...
     'GenotypeIndex', GenotypeIndex, 'SeedlingIndex', SeedlingIndex, ...
-    'Frame', Frame, 'toFlip', toFlip);
+    'Frame', Frame, 'toFlip', toFlip, 'keepBoth', keepBoth, 'path2subs', path2subs);
 
 if isempty(lmsk); fprintf('\n\nLower mask empty\n\n'); end
 lhyp = segmentLowerHypocotyl(lmsk, 'seg_lengths', seg_lengths, 'sav', 0, ...
@@ -83,6 +83,7 @@ p.addOptional('pdw', 'pdw');
 p.addOptional('pdx', 'pdx');
 p.addOptional('pdy', 'pdy');
 p.addOptional('pm', 'pm');
+p.addOptional('path2subs', 0);
 
 % Optimization Options
 p.addOptional('ncycs', 1);
@@ -98,6 +99,7 @@ p.addOptional('vis', 0);
 p.addOptional('fidx', 0);
 p.addOptional('edate', tdate);
 p.addOptional('toFlip', []);
+p.addOptional('keepBoth', 0);
 
 % Information Options
 p.addOptional('GenotypeName', 'genotype');

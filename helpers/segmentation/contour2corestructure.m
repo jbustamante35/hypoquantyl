@@ -7,9 +7,9 @@ function [Z, L, segs, lbl] = contour2corestructure(cntr, len, stp, toCenter)
 %
 % Input:
 %   cntr: x-/y-coordinates of a closed contour
-%   len: length of the segments to split the contour
-%   stp: step size to skip per segment
-%   toCenter: index to set new center point for each segment (default len/2)
+%   len: length of the segments to split the contour [default 25]
+%   stp: step size to skip per segment [default 1]
+%   toCenter: index to set new center point for each segment [default len/2]
 %
 % Output:
 %   Z: tangent bundle for each of the contour's segments

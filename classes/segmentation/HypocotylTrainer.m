@@ -68,6 +68,7 @@ classdef HypocotylTrainer < handle
         % BasePoint CNN
         BasePoint
         BaseRows
+        BaseShift
         BaseFilterRange
         BaseNumFilterRange
         BaseDropoutLayer
@@ -96,7 +97,6 @@ classdef HypocotylTrainer < handle
         ZBay
         ZParams
         ZParams_bak
-        bOptimized
         BVectors
         BFnc
         BBay
@@ -180,7 +180,8 @@ classdef HypocotylTrainer < handle
 
                 % BasePoint CNN
                 'BasePoint'               , 0           ; ...
-                'BaseRows'                , 10          ;
+                'BaseRows'                , 10          ; ...
+                'BaseShift'               , [-40 , 40]  ; ...
                 'BaseFilterRange'         , 5           ; ...
                 'BaseNumFilterRange'      , [7 , 5 , 3] ; ...
                 'BaseDropoutLayer'        , 0.2         ; ...
@@ -204,7 +205,6 @@ classdef HypocotylTrainer < handle
 
             % Auto-Generate Name
             if isempty(obj.HTName); obj.HTName = makeName(obj); end
-
         end
 
         function ProcessCurves(obj)
@@ -250,12 +250,10 @@ classdef HypocotylTrainer < handle
                 case 'trn'
                     % Run with only training set
                     C = obj.getCurves('trnIdx');
-
                 case 'withval'
                     % Run with training and validation sets
                     % Order is training in front, validation in back
                     C = [obj.getCurves('trnIdx') ; obj.getCurves('valIdx')];
-
                 otherwise
                     fprintf(2, '%d not optimizable [trn|withval]\n', mth);
                     return;
@@ -424,11 +422,10 @@ classdef HypocotylTrainer < handle
             % Broaden range of values and inflate data
             bimgs = IMGS;
             bpts  = BPTS;
-            bsht  = randi([-40 , 40], 1, 10, 'double');
+            bsht  = randi(obj.BaseShift, 1, 10, 'double');
             for nb = 1 : numel(bsht)
-                tmpx = circshift(IMGS, bsht(nb),2);
-                tmpy = BPTS + bsht(nb);
-
+                tmpx  = circshift(IMGS, bsht(nb),2);
+                tmpy  = BPTS + bsht(nb);
                 bimgs = cat(4, bimgs, tmpx);
                 bpts  = cat(1, bpts, tmpy);
             end
@@ -582,7 +579,6 @@ classdef HypocotylTrainer < handle
                                 pci         = sum(~cellfun(@isempty, bay)) + 1;
                                 pcf         = size(Tscrs, 2);
                                 pcrng       = pci : pcf;
-
                             case 'redo'
                                 % Restart from beginning
                                 [bay , fnc] = deal(cell(size(Tscrs,2), 1));
@@ -592,13 +588,11 @@ classdef HypocotylTrainer < handle
                                 pci         = 1;
                                 pcf         = size(Tscrs, 2);
                                 pcrng       = pci : pcf;
-
                             otherwise
                                 % Optimize selected PC or range of PCs
                                 [bay , fnc] = obj.getOptimizer;
                                 pcrng       = pc;
                         end
-
                     catch
                         fprintf(2, 'Error determining selected pc %s\n', pc);
                         return;
@@ -680,7 +674,6 @@ classdef HypocotylTrainer < handle
                                 pci         = sum(~cellfun(@isempty, bay)) + 1;
                                 pcf         = size(Tscrs, 2);
                                 pcrng       = pci : pcf;
-
                             case 'redo'
                                 % Restart from beginning
                                 [bay , fnc] = deal(cell(size(Tscrs,2), 1));
@@ -690,13 +683,11 @@ classdef HypocotylTrainer < handle
                                 pci         = 1;
                                 pcf         = size(Tscrs, 2);
                                 pcrng       = pci : pcf;
-
                             otherwise
                                 % Optimize selected PC or range of PCs
                                 [bay , fnc] = obj.getOptimizer;
                                 pcrng       = pc;
                         end
-
                     catch
                         fprintf(2, 'Error determining selected pc %s\n', pc);
                         return;
@@ -719,19 +710,14 @@ classdef HypocotylTrainer < handle
                         obj.ZParams{npc} = params;
                     end
 
-                    obj.isOptimized.znn = 1;
+                    obj.isOptimized.bnn = 1;
 
                     % Save object afterwards
                     if obj.Save
                         saveDir = obj.SaveDirectory;
-
-                        if ~isfolder(saveDir)
-                            mkdir(saveDir);
-                        end
-
+                        if ~isfolder(saveDir); mkdir(saveDir); end
                         obj.SaveTrainer(saveDir);
                     end
-
                 case 'dnn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
                 case 'snn'
@@ -787,7 +773,6 @@ classdef HypocotylTrainer < handle
                             obj.(oflds{fld}){pc} = bp(pc,:).(nflds{fld});
                         end
                     end
-
                 case 'dnn'
                     fprintf('Optimizing %s doesn''t work yet!\n', mth);
                 case 'snn'
@@ -807,9 +792,7 @@ classdef HypocotylTrainer < handle
                 case 1
                     splts = obj.Splits;
                 case 2
-                    if ~isempty(obj.Splits)
-                        splts = obj.Splits.(req);
-                    end
+                    if ~isempty(obj.Splits); splts = obj.Splits.(req); end
             end
         end
 
@@ -892,9 +875,7 @@ classdef HypocotylTrainer < handle
 
         function [bay , objfn , params] = getOptimizer(obj, req)
             %% Return optimization components
-            if nargin < 2
-                req = 'all';
-            end
+            if nargin < 2; req = 'all'; end
 
             [bay , objfn , params] = deal([]);
             switch req
@@ -953,9 +934,7 @@ classdef HypocotylTrainer < handle
             %% Prepare neural net input data from raw input to stacked vectors
             % 2D Images: cell array --> 4D vector
             % Z-Vectors: cell array --> 2D data
-            if nargin < 1
-                typ = 'training';
-            end
+            if nargin < 1; typ = 'training'; end
 
             switch typ
                 case 'training'
@@ -1063,9 +1042,9 @@ classdef HypocotylTrainer < handle
             % Load B-Vector model
             bout = obj.getBVector('BOUT');
 
-%             bnet = load('/home/jbustamante/Dropbox/EdgarSpalding/labdata/development/HypoQuantyl/datasets/matfiles/netoutputs/bnnout.mat');
-%             bnet = bnet.OUT.Net;
-%             bout.Net = bnet;
+            %             bnet = load('/home/jbustamante/Dropbox/EdgarSpalding/labdata/development/HypoQuantyl/datasets/matfiles/netoutputs/bnnout.mat');
+            %             bnet = bnet.OUT.Net;
+            %             bout.Net = bnet;
             Nb   = bout.Net;
 
             if nargout == 1
@@ -1104,36 +1083,11 @@ classdef HypocotylTrainer < handle
                 'bwid', bwid, 'nopts', nopts, 'tolfun', tolfun, 'tolx', tolx);
         end
 
-        function prp = getProperty(obj, prp)
-            %% Return property of this object
-            try
-                prp = obj.(prp);
-            catch
-                fprintf(2, 'Property %s does not exist\n', prp);
-            end
-        end
-
-        function setProperty(obj, req, val, subreq)
-            %% Set requested property if it exists [for private properties]
-            if nargin < 4; subreq = []; end
-
-            try
-                if isempty(subreq)
-                    obj.(req) = val;
-                else
-                    obj.(req).(subreq) = val;
-                end
-            catch
-                fprintf(2, 'Property %s.%s not found\n', req, subreq);
-            end
-        end
-    end
-
-    %% ------------------------- Private Methods --------------------------- %%
-    methods (Access = private)
-        %% Private helper methods
-        function htname = makeName(obj)
+        function htname = makeName(obj, toUpdate, sdir)
             %% Auto-Generate a name for this object
+            if nargin < 2; toUpdate =  0;         end
+            if nargin < 3; sdir     = 'htrainer'; end
+
             ncrvs = numel(obj.Curves);
             npx   = obj.NPX;
             npy   = obj.NPY;
@@ -1166,9 +1120,45 @@ classdef HypocotylTrainer < handle
                     npd, rot, rtyp, h, itrs);
             end
 
+            % Append unique name to generated name
             if ~isempty(unm); htname = sprintf('%s_%s', htname, unm); end
+
+            % Overwrite name
+            if toUpdate
+                obj.HTName        = htname;
+                obj.SaveDirectory = sprintf('%s%s%s_%s', ...
+                    sdir, filesep, tdate, unm);
+            end
         end
 
+        function prp = getProperty(obj, prp)
+            %% Return property of this object
+            try
+                prp = obj.(prp);
+            catch
+                fprintf(2, 'Property %s does not exist\n', prp);
+            end
+        end
+
+        function setProperty(obj, req, val, subreq)
+            %% Set requested property if it exists [for private properties]
+            if nargin < 4; subreq = []; end
+
+            try
+                if isempty(subreq)
+                    obj.(req) = val;
+                else
+                    obj.(req).(subreq) = val;
+                end
+            catch
+                fprintf(2, 'Property %s.%s not found\n', req, subreq);
+            end
+        end
+    end
+
+    %% ------------------------- Private Methods --------------------------- %%
+    methods (Access = private)
+        %% Private helper methods
         function [SSCR , ZSLC] = prepareSVectors(obj)
             %% Process x-/y-coordinate PCA scores and Z-Vector slices
             t = tic;

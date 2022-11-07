@@ -35,7 +35,7 @@ try
 catch err
     %% If error
     [fa , tpt] = deal([]);
-    isgood = false;
+    isgood     = false;
     err.getReport;
 end
 

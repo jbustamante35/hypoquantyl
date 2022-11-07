@@ -64,8 +64,8 @@ for gidx = 1 : ngens
             try
                 uimg   = h(sidx).getImage(hidx, 'gray', 'upper');
                 ubox   = h(sidx).getCropBox(hidx, 'upper');               
-                hcupp  = uout.opt.c;
-                hmupp  = uout.opt.m;
+                hcupp  = uout.(res).c;
+                hmupp  = uout.(res).m;
 
                 if isempty(hcupp)
                     % Make an attempt at segmentation
@@ -156,6 +156,7 @@ p.addOptional('slens', [53 , 52 , 53 , 51]);
 p.addOptional('slen', 51);
 p.addOptional('msz', 50);
 p.addOptional('toFlip', 0);
+p.addOptional('res', 'opt');
 p.addOptional('hcupp', []);
 p.addOptional('hmupp', []);
 p.addOptional('hclow', []);

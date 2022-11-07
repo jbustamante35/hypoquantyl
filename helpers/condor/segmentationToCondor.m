@@ -125,7 +125,7 @@ for ns = asdls
         % Lower Region
         fprintf('Lower Hypocotyl ');
         try
-            lmsk = h.getImage(hidx, 'bw', 'lower');%
+            lmsk = h.getImage(hidx, 'bw', 'lower');
             fprintf('| %s | gidx %02d | sidx %02d | hidx %02d | [good] |\n', ...
                 gnm, gidx, sidx, hidx);
         catch
@@ -157,24 +157,6 @@ for ns = asdls
                 % Run locally without optimization
                 nopts = 0;
 
-                % Force direction determined from frame 1
-                try
-                    if hidx > 1; toFlip = HDOR{1,ns}.info.toFlip; end
-                catch
-                    try
-                        % Use consensus
-                        zz = cat(1, HDOR{:,ns});
-                        yy = arrayfun(@(x) x.info.toFlip, zz, 'UniformOutput', 0);
-                        xx = cat(1, yy{:});
-                        ww = sum(xx) / numel(xx);
-
-                        if ww >= 0.5; toFlip = 1; else; toFlip = 0; end
-                    catch
-                        % Just figure it out as usual
-                        toFlip = [];
-                    end
-                end
-
                 % Segmentation
                 HDOR{hidx,ns} = segmentFullHypocotyl(uimg, lmsk, 'edate', edate, ...
                     'Nb', Nb, 'Nz', Nz, 'pz', pz, 'Nd', Nd, 'pdp', pdp, ...
@@ -183,7 +165,8 @@ for ns = asdls
                     'seg_lengths', seg_lengths, 'par', par, 'vis', vis, ...
                     'fidx', fidx, 'sav', sav, 'Frame', hidx, ...
                     'GenotypeName', gnm, 'GenotypeIndex', gidx, ...
-                    'SeedlingIndex', sidx, 'toFlip', toFlip);
+                    'SeedlingIndex', sidx, 'toFlip', toFlip, ...
+                    'keepBoth', keepBoth, 'path2subs', path2subs);
         end
 
         fprintf('%s\nDONE! [%.03f sec]\n%s\n', sprB, toc(t), sprA);
@@ -212,6 +195,7 @@ p.addOptional('pdp', 'pdp');
 p.addOptional('pdx', 'pdx');
 p.addOptional('pdy', 'pdy');
 p.addOptional('pdw', 'pdw');
+p.addOptional('path2subs', 0);
 
 % Optimization Options
 % p.addOptional('ymin', 10);
@@ -230,6 +214,7 @@ p.addOptional('sav', 0);
 p.addOptional('vis', 0);
 p.addOptional('fidx', 0);
 p.addOptional('toFlip', []);
+p.addOptional('keepBoth', 0);
 p.addOptional('isdl', 1);
 p.addOptional('ihyp', 1);
 p.addOptional('fsdl', []);
