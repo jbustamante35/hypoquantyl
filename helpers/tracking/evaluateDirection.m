@@ -1,9 +1,9 @@
-function [toFlip , eout , fnm] = evaluateDirection(img, bpredict, zpredict, cpredict, mline, msample, mcnv, mgrade, fidx, sav, v)
+function [toFlip , eout , fout , fnm] = evaluateDirection(img, bpredict, zpredict, cpredict, mline, msample, mcnv, mgrade, fidx, sav, v)
 %% evaluateFirstFrame: check direction image is facing
 %
 %
 % Usage:
-%   [toFlip , eout , fnm] = evaluateDirection(img, bpredict, zpredict, ...
+%   [toFlip , eout , fout  , fnm] = evaluateDirection(img, bpredict, zpredict, ...
 %       cpredict, mline, msample, mcnv, mgrade, fidx, sav, v)
 %
 % Input:
@@ -22,6 +22,7 @@ function [toFlip , eout , fnm] = evaluateDirection(img, bpredict, zpredict, cpre
 % Output:
 %   toFlip:
 %   eout:
+%   fout:
 %   fnm:
 %
 
@@ -95,13 +96,23 @@ toFlip = gorg >= gflp;
 if toFlip
     % Switch to flipped direction
     hkeep = 'flipped';
+    hflp  = 'original';
     eout  = struct('img', iflp, 'cpre', cflp, 'mpre', mflp, 'zpre', zflp, ...
         'bpre', bflp, 'ppre', pflp, 'gpre', gflp, 'drc', dflp, 'keep', hkeep);
+
+    % Return both results
+    fout = struct('img', iorg, 'cpre', corg, 'mpre', morg, 'zpre', zorg, ...
+        'bpre', borg, 'ppre', porg, 'gpre', gorg, 'drc', dorg, 'keep', hflp);
 else
     % Keep original direction
     hkeep = 'original';
+    hflp  = 'flipped';
     eout  = struct('img', iorg, 'cpre', corg, 'mpre', morg, 'zpre', zorg, ...
         'bpre', borg, 'ppre', porg, 'gpre', gorg, 'drc', dorg, 'keep', hkeep);
+
+    % Return both results
+    fout = struct('img', iflp, 'cpre', cflp, 'mpre', mflp, 'zpre', zflp, ...
+        'bpre', bflp, 'ppre', pflp, 'gpre', gflp, 'drc', dflp, 'keep', hflp);
 end
 
 if v; fprintf('Keep %s [%.03f sec]\n', hkeep, toc(t)); end

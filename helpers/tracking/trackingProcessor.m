@@ -60,6 +60,8 @@ wt = w(fwin + skp,:);
 % Total length of midline per time
 L  = arrayfun(@(x) x.calculatelength(0, 1), w);
 Ls = arrayfun(@(x) smooth(L(:,x), smth), 1 : nsdls, 'UniformOutput', 0);
+Li = cellfun(@(x) interpolateGrid(repmat(x',10,1), ftrp, 1)', ...
+    Ls, 'UniformOutput', 0);
 
 % ---------------------------------------------------------------------------- %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% ArcLengths %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -125,8 +127,9 @@ pstat.Frames      = nfrms;
 pstat.Window      = fwin;
 pstat.Percentages = ipcts;
 
-pout.Tracking.raw     = P;    % Tracking Data
-pout.Tracking.lengths = Ls;   % Full midline lengths
+pout.Tracking.raw      = P;    % Tracking Data
+pout.Tracking.lengths  = Ls;   % Full midline lengths
+pout.Tracking.ilens    = Li;   % Interpolated midline lengths
 
 pout.Arclength.raw    = plen; % Raw arclengths
 pout.Arclength.rep    = prep; % Repaired arclengths

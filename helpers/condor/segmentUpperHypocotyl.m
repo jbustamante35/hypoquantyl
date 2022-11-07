@@ -31,14 +31,17 @@ try
     fprintf('\n\nEvaluating D-Vector Network Model\nPre-Nd class == %s | ', ...
         ndclass);
     if strcmpi(ndclass, 'network')
-        if path2subs
-            % Or draw from stored versions
-            fprintf('Substituting to MyNN from %s | ', ndclass);
-            Nd = substituteNd(Nd, path2subs);
-        else
-            % Generate new set
-            fprintf('Converting to MyNN | ');
-            Nd = MyNN.fromStruct(Nd);
+        switch path2subs
+            case 0
+                % Generate new set
+                fprintf('Converting to MyNN | ');
+                Nd = MyNN.fromStruct(Nd);
+            case 1
+                % Or draw from stored versions
+                fprintf('Substituting to MyNN from %s | ', ndclass);
+                Nd = substituteNd(Nd, path2subs);
+            case 2
+                % Keep as network object
         end
 
         ndclass = class(Nd.N1);
@@ -61,7 +64,7 @@ try
 
     if isempty(toFlip)
         % Compare both grade for both directions
-        [toFlip , eout] = evaluateDirection(img, bpredict, zpredict, ...
+        [toFlip , eout , fout] = evaluateDirection(img, bpredict, zpredict, ...
             cpredict, mline, msample, mcnv, mgrade, fidx, sav, vis);
 
         % Get initial guesses
@@ -143,9 +146,17 @@ try
     % ------------------------------------------------------------------------ %
     %% Output if good
     init   = struct('z', zinit, 'c', cinit, 'm', minit, 'b', binit, 'g', ginit); % Initial Guesses
-    opt    = struct('z', zopt,  'c', copt,  'm', mopt,  'b', bopt,  'g', gopt);  % Optimized
+    opt    = struct('z', zopt,  'c', copt,  'm', mopt,  'b', bopt,  'g', gopt);  % Optimized    
     err    = [];
     isgood = true;
+
+    % Return flipped results
+    if keepBoth
+        flp = struct('z', fout.zpre, 'c', fout.cpre, 'm', ...
+            fout.mpre, 'b', fout.bpre, 'g', fout.gpre);
+    else
+        flp = [];
+    end
 catch err
     %% If error
     aa = who;
@@ -172,7 +183,7 @@ end
 %% Output
 info = struct('GenotypeName', GenotypeName, 'GenotypeIndex', GenotypeIndex, ...
     'SeedlingIndex', SeedlingIndex, 'Frame', Frame, 'toFlip', toFlip);
-out  = struct('info', info, 'init', init, 'opt', opt, ...
+out  = struct('info', info, 'init', init, 'opt', opt, 'flp', flp, ...
     'err', err, 'isgood', isgood);
 
 if sav
@@ -215,6 +226,7 @@ p.addOptional('par', 0);
 p.addOptional('vis', 0);
 p.addOptional('sav', 0);
 p.addOptional('toFlip', []);
+p.addOptional('keepBoth', 0);
 
 % Information Options
 p.addOptional('GenotypeName', 'genotype');

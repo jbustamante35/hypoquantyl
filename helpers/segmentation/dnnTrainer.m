@@ -46,16 +46,12 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMGS, CNTRS, nitrs, nsplt, cidxs, fmth, 
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
 
-%% Run the Algorithm!
-% Misc setup
+%% Misc setup
 ncrvs = numel(IMGS);
 sprA  = repmat('=', 1, 80);
 sprB  = repmat('-', 1, 80);
 
-if ~cidxs
-    % Default to following 4 examples
-    cidxs = pullRandom(1 : ncrvs, 4, 1);
-end
+if ~cidxs; cidxs = pullRandom(1 : ncrvs, 4, 1); end % Follow 4 examples
 
 nfigs = numel(cidxs);
 fnms  = cell(1, nfigs);
@@ -68,10 +64,8 @@ toRemove           = 1;
 zoomLvl            = [0.5 , 1.5];
 [scls, doms, dszs] = setupParams('toRemove', toRemove, 'zoomLvl', zoomLvl);
 
-%% Set up figures to check progress
-if vis
-    [~ , fnms] = makeBlankFigures(nfigs, 1);
-end
+% Set up figures to check progress
+if vis; [~ , fnms] = makeBlankFigures(nfigs, 1); end
 
 %% Run the algorithm!
 tAll = tic;
@@ -80,89 +74,83 @@ for itr = 1 : nitrs
     %% Get Tangent Bundle, Displacement Vectors, and Frame Bundles
     tItr = tic;
     fprintf('\n%s\nRunning iteration %d of %d\n%s\n', sprA, itr, nitrs, sprB);
-    
+
     t = tic;
     fprintf('Extracting data from %d Curves', ncrvs);
-    
     if itr == 1
         %% Build initial image patches, Z-Vectors, and targets
         [PTCHS , ZVECS , TRGS] = prepPatchesAndTargets_dvecs( ...
             IMGS, CNTRS, par, nsplt, scls, doms, dszs);
-        
+
         % Build PC space for PCA smoothing
         [pdx , pdy] = deal([]);
         switch fmth
             case 'whole'
                 %% PCA smoothing on collection of displacement vectors
-                fprintf('\nBuilding %d-dim PC space for whole contour...', NPF);
+                fprintf('\nBuilding %d-dim PC space for whole smooth...', NPF);
                 [~ , pdx , pdy] = wholeSmoothing(TRGS, NPF);
-                
             case 'local'
                 %% Local PCA smoothing on windows of displacement vectors
-                fprintf('\nBuilding %d-dim PC space for local smoothing...', NPF);
+                fprintf('\nBuilding %d-dim PC space for local smooth...', NPF);
                 [~ , pdx , pdy] = wholeSmoothing(TRGS, NPF);
                 [~ , pdw]       = localSmoothing(TRGS, nsplt, NPF);
-                
             otherwise
                 fprintf(2, 'No smoothing method selected [%s]...', fmth);
         end
-        
     else
         %% Generate patches and Z-Vectors from previous iteration's predictions
         [PTCHS , ZVECS] = prepPatchesAndTargets_dvecs( ...
             IMGS, CNTRS, par, nsplt, scls, doms, dszs, trgpre);
     end
-    
+
     fprintf('...DONE! [%.02f sec]\n', toc(t));
-    
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Compute target displacements
     % Project contour points into displacement vector space
     t = tic;
     fprintf('Computing target values for %d segments of %d curves...', ...
         size(TRGS,1), size(TRGS,3));
-    
+
     [DVECS, dsz] = computeTargets(TRGS, ZVECS, 1, toFix, seg_lengths, par);
-    
+
     fprintf('DONE! [%.02f sec]\n', toc(t));
-    
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Run a fitnet to predict displacement vectors from scaled patches
     t = tic;
     fprintf('Using neural net to train %d targets...', size(PTCHS,1));
-    
+
     [dpre , net{itr}, evecs{itr}, mns{itr}] = nn_dvectors( ...
         PTCHS, DVECS, dsz, par, NPD, NLAYERS, TRNFN);
-    
+
     fprintf('DONE! [%.02f sec]\n', toc(t));
-    
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Project displacements onto image frame
     t = tic;
     fprintf('Computing target values for %d segments of %d curves...', ...
         size(dpre,1), size(dpre,3));
-    
+
     trgpre = computeTargets(dpre, ZVECS, 0, toFix, seg_lengths, par);
-    
+
     switch fmth
         case 'whole'
             %% Re-fold after making predictions using the same eigenvectors
             % Back-up predicted targets for debugging
             fprintf('Smoothing whole prediction with %d PCs...', NPF);
             trgpre = wholeSmoothing(trgpre, [pdx , pdy]);
-            
         case 'local'
             %% Local PCA smoothing on windows of displacement vectors
             fprintf('Local smoothing predictions with %d PCs...', NPF);
             trgpre = wholeSmoothing(trgpre, [pdx , pdy]);
             trgpre = localSmoothing(trgpre, nsplt, pdw);
-            
         otherwise
             fprintf(2, 'No smoothing method selected [%s]...', fmth);
     end
-    
+
     fprintf('DONE! [%.02f sec]\n', toc(t));
-    
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Show iterative curves predicted
     t = tic;
@@ -171,11 +159,11 @@ for itr = 1 : nitrs
             idx = cidxs(fidx);
             fprintf('Showing results from Iteration %d for Contour %d...\n', ...
                 itr, idx);
-            
-            ct  = TRGS(:,1:2,idx);
-            zs  = ZVECS(:,1:2,idx);
-            cp  = trgpre(:,1:2,idx);
-            
+
+            ct = TRGS(:,1:2,idx);
+            zs = ZVECS(:,1:2,idx);
+            cp = trgpre(:,1:2,idx);
+
             % Iteratively show predicted d-vectors and tangent bundles
             figclr(fidx);
             myimagesc(IMGS{idx});
@@ -183,15 +171,15 @@ for itr = 1 : nitrs
             plt(zs, 'mo', 3);
             plt(ct, 'g-', 2);
             plt(cp, 'y--', 2);
-            
+
             ttl = sprintf('Target vs Predicted\nContour %d of %d | Iteration %d of %d', ...
                 idx, ncrvs, itr, nitrs);
             lgn = {'Z-Vector' , 'Ground Truth' , 'Predicted'};
             legend(lgn, 'FontSize', 10, 'Location', 'southeast');
             title(ttl);
-            
+
             drawnow;
-            
+
             % Save at each iteration
             if sav == 2
                 fnms{fidx} = sprintf('%s_curve%03d_iteration%02dof%02d', ...
@@ -200,18 +188,17 @@ for itr = 1 : nitrs
                     fmth, idx, ncrvs);
                 saveFiguresJB(fidx, fnms(fidx), ndir);
             end
-            
         end
     end
-    
+
     % Done with the iteration
     fprintf('DONE! [%.02f sec]\n%s\n', toc(t), sprB);
     fprintf('Ran Iteration %d of %d: %.02f sec\n%s\n', ...
-        itr, nitrs, toc(tItr), sprA);   
+        itr, nitrs, toc(tItr), sprA);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Store output
+%% Store output
 DIN           = struct('IMGS', IMGS, 'CNTRS', CNTRS);
 DOUT.Net      = net;
 DOUT.EigVecs  = evecs;
@@ -228,15 +215,12 @@ switch fmth
         pdx.setName('FoldDVectorX', 1);
         pdy.setName('FoldDVectorY', 1);
         pdf = struct('pdx', pdx, 'pdy', pdy);
-        
     case 'local'
         %% Local window smoothing
         pdx.setName('FoldDVectorX', 1);
         pdy.setName('FoldDVectorY', 1);
         pdw.setName('FoldDVectorW', 1);
-        
         pdf = struct('pdx', pdx, 'pdy', pdy, 'pdw', pdw);
-        
     otherwise
         pdf = [];
 end

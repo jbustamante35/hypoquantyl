@@ -218,7 +218,6 @@ end
 jprintf(' ', toc(t), 1, 80 - n);
 fprintf('%s\nFinished training Z-Vector CNN [%.03f sec]\n%s\n', ...
     sepA, toc(tAll), sepB);
-
 end
 
 function args = parseInputs(varargin)

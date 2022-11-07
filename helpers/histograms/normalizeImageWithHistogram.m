@@ -8,7 +8,7 @@ function inrm = normalizeImageWithHistogram(img, href, mth, nbins)
 % Input:
 %   img: image to normalize
 %   href: probability threshold [simple] or histogram to normalize image to
-%   mth: normalization method [ simple | polynomial | uniform ]
+%   mth: normalization method [simple|polynomial|uniform]
 %   nbins: number of bins to normalize to [default 256]
 %
 % Output:
