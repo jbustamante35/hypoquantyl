@@ -25,6 +25,7 @@ classdef Experiment < handle
         ExperimentPath
         Genotypes
         NumberOfGenotypes
+        GenotypeSets
         CurvesTraced
     end
 
@@ -355,11 +356,12 @@ classdef Experiment < handle
             end
         end
 
-        function [noflp, hyp] = findMissingContours(obj)
+        function [noflp , hyp] = findMissingContours(obj)
             %% Find missing contours (accidentally cancelled when training)
-            C = obj.combineContours;
-            D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
-            D = cat(1, D{:});
+            D = obj.combineContours;
+%             C = obj.combineContours;
+%             D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
+%             D = cat(1, D{:});
             if mod(numel(D),2)
                 nms   = arrayfun(@(x) x.Parent.Origin, D, 'UniformOutput', 0);
                 hlfSz = ceil(length(nms) / 2);

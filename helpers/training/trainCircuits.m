@@ -1,4 +1,4 @@
-function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sav, vis, fIdxs)
+function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sav, vis, fidxs)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
 % This function takes in a fully-generated Experiment object as input and
 % extracts Hypocotyl objects to use as training data (defined in cin matrix)
@@ -47,13 +47,11 @@ function [CRCS, figs] = trainCircuits(Ein, cin, typ, flipme, sav, vis, fIdxs)
 %
 
 %% Set defaults
-if nargin < 3
-    typ    = 1;     % [0 to train Seedlings     | 1 to train Hypocotyls]
-    flipme = 1;     % [0 to train only original | 1 to train original and flipped]
-    sav    = 1;     % [1 to save trained CircuitJB object]
-    vis    = 1;     % [1 to show trained contour]
-    fIdxs  = 1 : 2; % [figure indices to plot if vis == 1]
-end
+if nargin < 3; typ    = 1;      end % [0 to train Seedlings     | 1 to train Hypocotyls]
+if nargin < 4; flipme = 1;      end % [0 to train only original | 1 to train original and flipped]
+if nargin < 5; sav    = 0;      end % [1 to save trained CircuitJB object]
+if nargin < 6; vis    = 0;      end % [1 to show trained contour]
+if nargin < 7; fidxs  = 1 : 2;  end % [figure indices to plot if vis == 1]
 
 %% Initialize object array of Seedlings/Hypocotyl to draw contours for
 % Select [Genotype , Seedling | Hypocotyl , frame]
@@ -97,24 +95,24 @@ end
 %% Show 8 first images and masks, unless < 8 contours drawn
 if vis
     % Get figure indices or generate new figures
-    if isempty(fIdxs)
+    if isempty(fidxs)
         fig1 = figure;
         fig2 = figure;
     else
-        fig1 = figure(fIdxs(1));
-        fig2 = figure(fIdxs(2));
+        fig1 = figure(fidxs(1));
+        fig2 = figure(fidxs(2));
     end
-    
+
     figclr(fig1);
     figclr(fig2);
-    
+
     %% Gallery of Hypocotyls with contours on image
     [n , o] = deal(1 : numel(CRCS));
     p       = deal(horzcat(n,o));
     tot     = numel(CRCS);
     rows    = ceil(tot / 10); % Rows of 10
     cols    = ceil(tot / rows);
-    
+
     for slot = 1 : tot
         try
             % Draw Routes on grayscale image
@@ -128,7 +126,7 @@ if vis
                 fixtitle(CRCS(slot).GenotypeName), ...
                 cin(p(slot),2), cin(p(slot),3));
             title(ttl, 'FontSize', 6)
-            
+
             % Draw Routes bw image
             set(0, 'CurrentFigure', fig2);
             subplot(rows, cols, slot);
@@ -140,18 +138,16 @@ if vis
                 fixtitle(CRCS(slot).GenotypeName), ...
                 cin(p(slot),2), cin(p(slot),3));
             title(ttl, 'FontSize', 6)
-            
+
         catch e
             fprintf(2, 'Skipping Circuit %d\n%s\n', slot, e.message);
         end
-        
+
     end
-    
-    if sav
-        saveFigure('gray', tot, fig1);
-    end
-    
-    figs = [fig1 fig2];
+
+    if sav; saveFigure('gray', tot, fig1); end
+
+    figs = [fig1 , fig2];
 else
     figs = [];
 end
@@ -187,13 +183,13 @@ try
     else
         dtyp = 'Seedling';
     end
-    
+
     dttl = size(cin, 1);
     dout = repmat(eval(dtyp), 1, dttl);
     for d = 1 : dttl
         g = ex.getGenotype(cin(d,1));
         s = g.getSeedling(cin(d,2));
-        
+
         if typ
             dout(d) = s.MyHypocotyl;
         else
@@ -234,7 +230,7 @@ end
 if flipme
     forg = sprintf('flip_%s', org);
     flp  = drawCircuit(obj, forg);
-    
+
     if typ
         obj.setCircuit(frm, flp, 'flp');
     else
@@ -256,7 +252,6 @@ crc.checkFlipped;
 crc.DrawOutline(0);
 crc.DrawAnchors(0);
 crc.ConvertRawPoints;
-
 end
 
 function saveFigure(im, N, fig)
@@ -265,7 +260,4 @@ nm = sprintf('%s_ManualTraining_%s_%dImages', tdate('s'), im, N);
 set(fig, 'Color', 'w');
 savefig(fig, nm);
 saveas(fig, nm, 'tiffn');
-
 end
-
-

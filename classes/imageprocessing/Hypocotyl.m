@@ -159,43 +159,47 @@ classdef Hypocotyl < handle
             end
         end
 
-        function [dat , fmsk] = getImage(obj, frm, req, rgn, flp, buf)
+        function [dat , fmsk , oob] = getImage(obj, frm, req, rgn, flp, man_buf, auto_buf, scl)
             %% Return image for this Hypocotyl
             % Image is obtained from the Parent Seedling, cropped, and resized
             % to this object's RESCALE property
-            if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
-            if nargin < 3; req = 'gray';                                end
-            if nargin < 4; rgn = 'upper';                               end
-            if nargin < 5; flp = 0;                                     end
-            if nargin < 6; buf = 0;                                     end
+            if nargin < 2; frm      = obj.getFrame('b') : obj.getFrame('d'); end
+            if nargin < 3; req      = 'gray';                                end
+            if nargin < 4; rgn      = 'upper';                               end
+            if nargin < 5; flp      = 0;                                     end
+            if nargin < 6; man_buf  = 0;                                     end
+            if nargin < 7; auto_buf = 0;                                     end
+            if nargin < 8; scl      = 1;                                     end
 
-            if isempty(frm); [dat , fmsk] = deal([]); return; end            
+            if isempty(frm); [dat , fmsk] = deal([]); return; end
             if strcmpi(frm, ':')
-                frm = obj.getFrame('b') : obj.getFrame('d'); 
+                frm = obj.getFrame('b') : obj.getFrame('d');
             end
-            if size(frm,1) > size(frm,2); frm = frm'; end 
+            if size(frm,1) > size(frm,2); frm = frm'; end
 
             % Get full image
-            sclsz = obj.Parent.getScaleSize;
-            fimg  = obj.Parent.getImage(frm, req);
+            sclsz   = (obj.Parent.getScaleSize * scl) - (scl - 1);
+            fimg    = obj.Parent.getImage(frm, req, man_buf);
+            man_bnd = [0 , 0 , man_buf * 2 , 0];
 
             % Buffer with median background intensity
-            if buf
-                if buf >= 1
+            if auto_buf
+                if auto_buf >= 1
                     % Buffer by pixels
-                    buffval = buf;
+                    buffval = auto_buf;
                 else
                     % Buffer by percentage
                     scl     = obj.Parent.getProperty('SCALESIZE');
                     isz     = scl(1);
-                    buffval = round(buf * isz);
+                    buffval = round(auto_buf * isz);
                 end
 
                 % Get masks first
                 fmsk = obj.Parent.getImage(frm, 'bw');
                 if iscell(fmsk)
                     % Cell array
-                    bnd = num2cell(obj.getCropBox(frm, rgn), 2)';
+%                     bnd = obj.getCropBox(frm, rgn);
+                    bnd = num2cell(obj.getCropBox(frm, rgn) + man_bnd, 2)';
                     if strcmpi(req, 'bw')
                         medBg = arrayfun(@(x) 0, ...
                             1 : numel(fmsk), 'UniformOutput', 0);
@@ -213,12 +217,14 @@ classdef Hypocotyl < handle
                     % Flip them
                     if ~isempty(flp)
                         if flp
-                            dat = cellfun(@(x) flip(x,2), dat, 'UniformOutput', 0);
+                            dat = cellfun(@(x) flip(x,2), ...
+                                dat, 'UniformOutput', 0);
                         end
                     end
                 else
                     % Single image
-                    bnd = obj.getCropBox(frm, rgn);
+                    bnd         = obj.getCropBox(frm, rgn);
+                    [bnd , oob] = bufferCropBox(bnd, man_bnd, fimg);
                     if strcmpi(req, 'bw')
                         medBg = 0;
                     else
@@ -237,7 +243,7 @@ classdef Hypocotyl < handle
                 if iscell(fimg)
                     % Crop them
                     bnd = num2cell(...
-                        obj.getCropBox(frm, rgn), 2)';
+                        obj.getCropBox(frm, rgn) + man_bnd, 2)';
                     crp = cellfun(@(i,b) imcrop(i,b), ...
                         fimg, bnd, 'UniformOutput', 0);
                     dat = cellfun(@(x) imresize(x, sclsz), ...
@@ -249,7 +255,9 @@ classdef Hypocotyl < handle
                     end
                 else
                     % Crop it
-                    bnd = obj.getCropBox(frm, rgn);
+                    bnd         = obj.getCropBox(frm, rgn);
+                    [bnd , oob] = bufferCropBox(bnd, man_bnd, fimg);
+                    
                     crp = imcrop(fimg, bnd);
                     dat = imresize(crp, sclsz);
 

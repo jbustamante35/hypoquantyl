@@ -1,7 +1,6 @@
 %% pcaJB: my custom PCA class
 
 classdef PcaJB < handle
-    % classdef PcaJB
     properties (Access = public)
         %% Main properties
         DataName
@@ -32,7 +31,6 @@ classdef PcaJB < handle
                 
                 % Set name for savefile
                 obj.DataName = obj.setName(obj.DataName);
-                
             else
                 % Set default properties for empty object
                 obj.DataName = obj.setName;
@@ -69,7 +67,7 @@ classdef PcaJB < handle
                 D = obj.InputData;
             end
             
-            X = D(N, :);
+            X = D(N,:);
         end
         
         function [z , mu , sig , rshp] = getZScoreNorm(obj, req)
@@ -132,7 +130,7 @@ classdef PcaJB < handle
             V = V(1 : neigs , 1 : neigs);
         end
         
-        function [varX, pctN] = VarExplained(obj, pct, n)
+        function [varX , pctN] = VarExplained(obj, pct, n)
             %% Variance explained
             % pct: cutoff percentage (default: 1.0)
             % n: number of dimensions to return (default: NumberOfPCs)
@@ -156,7 +154,7 @@ classdef PcaJB < handle
             M = obj.MeanVals(X);
             E = obj.EigVecs(neigs);
             S = pcaProject(X, E, M, 'sim2scr');
-            S = S(N, :);
+            S = S(N,:);
         end
         
         function Y = SimData(obj, N, neigs)
@@ -208,9 +206,7 @@ classdef PcaJB < handle
             [z , mu , sig] = zscore(X, ndim);
             
             % Convert back to original shape
-            if rshp
-                z = reshape(z, shp);
-            end
+            if rshp; z = reshape(z, shp); end
             
             obj.ZScoreNorm = struct('Input', z, 'Mu', mu, 'Sigma', sig);
         end
@@ -240,8 +236,8 @@ classdef PcaJB < handle
             if nargin < 2; req  = 'vec';           end
             if nargin < 3; npcs = obj.NumberOfPCs; end
             
-            C      = obj.CovVarMatrix;
-            [E, V] = eigs(C, npcs);
+            C       = obj.CovVarMatrix;
+            [E , V] = eigs(C, npcs);
             
             switch req
                 case 'vec'

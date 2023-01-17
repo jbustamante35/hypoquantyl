@@ -1,9 +1,8 @@
-function [ht , nclps , uidxs] = full2clipped(clps, ht, C, IMGS, toSet, nrts, rlen, npts)
-%% full2clipped: convert contours in Curves to clipped versions
-%
+function [ht , nclps , uidxs] = full2clipped_dataset(clps, ht, C, IMGS, toSet, nrts, rlen, npts)
+%% full2clipped_dataset: convert contours in Curves to clipped versions
 %
 % Usage:
-%   [ht , nclps , uidxs] = full2clipped(clps, ht, C, IMGS, ...
+%   [ht , nclps , uidxs] = full2clipped_dataset(clps, ht, C, IMGS, ...
 %       toSet, nrts, rlen, npts)
 %
 % Input:
@@ -40,7 +39,7 @@ cntrs = cellfun(@(x) redoContour(x, nrts, rlen), cntrs, 'UniformOutput', 0)';
 
 % ---------------------------------------------------------------------------- %
 % Get indicies from clipped dataset from full dataset
-% Subtract off each image form full set by each image from small set [slow!]
+% Subtract off each image from full set by each image from small set [slow!]
 chk = cellfun(@(i) cellfun(@(I) I - i, IMGS, 'UniformOutput', 0), ...
     imgs, 'UniformOutput', 0);
 chk = cat(2, chk{:});
@@ -72,7 +71,6 @@ end
 % ---------------------------------------------------------------------------- %
 % Store fixed Curves in HypocotylTrainer
 ht.Curves = c;
-
 end
 
 function cntr = redoContour(cntr, nroutes, rlen)
@@ -94,7 +92,5 @@ rts = arrayfun(@(i,e,l) interpolateOutline(cntr(i:e,:), l), ...
 
 % Close contour
 cntr = cat(1, rts{:});
-if sum(cntr(1,:) ~= cntr(end,:))
-    cntr = [cntr ; cntr(1,:)];
-end
+if sum(cntr(1,:) ~= cntr(end,:)); cntr = [cntr ; cntr(1,:)]; end
 end

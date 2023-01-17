@@ -22,7 +22,8 @@ function [rcntr , rmline , minfo] = thumb2full(c, frm, cntr, mline, rgn, rev)
 %%
 switch class(c)
     case 'Curve'
-        d   = c.Parent.Parent;
+        d   = c.Parent;
+        h   = c.Parent.Parent;
         img = c.getImage;
 
         if nargin < 2; frm   = d.getFrame;                  end
@@ -61,48 +62,9 @@ switch class(c)
         return;
 end
 
-% switch nargin
-%     case 1
-%         % Pre-Trained Curve object
-%         d     = c.Parent.Parent;
-%         frm   = d.getFrame;
-%         img   = c.getImage;
-%         cntr  = c.getTrace;
-%         mline = c.getMidline('auto', 'int');
-%         rgn   = 'upper';
-%
-%     case 4
-%         % Untrained Hypocotyl object with contour and midline
-%         h   = c;
-%         d   = [];
-%         img = h.getImage(frm);
-%         rgn = 'upper';
-%
-%     otherwise
-%         fprintf(2, 'Error with %d inputs\n', nargin);
-%         [rcntr , rmline , minfo] = deal([]);
-%         return;
-% end
-
 %% Meet the Parents
 s = h.Parent;
 g = s.Parent;
-
-% if ~isempty(d)
-%     % Mirror and slide coordinates if contour is flipped
-%     csz  = size(cntr,1);
-%     msz  = size(mline,1);
-%     isz  = size(img,1);
-%
-%     cslide = [repmat(isz, csz, 1) , zeros(csz, 1)];
-%     mslide = [repmat(isz, msz, 1) , zeros(msz, 1)];
-%
-%     % Flip and Slide coordinates if using flipped training data
-%     if d.isFlipped
-%         cntr  = (fliplr(cntr) * Rmat(90)) + cslide;
-%         mline = (fliplr(mline) * Rmat(90)) + mslide;
-%     end
-% end
 
 %% Remap
 % Hypocotyl on non-resized seedling image
@@ -127,11 +89,11 @@ gbox = s.getPData(frm).BoundingBox;
 
 % Rescale thumbnail coordinates back to original
 scls    = size(himg) ./ size(img);
-rcntrs  = fliplr(fliplr(cntr) .* scls);
-rmlines = fliplr(fliplr(mline) .* scls);
+rcntrs  = fliplr(fliplr(cntr) .* scls);  % inner flip is because contours are [x,y] and not [row,col]
+rmlines = fliplr(fliplr(mline) .* scls); % inner flip is because midlines are [x,y] and not [row,col]
 
 % Map seedling coordinates back to full-res image
-rcntr  = rcntrs + (gbox(1:2) + sbox(1:2));
+rcntr  = rcntrs  + (gbox(1:2) + sbox(1:2));
 rmline = rmlines + (gbox(1:2) + sbox(1:2));
 
 %% Get some miscellaneous data for visualizing info

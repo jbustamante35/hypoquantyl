@@ -24,6 +24,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
         NUMBEROFANCHORS = 4                    % Number of sections
         Routes                                 % Coordinates of bottom-left-top-right sections
         AnchorPoints                           % Coordinates of corners
+        AnchorIndex                            % Index of corners in contour
     end
 
     %%
@@ -114,7 +115,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             obj.NormalOutline = [];
         end
 
-        function LabelAllPixels(obj, labelname, rgn, flp, buf)
+        function LabelAllPixels(obj, labelname, rgn, flp, buf, scl)
             %% Labels all pixels inside contour as 'Hypocotyl'
             % This is to test out a method of deep learning for semantic
             % segmentation See ref (Long, Shelhammer, Darrell, CVF 2015, 2015)
@@ -124,8 +125,9 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             if nargin < 3; rgn       = 'upper'; end
             if nargin < 4; flp       = [];      end
             if nargin < 5; buf       = 0;       end
+            if nargin < 6; scl = 1;             end
 
-            msk              = obj.getImage('bw', rgn, flp, buf);
+            msk              = obj.getImage('bw', rgn, flp, buf, scl);
             lbl              = repmat("", size(msk));
             lbl(msk == 1)    = labelname;
             lbl(msk ~= 1)    = 'bg';
@@ -192,8 +194,8 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             % If the flp parameter is set to true, then the FlipMe method is
             % called before prompting user to draw contour.
             if nargin < 2; buf = 0;       end
-            if nargin < 2; rgn = 'upper'; end
-            if nargin < 2; flp = 0;       end
+            if nargin < 3; rgn = 'upper'; end
+            if nargin < 4; flp = 0;       end
 
             try
                 % Trace outline and store as RawOutline
@@ -285,69 +287,97 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
 
         function trc = InterpOutline(obj, pts, vsn)
             %% Interpolate outline
-            switch  nargin
-                case 1
-                    pts = obj.INTERPOLATIONSIZE;
-                    vsn = 'Full';
-                case 2
-                    vsn = 'Full';
-            end
+            if nargin < 2; pts = obj.INTERPOLATIONSIZE; end
+            if nargin < 3; vsn = 'Full';                end
 
             trc = obj.getOutline(vsn);
+
+            % Close contour if open
+            if sum(trc(1,:) ~= trc(end,:)); trc = [trc ; trc(1,:)]; end
+
             trc = interpolateOutline(trc, pts);
         end
 
         function [nrm , apt] = NormalOutline(obj, trc, init)
             %% Reindex coordinates to normalize start points to anchor point
-            switch nargin
-                case 1
-                    trc  = obj.InterpOutline;
-                    init = 'alt';
-                case 2
-                    init = 'alt';
-            end
+            if nargin < 2; trc  = obj.InterpOutline; end
+            if nargin < 3; init = 'alt';             end
 
             [apt, aidxs] = findAnchorPoint(obj, trc, init);
             nrm          = obj.repositionPoints(trc, aidxs, init);
 
         end
 
-        function ConvertRawOutlines(obj)
+        function ConvertRawOutlines(obj, lb)
             %% Convert contours from RawOutline to InterpOutline
+            if nargin < 2; lb = 5; end
+
             if iscell(obj.RawOutline)
                 oL = obj.RawOutline{1};
             else
                 oL = obj.RawOutline;
             end
 
-            % Wrap contour back to first coordinate
-            oL = [oL ; oL(1,:)];
+            % Close contour if open
+            if sum(oL(1,:) ~= oL(end,:)); oL = [oL ; oL(1,:)]; end
+
+            % Interpolate then Exclude Lower Bound
             sz = obj.INTERPOLATIONSIZE;
             iL = interpolateOutline(oL, sz);
+            iL = excludeLowerBound(obj, iL, lb);
 
-            obj.InterpOutline = iL;
+            % Close contour if open, Interpolate Again
+            if sum(iL(1,:) ~= iL(end,:)); iL = [iL ; iL(1,:)]; end
+            iL = interpolateOutline(iL, sz);
+
+            obj.FullOutline = iL;
         end
 
         function ConvertRawPoints(obj)
             %% Snap floating RawPoints onto drawn AnchorPoints
             % First interpolate manually-drawn outline
-            if isempty(obj.InterpOutline)
-                obj.ConvertRawOutlines;
-            end
+            if isempty(obj.InterpOutline); obj.ConvertRawOutlines; end
 
-            iL   = obj.InterpOutline;
-            pts  = obj.RawPoints;
-            nPts = snap2curve(pts, iL);
+            %
+            iL            = obj.InterpOutline;
+            pts           = obj.RawPoints;
+            [nPts , nIdx] = snap2curve(pts, iL);
 
             obj.AnchorPoints = nPts;
+            obj.AnchorIndex  = nIdx;
         end
 
-        function ReconfigInterpOutline(obj)
+        function ReconfigInterpOutline(obj, pts, vsn, lb)
             %% Convert interpolated outline to Route's interpolated traces
             % This will change the coordinates from this object's InterpOutline
             % property to the InterpTrace of each of this object's Route array.
             % This ensures that there is a segment defining the base segment.
-            obj.FullOutline = obj.InterpOutline;
+            if nargin < 2; pts = obj.INTERPOLATIONSIZE; end
+            if nargin < 3; vsn = 'Full';                end
+            if nargin < 4; lb  = 5;                     end
+
+            if isempty(pts); pts = obj.INTERPOLATIONSIZE; end
+            obj.FullOutline = obj.InterpOutline(pts, vsn, lb);
+        end
+
+        function [cntr , rts] = Full2Clipped(obj, vsn, slens, npts)
+            %% Full2Clipped: convert contour to clipped and segmented version
+            if nargin < 2; vsn   = 'Full';                end
+            if nargin < 3; slens = obj.SEGLENGTH;         end
+            if nargin < 4; npts  = obj.INTERPOLATIONSIZE; end
+
+            %% Remove duplicate corners except for the last point
+            cntr  = obj.getOutline(vsn);
+            cinit = obj.getAnchorPoints(':', 1)';
+            cends = [cinit(2:end) , npts] - 1;
+            rts   = arrayfun(@(i,e,l) interpolateOutline(cntr(i:e,:), l), ...
+                cinit, cends, slens, 'UniformOutput', 0);
+
+            % Close contour
+            cntr = cat(1, rts{:});
+            if sum(cntr(1,:) ~= cntr(end,:)); cntr = [cntr ; cntr(1,:)]; end
+
+            obj.ClipOutline = cntr;
         end
 
         function trainCircuit(obj, trainStatus)
@@ -405,29 +435,26 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             end
         end
 
-        function img = getImage(obj, req, rgn, flp, buf)
+        function img = getImage(obj, req, rgn, flp, man_buf, auto_buf, scl)
             %% getImage: return image from CircuitJB object
-            if nargin < 2; req = 'gray';  end
-            if nargin < 3; rgn = 'upper'; end
-            if nargin < 4; flp = [];      end
-            if nargin < 5; buf = 0;       end
+            if nargin < 2; req      = 'gray';  end
+            if nargin < 3; rgn      = 'upper'; end
+            if nargin < 4; flp      = [];      end
+            if nargin < 5; man_buf  = 0;       end
+            if nargin < 6; auto_buf = 0;       end
+            if nargin < 7; scl      = 1;       end
 
-            if isempty(flp)
-                flp = obj.checkFlipped;
-            end
-
+            if isempty(flp); flp = obj.checkFlipped; end
             frm = obj.getFrame;
-            img = obj.Parent.getImage(frm, req, rgn, flp, buf);
+            img = obj.Parent.getImage(frm, req, rgn, flp, ...
+                man_buf, auto_buf, scl);
         end
 
         function setOutline(obj, crds, otyp)
             %% Set coordinates to an outline
             %  function setFullOutline(obj, crds)
+            if nargin < 3; otyp = 'Full'; end
             try
-                if nargin < 3
-                    otyp = 'Full';
-                end
-
                 oline       = sprintf('%sOutline', otyp);
                 obj.(oline) = crds;
             catch
@@ -446,10 +473,8 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
 
         function crds = getRawOutline(obj, idx)
             %% Return RawOutline at specific frame
+            if nargin < 2; idx = ':'; end
             try
-                if nargin < 2
-                    idx = ':';
-                end
                 crds = obj.getOutline('Raw', idx);
             catch e
                 fprintf(2, 'Error returning RawOutline\n%s\n', e.getReport);
@@ -457,17 +482,14 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             end
         end
 
-        function trc = getOutline(obj, idx, otyp)
+        function [trc , goo , soo] = getOutline(obj, idx, otyp, buf, scl)
             %% Return Interpolated Outline
-            try
-                switch nargin
-                    case 1
-                        idx  = ':';
-                        otyp = 'Full';
-                    case 2
-                        otyp = 'Full';
-                end
+            if nargin < 2; idx  = ':';    end
+            if nargin < 3; otyp = 'Full'; end
+            if nargin < 4; buf  = 0;      end
+            if nargin < 5; scl  = 1;      end
 
+            try
                 % If idx input is outline type
                 if ischar(idx) && ~strcmpi(idx, ':')
                     otyp = idx;
@@ -476,6 +498,12 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
 
                 oL  = sprintf('%sOutline', otyp);
                 trc = obj.(oL)(idx,:);
+
+                % Modify if using a buffered image
+                [goo , soo] = deal(0);
+                if buf || scl > 1
+                    [trc , goo , soo] = obj.contourRemap(trc, buf, scl);
+                end
             catch
                 fprintf(2, 'Error returning %sOutline\n', otyp);
                 trc = [];
@@ -503,14 +531,19 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             end
         end
 
-        function pts = getAnchorPoints(obj, idx)
+        function apts = getAnchorPoints(obj, idx, getIdx)
             %% Return all or specific set of AnchorPoints
-            if nargin < 2; idx = ':'; end
+            if nargin < 2; idx    = ':'; end
+            if nargin < 3; getIdx = 0;   end % Get indices instead
             try
-                pts = obj.AnchorPoints(idx,:);
+                if getIdx
+                    apts = obj.AnchorIndex(idx);
+                else
+                    apts = obj.AnchorPoints(idx,:);
+                end
             catch
                 fprintf(2, 'Error returning AnchorPoint %d\n', idx);
-                pts = [];
+                apts = [];
             end
         end
 
@@ -609,6 +642,41 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             apt = crds(idx, :);
         end
 
+        function [trc , goo , soo] = contourRemap(obj, trc, buf, scl)
+            %% Remap coordinates after changing crop box
+            if nargin < 3; buf = 0; end
+            if nargin < 4; scl = 1; end
+
+            %
+            hyp = obj.Parent;
+            sdl = hyp.Parent;
+            gen = sdl.Parent;
+
+            % Original and adjusted images
+            frm = obj.getFrame;
+            gio = gen.getImage(frm, 'gray');
+            sio = sdl.getImage(frm, 'gray', 0);
+            sic = sdl.getImage(frm, 'gray', buf);
+            hio = hyp.getImage(frm, 'gray', 'upper', [], 0, 0, 1);
+            hic = hyp.getImage(frm, 'gray', 'upper', [], buf, 0, scl);
+
+            % Adjust cropboxes
+            soff = [-buf , -buf , buf*2 , buf]; % [left , top , 2*right , bottom]
+            hoff = [0    , 0    , buf*2 , buf]; % [left , top , 2*right , bottom]
+            gbo  = sdl.getPData(frm, 'BoundingBox');
+            sbo  = hyp.getCropBox(frm, 'upper');
+            
+            % Return out-of-bounds pixels
+            [gbc , goo] = bufferCropBox(gbo, soff, gio);
+            [sbc , soo] = bufferCropBox(sbo, hoff, sic);
+
+            % Hypocotyl -> Seedling -> Genotype -> Seedling -> Hypocotyl
+            h2s = remapCoordinates(hio, sio, sbo, trc, 'h2s');
+            s2g = remapCoordinates(sio, gio, gbo, h2s, 's2g');
+            g2s = remapCoordinates(gio, sic, gbc, s2g, 'g2s');
+            trc = remapCoordinates(sic, hic, sbc, g2s, 's2h');
+        end
+
         function shft = repositionPoints(obj, crds, idx, init)
             %% Shift contour points around AnchorPoint coordinate
             if strcmpi(init, 'default')
@@ -619,6 +687,15 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 %% Only Re-index saround AnchorPoint coordinate
                 shft = circshift(crds, -idx+1);
             end
+        end
+
+        function crds = excludeLowerBound(obj, crds, lb)
+            %% excludeLowerBound
+            % Exclude all points below lower bound
+            if nargin < 3; lb = 5; end
+            sz   = size(obj.getImage,2);
+            lb   = sz - lb;
+            crds = crds(crds(:,2) <= lb,:);
         end
     end
 end

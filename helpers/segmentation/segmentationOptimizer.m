@@ -1,9 +1,9 @@
-function [zopt , fval , eflg , opts] = segmentationOptimizer(img, varargin)
+function    [zopt , copt , opts , fval , eflg] = segmentationOptimizer(img, varargin)
 %% segmentationOptimizer: optimization
 %
 %
 % Usage:
-%   [zopt , fval , eflg] = segmentationOptimizer(img, varargin)
+%   [zopt , copt , opts , fval , eflg] = segmentationOptimizer(img, varargin)
 %
 % Input:
 %   img:
@@ -24,9 +24,10 @@ function [zopt , fval , eflg , opts] = segmentationOptimizer(img, varargin)
 %
 % Output:
 %   zopt: PC score for optimally-predicted Z-Vector
+%   copt: contour generated from optimally-predicted Z-Vector
+%   opts: various data from optimization
 %   fval: value of the objective function
 %   eflg: exit flag describing exit condition
-%   opts: various data from optimization
 %
 
 %% Parse inputs
@@ -44,10 +45,19 @@ if isempty(mmaster)
         'nopts', nopts, 'par', par, 'vis', vis);
 end
 
-% Get initial guesses
-zscr  = zpredict(img,1);       % 1 for PC score
-zinit = zpredict(img,0);       % 0 for Vector
-zinit = bpredict(img,zinit,1); % 1 for Z-Vector
+% Get initial or seeded Z-Vector
+if isempty(zinit)
+    zscr = zpredict(img,1); % 1 to obtain PC score
+    zinit = zcnv(zscr);
+else
+    % Seeded Z-Vector in image space
+    zscr = zcnv(zinit);
+end
+
+% Predict B-Vector and add back to initial Z-Vector
+if isempty(binit); binit = bpredict(img, zinit, 0); end
+
+zinit = [zinit(:,1:2) + binit , zinit(:,3:end)];
 cinit = cpredict(img,zinit);
 
 %% Optimize Z-Vector from midline patch PC score probability
@@ -68,7 +78,13 @@ options  = optimset('MaxIter', nopts, 'TolFun', tolfun, 'TolX', tolx, ...
 %     [], [], [], [], [], [], [], options);
 
 %% Generate contour from optimized Z-Vector
-if z2c; zopt = cpredict(img, bpredict(img, zcnv(zopt), 1)); end
+copt = cpredict(img, bpredict(img, zcnv(zopt), 1));
+if z2c
+    % Backup Z-Vector, Replace Z-Vector with contour, Replace contour
+    zbak = zopt;
+    zopt = copt;
+    copt = zbak;
+end
 end
 
 function args = parseInputs(varargin)
@@ -115,6 +131,8 @@ p.addOptional('toFix', 0);
 p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
 
 % Miscellaneous Options
+p.addOptional('zinit', []);
+p.addOptional('binit', []);
 p.addOptional('nopts', 100);
 p.addOptional('tolfun', 1e-4);
 p.addOptional('tolx', 1e-4);

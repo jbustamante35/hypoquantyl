@@ -1,13 +1,14 @@
-function [trgs , pdx , pdy] = wholeSmoothing(trgs, PF)
+function [trgs , pdx , pdy] = wholeSmoothing(trgs, PF, npcs)
 %% wholeSmoothing: PCA smoothing of whole contour
 %
 %
 % Usage:
-%   [trgs , pdx , pdy] = wholeSmoothing(trgs, PF)
+%   [trgs , pdx , pdy] = wholeSmoothing(trgs, PF, npcs)
 %
 % Input:
 %   trgs:
 %   PF:
+%   npcs: number of dimensions to project in (default [])
 %
 % Output:
 %   trgs:
@@ -15,45 +16,48 @@ function [trgs , pdx , pdy] = wholeSmoothing(trgs, PF)
 %   pdy:
 %
 
-% %% Close targets if open
-% if ~all(trgs(1,:) == trgs(end,:))
-%     toOpen        = 1;
-%     trgs(end+1,:) = trgs(1,:);
-% else
-%     toOpen = 0;
-% end
+if nargin < 3; npcs = []; end
 
 %% Separate X-/Y-Coordinates and Determine projection direction
 dx = squeeze((trgs(:,1,:)))';
 dy = squeeze((trgs(:,2,:)))';
 
-switch numel(PF)
-    case 1
+switch class(PF)
+    case 'double'
         %% Build PC space with ground truth data
         npf = PF;
-        pdx = myPCA(dx, npf);
-        pdy = myPCA(dy, npf);
-    case 2
-        %% Project and Back-Project into PC space
+        pdx = myPCA(dx, npf(1));
+        pdy = myPCA(dy, npf(2));
+    case 'PcaJB'
+        %% Project to image space then Back-Project into PC space
         pdx = PF(1);
         pdy = PF(2);
 
-        % Smooth X-Coordinates
-        dx = pcaProject(dx, pdx.EigVecs, pdx.MeanVals, 'sim2scr');
-        dx = pcaProject(dx, pdx.EigVecs, pdx.MeanVals, 'scr2sim');
+        if isempty(npcs)
+%             [npx , npy] = deal(pdx.NumberOfPCs);
+            npx = pdx.NumberOfPCs;
+            npy = pdy.NumberOfPCs;
+        else
+            % Check if using different number of PCs for X and Y
+            if numel(npcs) == 2
+                npx = npcs(1);
+                npy = npcs(2);
+            else
+                [npx , npy] = deal(npcs);
+            end
+        end
 
-        % Smooth  Y-Coordinates
-        dy = pcaProject(dy, pdy.EigVecs, pdy.MeanVals, 'sim2scr');
-        dy = pcaProject(dy, pdy.EigVecs, pdy.MeanVals, 'scr2sim');
+        % Smooth and back-project  X-Coordinates
+        dx = pcaProject(dx, pdx.EigVecs(npx), pdx.MeanVals, 'sim2scr');
+        dx = pcaProject(dx, pdx.EigVecs(npx), pdx.MeanVals, 'scr2sim');
 
-        % Back-Project and reshape
+        % Smooth and back-project Y-Coordinates
+        dy = pcaProject(dy, pdy.EigVecs(npy), pdy.MeanVals, 'sim2scr');
+        dy = pcaProject(dy, pdy.EigVecs(npy), pdy.MeanVals, 'scr2sim');
+
+        % Reshape and Concatenate
         dprex = reshape(dx', [size(trgs,1), 1, size(trgs,3)]);
         dprey = reshape(dy', [size(trgs,1), 1, size(trgs,3)]);
         trgs  = [dprex , dprey , ones(size(dprex))];
 end
-
-%% Open targets after
-% if toOpen
-%     trgs(end,:) = [];
-% end
 end

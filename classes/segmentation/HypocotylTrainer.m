@@ -13,8 +13,11 @@ classdef HypocotylTrainer < handle
         SaveDirectory
         Splits
 
-        % Image Normalizations
+        % Image Properties
         Histogram
+        ManBuf
+        ArtBuf
+        ImgScl
 
         % Curve Segment Properties
         ContourVsn
@@ -137,8 +140,11 @@ classdef HypocotylTrainer < handle
                 'ValidationPct'       , 0.1 ; ...
                 'TestingPct'          , 0.1 ; ...
 
-                % Histogram
+                % Image Properties
                 'Histogram'           , struct('Data', [], 'Tag', '', 'NumBins', 0) ; ...
+                'ManBuf'              , 0 ; ...
+                'ArtBuf'              , 0 ; ...
+                'ImgScl'              , 1 ; ...
 
                 % PCA Parametersrunning
                 'NPX'                 , 0 ; ... % 6
@@ -209,15 +215,17 @@ classdef HypocotylTrainer < handle
 
         function ProcessCurves(obj)
             %% Configure segment length and step size
+            crvs = obj.Curves;
+
             t = tic;
-            n = fprintf('Pre-Processing data for %d Cuves', numel(obj.Curves));
+            n = fprintf('Pre-Processing data for %d Cuves', numel(crvs));
 
             arrayfun(@(c) c.setProperty('SEGMENTSIZE', obj.SegmentSize), ...
-                obj.Curves, 'UniformOutput', 0);
+                crvs, 'UniformOutput', 0);
             arrayfun(@(c) c.setProperty('SEGMENTSTEPS', obj.SegmentSteps), ...
-                obj.Curves, 'UniformOutput', 0);
+                crvs, 'UniformOutput', 0);
             arrayfun(@(c) c.getSegmentedOutline, ...
-                obj.Curves, 'UniformOutput', 0);
+                crvs, 'UniformOutput', 0);
 
             jprintf(' ', toc(t), 1, 80 - n);
         end
@@ -225,12 +233,15 @@ classdef HypocotylTrainer < handle
         function SplitDataset(obj, toSplit)
             %% Split Curves into training, validation, and testing sets
             % Validation and Testing sets shouldn't be seen by training algorithm
-            t = tic;
+            if nargin < 2; toSplit = 0;          end
+
+            t       = tic;
+            crvs    = obj.Curves;
+            numCrvs = numel(crvs);
             if toSplit
                 n = fprintf('Splitting into training,validation,testing sets');
 
                 % Get indices of split datasets
-                numCrvs    = numel(obj.Curves);
                 obj.Splits = splitDataset(1 : numCrvs, ...
                     obj.TrainingPct, obj.ValidationPct, obj.TestingPct);
             else
@@ -244,7 +255,7 @@ classdef HypocotylTrainer < handle
             %% Run PCA functions
             % PCA can be run with method 1 (training only) or method 2
             % (training and validation, testing untouched [default])
-            if nargin < 2; mth = 'withval'; end % With training and validation
+            if nargin < 2; mth    = 'withval';  end % With training and validation
 
             switch mth
                 case 'trn'
@@ -265,7 +276,8 @@ classdef HypocotylTrainer < handle
                 'addMid', obj.AddMid, 'znorm', obj.ZNorm, 'zshp', obj.ZShape, ...
                 'bdsp', obj.BasePoint, 'nsplt', obj.NSplt, 'zrotate', obj.ZRotate, ...
                 'hhist', obj.Histogram, 'rtyp', obj.ZRotateType, ...
-                'split2stitch', obj.Split2Stitch, 'sdir', obj.SaveDirectory);
+                'split2stitch', obj.Split2Stitch, 'mbuf', obj.ManBuf, ...
+                'abuf', obj.ArtBuf, 'scl', obj.ImgScl, 'sdir', obj.SaveDirectory);
 
             obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp, 'pm', pm);
         end
@@ -288,7 +300,8 @@ classdef HypocotylTrainer < handle
                 IMGS = obj.Images(obj.Splits.trnIdx);
             else
                 IMGS = arrayfun(@(c) ...
-                    c.getImage('gray', 'upper', obj.ImageFnc), ...
+                    c.getImage('gray', 'upper', ...
+                    obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, obj.ImgScl), ...
                     obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
             end
 
@@ -356,9 +369,11 @@ classdef HypocotylTrainer < handle
             n = fprintf('Training D-Vectors through %d recursive iterations [%s folding]', ...
                 obj.Iterations, obj.FoldMethod);
 
-            IMGS  = arrayfun(@(c) c.getImage('gray', 'upper', obj.ImageFnc), ...
+            IMGS  = arrayfun(@(c) c.getImage('gray', 'upper', ...
+                obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, obj.ImgScl), ...
                 obj.getCurves('trnIdx'), 'UniformOutput', 0);
-            CNTRS = arrayfun(@(c) c.getTrace(obj.ContourVsn, obj.ImageFnc), ...
+            CNTRS = arrayfun(@(c) c.getTrace(obj.ContourVsn, ...
+                obj.ImageFnc, obj.ManBuf, obj.ImgScl), ...
                 obj.getCurves('trnIdx'), 'UniformOutput', 0);
 
             % Normalize images to histogram
@@ -393,7 +408,8 @@ classdef HypocotylTrainer < handle
                 IMGS = obj.Images(obj.Splits.trnIdx);
             else
                 IMGS = arrayfun(@(c) ...
-                    c.getImage('gray', 'upper', obj.ImageFnc), ...
+                    c.getImage('gray', 'upper', ...
+                    obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, obj.ImgScl), ...
                     obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0);
             end
 
@@ -413,8 +429,10 @@ classdef HypocotylTrainer < handle
             irows = isz - nrows : isz;
             IMGS  = IMGS(irows,:,:,:);
 
-            BPTS = cell2mat(arrayfun(@(x) x.BasePoint(1), ...
+            BPTS = cell2mat(arrayfun(@(x) x.getBotMid( ...
+                obj.ContourVsn, obj.ImageFnc, obj.ManBuf, obj.ImgScl), ...
                 obj.Curves(obj.Splits.trnIdx), 'UniformOutput', 0));
+            BPTS = BPTS(:,1);
 
             jprintf(' ', toc(t), 1, 80 - n);
 
@@ -424,7 +442,7 @@ classdef HypocotylTrainer < handle
             bpts  = BPTS;
             bsht  = randi(obj.BaseShift, 1, 10, 'double');
             for nb = 1 : numel(bsht)
-                tmpx  = circshift(IMGS, bsht(nb),2);
+                tmpx  = circshift(IMGS, bsht(nb), 2);
                 tmpy  = BPTS + bsht(nb);
                 bimgs = cat(4, bimgs, tmpx);
                 bpts  = cat(1, bpts, tmpy);
@@ -459,19 +477,22 @@ classdef HypocotylTrainer < handle
             obj.SVectors = struct('SIN', IN, 'SOUT', OUT);
         end
 
-        function obj = RunFullPipeline(obj, training2run, toSplit)
+        function obj = RunFullPipeline(obj, training2run, toProcess, toSplit)
             %% Run full training pipeline
             if nargin < 2; training2run = [1 , 1 , 1 , 0]; end % Don't train S-Vectors
-            if nargin < 3; toSplit      = 0;               end % Split sets
+            if nargin < 3; toProcess    = 0;               end % Process and PCA
+            if nargin < 4; toSplit      = 0;               end % Split sets
 
             if obj.Save
                 saveDir = obj.SaveDirectory;
                 if ~isfolder(saveDir); mkdir(saveDir); end
             end
 
-            obj.ProcessCurves;
-            obj.SplitDataset(toSplit); % Don't split if already split
-            obj.RunPCA;
+            if toProcess
+                obj.ProcessCurves;
+                obj.SplitDataset(toSplit); % Don't split if already split
+                obj.RunPCA;
+            end
 
             if training2run(1); obj.TrainZVectors; end
             if training2run(2); obj.TrainDVectors; end
@@ -550,7 +571,9 @@ classdef HypocotylTrainer < handle
                         IMGS = obj.Images;
                     else
                         IMGS = arrayfun(@(x) x.getImage('gray', 'upper', ...
-                            obj.ImageFnc), obj.Curves, 'UniformOutput', 0);
+                            obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, ...
+                            obj.ImgScl), obj.Curves, 'UniformOutput', 0);
+
                     end
 
                     % Normalize images to histogram
@@ -654,7 +677,8 @@ classdef HypocotylTrainer < handle
                         IMGS = obj.Images;
                     else
                         IMGS = arrayfun(@(x) x.getImage('gray', 'upper', ...
-                            obj.ImageFnc), obj.Curves, 'UniformOutput', 0);
+                            obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, ...
+                            obj.ImgScl), obj.Curves, 'UniformOutput', 0);
                     end
 
                     zscrs = obj.getPCA('pz').PCAScores;
@@ -917,7 +941,8 @@ classdef HypocotylTrainer < handle
                 case 'set'
                     % Store images in property
                     imgs = arrayfun(@(x) x.getImage('gray', 'upper', ...
-                        obj.ImageFnc), obj.Curves, 'UniformOutput', 0);
+                        obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, obj.ImgScl), ...
+                        obj.Curves, 'UniformOutput', 0);
                     obj.Images = imgs;
 
                 case 'kill'
@@ -965,7 +990,8 @@ classdef HypocotylTrainer < handle
 
             if nargin <= 2
                 % Cell arrays not inputted, so extract them from dataset
-                rin  = arrayfun(@(c) c.getImage('gray', 'upper', obj.ImageFnc), ...
+                rin  = arrayfun(@(c) c.getImage('gray', 'upper', ...
+                    obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, obj.ImgScl), ...
                     obj.getCurves(typ), 'UniformOutput', 0);
                 rout = obj.getPCA.pz.PCAScores(typidx);
             else
@@ -1055,12 +1081,9 @@ classdef HypocotylTrainer < handle
             end
         end
 
-        function [bpredict , bcnv, zpredict , zcnv, cpredict , mline , msample , mcnv , mgrade , sopt , mmaster] = getFunctions(obj, seg_lengths, par, vis, toFix, bwid, psz, nopts, tolfun, tolx)
+        function [bpredict , bcnv, zpredict , zcnv, cpredict , mline , mscore , sopt , mmaster] = getFunctions(obj, seg_lengths, par, vis, toFix, bwid, psz, nopts, tolfun, tolx, npxy, npw)
             %% getFunctions
-            %
-            %
-
-            %% Defaults
+            % Defaults
             if nargin < 2;  seg_lengths = obj.Curves(1).getProperty('SEGLENGTH'); end
             if nargin < 3;  par         = 0;                                      end
             if nargin < 4;  vis         = 0;                                      end
@@ -1070,23 +1093,27 @@ classdef HypocotylTrainer < handle
             if nargin < 8;  nopts       = 200;                                    end
             if nargin < 9;  tolfun      = 1e-4;                                   end
             if nargin < 10; tolx        = 1e-4;                                   end
+            if nargin < 11; npxy        = [];                                     end
+            if nargin < 12; npw         = [];                                     end
 
             %%
             [pz , pdp , pdx , pdy , pdw , pm , Nz , Nd , Nb] = ...
                 obj.loadHTNetworks;
 
             %
-            [bpredict , bcnv , zpredict , zcnv , cpredict , mline , msample , ...
-                mcnv , mgrade , sopt , mmaster] = loadSegmentationFunctions( ...
+            [bpredict , bcnv , zpredict , zcnv , cpredict , mline , mscore , ...
+                sopt , mmaster] = loadSegmentationFunctions( ...
                 pz, pdp, pdx, pdy, pdw, pm, Nz, Nd, Nb, 'par', par, 'vis', vis, ...
                 'seg_lengths', seg_lengths, 'psz', psz, 'toFix', toFix, ...
-                'bwid', bwid, 'nopts', nopts, 'tolfun', tolfun, 'tolx', tolx);
+                'npxy', npxy, 'npw', npw, 'bwid', bwid, 'nopts', nopts, ...
+                'tolfun', tolfun, 'tolx', tolx);
         end
 
-        function htname = makeName(obj, toUpdate, sdir)
+        function htname = makeName(obj, toUpdate, sdir, unm)
             %% Auto-Generate a name for this object
-            if nargin < 2; toUpdate =  0;         end
-            if nargin < 3; sdir     = 'htrainer'; end
+            if nargin < 2; toUpdate =  0;             end
+            if nargin < 3; sdir     = 'htrainer';     end
+            if nargin < 4; unm      = obj.UniqueName; end
 
             ncrvs = numel(obj.Curves);
             npx   = obj.NPX;
@@ -1098,7 +1125,6 @@ classdef HypocotylTrainer < handle
             rot   = obj.ZRotate;
             rtyp  = obj.ZRotateType;
             itrs  = obj.Iterations;
-            unm   = obj.UniqueName;
 
             % Has Histogram to Normalize to
             h = ~isempty(obj.Histogram);
@@ -1111,11 +1137,11 @@ classdef HypocotylTrainer < handle
             end
 
             if obj.Split2Stitch
-                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02-%02ddpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%dhistogram_%diterations', ....
+                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02d-%02dpz_%02dzp_%02dfw_%02dfx_%02dfy_%02dpd_%dzrotate_%s_%dhistogram_%diterations', ....
                     tdate, ncrvs, ntrnd, npx, npy, npz{1}, npz{2}, ...
-                    nzp, nzp, npf, npd, rot, rtyp, h, itrs);
+                    nzp, npf, npd, rot, rtyp, h, itrs);
             else
-                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dpf_%02dpd_%dzrotate_%s_%dhistogram_%diterations', ....
+                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dfw_%02dfx_%02dfy_%02dpd_%dzrotate_%s_%dhistogram_%diterations', ....
                     tdate, ncrvs, ntrnd, npx, npy, npz, nzp, npf, ...
                     npd, rot, rtyp, h, itrs);
             end

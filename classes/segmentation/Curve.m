@@ -23,6 +23,9 @@ classdef Curve < handle & matlab.mixin.Copyable
         MAINTRACE      = 'Clip';    % Default contour version
         MAINFUNC       = 'raw';     % Default contour direction
         SEGLENGTH      = [53 , 52 , 53 , 51]; % Lengths of sections
+        MANBUF         = 0;         % Cropping buffer around image
+        ARTBUF         = 0;         % Artificial buffer around image
+        IMGSCL         = 1;         % Rescale size for for image
         ManMidline
         AutoMidline
         NateMidline
@@ -49,12 +52,27 @@ classdef Curve < handle & matlab.mixin.Copyable
             obj    = classInputParser(obj, prps, deflts, vargs);
         end
 
-        function trc = getTrace(obj, vsn, fnc)
+        function trc = getTrace(obj, vsn, fnc, mbuf, scl)
             %% Returns contour type and function to do on contour
-            if nargin < 2; vsn = obj.MAINTRACE; end
-            if nargin < 3; fnc = obj.MAINFUNC;  end
+            % Inputs:
+            %   obj: this Curve object
+            %   vsn: contour version [Full | Clip] (default Clip)
+            %   fnc: direction [left|right] or operation [raw|interp|reverse|repos|norm|back]
+            %   mbuf: cropping buffer (default 0)
+            %   scl: image scaling from 101 x 101 (default 1)
+            if nargin < 2; vsn  = obj.MAINTRACE; end
+            if nargin < 3; fnc  = obj.MAINFUNC;  end
+            if nargin < 4; mbuf = 0;             end
+            if nargin < 5; scl  = 1;             end
 
-            trc = obj.Parent.getOutline(vsn);
+            [trc , ~ , soo] = obj.Parent.getOutline(':', vsn, mbuf, scl);
+            xtra            = ((soo / 2) + mbuf);
+
+            % Slide if using buffered coordinates
+            drc = obj.Direction;
+            if isempty(drc); drc = obj.getDirection(1, vsn); end
+
+            %
             switch fnc
                 case 'raw'
                     % Just return un-processed contour
@@ -67,28 +85,22 @@ classdef Curve < handle & matlab.mixin.Copyable
                 case 'reverse'
                     % Flip and Slide back to centered position
                     seg_lengths = obj.SEGLENGTH;
-                    trc         = flipAndSlide(trc, seg_lengths);
+                    trc         = flipAndSlide(trc, seg_lengths, mbuf, scl);
 
                 case 'left'
                     % Get left-facing contour
-                    drc = obj.Direction;
-                    if isempty(drc); drc = obj.getDirection(1, vsn); end
-
                     % Flip left if facing right
                     if strcmpi(drc, 'right')
                         seg_lengths = obj.SEGLENGTH;
-                        trc         = flipAndSlide(trc, seg_lengths);
+                        trc         = flipAndSlide(trc, seg_lengths, mbuf, -scl, xtra);
                     end
 
                 case 'right'
                     % Get left-facing contour
-                    drc = obj.Direction;
-                    if isempty(drc); drc = obj.getDirection(1, vsn); end
-
                     % Flip right if facing left
                     if strcmpi(drc, 'left')
                         seg_lengths = obj.SEGLENGTH;
-                        trc         = flipAndSlide(trc, seg_lengths);
+                        trc         = flipAndSlide(trc, seg_lengths, mbuf, scl, -xtra);
                     end
 
                 case 'repos'
@@ -130,8 +142,8 @@ classdef Curve < handle & matlab.mixin.Copyable
             %
 
             %% Parse inputs
-            [ndims , vsn , fnc , nsplt , midx , addMid , rot , rtyp , dpos , ...
-                bdsp] = deal([]);
+            [ndims , vsn , fnc , mbuf , scl , nsplt , midx , addMid , rot , ...
+                rtyp , dpos , bdsp] = deal([]);
             obj  = varargin{1};
             args = parseInputs(varargin(2:end));
             for fn = fieldnames(args)'
@@ -139,7 +151,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
 
             %% Returns the dimensions from ndims [default to all]
-            trc = obj.getTrace(vsn, fnc);
+            trc = obj.getTrace(vsn, fnc, mbuf, scl);
             stp = obj.SEGMENTSTEPS;
             Z   = contour2corestructure(trc, nsplt, stp, midx);
 
@@ -159,7 +171,7 @@ classdef Curve < handle & matlab.mixin.Copyable
 
             % Displace by midpoint of contour's base
             if bdsp
-                if isempty(obj.BasePoint); obj.setBasePoint(vsn, fnc); end
+                if isempty(obj.BasePoint); obj.setBasePoint(vsn, fnc, mbuf, scl); end
 
                 bpt      = obj.BasePoint;
                 Z(:,1:2) = Z(:,1:2) - bpt;
@@ -174,6 +186,8 @@ classdef Curve < handle & matlab.mixin.Copyable
                 p.addOptional('ndims', 0);
                 p.addOptional('vsn', obj.MAINTRACE);
                 p.addOptional('fnc', obj.MAINFUNC);
+                p.addOptional('mbuf', obj.MANBUF);
+                p.addOptional('scl', obj.IMGSCL);
                 p.addOptional('nsplt', obj.SEGMENTSIZE);
                 p.addOptional('midx', obj.TOCENTER);
                 p.addOptional('addMid', 0);
@@ -238,13 +252,15 @@ classdef Curve < handle & matlab.mixin.Copyable
             idx = L(num);
         end
 
-        function seg = getSegment(obj, idx, vsn, fnc, trc)
+        function seg = getSegment(obj, idx, vsn, fnc, mbuf, scl, trc)
             %% Get top, bottom, left, or right
-            if nargin < 3; vsn = obj.MAINTRACE; end
-            if nargin < 4; fnc = obj.MAINFUNC;  end
-            if nargin < 5; trc = [];            end
+            if nargin < 3; vsn  = obj.MAINTRACE; end
+            if nargin < 4; fnc  = obj.MAINFUNC;  end
+            if nargin < 5; mbuf = obj.MANBUF;    end
+            if nargin < 6; scl  = obj.IMGSCL;    end
+            if nargin < 7; trc  = [];            end
 
-            if isempty(trc); trc = obj.getTrace(vsn, fnc); end
+            if isempty(trc); trc = obj.getTrace(vsn, fnc, mbuf, scl); end
 
             switch idx
                 case 1
@@ -268,67 +284,103 @@ classdef Curve < handle & matlab.mixin.Copyable
             seg = trc(str:stp,:);
         end
 
-        function crn = getCornerPoint(obj, num, vsn, fnc)
+        function crn = getCornerPoint(obj, num, vsn, fnc, mbuf, scl)
             %%
-            if nargin < 3; vsn = obj.MAINTRACE; end
-            if nargin < 4; fnc = obj.MAINFUNC;  end
+            if nargin < 3; vsn  = obj.MAINTRACE; end
+            if nargin < 4; fnc  = obj.MAINFUNC;  end
+            if nargin < 5; mbuf = obj.MANBUF;    end
+            if nargin < 6; scl  = obj.IMGSCL;    end
 
-            trc = obj.getTrace(vsn, fnc);
+            trc = obj.getTrace(vsn, fnc, mbuf, scl);
             idx = obj.getIndex(num);
             crn = trc(idx,:);
         end
 
-        function mid = getTopMid(obj, vsn, fnc)
-            %%
-            if nargin < 2; vsn = obj.MAINTRACE; end
-            if nargin < 3; fnc = obj.MAINFUNC;  end
+        function mid = getTopMid(obj, vsn, fnc, mbuf, scl)
+            %% getTopMid: get midpoint of top segment
+            % Inputs:
+            %   obj: this Curve object
+            %   vsn: contour version [Full|Clip] (default Clip)
+            %   fnc: direction [left|right] or operation [see obj.getTrace]
+            %   mbuf: cropping buffer (default 0)
+            %   scl: image scaling from 101 x 101 (default 1)
+            if nargin < 2; vsn  = obj.MAINTRACE; end
+            if nargin < 3; fnc  = obj.MAINFUNC;  end
+            if nargin < 4; mbuf = obj.MANBUF;    end
+            if nargin < 5; scl  = obj.IMGSCL;    end
 
-            seg = obj.getSegment(2, vsn, fnc);
+            seg = obj.getSegment(2, vsn, fnc, mbuf, scl);
             mid = mean(seg,1);
         end
 
-        function mid = getBotMid(obj, vsn, fnc)
-            %%
-            if nargin < 2; vsn = obj.MAINTRACE; end
-            if nargin < 3; fnc = obj.MAINFUNC;  end
+        function mid = getBotMid(obj, vsn, fnc, mbuf, scl)
+            %% getBotMid: get midpoint of bottom segment
+            % Inputs:
+            %   obj: this Curve object
+            %   vsn: contour version [Full|Clip] (default Clip)
+            %   fnc: direction [left|right] or operation [see obj.getTrace]
+            %   mbuf: cropping buffer (default 0)
+            %   scl: image scaling from 101 x 101 (default 1)
+            if nargin < 2; vsn  = obj.MAINTRACE; end
+            if nargin < 3; fnc  = obj.MAINFUNC;  end
+            if nargin < 4; mbuf = obj.MANBUF;    end
+            if nargin < 5; scl  = obj.IMGSCL;    end
 
-            seg = obj.getSegment(4, vsn, fnc);
+            seg = obj.getSegment(4, vsn, fnc, mbuf, scl);
             mid = mean(seg,1);
         end
 
-        function [nrm , tng] = getTopNorm(obj, vsn, fnc)
-            %%
-            if nargin < 2; vsn = obj.MAINTRACE; end
-            if nargin < 3; fnc = obj.MAINFUNC;  end
+        function [nrm , tng] = getTopNorm(obj, vsn, fnc, mbuf, scl)
+            %% getTopNorm: get normal to top segment
+            % Inputs:
+            %   obj: this Curve object
+            %   vsn: contour version [Full|Clip] (default Clip)
+            %   fnc: direction [left|right] or operation [see obj.getTrace]
+            %   mbuf: cropping buffer (default 0)
+            %   scl: image scaling from 101 x 101 (default 1)
+            if nargin < 2; vsn  = obj.MAINTRACE; end
+            if nargin < 3; fnc  = obj.MAINFUNC;  end
+            if nargin < 4; mbuf = obj.MANBUF;    end
+            if nargin < 5; scl  = obj.IMGSCL;    end
 
-            top = obj.getSegment(2, vsn, fnc);
+            top = obj.getSegment(2, vsn, fnc, mbuf, scl);
             tng = top(end,:) - top(1,:);
             tng = tng / norm(tng);
             nrm = [tng(2) , -tng(1)];
         end
 
-        function [nrm , tng] = getBotNorm(obj, vsn, fnc)
-            %%
-            if nargin < 2; vsn = obj.MAINTRACE; end
-            if nargin < 3; fnc = obj.MAINFUNC;  end
+        function [nrm , tng] = getBotNorm(obj, vsn, fnc, mbuf, scl)
+            %% getBotNorm: get normal to bottom segment
+            % Inputs:
+            %   obj: this Curve object
+            %   vsn: contour version [Full|Clip] (default Clip)
+            %   fnc: direction [left|right] or operation [see obj.getTrace]
+            %   mbuf: cropping buffer (default 0)
+            %   scl: image scaling from 101 x 101 (default 1)
+            if nargin < 2; vsn  = obj.MAINTRACE; end
+            if nargin < 3; fnc  = obj.MAINFUNC;  end
+            if nargin < 4; mbuf = obj.MANBUF;    end
+            if nargin < 5; scl  = obj.IMGSCL;    end
 
-            top = obj.getSegment(4, vsn, fnc);
+            top = obj.getSegment(4, vsn, fnc, mbuf, scl);
             tng = top(end,:) - top(1,:);
             tng = tng / norm(tng);
             nrm = [tng(2) , -tng(1)];
         end
 
-        function plotNorms(obj, fidx, vsn, fnc, clr)
+        function plotNorms(obj, fidx, clr, vsn, fnc, mbuf, scl)
             %%
-            if nargin < 2; fidx = 1;             end            
-            if nargin < 3; vsn  = obj.MAINTRACE; end
-            if nargin < 4; fnc  = obj.MAINFUNC;  end
-            if nargin < 5; clr  = 0;             end
+            if nargin < 2; fidx = 1;             end
+            if nargin < 3; clr  = 0;             end
+            if nargin < 4; vsn  = obj.MAINTRACE; end
+            if nargin < 5; fnc  = obj.MAINFUNC;  end
+            if nargin < 6; mbuf = obj.MANBUF;    end
+            if nargin < 7; scl  = obj.IMGSCL;    end
 
-            tmid          = obj.getTopMid(vsn, fnc);
-            bmid          = obj.getBotMid(vsn, fnc);
-            [tnrm , ttng] = obj.getTopNorm(vsn, fnc);
-            [bnrm , btng] = obj.getBotNorm(vsn, fnc);
+            tmid          = obj.getTopMid(vsn, fnc, mbuf, scl);
+            bmid          = obj.getBotMid(vsn, fnc, mbuf, scl);
+            [tnrm , ttng] = obj.getTopNorm(vsn, fnc, mbuf, scl);
+            [bnrm , btng] = obj.getBotNorm(vsn, fnc, mbuf, scl);
             bnrm = -bnrm;
 
             if clr
@@ -343,61 +395,67 @@ classdef Curve < handle & matlab.mixin.Copyable
             quiver(bmid(1), bmid(2), btng(1), btng(2), 30, 'Color', 'r');
         end
 
-        function plotSegments(obj, fidx, sidx, vsn, fnc, clr)
+        function plotSegments(obj, fidx, sidx, clr, vsn, fnc, mbuf, scl)
             %%
             if nargin < 2; fidx = 1;             end
             if nargin < 3; sidx = 1 : 4;         end
-            if nargin < 4; vsn  = obj.MAINTRACE; end
-            if nargin < 5; fnc  = obj.MAINFUNC;  end
-            if nargin < 6; clr  = 0;             end
+            if nargin < 4; clr  = 0;             end
+            if nargin < 5; vsn  = obj.MAINTRACE; end
+            if nargin < 6; fnc  = obj.MAINFUNC;  end
+            if nargin < 7; mbuf = obj.MANBUF;    end
+            if nargin < 8; scl  = obj.IMGSCL;    end
 
             if clr; figclr(fidx); else; set(0, 'CurrentFigure', fidx); end
-            myimagesc(obj.getImage('gray', 'upper', fnc));
+            myimagesc(obj.getImage('gray', 'upper', fnc, [], mbuf, 0, scl));
             hold on;
 
             clrs = {'r-' , 'g-' , 'b-' , 'y-'};
             for e = sidx
-                seg = obj.getSegment(e, vsn, fnc);
+                seg = obj.getSegment(e, vsn, fnc, mbuf, scl);
                 plt(seg, clrs{e}, 2);
             end
         end
 
-        function plotCorners(obj, fidx, sidx, vsn, fnc, clr)
+        function plotCorners(obj, fidx, sidx, clr, vsn, fnc, mbuf, scl)
             %%
             if nargin < 2; fidx = 1;             end
-            if nargin < 3; sidx = 1 : 4;         end            
-            if nargin < 4; vsn  = obj.MAINTRACE; end
-            if nargin < 5; fnc  = obj.MAINFUNC;  end
-            if nargin < 6; clr  = 0;             end
+            if nargin < 3; sidx = 1 : 4;         end
+            if nargin < 4; clr  = 0;             end
+            if nargin < 5; vsn  = obj.MAINTRACE; end
+            if nargin < 6; fnc  = obj.MAINFUNC;  end
+            if nargin < 7; mbuf = obj.MANBUF;    end
+            if nargin < 8; scl  = obj.IMGSCL;    end
 
             clrs = {'r.' , 'g.' , 'b.' , 'y.'};
             if clr
                 figclr(fidx);
-                myimagesc(obj.getImage('gray', 'upper', fnc));
+                myimagesc(obj.getImage('gray', 'upper', fnc, [], mbuf, 0, scl));
                 hold on;
             end
 
             for e = sidx
-                crn = obj.getCornerPoint(e, vsn, fnc);
+                crn = obj.getCornerPoint(e, vsn, fnc, mbuf, scl);
                 plt(crn, 'k.', 25);
                 plt(crn, clrs{e}, 20);
             end
         end
 
-        function plotMidline(obj, fidx, vsn, fnc, clr)
+        function plotMidline(obj, fidx, clr, vsn, fnc, mbuf, scl)
             %%
-            if nargin < 2; fidx = 1;             end            
-            if nargin < 3; vsn  = 'nate';        end
-            if nargin < 4; fnc  = obj.MAINFUNC;  end
-            if nargin < 5; clr  = 0;             end
+            if nargin < 2; fidx = 1;             end
+            if nargin < 3; clr  = 0;             end
+            if nargin < 4; vsn  = 'nate';        end
+            if nargin < 5; fnc  = obj.MAINFUNC;  end
+            if nargin < 6; mbuf = obj.MANBUF;    end
+            if nargin < 7; scl  = obj.IMGSCL;    end
 
             if clr
                 figclr(fidx);
-                myimagesc(obj.getImage('gray', 'upper', fnc));
+                myimagesc(obj.getImage('gray', 'upper', fnc, [], mbuf, 0, scl));
                 hold on;
             end
 
-            mline = obj.getMidline(vsn, fnc);
+            mline = obj.getMidline(vsn, fnc, mbuf, scl);
             plt(mline, 'r--', 2);
         end
 
@@ -432,25 +490,29 @@ classdef Curve < handle & matlab.mixin.Copyable
             hold off;
         end
 
-        function lng = getSegmentLength(obj, num, vsn, fnc, trc)
+        function lng = getSegmentLength(obj, num, vsn, fnc, trc, mbuf, scl)
             %% getSegmentLength
-            if nargin < 3; vsn = obj.MAINTRACE; end
-            if nargin < 4; fnc = obj.MAINFUNC;  end
-            if nargin < 5; trc = [];            end
+            if nargin < 3; vsn  = obj.MAINTRACE; end
+            if nargin < 4; fnc  = obj.MAINFUNC;  end
+            if nargin < 5; trc  = [];            end
+            if nargin < 6; mbuf = obj.MANBUF;    end
+            if nargin < 7; scl  = obj.IMGSCL;    end
 
-            seg = obj.getSegment(num, vsn, fnc, trc);
+            seg = obj.getSegment(num, vsn, fnc, mbuf, scl, trc);
             lng = sum(sum(diff(seg, 1, 1).^2, 2).^0.5);
         end
 
-        function [drc1 , drc2] = getDirection(obj, toSet, vsn, fnc)
+        function [drc1 , drc2] = getDirection(obj, toSet, vsn, fnc, mbuf, scl)
             %% getDirection
             if nargin < 2; toSet = 0;             end % Set Direction property
             if nargin < 3; vsn   = obj.MAINTRACE; end
             if nargin < 4; fnc   = obj.MAINFUNC;  end
+            if nargin < 5; mbuf  = obj.MANBUF;    end
+            if nargin < 6; scl   = obj.IMGSCL;    end
 
-            trc = obj.getTrace(vsn, 'raw');
-            l1  = obj.getSegmentLength(1, vsn, fnc, trc);
-            l3  = obj.getSegmentLength(3, vsn, fnc, trc);
+            trc = obj.getTrace(vsn, 'raw', mbuf, scl);
+            l1  = obj.getSegmentLength(1, vsn, fnc, trc, mbuf, scl);
+            l3  = obj.getSegmentLength(3, vsn, fnc, trc, mbuf, scl);
 
             if l3 > l1
                 drc1 = -1;
@@ -463,20 +525,24 @@ classdef Curve < handle & matlab.mixin.Copyable
             if toSet; obj.Direction = drc2; end
         end
 
-        function setBasePoint(obj, vsn, fnc)
+        function setBasePoint(obj, vsn, fnc, mbuf, scl)
             %% setBasePoint
-            if nargin < 2; vsn = obj.MAINTRACE; end
-            if nargin < 3; fnc = obj.MAINFUNC;  end
+            if nargin < 2; vsn  = obj.MAINTRACE; end
+            if nargin < 3; fnc  = obj.MAINFUNC;  end
+            if nargin < 4; mbuf = obj.MANBUF;    end
+            if nargin < 5; scl  = obj.IMGSCL;    end
 
-            obj.BasePoint = obj.getBotMid(vsn, fnc);
+            obj.BasePoint = obj.getBotMid(vsn, fnc, mbuf, scl);
         end
 
-        function agl = getApicalAngle(obj, vsn, fnc)
+        function agl = getApicalAngle(obj, vsn, fnc, mbuf, scl)
             %% getApicalAngle
-            if nargin < 2; vsn = obj.MAINTRACE; end
-            if nargin < 3; fnc = obj.MAINFUNC;  end
+            if nargin < 2; vsn  = obj.MAINTRACE; end
+            if nargin < 3; fnc  = obj.MAINFUNC;  end
+            if nargin < 4; mbuf = obj.MANBUF;    end
+            if nargin < 5; scl  = obj.IMGSCL;    end
 
-            nrm = obj.getTopNorm(vsn, fnc);
+            nrm = obj.getTopNorm(vsn, fnc, mbuf, scl);
             agl = (atan2(-nrm(2), -nrm(1)) * 180) / pi;
 
             obj.ApicalAngle = agl;
@@ -497,12 +563,15 @@ classdef Curve < handle & matlab.mixin.Copyable
 
             try
                 % Trace outline and store as RawOutline
-                vsn = obj.MAINTRACE;
-                fnc = obj.MAINFUNC;
+                vsn  = obj.MAINTRACE;
+                fnc  = obj.MAINFUNC;
+                mbuf = obj.MANBUF;
+                abuf = obj.ARTBUF;
+                scl  = obj.IMGSCL;
 
                 figclr(fidx);
-                img   = obj.getImage(fnc);
-                cntr  = obj.getTrace(vsn, fnc);
+                img   = obj.getImage('gray', 'upper', fnc, [], mbuf, abuf, scl);
+                cntr  = obj.getTrace(vsn, fnc, mbuf, scl);
                 pline = primeMidline(img, cntr);
                 cp    = [cntr ; pline];
 
@@ -524,7 +593,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
         end
 
-        function [mline , skl] = setMidline(obj, mline, typ, vsn, fnc)
+        function [mline , skl] = setMidline(obj, mline, typ, vsn, fnc, mbuf, scl)
             %% Set coordinates for traced midline or autogenerate it
             % Input:
             %   obj: this Curve object
@@ -539,6 +608,9 @@ classdef Curve < handle & matlab.mixin.Copyable
             if nargin < 3; typ   = 'man';         end % Default manually-traced
             if nargin < 4; vsn   = obj.MAINTRACE; end % Default clipped contour
             if nargin < 5; fnc   = obj.MAINFUNC;  end % Default contour direction
+            if nargin < 6; mbuf  = obj.MANBUF;    end % Cropping buffer
+            if nargin < 7; abuf  = obj.ARTBUF;    end % Artificial buffer
+            if nargin < 8; scl   = obj.IMGSCL;    end % Image scale
 
             skl = [];
             switch typ
@@ -546,7 +618,7 @@ classdef Curve < handle & matlab.mixin.Copyable
                     %% Manually trace midline
                     try
                         % Anchor first coordinate to base of contour
-                        trc        = obj.getTrace(vsn, fnc);
+                        trc        = obj.getTrace(vsn, fnc, mbuf, scl);
                         [~ , bidx] = resetContourBase(trc);
                         mline(1,:) = trc(bidx,:);
 
@@ -565,8 +637,9 @@ classdef Curve < handle & matlab.mixin.Copyable
                             tpct = mline;
                         end
 
-                        img   = obj.getImage(fnc);
-                        trc   = obj.getTrace(vsn, fnc);
+                        img   = obj.getImage('gray', 'upper', ...
+                            fnc, [], mbuf, abuf, scl);
+                        trc   = obj.getTrace(vsn, fnc, mbuf, scl);
                         intrp = obj.MLINEINTRP;
 
                         [mline , skl] = primeMidline(img, trc, intrp, tpct);
@@ -581,7 +654,7 @@ classdef Curve < handle & matlab.mixin.Copyable
                 case 'nate'
                     %% Nathan Method [optimized equal distance to radius]
                     try
-                        trc  = obj.getTrace(vsn, fnc);
+                        trc  = obj.getTrace(vsn, fnc, mbuf, scl);
                         mpts = obj.MLINEINTRP;
 
                         % If mline contains [rho , edg , res] values
@@ -910,8 +983,8 @@ classdef Curve < handle & matlab.mixin.Copyable
 
             % For files names
             fnm = sprintf('%s_%s_seedling%02d_frame%02d_face%s', ...
-                    tdate, gnm, sidx, frm, drc);
-            
+                tdate, gnm, sidx, frm, drc);
+
             % For figure titles
             ttl = sprintf('%s\nSeedling %d Frame %d', gttl, sidx, frm);
 
@@ -920,21 +993,32 @@ classdef Curve < handle & matlab.mixin.Copyable
                 gnm, sidx, frm, drc);
         end
 
-        function img = getImage(obj, req, rgn, drc, flp, buf)
+        function img = getImage(obj, req, rgn, drc, flp, mbuf, abuf, scl)
             %% getImage: return image data for Curve
-            if nargin < 2; req = 'gray';        end
-            if nargin < 3; rgn = 'upper';       end
-            if nargin < 4; drc = obj.Direction; end
-            if nargin < 5; flp = [];            end
-            if nargin < 6; buf = 0;             end
+            % Input:
+            %   obj: this Curve object
+            %   req: image type [gray | bw]
+            %   rgn: region [upper | lower]
+            %   drc: direction [left | right | []]
+            %   flp: force fliped direction [0 | 1 | []]
+            %   mbuf: cropped buffering [default 0]
+            %   abuf: artificial buffering [default 0]
+            %   scl: scaling from original size (101 x 101) [default 1]
+            if nargin < 2; req  = 'gray';  end
+            if nargin < 3; rgn  = 'upper'; end
+            if nargin < 4; drc  = [];      end
+            if nargin < 5; flp  = [];      end
+            if nargin < 6; mbuf = 0;       end
+            if nargin < 7; abuf = 0;       end
+            if nargin < 8; scl  = 1;       end
 
-            % Use default flip direction
+            % Use default direction and flip orientation
+            if isempty(drc); drc = obj.Direction;           end
             if isempty(flp); flp = obj.Parent.checkFlipped; end
 
-            img = obj.Parent.getImage(req, rgn, flp, buf);
-            if ~strcmpi(drc, obj.Direction)
-                img = fliplr(img);
-            end
+            img = obj.Parent.getImage(req, rgn, flp, mbuf, abuf, scl);
+
+            if ~strcmpi(drc, obj.Direction); img = fliplr(img); end
         end
 
         function fnm = showCurve(varargin)

@@ -38,7 +38,7 @@ tnm = sprintf('%s_%s', enm(strfind(enm, '_') + 1 : end), gstr(1:end-1));
 fnm = plotSeedlingREGR(T, tnm, fidx, pver);
 
 %
-for i = 1 : numel(FNMS); FNMS{i}{8} = fnm{8}; end
+for i = 1 : numel(FNMS); FNMS{i}{8} = fnm; end
 
 %
 if sav

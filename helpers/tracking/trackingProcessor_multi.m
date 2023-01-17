@@ -56,7 +56,7 @@ for gidx = 1 : ngens
     gin = g.getProperty('ImageStore').Files;
     w   = reshape(cat(1, W{gidx}{:}), size(W{gidx}));
     fa  = FA{gidx};
-    tpt = TPT{gidx};    
+    tpt = TPT{gidx};
 
     %
     T{gidx} = trackingProcessor(fa, tpt, w, ipcts, 'smth', smth, 'ftrp', ...
@@ -66,7 +66,7 @@ for gidx = 1 : ngens
     %
     if sav
         if ~isfolder(kdir); mkdir(kdir); end
-        tnm  = sprintf('%s/%s_trackingresults_%s_%s%02dgenotypes', ...
+        tnm  = sprintf('%s/%s_trackingresults_%s_%s%02dgenotypes_processed', ...
             kdir, kdate, enm, gstr, ngens);
         save(tnm, '-v7.3', 'T');
     end
