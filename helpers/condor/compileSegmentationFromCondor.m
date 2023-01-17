@@ -1,21 +1,20 @@
-function [GMIDS , GSRCS , HSRCS] = compileSegmentationFromCondor(HOUT, gens, varargin)
+function [GMIDS , GSRCS , HSRCS] = compileSegmentationFromCondor(sout, gens, varargin)
 %% compileSegmentationFromCondor: remap predictions to full resolution images
 %
 %
 % Usage:
 %   [GMIDS , GSRCS , HSRCS] = compileSegmentationFromCondor( ...
-%       HOUT, gens, varargin)
+%       sout, gens, varargin)
 %
 % Input:
-%   HOUT: structur array of condor results
-%   gens: Genotype objects predicted
-%   varargin: various options
+%   sout: structure array of condor results
+%   gens: Genotype objects corresponding to sout
+%   varargin: various options [see bottom of function]
 %
 % Output:
-%   GMIDS: midlines remapped from predictions
+%   GMIDS: midlines remapped onto full resolution images
 %   GSRCS: full data from remapped contours
 %   HSRCS: data from predicted contours
-%
 
 %% Parse additional inputs
 args = parseInputs(varargin);
@@ -27,10 +26,10 @@ end
 [~ , sprA , sprB] = jprintf(' ', 0, 0, 80);
 
 ngens = numel(gens);
-[GMIDS , GSRCS , HSRCS] = deal(cell(size(HOUT)));
+[GMIDS , GSRCS , HSRCS] = deal(cell(size(sout)));
 for gidx = 1 : ngens
     % Extract genotype data
-    hout = HOUT{gidx};
+    hout = sout{gidx};
     if iscell(hout); hout  = cell2mat(hout); end
 
     g    = gens(gidx);

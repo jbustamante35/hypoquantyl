@@ -113,7 +113,8 @@ if zchk > 0
     midx = round(nsplt / 2);
     rZ   = arrayfun(@(c) c.getZVector(zdims, 'vsn', vsn, 'fnc', fnc, ...
         'addMid', addMid, 'rot', zrotate, 'rtyp', rtyp, 'dpos', dpos, ...
-        'nsplt', nsplt, 'midx', midx, 'bdsp', bdsp), CRVS, 'UniformOutput', 0);
+        'nsplt', nsplt, 'midx', midx, 'bdsp', bdsp, 'mbuf', mbuf, 'scl', scl), ...
+        CRVS, 'UniformOutput', 0);
     Z   = cat(1, rZ{:});
     pz  = zvectorPCA(Z, sav, pcz, nsegs, ncrvs, ...
         addMid, zrotate, rtyp, znorm.pz, zshp.pz, split2stitch);
@@ -144,7 +145,7 @@ t = tic;
 n = fprintf('Generating Midline Patches');
 if pcm > 0
     % Get images and normalize with histogram if given
-    mI = arrayfun(@(x) x.getImage('gray', 'upper', fnc) , ...
+    mI = arrayfun(@(x) x.getImage('gray', 'upper', fnc, [], mbuf, abuf, scl), ...
         CRVS, 'UniformOutput', 0);
     if ~isempty(hhist)
         href  = hhist.Data;
@@ -281,6 +282,9 @@ p.addOptional('sdir', pwd);
 p.addOptional('zdims', 1 : 4);
 p.addOptional('vsn', 'Clip');
 p.addOptional('fnc', 'left');
+p.addOptional('mbuf', 0);
+p.addOptional('abuf', 0);
+p.addOptional('scl', 1);
 p.addOptional('hhist', []);
 
 % Parse arguments and output into structure

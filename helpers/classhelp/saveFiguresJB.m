@@ -1,4 +1,4 @@
-function saveFiguresJB(figs, fnms, sav_dir, sav_fig, img_type)
+function saveFiguresJB(figs, fnms, sav_dir, sav_fig, img_type, msg)
 %% saveFiguresJB: save figures as figure names in .fig and .tiffn format
 % It's about time I made this function instead of copy-pasting the same simple
 % for loop every day.
@@ -9,42 +9,34 @@ function saveFiguresJB(figs, fnms, sav_dir, sav_fig, img_type)
 % Input:
 %   figs: numeric array of figure handles
 %   fnms: cell array of figure names (should equal number of figs)
-%   sav_dir: directory to save figures and images
+%   sav_dir: directory to save figures and images (default pwd)
 %   sav_fig: save .fig format (default to false)
 %   img_type: image format to save figures [png|tiffn|etc] (default to 'png')
-%
+%   msg: display message when saving (default true)
 
-%% Save them
-% Default to png format (use tiffn for uncompressed tiff)
-switch nargin
-    case 1
-        fnms     = arrayfun(@(x) sprintf('%s_figure%d', tdate, x), ...
-            figs, 'UniformOutput', 0);
-        sav_dir  = pwd;
-        sav_fig  = 0;
-        img_type = 'png';
-    case 2
-        sav_dir  = pwd;
-        sav_fig  = 0;
-        img_type = 'png';
-    case 3
-        sav_fig  = 0;
-        img_type = 'png';
-    case 4
-        img_type = 'png';
-    case 5
-    otherwise
-        fprintf(2, 'Too many input arguments [%d]\n', nargin);
-        return;
+if nargin < 2; fnms     = [];    end
+if nargin < 3; sav_dir  = pwd;   end
+if nargin < 4; sav_fig  = 0;     end
+if nargin < 5; img_type = 'png'; end
+if nargin < 6; msg      = 1;     end
+
+% Message separators
+[~ , sprA , sprB] = jprintf(' ', 0, 0, 80);
+
+% Make blank figure names
+if isempty(fnms)
+    fnms = arrayfun(@(x) sprintf('%s_figure%d', tdate, x), ...
+        figs, 'UniformOutput', 0);
 end
 
-%% Save figures (create directory if it doesn't exist)
-if ~isfolder(sav_dir)
-    mkdir(sav_dir);
-end
+% Create directory if it doesn't exist
+if ~isfolder(sav_dir); mkdir(sav_dir); end
 
+%% Save figures
 fnms = cellfun(@(fnm) sprintf('%s%s%s', sav_dir, filesep, fnm), ...
     fnms, 'UniformOutput', 0);
+
+if msg; t = tic; fprintf('\n%s\nSaving %d figures...', sprA, numel(fnms)); end
 
 if sav_fig
     arrayfun(@(fig) savefig(figs(fig), fnms{fig}), ...
@@ -56,5 +48,6 @@ else
         1 : numel(figs), 'UniformOutput', 0);
 end
 
+if msg; fprintf('DONE! [%.03f sec]\n%s\n', toc(t), sprA); end
 end
 

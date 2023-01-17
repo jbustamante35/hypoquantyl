@@ -1,9 +1,9 @@
-function [cpre , zpre , fnms] = displacementWindowPredictor(img, varargin)
+function [cpre , zpre , citrs , fnms] = displacementWindowPredictor(img, varargin)
 %% displacementWindowPredictor:
 %
 %
 % Usage:
-%   [cpre , zpre , fnms] = displacementWindowPredictor(img, ncycs, ...
+%   [cpre , zpre , citrs , fnms] = displacementWindowPredictor(img, ncycs, ...
 %       model_options, misc_options, vis_options)
 %
 % Input:
@@ -41,6 +41,7 @@ function [cpre , zpre , fnms] = displacementWindowPredictor(img, varargin)
 % Output:
 %   cpre:
 %   zpre:
+%   citrs: contours from each recursive iteration [after smoothing]
 %   fnms:
 %
 
@@ -70,6 +71,7 @@ end
 nitrs                = numel(fieldnames(Nd));
 nsplt                = round(size(pdw.InputData,2) / 2);
 nsegs                = size(pdx.InputData,2);
+citrs                = cell(nitrs,1);
 
 if vis > 1
     [~ , strH , strS] = jprintf('', 0, 0);
@@ -82,6 +84,7 @@ end
 %% Get Z-Vector from image
 if vis > 1; t = tic; end
 
+% zseed = false;
 if isempty(z)
     if vis > 1; n = fprintf('Predicting Z-Vector from image'); end
     %% TODO: Displace by B-Vector
@@ -89,7 +92,7 @@ if isempty(z)
     ptru = sampleCorePatches(img, zpre.initial, scls, doms, dszs, par);
 else
     if vis > 1; n = fprintf('Sampling given Z-Vector'); end
-
+    %     zseed              = true;
     zpre.initial       = z;
     zpre.score_initial = ...
         zVectorProjection(z, nsegs, pz.EigVecs, pz.MeanVals, 3);
@@ -131,8 +134,9 @@ for itr = 1 : nitrs
         n    = fprintf('Sampling patches from Z-Vector');
     end
 
+    %     if itr == 1 || zseed
     if itr == 1
-        % Use initial Z-Vector and patches
+        % Use initial Z-Vector and patches or use seeded Z-Vector again
         z    = zpre.initial;
         ptch = ptru;
     else
@@ -177,10 +181,10 @@ for itr = 1 : nitrs
 
     switch fmth
         case 'whole'
-            cpre = wholeSmoothing(cpre, [pdx , pdy]);
+            cpre = wholeSmoothing(cpre, [pdx , pdy], npxy);
         case 'local'
-            cpre = wholeSmoothing(cpre, [pdx , pdy]);
-            cpre = localSmoothing(cpre, nsplt, pdw);
+            cpre = wholeSmoothing(cpre, [pdx , pdy], npxy);
+            cpre = localSmoothing(cpre, nsplt, pdw, npw);
         otherwise
     end
 
@@ -200,6 +204,9 @@ for itr = 1 : nitrs
         cpre(L(4) : L(5)-1,:) = fBot;
     end
 
+    % Store each iteration of contours
+    citrs{itr} = cpre;
+
     if vis == 3; jprintf('', toc(t), 1, 80 - n); end
 
     % --------------------------- Display Predictions ------------------------ %
@@ -213,14 +220,11 @@ for itr = 1 : nitrs
         figclr(fidx);
         myimagesc(img);
         hold on;
-        %         plt(ztru, 'r.', 5);
-        %         plt(z(:,1:2), 'y.', 5);
         plt(ctru, 'g-', 2);
         plt(cpre(:,1:2), 'y--', 2);
         ttl = sprintf('Curve %d of %d [%s set]\nIteration %d of %d', ...
             cidx, ncrvs, tset, itr, nitrs);
         title(ttl, 'FontSize', 10);
-
         drawnow;
 
         % Save each iteration
@@ -277,7 +281,7 @@ if vis > 1     ; jprintf('', toc(t), 1, 80 - n); end
 
 % ------------------------- Display Final Iterations ------------------------- %
 %% Show final iteration
-if vis > 1
+if vis >= 1
     t = tic;
     n = fprintf('Final Save Image [%d] | Final Save Data [%d]', vis, sav);
 end
@@ -303,7 +307,7 @@ if vis == 1
     end
 end
 
-if vis > 1
+if vis >= 1
     jprintf('', toc(t), 1, 80 - n);
     fprintf('%s\nFinished! [%.02f sec]\n%s\n', strS, toc(tAll), strH);
 end
@@ -337,6 +341,8 @@ p.addOptional('model_manifest', {'dnnout' , 'pcadp' , ...
 p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
 p.addOptional('toFix', 0);
 p.addOptional('toShape', 0);
+p.addOptional('npxy', []);
+p.addOptional('npw', []);
 p.addOptional('par', 0);
 p.addOptional('sav', 0);
 p.addOptional('vis', 0);

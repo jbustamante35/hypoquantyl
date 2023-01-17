@@ -150,9 +150,9 @@ pout.REGR.rep         = erep; % Repaired interpolated EGR
 T = struct('Data', pstat, 'Input', pinn, 'Output', pout);
 if nargout == 1; pout = T; end
 if sav
-    hdir = sprintf('tracking_results/%s/%s', ExperimentName, GenotypeName);
+    hdir = sprintf('%s/%s/%s', kdir, ExperimentName, GenotypeName);
     if ~isfolder(hdir); mkdir(hdir); end
-    tnm  = sprintf('%s/%s_trackingresults_%s_genotype%02d_%02dseedlings_%02dframes_%03dpoints', ...
+    tnm  = sprintf('%s/%s_trackingresults_%s_genotype%02d_%02dseedlings_%02dframes_%03dpoints_processed', ...
         hdir, tdate, GenotypeName, GenotypeIndex, nsdls, nfrms, npcts);
     save(tnm, '-v7.3', 'T');
 end
@@ -178,7 +178,8 @@ p.addOptional('FIN', []);
 p.addOptional('GMIDS', []);
 
 % Visualization Options
-p.addParameter('sav', 0);
+p.addOptional('kdir', 'tracking_results');
+p.addOptional('sav', 0);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

@@ -18,6 +18,8 @@ classdef Genotype < handle
         RawSeedlings
         Seedlings
         SegDefaults
+        SDLBUFFER    = [0 , 0 , 0 , 0] % Seedling Bounding Box Buffer
+        HYPBUFFER    = [0 , 0 , 0 , 0] % Hypocotyl Anchor Points Buffer
         BOPEN        = 400             % Filter out specks from bw images
         CONTOURSIZE  = 200             % Number of points to normalize Seedling contours
         MASKSIZE     = [1500 , 100000] % Cut-off area for objects in image
@@ -527,7 +529,7 @@ classdef Genotype < handle
             %
             % Input:
             %   obj: this Genotype object
-            %   im: grayscale image containing growing seedlings
+            %   img: grayscale image containing growing seedlings
             %   frm: time point for Seedling's lifetime (NOT frame)
             %   mskSz: min-max cutoff size for objects labelled as a Seedling
             %   hypln: distance at bottom of image to set cutoff for Hypocotyl
@@ -545,6 +547,13 @@ classdef Genotype < handle
             % Remove large objects detected as seedlings
             prp   = prp(arrayfun(@(x) x.Area <= sdlsz, prp));
             nsdls = numel(prp);
+
+            % Buffer bounding boxes
+            hoff = obj.HYPBUFFER; % Hypocotyl AnchorPoints
+            soff = obj.SDLBUFFER; % Seedling BoundingBox
+            for i = 1 : numel(prp)
+                prp(i).BoundingBox = prp(i).BoundingBox + soff;
+            end
 
             % Crop grayscale/bw/contour image of RawSeedling
             bws  = arrayfun(@(x) imcrop(msk, x.BoundingBox), ...
@@ -567,7 +576,7 @@ classdef Genotype < handle
                 sdl.setCoordinates(1, prp(sidx).WeightedCentroid);
                 smsk = bws{sidx};
                 smsk = bwareaopen(smsk, bopen); % Clean image of specks [09.17.2021]
-                pts  = bwAnchorPoints(smsk, hypln);
+                pts  = bwAnchorPoints(smsk, hypln, hoff);
                 sdl.setAnchorPoints(1, pts);
                 sdls{sidx} = sdl;
 

@@ -1,14 +1,17 @@
-function flp = flipAndSlide(trc, seg_lengths)
+function flp = flipAndSlide(trc, seg_lengths, buf, scl, xtra)
 %% flipAndSlide: flip contour along x-axis and slide to appropriate location
 % Only works on contours with sections. Not for use by any ordinary curve. Use
 % the flipCurve function for normal curves and lilnes.
 %
 % Usage:
-%   flp = flipAndSlide(trc, seg_lengths)
+%   flp = flipAndSlide(trc, seg_lengths, buf, scl, xtra)
 %
 % Input:
 %   trc:
 %   seg_lengths:
+%   buf: size of buffer to account for [default 0]
+%   scl: scaling size of image [default 1]
+%   xtra: extra pixels to translate [default 0]
 %
 % Output:
 %   flp:
@@ -16,6 +19,9 @@ function flp = flipAndSlide(trc, seg_lengths)
 
 %%
 if nargin < 2; seg_lengths = [53 , 52 , 53 , 51]; end
+if nargin < 3; buf         = 0;                   end
+if nargin < 4; scl         = 1;                   end
+if nargin < 5; xtra        = 0;                   end
 
 bmid = getBotMid(trc, seg_lengths);
 dspl = displaceContour(trc, -bmid);
@@ -25,7 +31,7 @@ fdsp = displaceContour(flpd, bmid);
 segs = arrayfun(@(n) getSegCoords(fdsp, seg_lengths, n), ...
     1 : 4, 'UniformOutput', 0);
 rvrs = reverseOrientation(segs);
-sld  = calcSlide(bmid, seg_lengths);
+sld  = calcSlide(bmid, seg_lengths, buf, scl, xtra);
 flp  = displaceContour(rvrs, sld);
 end
 
@@ -77,15 +83,10 @@ end
 
 function trc = reverseOrientation(segs)
 %% reverseOrientation: reset curve sections
-lft = segs{1};
-top = segs{2};
-rgt = segs{3};
-bot = segs{4};
-
-lft = flip(lft,1);
-top = flip(top,1);
-rgt = flip(rgt,1);
-bot = flip(bot,1);
+lft = flip(segs{1},1);
+top = flip(segs{2},1);
+rgt = flip(segs{3},1);
+bot = flip(segs{4},1);
 
 lft = lft(1:end-1,:);
 top = top(1:end-1,:);
@@ -94,8 +95,10 @@ rgt = rgt(1:end-1,:);
 trc = cat(1, rgt, top, lft, bot);
 end
 
-function sld = calcSlide(bmid, seg_lengths)
+function sld = calcSlide(bmid, seg_lengths, buf, scl, xtra)
 %% calcSlide: calculate distance to slide flipped curve
-f   = seg_lengths(end);
+% f   = seg_lengths(end) * scl;
+% f   = abs((seg_lengths(end) * scl) - scl);
+f   = abs(((seg_lengths(end) * scl) - scl) + buf) + (1 + xtra);
 sld = [f - bmid(1) , 0] * 2;
 end

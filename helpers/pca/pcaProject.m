@@ -8,7 +8,7 @@ function S = pcaProject(vec, eigs, mns, req, dims)
 %       Z -> dataset means to add back to translate to original reference frame
 %
 % Usage:
-%   S = pcaProject(scrs, eigs, mns, req)
+%   S = pcaProject(scrs, eigs, mns, req, dims)
 %
 % Input:
 %   vec: vector of either inputted data or PC scores
@@ -22,13 +22,10 @@ function S = pcaProject(vec, eigs, mns, req, dims)
 %
 
 %%
-if nargin < 5
-    dims = ':';
-end
-
-vec = vec(dims, :);
+if nargin < 5; dims  = ':'; end
 
 %%
+vec     = vec(dims, :);
 scr2sim = 'scr2sim';
 sim2scr = 'sim2scr';
 switch req
@@ -41,5 +38,4 @@ switch req
         S = [];
         return
 end
-
 end

@@ -44,9 +44,9 @@ fprintf('Running pipeline with hypocotyl %s\n', hnm);
 
 % ---------------------------------------------------------------------------- %
 %% Get Functions
-% [zpredict , cpredict , cpredict2 , mline , msample , mcnv , mgrade , sopt] = ...
+% [zpredict , cpredict , cpredict2 , mline , mscore , sopt] = ...
 %     getFunctions(ht, pm, seg_lengths, par, vis, toFix, bwid, psz, nopts);
-[~ , ~ , zpredict , ~ , cpredict , mline , msample , mcnv , mgrade , sopt] = ...
+[~ , ~ , zpredict , ~ , cpredict , mline , mscore , sopt] = ...
     ht.getFunctions(seg_lengths, par, vis, toFix, bwid, psz, nopts);
 
 [~ , ~ , ~ , ~, cpredict2 , ~ , ~ , ~ , ~ , ~] = ...
@@ -74,9 +74,8 @@ else
     fprintf('Z-Vector | '); zorg = zpredict(iorg,0);
     fprintf('Contour | ');  corg = cpredict(iorg, zorg);
 end
-fprintf('Midline | ');               morg = mline(corg);
-fprintf('Sampling Midline | ');      porg = msample(iorg, morg);
-fprintf('Grading Midline Patch | '); gorg = mgrade(mcnv(porg));
+fprintf('Midline | ');                 morg = mline(corg);
+fprintf('Grading Sampled Midline | '); gorg = mscore(iorg,morg);
 eorg = EvaluatorJB('Trace', corg, 'SegmentLengths', seg_lengths);
 dorg = eorg.getDirection;
 fprintf('DONE! [%.03f sec]\n', toc(t));
@@ -92,9 +91,8 @@ else
     fprintf('Z-Vector | '); zflp = zpredict(iflp, 0);
     fprintf('Contour | ');  cflp = cpredict(iflp, zflp);
 end
-fprintf('Midline | ');               mflp = mline(cflp);
-fprintf('Sampling Midline | ');      pflp = msample(iflp, mflp);
-fprintf('Grading Midline Patch | '); gflp = mgrade(mcnv(pflp));
+fprintf('Midline | ');                 mflp = mline(cflp);
+fprintf('Grading Sampled Midline | '); gflp = mscore(iflp,mflp);
 eflp = EvaluatorJB('Trace', cflp, 'SegmentLengths', seg_lengths);
 dflp = eflp.getDirection;
 fprintf('DONE! [%.03f sec]\n', toc(t));
@@ -193,7 +191,7 @@ parfor frm = 1 : nimgs
     end
     fprintf('Generating Midline | ');    mp{frm} = mline(cp{frm});
     fprintf('Sampling Midline | ');      sp{frm} = msample(himg, mp{frm});
-    fprintf('Grading Midline Patch | '); gp{frm} = mgrade(mcnv(sp{frm}));
+    fprintf('Grading Midline Patch | '); gp{frm} = mscore(himg,mp{frm});
     fprintf('DONE! [%.03f sec]\n', toc(t));
 end
 
@@ -211,7 +209,6 @@ fprintf('Saving Predictions, Midline Patches, and Probabilities in figure %d, %d
     fidx1, fidx2, fidx3);
 
 for frm = 1 : nimgs
-    %
     himg = himgs{frm};
     zpre = zp{frm};
     cpre = cp{frm};
@@ -336,49 +333,3 @@ P    = cell2struct(dats', flds');
 fprintf('FINISHED FULL PIPELINE for %s [%.03f sec]\n\n', hnm, toc(tItr));
 
 end
-
-% function [zpredict , cpredict , cpredict2 , mline , msample , mcnv , mgrade , sopt] = getFunctions(ht, pm, seg_lengths, par, vis, toFix, bwid, psz, nopts)
-% %% getFunctions
-% %
-% %
-%
-% %%
-% [pz , pdp , pdx , pdy , pdw , Nz , Nd] = loadHTNetworks(ht);
-%
-% %
-% scrs  = pm.PCAScores;
-% pvecs = pm.EigVecs;
-% pmns  = pm.MeanVals;
-%
-% %
-% zpredict  = @(i,r) predictZvectorFromImage(i, Nz, pz, r);
-% cpredict  = @(i,zs) displacementWindowPredictor(i, 'Nz', Nz, 'pz', pz, 'Nd', Nd, ...
-%     'pdp', pdp, 'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'z', zs, ...
-%     'toFix', toFix, 'seg_lengths', seg_lengths, 'par', par, 'vis', vis);
-% cpredict2  = @(i,zs) displacementWindowPredictor(i, 'Nz', Nz, 'pz', pz, 'Nd', Nd, ...
-%     'pdp', pdp, 'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'z', zs, ...
-%     'toFix', toFix, 'seg_lengths', seg_lengths, 'par', 0, 'vis', vis);
-% mline     = @(c) nateMidline(c);
-% msample   = @(i,m) sampleMidline(i, m, 0, psz, 'full');
-% mcnv      = @(m) pcaProject(m(:)', pvecs, pmns, 'sim2scr');
-% mgrade    = computeKSdensity(scrs, bwid);
-%
-% % Optimize with nopts iterations
-% if nopts
-%     sopt = @(i) segmentationOptimizer(i, 'Nz', Nz, 'pz', pz, 'Nd', Nd, ...
-%         'pdp', pdp, 'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'pm', pm, ...
-%         'toFix', toFix, 'seg_lengths', seg_lengths, 'bwid', bwid, ...
-%         'nopts', nopts, 'par', par, 'vis', vis, 'z2c', 1);
-% else
-%     sopt = [];
-% end
-%
-% %
-% % zsegs = size(pdx.InputData, 2) - 1;
-% % zvecs = pz.EigVecs;
-% % zmns  = pz.MeanVals;
-% %
-% % zcnv      = @(x) zVectorProjection(x, zsegs, zvecs, zmns, 3);
-% % mmaster   = @(i)@(z) mgrade(mcnv(msample(i,mline(cpredict(i,zcnv(z))))));
-%
-% end

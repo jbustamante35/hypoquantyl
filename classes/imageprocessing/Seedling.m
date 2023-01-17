@@ -31,7 +31,8 @@ classdef Seedling < handle
         %         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'Centroid', 'WeightedCentroid', 'Orientation'};
         PDPROPERTIES = {'Area', 'BoundingBox', 'PixelList', 'WeightedCentroid', 'Orientation'};
         CONTOURSIZE  = 250 % number of points to normalize Hypocotyl contours
-        IMAGEBUFFER  = 40  % percentage of image size to extend image for creating Hypocotyl objects
+        SDLBUFFER    = [0 , 0 , 0 , 0] % Seedling Bounding Box Buffer
+        HYPBUFFER    = [0 , 0 , 0 , 0] % Hypocotyl Anchor Points Buffer
         TESTS2RUN    = [0 , 0 , 0 , 0 , 0 , 0];	% manifest to determine which quality checks to run
     end
 
@@ -161,7 +162,7 @@ classdef Seedling < handle
         function obj = setSeedlingName(obj, sn, setRaw)
             %% Set name for Seedling
             if nargin < 3; setRaw = 0; end
-            
+
             if ~setRaw
                 obj.SeedlingName = char(sn);
             else
@@ -274,29 +275,34 @@ classdef Seedling < handle
             end
         end
 
-        function dat = getImage(obj, frm, req)
+        function [dat , oob] = getImage(obj, frm, req, buf)
             %% Return image data for Seedling at desired frame
             % User can specify which image from structure with 3rd parameter
             if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
             if nargin < 3; req = 'gray';                                end
+            if nargin < 4; buf = 0;                                     end
 
             if strcmpi(frm, ':')
-                frm = obj.getFrame('b') : obj.getFrame('d'); 
+                frm = obj.getFrame('b') : obj.getFrame('d');
             end
-            
+
             try
-                %                 rng = obj.getFrame('b') : obj.getFrame('d');
-                %                 frm = rng(frm);
+                img = obj.Parent.getImage(frm, req);
+                bnd = obj.getPData(frm, 'BoundingBox');
+
+                % Buffer bounding box
+                if buf
+                    soff        = [-buf , -buf , buf*2 , buf];
+                    [bnd , oob] = bufferCropBox(bnd, soff, img);
+                end
+
                 if numel(frm) > 1
                     % Cell array
-                    img = obj.Parent.getImage(frm, req);
-                    bnd = num2cell(obj.getPData(frm, 'BoundingBox'), 2)';
+                    bnd = num2cell(bnd, 2)';
                     dat = cellfun(@(i,b) imcrop(i,b), ...
                         img, bnd, 'UniformOutput', 0);
                 else
                     % Single image
-                    img = obj.Parent.getImage(frm, req);
-                    bnd = obj.getPData(frm, 'BoundingBox');
                     dat = imcrop(img, bnd);
                 end
             catch
@@ -435,12 +441,14 @@ classdef Seedling < handle
             bw = obj.getImage(frm, 'bw');
 
             if iscell(bw)
-                bw  = cellfun(@(x) bwareaopen(x, bopen), bw, 'UniformOutput', 0);
-                pts = cellfun(@(x) bwAnchorPoints(x, hypln), bw, 'UniformOutput', 0);
+                bw  = cellfun(@(x) bwareaopen(x, bopen), ...
+                    bw, 'UniformOutput', 0);
+                pts = cellfun(@(x) bwAnchorPoints(x, hypln, obj.HYPBUFFER), ...
+                    bw, 'UniformOutput', 0);
                 pts = cat(3, pts{:});
             else
                 bw  = bwareaopen(bw, bopen);
-                pts = bwAnchorPoints(bw, hypln);
+                pts = bwAnchorPoints(bw, hypln, obj.HYPBUFFER);
             end
 
             obj.setAnchorPoints(frm, pts);

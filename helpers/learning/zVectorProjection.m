@@ -17,9 +17,7 @@ function Y = zVectorProjection(X, nsegs, evecs, mns, zdrc)
 %
 
 %%
-if nargin < 5
-    zdrc = 0;
-end
+if nargin < 5; zdrc = 0; end
 
 switch zdrc
     case 0
@@ -34,9 +32,7 @@ switch zdrc
         [~ , Y] = addNormalVector(zvec);
     case 2
         % Z-Vector to Z-Vector PC Score
-        if size(X,2) == 6
-            X = X(:,1:4);
-        end
+        if size(X,2) == 6; X = X(:,1:4); end
         zvec = zVectorConversion(X, nsegs, 1, 'prep');
         Y    = pcaProject(zvec, evecs, mns, 'sim2scr');
     case 3
@@ -51,12 +47,12 @@ switch zdrc
             % X is a full Z-Vector (zdrc = 2)
             zdrc = 2;
         else
-            fprintf(2, 'Can''t determine X\n');
+            fprintf(2, 'Can''t determine X [%d x %d]\n', size(X));
             Y = [];
             return;
         end
-        
+
+        % Recurse through function with this direction
         Y = zVectorProjection(X, nsegs, evecs, mns, zdrc);
 end
-
 end

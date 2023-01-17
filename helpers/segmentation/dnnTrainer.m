@@ -25,7 +25,7 @@ function [DIN, DOUT, fnms] = dnnTrainer(IMGS, CNTRS, nitrs, nsplt, cidxs, fmth, 
 %   fmth: PCA smoothing method [whole|local|0] (default 'local')
 %   toFix: straighten top and bottom sections
 %   seg_lengths: lengths of sections
-%   NPF: principal components to smooth predictions
+%   NPF: principal components for local and whole smoothing (default [10,10,10])
 %   NPD: principal components for sampling core patches (default 5)
 %   NLAYERS: number of layers to use with fitnet (default 5)
 %   TRNFN: training function fitnet (default 'trainlm')
@@ -87,13 +87,15 @@ for itr = 1 : nitrs
         switch fmth
             case 'whole'
                 %% PCA smoothing on collection of displacement vectors
-                fprintf('\nBuilding %d-dim PC space for whole smooth...', NPF);
-                [~ , pdx , pdy] = wholeSmoothing(TRGS, NPF);
+                fprintf('\nBuilding %d-dim PC space for whole smoothing...', ...
+                    NPF(1));
+                [~ , pdx , pdy] = wholeSmoothing(TRGS, NPF(1));
             case 'local'
                 %% Local PCA smoothing on windows of displacement vectors
-                fprintf('\nBuilding %d-dim PC space for local smooth...', NPF);
-                [~ , pdx , pdy] = wholeSmoothing(TRGS, NPF);
-                [~ , pdw]       = localSmoothing(TRGS, nsplt, NPF);
+                fprintf('\nBuilding %d-%d-%d-dim PC space for local smoothing...', ...
+                    NPF);
+                [~ , pdx , pdy] = wholeSmoothing(TRGS, NPF(1:2));
+                [~ , pdw]       = localSmoothing(TRGS, nsplt, NPF(3));
             otherwise
                 fprintf(2, 'No smoothing method selected [%s]...', fmth);
         end
@@ -138,11 +140,11 @@ for itr = 1 : nitrs
         case 'whole'
             %% Re-fold after making predictions using the same eigenvectors
             % Back-up predicted targets for debugging
-            fprintf('Smoothing whole prediction with %d PCs...', NPF);
+            fprintf('Smoothing whole prediction with %d PCs...', NPF(1));
             trgpre = wholeSmoothing(trgpre, [pdx , pdy]);
         case 'local'
             %% Local PCA smoothing on windows of displacement vectors
-            fprintf('Local smoothing predictions with %d PCs...', NPF);
+            fprintf('Local smoothing predictions with %d-%d-%d PCs...', NPF);
             trgpre = wholeSmoothing(trgpre, [pdx , pdy]);
             trgpre = localSmoothing(trgpre, nsplt, pdw);
         otherwise

@@ -1,10 +1,11 @@
-function [cpre ,  mpre , zpre , bpre] = predictFromImage(img, bpredict, zpredict, cpredict, mline, zpre, toStruct, addbvec, cidx, ymin)
+function [cpre ,  mpre , zpre , bpre , citrs] = predictFromImage(img, bpredict, zpredict, cpredict, mline, mscore, zpre, toStruct, addbvec, cidx, ymin)
 %% predictFromImage:
 %
 %
 % Usage:
-%   [cpre ,  mpre , zpre , bpre] = predictFromImage( ...
-%       img, bpredict, zpredict, cpredict, mline, zpre, toStruct, nobvec, cidx, ymin)
+%   [cpre ,  mpre , zpre , bpre ,citrs] = predictFromImage( ...
+%       img, bpredict, zpredict, cpredict, mline, mscore, zpre, toStruct, ...
+%       nobvec, cidx, ymin)
 %
 % Input:
 %   img:
@@ -12,7 +13,8 @@ function [cpre ,  mpre , zpre , bpre] = predictFromImage(img, bpredict, zpredict
 %   zpredict:
 %   cpredict:
 %   mline:
-%   z:
+%   mscore:
+%   z: initial Z-Vector seed (must be B-Vector subtracted) [default []]
 %   toStruct: if single output, store into structure [default 0]
 %   addbvec: don't add back B-Vector to Z-Vector (when I screw up) [default 0]
 %   cidx:
@@ -23,21 +25,22 @@ function [cpre ,  mpre , zpre , bpre] = predictFromImage(img, bpredict, zpredict
 %   mpre:
 %   zpre:
 %   bpre:
+%   citrs: contours from each recursive iteration [after smoothing]
 %
 
 %%
-if nargin < 6;  zpre     = []; end
-if nargin < 7;  toStruct = 0;  end
-if nargin < 8;  addbvec  = 1;  end
-if nargin < 9;  cidx     = 0;  end
-if nargin < 10; ymin     = 10; end
+if nargin < 7;  zpre     = []; end
+if nargin < 8;  toStruct = 0;  end
+if nargin < 9;  addbvec  = 1;  end
+if nargin < 10; cidx     = 0;  end
+if nargin < 12; ymin     = 10; end
 
 % Grab lower section for B-Vector prediction
 isz   = size(img,1);
 wrows = isz - ymin : isz;
 
-[~ , sprA , sprB]     = jprintf(' ', 0, 0, 80);
-[bpre ,  cpre , mpre] = deal([]);
+[~ , sprA , sprB]            = jprintf(' ', 0, 0, 80);
+[bpre ,  cpre , mpre , gpre] = deal([]);
 
 % ---------------------------------------------------------------------------- %
 try
@@ -54,11 +57,9 @@ end
 try
     % Predict Z-Vector or use provided
     if cidx; t = tic; n = fprintf('ZVector [%03d]', cidx); end
-    if isempty(zpre)
-        % Predict Z-Vector and add by B-Vector
-        zpre = zpredict(img,0);
-    end
-    % zpre = [zpre(:,1:2) + bpre , zpre(:,3:4) , zpre(:,5:6)];
+
+    % Predict Z-Vector and add by B-Vector
+    if isempty(zpre); zpre = zpredict(img,0); end
     if addbvec; zpre = [zpre(:,1:2) + bpre , zpre(:,3:end)]; end
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
 catch e
@@ -70,7 +71,7 @@ end
 try
     % Predict contour
     if cidx; t = tic; n = fprintf('DVector [%03d]', cidx); end
-    cpre = cpredict(img, zpre);
+    [cpre , ~ , citrs] = cpredict(img, zpre);
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
 catch e
     fprintf(2, '\n%s\nError predicting D-Vector\n%s\n%s\n%s\n\n', ...
@@ -89,9 +90,20 @@ catch e
 end
 
 % ---------------------------------------------------------------------------- %
+try
+    % Grade prediction
+    if cidx; t = tic; n = fprintf('Grade [%03f]', cidx); end
+    gpre = mscore(img, mpre);
+    if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
+catch e
+    fprintf(2, '\n%s\nError grading prediction\n%s\n%s\n%s\n\n', ...
+        sprA, sprB, e.getReport, sprA);
+end
+
+% ---------------------------------------------------------------------------- %
 % Store into structure
 if toStruct
-    %         cpre = struct('cpre', cpre, 'zpre', zpre, 'mpre', mpre, 'bpre', bpre);
-    cpre = struct('c', cpre, 'z', zpre, 'm', mpre, 'b', bpre);
+    cpre = struct('c', cpre, 'z', zpre, 'm', mpre, 'b', bpre, 'g', gpre);
+    mpre = citrs;
 end
 end

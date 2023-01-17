@@ -78,17 +78,6 @@ if ~isempty(ppct)
     %   expected - and larger jumps around the hook - where we expect more cell
     %   division events to be occur.
     blen = ws.calculatelength(ppct, 1, n);
-
-    %     switch psrc
-    %         case psrc >= 0.7 & psrc < 1.0
-    %             pdlt = 0.5;
-    %             fprintf('here');
-    %         case psrc >= 0.4 & psrc < 0.7
-    %             pdlt = 1.0;
-    %         case psrc > 0    & psrc < 0.4
-    %             pdlt = 2.0;
-    %     end
-
     if     psrc >= 0.7 && psrc < 1.0; pdlt = 2.0;
     elseif psrc >= 0.4 && psrc < 0.7; pdlt = 1.5;
     elseif psrc > 0    && psrc < 0.4; pdlt = 1.0;
