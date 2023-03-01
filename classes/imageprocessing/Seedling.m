@@ -278,9 +278,9 @@ classdef Seedling < handle
         function [dat , oob] = getImage(obj, frm, req, buf)
             %% Return image data for Seedling at desired frame
             % User can specify which image from structure with 3rd parameter
-            if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
-            if nargin < 3; req = 'gray';                                end
-            if nargin < 4; buf = 0;                                     end
+            if nargin < 2; frm = ':';    end
+            if nargin < 3; req = 'gray'; end
+            if nargin < 4; buf = 0;      end
 
             if strcmpi(frm, ':')
                 frm = obj.getFrame('b') : obj.getFrame('d');
@@ -492,6 +492,12 @@ classdef Seedling < handle
             catch
                 fprintf(2, 'No PData at index %d \n', frm);
             end
+        end
+
+        function bbox = getCropBox(obj, frm, buf)
+        %% Get crop box from a frame
+        bbox = obj.getPData(frm, 'BoundingBox');
+        
         end
 
         function pd = getPData(obj, frm, req)

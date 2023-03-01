@@ -19,9 +19,7 @@ function [gIdx, sIdx, hIdx] = getTrainingMatrix(Ein, crc, fmt)
 %
 
 %% Default to separate output format
-if nargin < 3
-    fmt = 'sep';
-end
+if nargin < 3; fmt = 'sep'; end
 
 % Extract indices
 if numel(crc) > 1
@@ -35,17 +33,14 @@ else
 end
 
 % Keep output separate or combine into one matrix
-if strcmpi(fmt, 'cat')
-    gIdx = [gIdx , sIdx , hIdx];
-end
-
+if strcmpi(fmt, 'cat'); gIdx = [gIdx , sIdx , hIdx]; end
 end
 
 function [gIdx , sIdx , hIdx] = getIndices(Ein, crc)
 %% Extract indices from a CircuitJB object
 % Genotype Index
-gStr = ...
-    string(arrayfun(@(x) x.GenotypeName, Ein.combineGenotypes, 'UniformOutput', 0));
+gStr = string(arrayfun(@(x) ...
+    x.GenotypeName, Ein.combineGenotypes, 'UniformOutput', 0));
 gIdx = find(crc.GenotypeName == gStr);
 
 % Seedling Index
@@ -58,5 +53,4 @@ sIdx = str2double(sStr(aIdx+1:bIdx-1));
 
 % Hypocotyl Frame
 hIdx = crc.getFrame;
-
 end

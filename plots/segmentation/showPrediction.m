@@ -26,21 +26,28 @@ switch class(hyp)
         try gpre = hyp.g;        catch; gpre = []; end
     case 'Curve'
         if isempty(hopts)
-            fnc = 'Clip';
-            drc = 'left';
-            buf = 0;
-            scl = 1;
+            fnc    = 'Clip';
+            drc    = 'raw';
+            mdrc   = 'raw';
+            buf    = 0;
+            scl    = 1;
+            mscore = [];
         else
-            fnc = hopts{1};
-            drc = hopts{2};
-            buf = hopts{3};
-            scl = hopts{4};
+            fnc    = hopts{1};
+            drc    = hopts{2}{1};
+            mdrc   = hopts{2}{2};
+            buf    = hopts{3};
+            scl    = hopts{4};
+            mscore = hopts{5};
         end
         cpre = hyp.getTrace(fnc, drc, buf, scl);
-        mpre = hyp.getMidline('nate', drc);
+        mpre = hyp.getMidline('nate', mdrc, buf, scl);
         zpre = hyp.getZVector('fnc', drc, 'vsn', fnc, 'mbuf', buf, 'scl', scl);
         zpre = zpre(:,1:2);
-        bpre = hyp.BasePoint;
+        bpre = hyp.getBotMid(fnc, drc, buf, scl);
+        gpre = mscore(img, mpre);
+    otherwise
+        [cpre , mpre , zpre , bpre] = deal([]);
         gpre = 0;
 end
 
@@ -55,6 +62,5 @@ plt(bpre, 'b.', 20);
 ttl = sprintf('%s [%.03f]', ttl, gpre);
 title(ttl, 'FontSize', 10);
 if p; pause(p); end
-% drawnow;
 hold off;
 end

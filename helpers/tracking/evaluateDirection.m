@@ -1,4 +1,4 @@
-function [toFlip , eout , fout , fnm] = evaluateDirection(img, bpredict, zpredict, cpredict, mline, msample, mcnv, mgrade, fidx, sav, v)
+function [toFlip , eout , fout , fnm] = evaluateDirection(img, bpredict, zpredict, cpredict, mline, mscore, msample, fidx, sav, v)
 %% evaluateFirstFrame: check direction image is facing
 %
 %
@@ -42,17 +42,14 @@ iflp = fliplr(iorg);
 t = tic;
 try
     if v; fprintf('Segmenting original direction | '); end
-    [corg ,  morg , zorg , borg] = predictFromImage( ...
-        iorg, bpredict, zpredict, cpredict, mline);
+    [corg ,  morg , zorg , borg , gorg] = predictFromImage( ...
+        iorg, bpredict, zpredict, cpredict, mline, mscore);
 
     [~ , dorg] = getCurveDirection(corg);
     if v; fprintf('%s | ', dorg); end
 
     if v; fprintf('Sampling Midline | '); end
     porg = msample(iorg, morg);
-
-    if v; fprintf('Grading Midline Patch'); end
-    gorg = mgrade(mcnv(porg));
 
     if v; fprintf(' (%.03f) | DONE! [%.03f sec]\n', gorg, toc(t)); end
 catch
@@ -67,17 +64,14 @@ end
 t = tic;
 try
     if v; fprintf('Segmenting flipped direction | '); end
-    [cflp ,  mflp , zflp , bflp] = predictFromImage( ...
-        iflp, bpredict, zpredict, cpredict, mline);
+    [cflp ,  mflp , zflp , bflp , gflp] = predictFromImage( ...
+        iflp, bpredict, zpredict, cpredict, mline, mscore);
 
     [~ , dflp] = getCurveDirection(cflp);
     if v; fprintf('%s | ', dflp); end
 
     if v; fprintf('Sampling Midline | '); end
     pflp = msample(iflp, mflp);
-
-    if v; fprintf('Grading Midline Patch'); end
-    gflp = mgrade(mcnv(pflp));
 
     if v; fprintf(' (%.03f) | DONE! [%.03f sec]\n', gflp, toc(t)); end
 catch
