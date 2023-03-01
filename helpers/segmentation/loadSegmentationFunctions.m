@@ -1,7 +1,24 @@
-function [bpredict , bcnv , zpredict , zcnv, cpredict , mline , mscore , sopt , mmaster] = loadSegmentationFunctions(varargin)
+function [bpredict , bcnv , zpredict , zcnv, cpredict , mline , mscore , sopt , mmaster , msample] = loadSegmentationFunctions(varargin)
 %% loadSegmentationFunctions: load function handles
 %
+% Usage:
+%   [bpredict , bcnv , zpredict , zcnv, cpredict , mline , mscore , ...
+%       sopt , mmaster , msample] = loadSegmentationFunctions(varargin)
 %
+% Input:
+%
+% Output:
+%   bpredict:
+%   bcnv:
+%   zpredict:
+%   zcnv:
+%   cpredict:
+%   mline:
+%   mscore:
+%   sopt:
+%   mmsaster:
+%   msample:
+
 %% Parse inputs
 args = parseInputs(varargin);
 for fn = fieldnames(args)'
@@ -65,7 +82,7 @@ p.addRequired('Nb');
 p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
 p.addOptional('ymin', 10);
 p.addOptional('bwid', 0.5);
-p.addOptional('psz', 20);
+p.addOptional('psz', 20); % Usually 20
 p.addOptional('npxy', []);
 p.addOptional('npw', []);
 p.addOptional('toFix', 0);

@@ -19,6 +19,13 @@ if nargin < 2; href  = 0.01;     end
 if nargin < 3; mth   = 'simple'; end
 if nargin < 4; nbins = 256;      end
 
+% Extract data if inputting structure
+if isstruct(href)
+    mth   = href.Tag;
+    nbins = href.NumBins;
+    href  = href.Data;
+end
+
 switch mth
     case 'simple'
         %% Force stretching of histogram to 0-255

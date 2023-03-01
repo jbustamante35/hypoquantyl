@@ -1089,8 +1089,8 @@ classdef HypocotylTrainer < handle
             if nargin < 4;  vis         = 0;                                      end
             if nargin < 5;  toFix       = 0;                                      end
             if nargin < 6;  bwid        = 0.5;                                    end
-            if nargin < 7;  psz         = 20;                                     end
-            if nargin < 8;  nopts       = 200;                                    end
+            if nargin < 7;  psz         = obj.PatchSize;                          end
+            if nargin < 8;  nopts       = obj.MaxEpochs;                          end
             if nargin < 9;  tolfun      = 1e-4;                                   end
             if nargin < 10; tolx        = 1e-4;                                   end
             if nargin < 11; npxy        = [];                                     end

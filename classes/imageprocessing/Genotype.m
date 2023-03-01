@@ -109,7 +109,6 @@ classdef Genotype < handle
                 fprintf('%s\nExtracted %d Seedlings from %s [%.02f sec]\n%s\n', ...
                     sprB, numel(rawSdls), gnm, toc(t), sprA);
             end
-
         end
 
         function SortSeedlings(obj, v, mth)
@@ -396,13 +395,8 @@ classdef Genotype < handle
 
         function rs = getRawSeedling(obj, frm, rsidx)
             %% Return single unindexed seedlings at index
-            switch nargin
-                case 1
-                    frm   = 1 : size(obj.RawSeedlings, 1);
-                    rsidx = 1 : size(obj.RawSeedlings, 2);
-                case 2
-                    rsidx = 1 : size(obj.RawSeedlings, 2);
-            end
+            if nargin < 2; frm   = 1 : size(obj.RawSeedlings, 1); end
+            if nargin < 3; rsidx = 1 : size(obj.RawSeedlings, 2); end
 
             try
                 if numel(frm) > 1 || numel(rsidx) > 1
@@ -545,7 +539,8 @@ classdef Genotype < handle
             prp        = regionprops(dd, img, obj.PDPROPERTIES);
 
             % Remove large objects detected as seedlings
-            prp   = prp(arrayfun(@(x) x.Area <= sdlsz, prp));
+            prp   = prp(arrayfun(@(x) x.Area >= sdlsz(1), prp));
+            prp   = prp(arrayfun(@(x) x.Area <= sdlsz(2), prp));
             nsdls = numel(prp);
 
             % Buffer bounding boxes
@@ -592,7 +587,6 @@ classdef Genotype < handle
             % Specifically, it compares the centroid coordinates of each
             % Seedling to align it with the Seedling with the closest centroid
             % coordinates in the next frame.
-            %
             if nargin < 4; v   = 0;     end % Verbosity
             if nargin < 5; mth = 'new'; end % Sort method
 
@@ -659,7 +653,7 @@ classdef Genotype < handle
                     CRDS = cell2mat(arrayfun(@(x) x.Coordinates, ...
                         RS, 'UniformOutput', 0));
                     DD   = pdist2(CRDS, CRDS);
-                    dmsk = DD < 150;
+                    dmsk = DD < 150; % 150 is min distance from objects
                     ddm  = DD .* dmsk;
 
                     % Make digraph and determine clusters
@@ -686,11 +680,11 @@ classdef Genotype < handle
                     rm   = [];
                     for e = 1 : numel(uq)
                         fidx  = find(clst(:,end) == uq(e));
-                        tmpcm = clst(fidx,4:5);
+                        tmpcm = clst(fidx, 4 : 5);
                         tmp   = intersect(tmpcm, strt, 'rows');
 
                         if size(tmp,1) > 1
-                            rm = [rm , uq(e)];
+                            rm             = [rm , uq(e)];
                             clst(fidx,end) = nan;
                         end
                     end

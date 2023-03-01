@@ -4,12 +4,13 @@ function [snp , idx , dst] = snap2curve(ref, trg, mth, rot)
 % and returns an [m x n] matrix, where coordinates are replaced by nearest coordinates in crds.
 %
 % Usage:
-%   [snp , idx , dst] = snap2curve(ref, trg, mth)
+%   [snp , idx , dst] = snap2curve(ref, trg, mth, rot)
 %
 % Input:
 %   pts: [m x n] matrix of coordinates near curve
 %   crd: [p x n] matrix of coordinates on curve to search along
 %   mth: method to search for nearest neighbor [dsearch|delaunay|affs|ext]
+%   rot: rotation matrix [for 'ext' method]
 %
 % Output:
 %   snp: [m x n] curve corresponding to nearest point from pts on curve
@@ -21,6 +22,7 @@ if nargin < 3; mth = 'dsearch'; end
 if nargin < 4; rot = 0;         end
 
 %% Implement search for neareset neighbor
+dst = [];
 switch mth
     case 'dsearch'
         %% Implement search without triangulation (fastest)
@@ -92,7 +94,7 @@ switch mth
 
     otherwise
         fprintf(2, 'Error with method %s [dsearch|delaunay|affs|ext]\n', mth);
-        snp = [];
+        [snp , idx , dst] = deal([]);
         return;
 end
 end

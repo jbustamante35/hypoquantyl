@@ -60,7 +60,7 @@ classdef Hypocotyl < handle
             obj.GenotypeName = sdl.GenotypeName;
         end
 
-        function img = FlipMe(obj, frm, req, rgn, buf)
+        function img = FlipMe(obj, frm, req, rgn, mbuf, abuf, scl)
             %% Store a flipped version of each Hypocotyl
             % Flipped version allows equal representation of all orientations of
             % contours because equality. If buf > 0, first buffer the region
@@ -70,13 +70,15 @@ classdef Hypocotyl < handle
             %   obj: this Hypocotyl object
             %   frm: time point to extract image from
             %   buf: boolean to return buffered region around image
-            if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
-            if nargin < 3; req = 'gray';                                end
-            if nargin < 4; rgn = 'upper';                               end
-            if nargin < 5; buf = 0;                                     end
+            if nargin < 2; frm  = obj.getFrame('b') : obj.getFrame('d'); end
+            if nargin < 3; req  = 'gray';                                end
+            if nargin < 4; rgn  = 'upper';                               end
+            if nargin < 5; mbuf = 0;                                     end
+            if nargin < 6; abuf = 0;                                     end
+            if nargin < 7; scl  = 1;                                     end
 
             flp = 1;
-            img = obj.getImage(frm, req, rgn, flp, buf);
+            img = obj.getImage(frm, req, rgn, flp, mbuf, abuf, scl);
         end
 
         function obj = DerefParents(obj)
@@ -159,17 +161,24 @@ classdef Hypocotyl < handle
             end
         end
 
-        function [dat , fmsk , oob] = getImage(obj, frm, req, rgn, flp, man_buf, auto_buf, scl)
+        function [dat , fmsk , oob] = getImage(obj, frm, req, rgn, flp, mbuf, abuf, scl)
             %% Return image for this Hypocotyl
-            % Image is obtained from the Parent Seedling, cropped, and resized
-            % to this object's RESCALE property
-            if nargin < 2; frm      = obj.getFrame('b') : obj.getFrame('d'); end
-            if nargin < 3; req      = 'gray';                                end
-            if nargin < 4; rgn      = 'upper';                               end
-            if nargin < 5; flp      = 0;                                     end
-            if nargin < 6; man_buf  = 0;                                     end
-            if nargin < 7; auto_buf = 0;                                     end
-            if nargin < 8; scl      = 1;                                     end
+            % Input:
+            %   obj: this Curve object
+            %   frm: frame from time course [default ':']
+            %   req: image type [gray | bw]
+            %   rgn: region [upper | lower]
+            %   flp: force fliped direction [0 | 1 | []]
+            %   mbuf: cropped buffering [default 0]
+            %   abuf: artificial buffering [default 0]
+            %   scl: scaling from original size (101 x 101) [default 1]
+            if nargin < 2; frm  = ':';     end
+            if nargin < 3; req  = 'gray';  end
+            if nargin < 4; rgn  = 'upper'; end
+            if nargin < 5; flp  = 0;       end
+            if nargin < 6; mbuf = 0;       end
+            if nargin < 7; abuf = 0;       end
+            if nargin < 8; scl  = 1;       end
 
             if isempty(frm); [dat , fmsk] = deal([]); return; end
             if strcmpi(frm, ':')
@@ -179,26 +188,25 @@ classdef Hypocotyl < handle
 
             % Get full image
             sclsz   = (obj.Parent.getScaleSize * scl) - (scl - 1);
-            fimg    = obj.Parent.getImage(frm, req, man_buf);
-            man_bnd = [0 , 0 , man_buf * 2 , 0];
+            fimg    = obj.Parent.getImage(frm, req, mbuf);
+            man_bnd = [0 , 0 , mbuf * 2 , 0];
 
             % Buffer with median background intensity
-            if auto_buf
-                if auto_buf >= 1
+            if abuf
+                if abuf >= 1
                     % Buffer by pixels
-                    buffval = auto_buf;
+                    buffval = abuf;
                 else
                     % Buffer by percentage
                     scl     = obj.Parent.getProperty('SCALESIZE');
                     isz     = scl(1);
-                    buffval = round(auto_buf * isz);
+                    buffval = round(abuf * isz);
                 end
 
                 % Get masks first
                 fmsk = obj.Parent.getImage(frm, 'bw');
                 if iscell(fmsk)
                     % Cell array
-%                     bnd = obj.getCropBox(frm, rgn);
                     bnd = num2cell(obj.getCropBox(frm, rgn) + man_bnd, 2)';
                     if strcmpi(req, 'bw')
                         medBg = arrayfun(@(x) 0, ...
@@ -257,7 +265,7 @@ classdef Hypocotyl < handle
                     % Crop it
                     bnd         = obj.getCropBox(frm, rgn);
                     [bnd , oob] = bufferCropBox(bnd, man_bnd, fimg);
-                    
+
                     crp = imcrop(fimg, bnd);
                     dat = imresize(crp, sclsz);
 
@@ -340,15 +348,16 @@ classdef Hypocotyl < handle
             end
         end
 
-        function bbox = getCropBox(obj, frm, rgn)
+        function bbox = getCropBox(obj, frm, rgn, buf)
             %% Return CropBox parameter
             % The CropBox is a [4 x 1] vector that defines the bounding box
             % to crop from Parent Seedling. This can be from either the upper or
             % lower region of the Seedling.
 
             % Defaults
-            if nargin < 2; frm = ':';     end
-            if nargin < 3; rgn = 1; end
+            if nargin < 2; frm = ':'; end
+            if nargin < 3; rgn = 1;   end
+            if nargin < 4; buf = 0;   end
 
             % Region dimension
             switch rgn
@@ -365,6 +374,13 @@ classdef Hypocotyl < handle
             end
 
             bbox = obj.CropBox(frm, :, r);
+
+            % Buffer bounding box
+            if buf
+                img          = obj.getImage(frm, 'gray', rgn, [], buf);
+                soff         = [-buf , -buf , buf*2 , buf];
+                [bbox , oob] = bufferCropBox(bbox, soff, img);
+            end
         end
 
         function FixCropBox(obj, hyplen)
@@ -429,6 +445,10 @@ classdef Hypocotyl < handle
             if nargin < 2; frm = obj.getFrame('b') : obj.getFrame('d'); end
             if nargin < 3; rgn = 'upper';                               end
 
+            if isempty(obj.Contour)
+                fprintf(2, 'No contours found. Initialize Contour with ')
+            end
+
             % Get upper or lower region
             switch rgn
                 case 'upper'
@@ -444,146 +464,55 @@ classdef Hypocotyl < handle
             crc = obj.Contour(frm, r);
         end
 
-        function cc = copyCircuit(obj, frm, req, ver)
+        function cc = copyCircuit(obj, frm)
             %% Copy counterpart of CircuitJB at same frame
-            % Original or flipped direction
-            switch req
-                case 'org'
-                    flp = 1;
-                case 'flp'
-                    flp = 2;
-                otherwise
-                    fprintf(2, 'Error setting %s direction\n', req);
-            end
-
-            % Whole or clipped contour
-            switch ver
-                case 'Full'
-                    clp = 1;
-                case 'Clip'
-                    clp = 2;
-                otherwise
-                    fprintf(2, 'Error setting %s version\n', req);
-            end
-
             % Make copy
-            crc = obj.Circuit(frm, flp, clp);
+            crc = obj.Circuit(frm);
             cc  = crc.copy;
         end
 
-        function obj = setCircuit(obj, frm, crc, req, ver)
+        function obj = setCircuit(obj, frm, crc)
             %% Set manually-drawn CircuitJB object (original or flipped)
-            switch nargin
-                case 3
-                    req = 'org';
-                    ver = 'Full';
-                case 4
-                    ver = 'Full';
+            if isempty(obj.Circuit)
+                obj.Circuit = repmat(CircuitJB, obj.Lifetime, 1);
             end
 
-            % Original or flipped direction
-            switch req
-                case 'org'
-                    flp = 1;
-                case 'flp'
-                    flp = 2;
-                otherwise
-                    fprintf(2, 'Error setting %s direction\n', req);
-            end
-
-            % Whole or clipped contour
-            switch ver
-                case 'Full'
-                    clp = 1;
-                case 'Clip'
-                    clp = 2;
-                otherwise
-                    fprintf(2, 'Error setting %s version\n', req);
-            end
-
-            % Forcibly set final Circuit
-            try
-                % Make copy of 'whole' version if 'clipped' not yet set
-                cc = obj.Circuit(frm, flp, clp);
-                if isempty(cc.Origin)
-                    cc = obj.copyCircuit(frm, req, 'Full');
-                    cc.setOutline(crc, 'Clip');
-                end
-                cc.trainCircuit(true);
-            catch
-                cc                         = obj.copyCircuit(frm, req, 'Full');
-                obj.Circuit(frm, flp, clp) = cc;
-                cc.setOutline(crc, 'Clip');
-                crc.trainCircuit(true);
-            end
+            crc.trainCircuit(true);
+            obj.Circuit(frm) = crc;
         end
 
-        function crc = getCircuit(obj, frm, req, ver)
+        function crc = getCircuit(obj, frm)
             %% Return original or flipped version of CircuitJB object
-            %             if nargin < 2; frm = 1 : size(obj.Circuit,1); end
             if nargin < 2; frm = 0;      end % First available CircuitJB
-            if nargin < 3; req = 'org';  end
-            if nargin < 4; ver = 'Full'; end
 
             crc = [];
             if ~isempty(obj.Circuit)
                 % Find first available frame
                 if ~frm
-                    cc  = arrayfun(@(x) ~isempty(x.Origin), obj.Circuit(:,1,1));
+                    cc  = arrayfun(@(x) ~isempty(x.Origin), obj.Circuit);
                     cc  = find(cc);
-                    frm = cc(1);
+                    if isempty(cc)
+                        fprintf(2, '\nNo frames traced.\n\n');
+                        return;
+                    else
+                        frm = cc(1);
+                    end
                 end
 
                 % Make sure frame is available
-                if frm > size(obj.Circuit,1)
-                    return;
-                end
-
-                % Get original or flipped version
-                switch req
-                    case 'org'
-                        flp = 1;
-                    case 'flp'
-                        flp = 2;
-                    otherwise
-                        fprintf(2, 'Error returning %s circuit [org|flp]\n', ...
-                            req);
-                        return;
-                end
-
-                % Get whole contour or clipped version
-                switch ver
-                    case 'Full'
-                        clp = 1;
-                    case 'Clip'
-                        clp = 2;
-                    otherwise
-                        fprintf(2, 'Error returning %s version [Full|Clip]\n', ...
-                            ver);
-                        return;
-                end
-
+                if frm > size(obj.Circuit,1); return; end
                 try
-                    c = obj.Circuit(frm, flp, clp);
-
-                    % Add 3rd dimension if it doesn't exist
-                    if ndims(obj.Circuit) < 3
-                        obj.Circuit(1,1,2) = eval(class(obj.Circuit(1,1,1)));
-                    end
-
                     % Set isTrained status to false if not yet set
-                    if isempty(c.isTrained)
-                        c.trainCircuit(false);
-                    end
-
-                    if isvalid(c) && c.isTrained
-                        crc = c;
-                    end
+                    c = obj.Circuit(frm);
+                    if isempty(c.isTrained);      c.trainCircuit(false); end
+                    if isvalid(c) && c.isTrained; crc = c;               end
                 catch
                     return;
                 end
             else
-                crc = [];
+                % Initialize Circuit property
+                obj.Circuit = repmat(CircuitJB, obj.Lifetime);
+                crc         = obj.Circuit(frm);
             end
         end
 
@@ -613,11 +542,16 @@ classdef Hypocotyl < handle
             % orientation and assumes that the flipped orientation will give
             % the same result.
             try
-                crcs             = obj.Circuit(:,1,1);
-                trained_frames   = ind2sub(size(crcs), ...
-                    find(arrayfun(@(x) x.isTrained, crcs)));
-                untrained_frames = ...
-                    find(~ismember(1 : numel(crcs), trained_frames))';
+                if isempty(obj.Circuit)
+                    % Initialize Circuit property
+                    obj.Circuit = repmat(CircuitJB, obj.Lifetime);
+                else
+                    crcs             = obj.Circuit;
+                    trained_frames   = ind2sub(size(crcs), ...
+                        find(arrayfun(@(x) x.isTrained, crcs)));
+                    untrained_frames = ...
+                        find(~ismember(1 : numel(crcs), trained_frames))';
+                end
             catch e
                 fprintf(2, 'Error returning untrained frames\n%s', e.message);
                 [untrained_frames , trained_frames] = deal([]);

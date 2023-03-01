@@ -33,7 +33,7 @@ classdef Experiment < handle
         %% Private data properties
         ExperimentDate  = tdate('l')
         HYPOCOTYLLENGTH = 250   % Distance to set cutoff for upper hypocotyl
-        SEEDLINGSIZE    = 50000 % Cut-off pixel area for a Seedling
+        SEEDLINGSIZE    = [5000 , 50000] % Cut-off pixel area for a Seedling
     end
 
     %% ------------------------- Primary Methods --------------------------- %%
