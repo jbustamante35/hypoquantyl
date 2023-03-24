@@ -12,20 +12,17 @@ function tset = determineSet(idx, trnidx, validx, tstidx)
 %
 % Output:
 %   tset: string defining which set idx belongs to
-%
 
 %% Default to NaN if set not included
-switch nargin
-    case 1
-        trnidx = NaN;
-        validx = NaN;
-        tstidx = NaN;
-    case 2
-        validx = NaN;
-        tstidx = NaN;
-    case 3
-        tstidx = NaN;
-    case 4
+if nargin < 2; trnidx = NaN; end
+if nargin < 3; validx = NaN; end
+if nargin < 4; tstidx = NaN; end
+
+% Input is split structure [from HypocotylTrainer object]
+if isstruct(trnidx)
+    validx = trnidx.valIdx;
+    tstidx = trnidx.tstIdx;
+    trnidx = trnidx.trnIdx;
 end
 
 %% Evaluate which set idx belongs
@@ -41,5 +38,4 @@ elseif ismatrix(idx)
 else
     tset = 'na';
 end
-
 end

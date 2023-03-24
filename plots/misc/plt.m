@@ -38,7 +38,7 @@ switch nargin
         sz  = varargin{3};
 
         plt(crd, typ, sz);
-        drawnow;
+%         drawnow;
     otherwise
         fprintf(2, 'Incorrect number of input\n');
         return;

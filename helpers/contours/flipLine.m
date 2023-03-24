@@ -15,6 +15,9 @@ function flp = flipLine(mline, slen, scl)
 %
 
 if nargin < 2; slen = 51; end
+if nargin < 3; scl  = 1;  end
+
+slen = slen * scl;
 
 %%
 bmid      = mline(1,:);

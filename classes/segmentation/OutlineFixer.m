@@ -117,7 +117,10 @@ classdef OutlineFixer < handle
                         crc.setRawOutline(cfix);
                         crc.ConvertRawOutlines;
                         crc.ConvertRawPoints;
-                        crc.ReconfigInterpOutline;
+                        crc.ReconfigInterpOutline('Full');
+                        crc.ConvertRawPoints;
+                        crc.Full2Clipped;
+                        crc.CreateCurves('redo');
                     case 'Curve'
                         cfix = obj.Curve;
                         crv  = obj.Object;

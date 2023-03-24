@@ -188,6 +188,51 @@ classdef Seedling < handle
             si  = str2double(sn(aa+1:bb-1));
         end
 
+        function showSeedling(obj, frm, fidx, fkeep, ttl)
+            %% Display Seedling
+            if nargin < 3; fidx  = 1;  end
+            if nargin < 4; fkeep = 1;  end
+            if nargin < 5; ttl   = []; end
+
+            img           = obj.getImage(frm, 'gray');
+            cntr          = obj.getContour(frm, 'Outline');
+            pts           = obj.getAnchorPoints(frm);
+            [ubox , lbox] = obj.MyHypocotyl.getCropBox(frm);
+
+            if isempty(ttl)
+                [~ , sttl] = obj.makeName;
+                ttl        = sprintf('%s [Frame %d]', sttl, frm);
+            end
+
+            figclr(fidx, fkeep);
+            myimagesc(img);
+            hold on;
+            plt(cntr, 'g.', 3);
+            plt(pts, 'r.', 20);
+            rectangle('Position', ubox, 'EdgeColor', 'b');
+            rectangle('Position', lbox, 'EdgeColor', 'r');
+            title(ttl, 'FontSize', 10);
+            hold off;
+        end
+
+        function [fnm , ttl , dsp] = makeName(obj)
+            %% makeName: create filename, figure title, and display output
+            gnm  = obj.GenotypeName;
+            gttl = fixtitle(gnm);
+            sidx = obj.getSeedlingIndex;
+            nfrm = obj.Lifetime;
+
+            % For files names
+            fnm = sprintf('%s_%s_seedling%02d_%02dframes', ...
+                tdate, gnm, sidx, nfrm);
+
+            % For figure titles
+            ttl = sprintf('%s\nSeedling %d [%d Frames]', gttl, sidx, nfrm);
+
+            % For console output
+            dsp = sprintf('%s | Seedling %d | %d Frames', gnm, sidx, nfrm);
+        end
+
         function obj = setParent(obj, gen)
             %% Set Genotype parent and Experiment host
             obj.Parent       = gen;
@@ -275,12 +320,12 @@ classdef Seedling < handle
             end
         end
 
-        function [dat , oob] = getImage(obj, frm, req, buf)
+        function [dat , oob , bnd] = getImage(obj, frm, req, mbuf)
             %% Return image data for Seedling at desired frame
             % User can specify which image from structure with 3rd parameter
-            if nargin < 2; frm = ':';    end
-            if nargin < 3; req = 'gray'; end
-            if nargin < 4; buf = 0;      end
+            if nargin < 2; frm  = ':';    end
+            if nargin < 3; req  = 'gray'; end
+            if nargin < 4; mbuf = 0;      end
 
             if strcmpi(frm, ':')
                 frm = obj.getFrame('b') : obj.getFrame('d');
@@ -290,25 +335,30 @@ classdef Seedling < handle
                 img = obj.Parent.getImage(frm, req);
                 bnd = obj.getPData(frm, 'BoundingBox');
 
-                % Buffer bounding box
-                if buf
-                    soff        = [-buf , -buf , buf*2 , buf];
-                    [bnd , oob] = bufferCropBox(bnd, soff, img);
-                end
-
                 if numel(frm) > 1
                     % Cell array
                     bnd = num2cell(bnd, 2)';
+                    if mbuf
+                        % Buffer bounding box
+                        soff        = [-mbuf , -mbuf , mbuf*2 , mbuf];
+                        [bnd , oob] = cellfun(@(b,i) bufferCropBox(b, soff, i), ...
+                            bnd, img, 'UniformOutput', 0);
+                    end
                     dat = cellfun(@(i,b) imcrop(i,b), ...
                         img, bnd, 'UniformOutput', 0);
                 else
                     % Single image
+                    if mbuf
+                        % Buffer bounding box
+                        soff        = [-mbuf , -mbuf , mbuf*2 , mbuf];
+                        [bnd , oob] = bufferCropBox(bnd, soff, img);
+                    end
                     dat = imcrop(img, bnd);
                 end
             catch
                 fprintf(2, 'Error returning image [%s|%s]\n', ...
                     num2str(frm), req);
-                dat = [];
+                [dat , oob , bnd] = deal([]);
             end
         end
 
@@ -360,11 +410,9 @@ classdef Seedling < handle
         function coords = getCoordinates(obj, frm)
             %% Returns coordinates at specified frame
             % Make sure to check for nan (no coordinate found at frame)
-            try
-                if nargin < 2
-                    frm = ':';
-                end
+            if nargin < 2; frm = ':'; end
 
+            try
                 coords = obj.Coordinates(frm, :);
             catch
                 fprintf('No coordinate found at frame %d \n', frm);
@@ -375,12 +423,8 @@ classdef Seedling < handle
         function obj = setFrame(obj, frm, req)
             %% Set birth or death Frame number for Seedling
             switch req
-                case 'b'
-                    obj.Frame(1) = frm;
-
-                case 'd'
-                    obj.Frame(2) = frm;
-
+                case 'b'; obj.Frame(1) = frm;
+                case 'd'; obj.Frame(2) = frm;
                 otherwise
                     fprintf(2, 'Error: input must be ''b'' or ''d''\n');
                     return;
@@ -389,27 +433,16 @@ classdef Seedling < handle
 
         function frm = getFrame(obj, req)
             %% Return birth or death Frame number for Seedling
-            if nargin < 2
-                req = 'a';
-            end
+            if nargin < 2; req = 'a'; end
 
-            try
-                switch req
-                    case 'b'
-                        frm = obj.Frame(1);
-                    case 'd'
-                        frm = obj.Frame(2);
-                    case 'a'
-                        frm = obj.Frame;
-                    otherwise
-                        fprintf(2, 'Error: input must be ''b'' or ''d''\n');
-                        frm = [];
-                        return;
-                end
-            catch
-                fprintf(2, 'Error: input must be ''b'' or ''d''\n');
-                frm = [];
-                return;
+            switch req
+                case 'b'; frm = obj.Frame(1);
+                case 'd'; frm = obj.Frame(2);
+                case 'a'; frm = obj.Frame;
+                otherwise
+                    fprintf(2, 'Error: input must be ''b'' or ''d''\n');
+                    frm = [];
+                    return;
             end
         end
 
@@ -461,11 +494,9 @@ classdef Seedling < handle
             switch nargin
                 case 1
                     obj.Lifetime = obj.Lifetime + 1;
-
                 case 2
-                    inc = varargin{2};
+                    inc          = varargin{2};
                     obj.Lifetime = obj.Lifetime + inc;
-
                 otherwise
                     fprintf(2, 'Error incrementing lifetime\n');
                     return;
@@ -494,10 +525,17 @@ classdef Seedling < handle
             end
         end
 
-        function bbox = getCropBox(obj, frm, buf)
-        %% Get crop box from a frame
-        bbox = obj.getPData(frm, 'BoundingBox');
-        
+        function [bbox , oob] = getCropBox(obj, frm, mbuf)
+            %% Get crop box from a frame
+            if nargin < 2; frm  = 1 : obj.Lifetime; end
+            if nargin < 3; mbuf = 0;                end
+
+            bbox = obj.getPData(frm, 'BoundingBox');
+            if mbuf
+                img          = obj.Parent.getImage(frm);
+                soff         = [-mbuf , -mbuf , mbuf*2 , mbuf];
+                [bbox , oob] = bufferCropBox(bbox, soff, img);
+            end
         end
 
         function pd = getPData(obj, frm, req)
@@ -544,9 +582,7 @@ classdef Seedling < handle
 
         function pts = getAnchorPoints(obj, frm)
             %% Returns 4x2 array of 4 anchor points representing Hypocotyl
-            if nargin < 2
-                frm = ':';
-            end
+            if nargin < 2; frm = ':'; end
 
             try
                 pts = obj.AnchorPoints(:, :, frm);
@@ -572,11 +608,18 @@ classdef Seedling < handle
             obj.Contour(frm) = crc;
         end
 
-        function crc = getContour(obj, frm)
+        function crc = getContour(obj, frm, req)
             %% Return CircuitJB object at given frame
             if nargin < 2; frm = ':'; end
+            if nargin < 3; req = [];  end
 
-            crc = obj.Contour(frm);
+            try
+                crc = obj.Contour(frm);
+                if ~isempty(req); crc = crc.(req); end
+            catch
+                fprintf(2, 'Property %s not found in ContourJB\n', req);
+                crc = [];
+            end
         end
 
         function hyps = getAllPreHypocotyls(obj)

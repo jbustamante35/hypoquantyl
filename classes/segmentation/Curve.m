@@ -141,7 +141,6 @@ classdef Curve < handle & matlab.mixin.Copyable
             %
             % Output:
             %   Z:
-            %
 
             %% Parse inputs
             [ndims , vsn , fnc , mbuf , scl , nsplt , midx , addMid2vec , rot , ...
@@ -218,7 +217,6 @@ classdef Curve < handle & matlab.mixin.Copyable
                         len  = obj.SEGMENTSIZE;
                         stp  = obj.SEGMENTSTEPS;
                         midx = obj.TOCENTER;
-
                     case 4
                         len  = varargin{2};
                         stp  = varargin{3};
@@ -226,7 +224,6 @@ classdef Curve < handle & matlab.mixin.Copyable
                         obj.setProperty('SEGMENTSIZE', len);
                         obj.setProperty('SEGMENTSTEPS', stp);
                         obj.setProperty('TOCENTER', midx);
-
                     otherwise
                         len  = obj.SEGMENTSIZE;
                         stp  = obj.SEGMENTSTEPS;
@@ -236,11 +233,10 @@ classdef Curve < handle & matlab.mixin.Copyable
                             'Segmenting with default parameters (%d, %d)\n'], ...
                             len, stp);
                         fprintf(2, msg);
-
                 end
+
                 segs                 = split2Segments(trc, len, stp, 1, midx);
                 obj.NumberOfSegments = size(segs,3);
-
             catch
                 fprintf(2, 'Error splitting outline into multiple segments\n');
                 segs = [];
@@ -391,15 +387,11 @@ classdef Curve < handle & matlab.mixin.Copyable
             obj.plotSegments(fidx, segs, clr, vsn, fnc, mbuf, abuf, scl);
             obj.plotCorners( fidx, segs, clr, vsn, fnc, mbuf, abuf, scl);
             obj.plotNorms(fidx, clr, vsn, fnc, mbuf, abuf, scl);
-            if ~isempty(mid); obj.plotMidline(fidx, mid, fnc, clr); end
-
-            if isempty(ttl)
-                gnm  = obj.Parent.GenotypeName;
-                gttl = fixtitle(gnm);
-                sidx = obj.Parent.Parent.Parent.getSeedlingIndex;
-                frm  = obj.Parent.getFrame;
-                ttl  = sprintf('%s\nSeedling %d Frame %d', gttl, sidx, frm);
+            if ~isempty(mid)
+                obj.plotMidline(fidx, clr, mid, fnc, mbuf, abuf, scl);
             end
+
+            if isempty(ttl); [~ , ttl] = obj.makeName; end
 
             title(ttl, 'FontSize', 6);
             drawnow;
@@ -531,15 +523,16 @@ classdef Curve < handle & matlab.mixin.Copyable
 
         function [drc1 , drc2] = getDirection(obj, trc, toSet, vsn, fnc, mbuf, scl)
             %% getDirection
+            if nargin < 2; trc   = [];            end % Default contour
             if nargin < 3; toSet = 0;             end % Set Direction property
             if nargin < 4; vsn   = obj.MAINTRACE; end
             if nargin < 5; fnc   = obj.MAINFUNC;  end
             if nargin < 6; mbuf  = obj.MANBUF;    end
             if nargin < 7; scl   = obj.IMGSCL;    end
 
-            %             trc = obj.getTrace(vsn, 'raw', mbuf, scl);
-            l1  = obj.getSegmentLength(1, vsn, fnc, trc, mbuf, scl);
-            l3  = obj.getSegmentLength(3, vsn, fnc, trc, mbuf, scl);
+            if isempty(trc); trc = obj.getTrace(vsn, 'raw', mbuf, scl); end
+            l1 = obj.getSegmentLength(1, vsn, fnc, trc, mbuf, scl);
+            l3 = obj.getSegmentLength(3, vsn, fnc, trc, mbuf, scl);
 
             if l3 > l1
                 drc1 = -1;
@@ -612,7 +605,6 @@ classdef Curve < handle & matlab.mixin.Copyable
 
                 mline = c.Position;
                 obj.setMidline(mline, 'man', 'raw');
-
             catch e
                 frm = obj.Parent.getFrame;
                 fprintf(2, 'Error setting outline at frame %d \n%s\n', ...
@@ -730,14 +722,15 @@ classdef Curve < handle & matlab.mixin.Copyable
             end
 
             % Get interpolated, raw, or origin-centered midline
-            dsp = obj.SEGLENGTH(end) * scl;
+            %             dsp = obj.SEGLENGTH(end) * scl;
+            sld = obj.SEGLENGTH(end);
             switch fnc
                 case 'raw'
                     % Keep raw coordinates
 
                 case 'flip'
                     % Flip original direction
-                    mline = flipLine(mline, dsp);
+                    mline = flipLine(mline, sld, scl);
 
                 case 'left'
                     % Force left-facing midline
@@ -746,7 +739,7 @@ classdef Curve < handle & matlab.mixin.Copyable
 
                     % Flip left if facing right
                     if strcmpi(drc, 'right')
-                        mline = flipLine(mline, scl);
+                        mline = flipLine(mline, sld, scl);
                     end
 
                 case 'right'
@@ -756,7 +749,7 @@ classdef Curve < handle & matlab.mixin.Copyable
 
                     % Flip left if facing right
                     if strcmpi(drc, 'left')
-                        mline = flipLine(mline, scl);
+                        mline = flipLine(mline, sld, scl);
                     end
 
                 case 'int'
