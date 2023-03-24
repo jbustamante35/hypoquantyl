@@ -56,7 +56,7 @@ myimagesc(img);
 hold on;
 plt(cpre, 'g-', 2);
 plt(mpre, 'r-', 2);
-plt(zpre, 'y.', 2);
+plt(zpre, 'y.', 3);
 plt(bpre, 'b.', 20);
 
 ttl = sprintf('%s [%.03f]', ttl, gpre);

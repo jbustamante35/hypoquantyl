@@ -89,12 +89,12 @@ classdef HypocotylTrainer < handle
         Parallel
         Verbose
         Figures
+        isOptimized
     end
 
     properties (Access = protected)
         SplitCurves
         PCA
-        isOptimized
         ZVectors
         ZFnc
         ZBay
@@ -204,7 +204,8 @@ classdef HypocotylTrainer < handle
                 'toStore'             , 0 ; ...
                 'Parallel'            , 0 ; ...
                 'Verbose'             , 0 ; ...
-                'Figures'             , 1 : 4  ...
+                'Figures'             , 1 : 4  ; ...
+                'isOptimized'         , struct('znn', 0, 'bnn', 0) ...
                 };
 
             obj = classInputParser(obj, prps, deflts, vargs);
@@ -230,10 +231,11 @@ classdef HypocotylTrainer < handle
             jprintf(' ', toc(t), 1, 80 - n);
         end
 
-        function SplitDataset(obj, toSplit)
+        function splt = SplitDataset(obj, toSplit, toSet)
             %% Split Curves into training, validation, and testing sets
             % Validation and Testing sets shouldn't be seen by training algorithm
-            if nargin < 2; toSplit = 0;          end
+            if nargin < 2; toSplit  = 0; end
+            if nargin < 3; toSet    = 0; end
 
             t       = tic;
             crvs    = obj.Curves;
@@ -242,12 +244,13 @@ classdef HypocotylTrainer < handle
                 n = fprintf('Splitting into training,validation,testing sets');
 
                 % Get indices of split datasets
-                obj.Splits = splitDataset(1 : numCrvs, ...
+                splt = splitDataset(1 : numCrvs, ...
                     obj.TrainingPct, obj.ValidationPct, obj.TestingPct);
+                if toSet; obj.Splits = splt; end
             else
-                n = fprintf('Data already split');
+                n    = fprintf('Data already split');
+                splt = obj.Splits;
             end
-
             jprintf(' ', toc(t), 1, 80 - n);
         end
 
@@ -282,10 +285,11 @@ classdef HypocotylTrainer < handle
             obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp, 'pm', pm);
         end
 
-        function TrainZVectors(obj)
+        function TrainZVectors(obj, pcs)
             %% Train Z-Vectors
-            t = tic;
+            if nargin < 2; pcs = 1 : obj.NPZ; end
 
+            t = tic;
             if obj.Split2Stitch
                 n    = fprintf('Preparing %d images and [%d|%d] Z-Vectors PC scores', ...
                     numel(obj.getSplits('trnIdx')), obj.NPZ{1}, obj.NPZ{2});
@@ -327,7 +331,8 @@ classdef HypocotylTrainer < handle
             jprintf(' ', toc(t), 1, 80 - n);
 
             %%
-            [IN , OUT] = deal(cell(1, size(ZSCRS,2)));
+            %             [IN , OUT] = deal(cell(1, size(ZSCRS,2)));
+            [IN , OUT] = deal(cell(1, pcs));
 
             if isempty(obj.isOptimized); obj.isOptimized.znn = 0; end
 
@@ -337,8 +342,8 @@ classdef HypocotylTrainer < handle
                     obj.SetOptimizedParameters('znn');
                 end
 
-                % Loop through optimized parameters
-                for pc = 1 : size(ZSCRS,2)
+                % Loop through optimized parameters or single PC
+                for pc = pcs
                     [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
                         'Save', obj.Save, 'FltRng', obj.FilterRange{pc}, ...
                         'NumFltRng', obj.NumFilterRange{pc}, ...
@@ -350,7 +355,7 @@ classdef HypocotylTrainer < handle
                 end
             else
                 % Use same parameters for each PC [old method]
-                for pc = 1 : size(ZSCRS,2)
+                for pc = pcs
                     [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
                         'Save', obj.Save, 'FltRng', obj.FilterRange, ...
                         'NumFltRng', obj.NumFilterRange, ...
@@ -360,7 +365,7 @@ classdef HypocotylTrainer < handle
                 end
             end
 
-            obj.ZVectors = struct('ZIN', IN, 'ZOUT', OUT);
+            obj.ZVectors(pcs) = struct('ZIN', IN(pcs), 'ZOUT', OUT(pcs));
         end
 
         function TrainDVectors(obj)
@@ -513,7 +518,8 @@ classdef HypocotylTrainer < handle
             obj.Curves = [];
 
             HT  = obj;
-            fnm = sprintf('%s%s%s', dnm, filesep, obj.HTName);
+            fnm = sprintf('%s%s%s_%dZOpt_%dBOpt', dnm, filesep, obj.HTName, ...
+                obj.isOptimized.znn, obj.isOptimized.bnn);
             save(fnm, '-v7.3', 'HT');
 
             % Replace Curves after saving

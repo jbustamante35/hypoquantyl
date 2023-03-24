@@ -1,4 +1,4 @@
-function CRCS = trainCircuits(Ein, cin, typ, mth, rgn, mbuf, abuf, scl, lb, toPrime, sav, fidxs)
+function [CRCS , CRVS] = trainCircuits(Ein, cin, typ, mth, rgn, mbuf, abuf, scl, lb, toPrime, sav, fidxs)
 %% randomCircuits: obtain and normalize random set of manually-drawn contours
 % This function takes in a fully-generated Experiment object as input and
 % extracts Hypocotyl objects to use as training data (defined in cin matrix)
@@ -31,8 +31,8 @@ function CRCS = trainCircuits(Ein, cin, typ, mth, rgn, mbuf, abuf, scl, lb, toPr
 %       [ 5 4 20 ] ] % 5th genotype , 4th seedling , 20th frame
 %
 % Usage:
-%   CRCS = trainCircuits(Ein, cin, typ, ...
-%       mth, rgn, mbuf, abuf, scl, lb, toPrime, sav, fidxs)
+%   [CRCS , CRVS] = trainCircuits( ...
+%       Ein, cin, typ, mth, rgn, mbuf, abuf, scl, lb, toPrime, sav, fidxs)
 %
 % Input:
 %   Ein: Experiment object to draw from to generate contour data
@@ -43,7 +43,7 @@ function CRCS = trainCircuits(Ein, cin, typ, mth, rgn, mbuf, abuf, scl, lb, toPr
 %
 % Output:
 %   CRCS: CircuitJB array of manually-drawn contours from Experiment Ein
-%
+%   CRVS: Curve objects used to manipulate contour data from CircuitJB
 
 %% Set defaults
 if nargin < 3;  typ     = 1;       end % [0 to train Seedlings     | 1 to train Hypocotyls]
@@ -75,6 +75,8 @@ for o = 1 : numel(OBJS)
     figclr(fidxs);
 end
 
+CRVS = arrayfun(@(x) x.Curves, CRCS);
+
 if sav
     arrayfun(@(x) x.DerefParents, CRCS, 'UniformOutput', 0);
     nm = sprintf('%s_%drandomCircuits_circuits', tdate('s'), nCrcs);
@@ -85,7 +87,7 @@ end
 %% Show 8 first images and masks, unless < 8 contours drawn
 if fidxs
     % Gallery of Hypocotyls with contours on image
-    showCircuits(CRCS, fidxs);
+    showCircuits(CRCS, cin, fidxs);
 
     if sav
         fnms{1} = sprintf('%s_ManualTraining_gray_%dImages', tdate, nCrcs);
@@ -129,7 +131,7 @@ try
     end
 catch e
     x = cin(d,:);
-    fprintf('Error extracting %s [ %d %d %d ]\n%s\n', dtyp, x, e.message);
+    fprintf('Error extracting %s [ %d , %d , %d ]\n%s\n', dtyp, x, e.message);
     dout = [];
 end
 end
@@ -189,18 +191,15 @@ crc.DrawOutline(rgn, [], mbuf, abuf, scl, toPrime, fidxs(1));
 crc.ConvertRawOutlines(lb, 'gray', rgn, [], mbuf, abuf, scl);
 crc.DrawAnchors(mth, rgn, [], mbuf, abuf, scl, fidxs(2));
 crc.ConvertRawPoints(lb, 'gray', rgn, [], mbuf, abuf, scl);
-crc.CreateCurves('redo');
 crc.ReconfigInterpOutline('Full');
 crc.ConvertRawPoints(lb, 'gray', rgn, [], mbuf, abuf, scl);
-
-% Convert to Clipped outline and find midline
 crc.Full2Clipped;
-
+crc.CreateCurves('redo');
 end
 
-function showCircuits(crcs, fidxs)
+function showCircuits(crcs, cin, fidxs)
 %% showCircuits: display tracing results
-if nargin < 2; fidxs = 1 : 2; end
+if nargin < 3; fidxs = 1 : 2; end
 figclr(fidxs);
 [n , o] = deal(1 : numel(crcs));
 p       = deal(horzcat(n,o));
@@ -235,6 +234,8 @@ for slot = 1 : tot
             fixtitle(crcs(slot).GenotypeName), ...
             cin(p(slot),2), cin(p(slot),3));
         title(ttl, 'FontSize', 6);
+
+        drawnow;
     catch e
         fprintf(2, 'Skipping Circuit %d\n%s\n', slot, e.message);
     end

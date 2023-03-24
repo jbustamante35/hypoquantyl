@@ -79,8 +79,9 @@ classdef Genotype < handle
             gnm  = obj.GenotypeName;
             for r = rng
                 tr      = tic;
-                img     = obj.getImage(r);
-                sdls{r} = extractSeedlings(obj, img, frm, sdlsz, hypln);
+                %                 msk     = obj.getImage(r);
+                msk     = obj.getImage(r, 'bw');
+                sdls{r} = extractSeedlings(obj, msk, frm, sdlsz, hypln);
                 frm     = frm + 1;
 
                 if v
@@ -430,7 +431,7 @@ classdef Genotype < handle
             end
         end
 
-        function [s, i] = search4Seedling(obj, nm)
+        function [s , i] = search4Seedling(obj, nm)
             %% Return specific Seedling by SeedlingName and index
             sdls = obj.getSeedling(':');
             for i = 1 : numel(sdls)
@@ -479,7 +480,7 @@ classdef Genotype < handle
             if nargin < 2
                 smth = 0;
                 sz   = obj.MASKSIZE;
-%                 sens = 0.5;
+                %                 sens = 0.5;
                 sens = 'dark';
                 mth  = 2;
             end
@@ -488,6 +489,45 @@ classdef Genotype < handle
             obj.SegDefaults.MinMaxObject = sz;
             obj.SegDefaults.Sensitivity  = sens;
             obj.SegDefaults.Method       = mth;
+        end
+
+        function showSeedlings(obj, fidx, frm, sidx, fkeep)
+            %% Display seedling cropboxes on image
+            if nargin < 2; fidx  = 1;                         end
+            if nargin < 3; frm   = 1;                         end
+            if nargin < 4; sidx  = 1 : obj.NumberOfSeedlings; end
+            if nargin < 5; fkeep = 1;                         end
+
+            img  = obj.getImage(frm, 'gray');
+            sdls = obj.getSeedling(sidx);
+            cbox = arrayfun(@(x) x.getCropBox(frm), sdls, 'UniformOutput', 0);
+
+            figclr(fidx, fkeep);
+            myimagesc(img);
+            hold on;
+            cellfun(@(x) rectangle('Position', x, 'EdgeColor', 'r'), cbox);
+            [~ , gttl] = obj.makeName;
+            ttl        = sprintf('%s [Frame %d]', gttl, frm);
+            title(ttl, 'FontSize', 10);
+            hold off;
+        end
+
+        function [fnm , ttl , dsp] = makeName(obj)
+            %% makeName: create filename, figure title, and display output
+            gnm  = obj.GenotypeName;
+            gttl = fixtitle(gnm);
+            nsdls = obj.NumberOfSeedlings;
+            nfrms = obj.TotalImages;
+
+            % For files names
+            fnm = sprintf('%s_%s_%02dseedlings_%02dframes', ...
+                tdate, gnm, nsdls, nfrms);
+
+            % For figure titles
+            ttl = sprintf('%s\n%d Seedlings | %d Frames', gttl, nsdls, nfrms);
+
+            % For console output
+            dsp = sprintf('%s | %d Seedlings | %d Frames', gnm, nsdls, nfrms);
         end
 
         function setProperty(obj, req, val)
@@ -514,7 +554,7 @@ classdef Genotype < handle
     %% ------------------------- Private Methods --------------------------- %%
     methods (Access = private)
         %% Helper methods
-        function sdls = extractSeedlings(obj, img, frm, sdlsz, hypln, bopen)
+        function sdls = extractSeedlings(obj, msk, frm, sdlsz, hypln, bopen)
             %% Segmentation and Extraction of Seedling objects from raw image
             % This function binarizes a grayscale image at the given frame and
             % extracts features of a specified minimum size. Output is in the
@@ -535,8 +575,13 @@ classdef Genotype < handle
             if nargin < 6; bopen = obj.BOPEN;                                 end
 
             %% Compute cut-off to chop hypocotyl
-            [msk , dd] = obj.getImage(frm, 'bw');
-            prp        = regionprops(dd, img, obj.PDPROPERTIES);
+            msk = obj.getImage(frm, 'bw');
+            %             se  = strel('line', 15, 1);
+            se = strel('disk', 3);
+            msk = imdilate(msk, se);
+            msk = bwareafilt(msk, sdlsz);
+            dd  = bwconncomp(msk);
+            prp = regionprops(dd, msk, obj.PDPROPERTIES);
 
             % Remove large objects detected as seedlings
             prp   = prp(arrayfun(@(x) x.Area >= sdlsz(1), prp));
@@ -653,7 +698,7 @@ classdef Genotype < handle
                     CRDS = cell2mat(arrayfun(@(x) x.Coordinates, ...
                         RS, 'UniformOutput', 0));
                     DD   = pdist2(CRDS, CRDS);
-                    dmsk = DD < 150; % 150 is min distance from objects
+                    dmsk = DD < 120; % Min distance from objects [default 150]
                     ddm  = DD .* dmsk;
 
                     % Make digraph and determine clusters
@@ -672,8 +717,6 @@ classdef Genotype < handle
                     clst = [lidx' , ii' , jj' , CRDS , nidxs'];
 
                     %% Detect collisions and remove both guilty parties
-%                     strt = cell2mat(cellfun(@(x) x.Coordinates, ...
-%                         rs(1,:)', 'UniformOutput', 0));
                     strt = cell2mat(arrayfun(@(x) x.Coordinates, ...
                         cat(1, rs{1,:}), 'UniformOutput', 0));
                     uq   = unique(clst(:,end));

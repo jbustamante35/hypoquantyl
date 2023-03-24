@@ -174,19 +174,21 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             obj.setImage(1, 'mask', msk);
         end
 
-        function [obj , ofix] = FixContour(obj, fidx, interp_fixer, seg_smooth, flp, mbuf, abuf, scl)
+        function [obj , ofix] = FixContour(obj, fidx, vsn, interp_fixer, seg_smooth, flp, mbuf, abuf, scl)
             %% Manually fix the contour
             if nargin < 2; fidx         = 1;          end
-            if nargin < 3; interp_fixer = 40;         end
-            if nargin < 4; seg_smooth   = 10;         end
-            if nargin < 5; flp          = [];         end
-            if nargin < 6; mbuf         = obj.MANBUF; end % Cropping buffer
-            if nargin < 7; abuf         = obj.ARTBUF; end % Artificial buffer
-            if nargin < 8; scl          = obj.IMGSCL; end % Image scale
+            if nargin < 3; vsn          = 'Raw';      end
+            if nargin < 4; interp_fixer = 40;         end
+            if nargin < 5; seg_smooth   = 10;         end
+            if nargin < 6; flp          = [];         end
+            if nargin < 7; mbuf         = obj.MANBUF; end % Cropping buffer
+            if nargin < 8; abuf         = obj.ARTBUF; end % Artificial buffer
+            if nargin < 9; scl          = obj.IMGSCL; end % Image scale
 
-            img  = obj.getImage('gray', rgn, flp, mbuf, abuf, scl);
-            trc  = obj.getOutline(':', otyp, mbuf, abuf, scl);
-            ofix = OutlineFixer('Object', obj, 'Image', img, ...
+            img  = obj.getImage('gray', 'upper', flp, mbuf, abuf, scl);
+            msk  = obj.getImage('bw',   'upper', flp, mbuf, abuf, scl);
+            trc  = obj.getOutline(':', vsn, mbuf, scl);
+            ofix = OutlineFixer('Object', obj, 'Image', img, 'Mask', msk, ...
                 'Curve', trc, 'FigureIndex', fidx, ...
                 'InterpFix', interp_fixer, 'SegSmooth', seg_smooth);
         end
@@ -222,11 +224,6 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                     [~ , crd] = extractContour( ...
                         msk, toPrime, 'alt', 'Normalize');
                     obj.setRawOutline(crd);
-
-                    %                     h = OutlineFixer('Object', obj, 'Image', img, ...
-                    %                         'Mask', msk, 'Curve', trc, 'FigureIndex', 1, ...
-                    %                         'InterpFix', toPrime);
-
                 else
                     %% Manually trace outline
                     c   = drawPoints(img, [], 'y', str, [], fidx);
@@ -261,7 +258,6 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 case 'auto'
                     % Make artificial anchor points by dividing into N sections
                     slens = obj.getProperty('SEGLENGTH');
-                    cntr  = obj.getOutline(':', 'Full');
                     cinit = [0 , cumsum(slens(1:3))] + 1;
                     apts  = cntr(cinit,:);
                     obj.setRawPoints(apts);
@@ -300,7 +296,6 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
 
             obj.setParent(hyp);
             hyp.setCircuit(obj.getFrame, obj);
-
         end
 
         function trc = InterpOutline(obj, pts, vsn)
@@ -324,8 +319,8 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             if nargin < 2; trc  = obj.InterpOutline; end
             if nargin < 3; init = 'alt';             end
 
-            [apt, aidxs] = findAnchorPoint(obj, trc, init);
-            nrm          = obj.repositionPoints(trc, aidxs, init);
+            [apt , aidxs] = findAnchorPoint(obj, trc, init);
+            nrm           = obj.repositionPoints(trc, aidxs, init);
         end
 
         function ConvertRawOutlines(obj, lb, typ, rgn, flp, mbuf, abuf, scl)
@@ -374,7 +369,6 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 obj.ConvertRawOutlines(lb, typ, rgn, flp, mbuf, abuf, scl);
             end
 
-%             cntr = obj.getOutline(':', 'Full');
             cntr = obj.getOutline(':', 'Full', mbuf, scl);
             pts  = obj.RawPoints;
 
@@ -396,7 +390,15 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             if nargin < 3; slens = obj.SEGLENGTH;         end
             if nargin < 4; npts  = obj.INTERPOLATIONSIZE; end
 
-            % Segment
+            if size(obj.RawPoints,1) > 4
+                % Redo outline manually and remove 5th anchor point
+                obj.DrawOutline('upper');
+                obj.ConvertRawOutlines;
+                obj.RawPoints(end,:) = [];
+                obj.ConvertRawPoints;
+            end
+
+            %
             cntr  = obj.getOutline(':', vsn);
             cinit = obj.getAnchorPoints(':', 1)';
             cends = [cinit(2:end) , npts] - 1;
@@ -411,6 +413,7 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
 
                 obj.FullOutline = cntr;
             catch
+                % Redo outline manually if error
                 obj.DrawOutline('upper');
                 obj.ConvertRawOutlines;
                 obj.ConvertRawPoints;
@@ -431,7 +434,8 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
                 cinit, cends, slens, 'UniformOutput', 0);
 
             % Omit and stitch cotyledon segment [segment 2]
-            rts{2} = interpolateOutline([rts{2}(1,:) ; rts{2}(end,:)], slens(2));
+            rts{2} = interpolateOutline( ...
+                [rts{2}(1,:) ; rts{2}(end,:)], slens(2));
 
             % Close contour
             cntr = cat(1, rts{:});

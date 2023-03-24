@@ -291,22 +291,9 @@ classdef Hypocotyl < handle
             obj.ExperimentPath = obj.Origin.ExperimentPath;
         end
 
-        function [fnm , ttl , itr] = makeName(obj)
-            %% makeTitle: make a simple title for this object
-            gnm  = obj.GenotypeName;
-            gttl = fixtitle(gnm);
-            sidx = obj.Parent.getSeedlingIndex;
-            nfrm = obj.Lifetime;
-
-            % For files names
-            fnm = sprintf('%s_%s_seedling%02d_%02dframes', ...
-                tdate, gnm, sidx, nfrm);
-
-            % For figure titles
-            ttl = sprintf('%s\nSeedling %d [%d Frames]', gttl, sidx, nfrm);
-
-            % For console output
-            itr = sprintf('%s | Seedling %d | %d Frames', gnm, sidx, nfrm);
+        function [fnm , ttl , dsp] = makeName(obj)
+            %% makeName: create filename, figure title, and display output
+            [fnm , ttl , dsp] = obj.Parent.makeName;
         end
 
         function gi = getGenotypeIndex(obj)
@@ -348,7 +335,7 @@ classdef Hypocotyl < handle
             end
         end
 
-        function bbox = getCropBox(obj, frm, rgn, buf)
+        function [bbox , ubox , lbox] = getCropBox(obj, frm, rgn, buf)
             %% Return CropBox parameter
             % The CropBox is a [4 x 1] vector that defines the bounding box
             % to crop from Parent Seedling. This can be from either the upper or
@@ -360,20 +347,21 @@ classdef Hypocotyl < handle
             if nargin < 4; buf = 0;   end
 
             % Region dimension
+            ubox = obj.CropBox(frm, :, 1);
+            lbox = obj.CropBox(frm, :, 2);
             switch rgn
                 case 1
-                    r = 1 : 2;
+                    bbox = ubox;
+                    ubox = lbox;
                 case 'upper'
-                    r = 1;
+                    bbox = ubox;
                 case 'lower'
-                    r = 2;
+                    bbox = lbox;
                 otherwise
                     fprintf(2, 'Region %s not recognized [upper|lower]\n', rgn);
-                    bbox = [];
+                    [bbox , ubox , lbox] = deal([]);
                     return;
             end
-
-            bbox = obj.CropBox(frm, :, r);
 
             % Buffer bounding box
             if buf
@@ -482,14 +470,21 @@ classdef Hypocotyl < handle
         end
 
         function crc = getCircuit(obj, frm)
-            %% Return original or flipped version of CircuitJB object
-            if nargin < 2; frm = 0;      end % First available CircuitJB
+            %% Return CircuitJB object
+            if nargin < 2; frm = 0; end % First available CircuitJB
 
             crc = [];
             if ~isempty(obj.Circuit)
                 % Find first available frame
                 if ~frm
-                    cc  = arrayfun(@(x) ~isempty(x.Origin), obj.Circuit);
+                    try
+                        cc  = arrayfun(@(x) ~isempty(x.Origin), obj.Circuit);
+                    catch
+                        fprintf(2, '\nRegenerating empty CircuitJB objects\n');
+                        obj.Circuit(fobj) = CircuitJB;
+                        cc  = arrayfun(@(x) ~isempty(x.Origin), obj.Circuit);
+                    end
+
                     cc  = find(cc);
                     if isempty(cc)
                         fprintf(2, '\nNo frames traced.\n\n');
@@ -511,7 +506,7 @@ classdef Hypocotyl < handle
                 end
             else
                 % Initialize Circuit property
-                obj.Circuit = repmat(CircuitJB, obj.Lifetime);
+                obj.Circuit = repmat(CircuitJB, obj.Lifetime, 1);
                 crc         = obj.Circuit(frm);
             end
         end
@@ -544,7 +539,7 @@ classdef Hypocotyl < handle
             try
                 if isempty(obj.Circuit)
                     % Initialize Circuit property
-                    obj.Circuit = repmat(CircuitJB, obj.Lifetime);
+                    obj.Circuit = repmat(CircuitJB, obj.Lifetime, 1);
                 else
                     crcs             = obj.Circuit;
                     trained_frames   = ind2sub(size(crcs), ...

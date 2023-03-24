@@ -7,7 +7,7 @@
 % Input:
 %   edir: path to sub-directories of time-lapse images
 %   varargin: various inputs [see below]
-%       
+%
 %
 % Output:
 %   ex: Experiment object
@@ -31,9 +31,9 @@ classdef Experiment < handle
 
     properties (Access = private)
         %% Private data properties
-        ExperimentDate  = tdate('l')
-        HYPOCOTYLLENGTH = 250   % Distance to set cutoff for upper hypocotyl
-        SEEDLINGSIZE    = [5000 , 50000] % Cut-off pixel area for a Seedling
+        ExperimentDate  = tdate('l');
+        HYPOCOTYLLENGTH = 250            % Distance to set cutoff for upper hypocotyl
+        SEEDLINGSIZE    = [5000 , 70000] % Cut-off pixel area for a Seedling
     end
 
     %% ------------------------- Primary Methods --------------------------- %%
@@ -52,10 +52,12 @@ classdef Experiment < handle
             prps   = properties(class(obj));
             deflts = { ...
                 'ExperimentPath'   , pwd   ; ...
+                'CurvesTraced'     , 0     ; ...
                 'NumberOfGenotypes', 0   } ;
             obj    = classInputParser(obj, prps, deflts, vargs);
 
-            [obj.ExperimentName, ~] = getDirName(obj.ExperimentPath);
+            % Generate name
+            obj.ExperimentName = obj.makeName;
         end
 
         function AddGenotypes(obj, ext)
@@ -175,8 +177,8 @@ classdef Experiment < handle
 
             % Save full Experiment object
             tSave = tic;
-            nm = sprintf('%s_%s_%dGenotypes', ...
-                tdate, obj.ExperimentName, obj.NumberOfGenotypes);
+            nm = sprintf('%s_%s_%dGenotypes_%03dContours', tdate, ...
+                obj.ExperimentName, obj.NumberOfGenotypes, obj.CurvesTraced);
             ex = obj;
             save(nm, '-v7.3', 'ex');
             fprintf('[%.02f sec] Saved dataset %s\n', toc(tSave), nm);
@@ -203,7 +205,7 @@ classdef Experiment < handle
             try
                 % Set this object's new name and path
                 obj.ExperimentPath = char(p);
-                obj.ExperimentName = getDirName(p);
+                obj.ExperimentName = obj.makeName(1, p);
 
                 % Iterate through each Genotype's ImageDataStore
                 arrayfun(@(x) x.ChangeStorePaths(p), ...
@@ -270,14 +272,6 @@ classdef Experiment < handle
                 g = [];
                 i = [];
             end
-            
-%             for i = 1 : numel(gts)
-%                 mtc = gnms{i};                
-%                 if isequal(nm, mtc)
-%                     g = gts(i);
-%                     return;
-%                 end
-%             end
         end
 
         function S = combineSeedlings(obj, asCell, getGood)
@@ -327,41 +321,30 @@ classdef Experiment < handle
             if asCell; H = arrayfun(@(x) x, H, 'UniformOutput', 0); end
         end
 
-        function [D, org, flp] = combineContours(obj, getCrvs, ver)
+        function d = combineContours(obj, getCrvs)
             %% Return all Hypocotyls with manually-drawn CircuitJB objects
             % Returns both original and flipped versions of each. I'm not sure
             % if it would work if some don't have flipped versions.
-            if nargin < 2; getCrvs = 1;      end
-            if nargin < 3; ver     = 'Full'; end
+            if nargin < 2; getCrvs = 1; end
 
-            H   = obj.combineHypocotyls;
-            org = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'org', ver),  ...
-                1:x.Lifetime, 'UniformOutput', 0), H, 'UniformOutput', 0);
-            org = cat(2, org{:});
-            org = cat(1, org{:});
+            h = obj.combineHypocotyls;
+            d = arrayfun(@(x) x.getProperty('Circuit'), h, 'UniformOutput', 0);
+            d = cellfun(@(y) y(~arrayfun(@(x) isempty(x.Origin), ...
+                y)), d, 'UniformOutput', 0);
+            d = d(~cellfun(@(x) isempty(x), d));
+            d = cat(1, d{:});
 
-            flp = arrayfun(@(x) arrayfun(@(y) x.getCircuit(y, 'flp', ver),  ...
-                1:x.Lifetime, 'UniformOutput', 0), H, 'UniformOutput', 0);
-            flp = cat(2, flp{:});
-            flp = cat(1, flp{:});
-
-            D = [org ; flp];
-
-            obj.CurvesTraced = numel(D);
+            obj.CurvesTraced = numel(d);
 
             % Return Curves only
-            if getCrvs
-                D  = arrayfun(@(x) x.Curves, D, 'UniformOutput', 0);
-                D  = cat(1, D{:});
-            end
+            if getCrvs; d = arrayfun(@(x) x.Curves, d); end
         end
 
         function [noflp , hyp] = findMissingContours(obj)
             %% Find missing contours (accidentally cancelled when training)
+            % DEPRECATED [03.20.2023]
+            % No longer using original and flipped versions
             D = obj.combineContours;
-%             C = obj.combineContours;
-%             D = arrayfun(@(x) x.Curves, C, 'UniformOutput', 0);
-%             D = cat(1, D{:});
             if mod(numel(D),2)
                 nms   = arrayfun(@(x) x.Parent.Origin, D, 'UniformOutput', 0);
                 hlfSz = ceil(length(nms) / 2);
@@ -406,6 +389,27 @@ classdef Experiment < handle
             % s  : Seedling to check
         end
 
+        function [enm , ttl , dsp] = makeName(obj, toSet, epth)
+            %% Generate ExperimentName
+            if nargin < 2; toSet = 0;                  end
+            if nargin < 3; epth  = obj.ExperimentPath; end
+
+            ngens = obj.NumberOfGenotypes;
+            nsdls = numel(obj.combineSeedlings);
+            ncrvs = obj.CurvesTraced;
+
+            [pth , g] = fileparts(epth);
+            [~   , c] = fileparts(pth);
+            enm       = sprintf('%s_%s', c, g);
+
+            ettl = fixtitle(enm);
+            ttl  = sprintf('%s\n%d Genotypes | %d Seedlings | %d Curves', ...
+                ettl, ngens, nsdls, ncrvs);
+            dsp  = sprintf('%s | %d Genotypes | %d Seedlings | %d Curves', ...
+                enm, ngens, nsdls, ncrvs);
+
+            if toSet; obj.ExperimentName = enm; end
+        end
         function setProperty(obj, req, val)
             %% Returns a property of this Genotype object
             try
