@@ -18,14 +18,10 @@ len = size(crv,1);
 tmp = [crv' , crv' , crv']';
 
 %% Compute the tangents vectors along the curve
-dc = gradient(tmp')';
-dl = sum(dc .* dc, 2).^-0.5;
-dc = bsxfun(@times, dc, dl);
-dn = [dc(:,2) , -dc(:,1)];
-fb = [tmp , dc , dn];
-
-%
-fb = fb(len+1 : 2*len, :);
-
+dg = gradient(tmp')';
+dl = sum(dg .* dg, 2).^-0.5;
+dt = bsxfun(@times, dg, dl);
+dn = [dt(:,2) , -dt(:,1)];
+fb = [tmp , dt , dn];
+fb = fb(len + 1 : 2 * len, :);
 end
-

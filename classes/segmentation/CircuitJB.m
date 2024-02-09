@@ -219,10 +219,18 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
 
                 if toPrime
                     %% Initialize outline with default segmentation
-                    msk       = obj.getImage( ...
+                    slens = obj.SEGLENGTH;
+                    npts  = sum(slens) + 1;
+                    dsz   = 3;
+                    smth  = 3;
+
+                    msk = obj.getImage( ...
                         'bw', rgn, flp, mbuf, abuf, scl);
-                    [~ , crd] = extractContour( ...
-                        msk, toPrime, 'alt', 'Normalize');
+                    crd = mask2clipped(msk, dsz, npts, 'alt', ...
+                        'Normalize', 1, smth, slens, fidx);
+
+                    crd = interpolateOutline(crd, toPrime);
+                    crd = crd(1 : end - 1, :);
                     obj.setRawOutline(crd);
                 else
                     %% Manually trace outline
@@ -428,8 +436,10 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
 
             %% Remove duplicate corners except for the last point
             cntr  = obj.getOutline(':', 'Full');
-            cinit = obj.getAnchorPoints(':', 1)';
-            cends = [cinit(2:end) , npts] - 1;
+            %             cinit = obj.getAnchorPoints(':', 1)';
+            %             cends = [cinit(2:end), npts] - 1;
+            cinit = [2 , obj.getAnchorPoints(2:4, 1)'];
+            cends = [cinit(2:end) - 1 , npts + 1];
             rts   = arrayfun(@(i,e,l) interpolateOutline(cntr(i:e,:), l), ...
                 cinit, cends, slens, 'UniformOutput', 0);
 
@@ -512,6 +522,11 @@ classdef CircuitJB < handle & matlab.mixin.Copyable
             frm = obj.getFrame;
             img = obj.Parent.getImage(frm, req, rgn, flp, ...
                 mbuf, abuf, scl);
+        end
+
+        function sclsz = getScaleSize(obj)
+            %% Return image rescale dimensions
+            sclsz = obj.Parent.getScaleSize;
         end
 
         function setOutline(obj, crds, otyp)

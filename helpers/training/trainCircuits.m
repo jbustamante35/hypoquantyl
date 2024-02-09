@@ -223,17 +223,17 @@ for slot = 1 : tot
         title(ttl, 'FontSize', 6);
 
         % Draw Routes bw image
-        figclr(fidxs(2), 1);
-        subplot(rows, cols, slot);
-        myimagesc(crcs(slot).getImage('bw'));
-        hold on;
-        plt(crcs(slot).getOutline(':', 'Full'),    'g-', 2);
-        plt(crcs(slot).getOutline(':', 'Clip'),    'y-', 2);
-        plt(crcs(slot).getAnchorPoints, 'r.', 10);
-        ttl = sprintf('%s\nSeedling %d Frame %d', ...
-            fixtitle(crcs(slot).GenotypeName), ...
-            cin(p(slot),2), cin(p(slot),3));
-        title(ttl, 'FontSize', 6);
+%         figclr(fidxs(2), 1);
+%         subplot(rows, cols, slot);
+%         myimagesc(crcs(slot).getImage('bw'));
+%         hold on;
+%         plt(crcs(slot).getOutline(':', 'Full'),    'g-', 2);
+%         plt(crcs(slot).getOutline(':', 'Clip'),    'y-', 2);
+%         plt(crcs(slot).getAnchorPoints, 'r.', 10);
+%         ttl = sprintf('%s\nSeedling %d Frame %d', ...
+%             fixtitle(crcs(slot).GenotypeName), ...
+%             cin(p(slot),2), cin(p(slot),3));
+%         title(ttl, 'FontSize', 6);
 
         drawnow;
     catch e

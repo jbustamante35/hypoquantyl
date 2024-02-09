@@ -10,25 +10,28 @@ classdef Curve < handle & matlab.mixin.Copyable
         Direction
         BasePoint
         ApicalAngle
+        MidlineLength
     end
 
     properties (Access = protected)
-        SEGMENTSIZE    = 25;        % Number of coordinates per segment [default 200]
-        SEGMENTSTEPS   = 1;         % Size of step to next segment [default 50]
-        ENVELOPESIZE   = 11;        % Hard-coded max distance from original segment to envelope
-        MLINEINTRP     = 50;        % Default size to interpolate midline
-        MLINETERMINATE = 0.7;       % Default termination percent for midline
-        MLINEPSIZE     = [10 , 10]; % Default sampling size for midline patch
-        TOCENTER       = 1;         % Default center index for splitting segments
-        MAINTRACE      = 'Clip';    % Default contour version
-        MAINFUNC       = 'raw';     % Default contour direction
+        SEGMENTSIZE    = 25;                  % Number of coordinates per segment [default 200]
+        SEGMENTSTEPS   = 1;                   % Size of step to next segment [default 50]
+        ENVELOPESIZE   = 11;                  % Hard-coded max distance from original segment to envelope
+        MLINEINTRP     = 50;                  % Default size to interpolate midline
+        MLINETERMINATE = 0.7;                 % Default termination percent for midline
+        MLINEPSIZE     = [10 , 10];           % Default sampling size for midline patch
+        MLINEPARAMS    = [5 , 3 , 0.1]        % Default midline parameters
+        TOCENTER       = 1;                   % Default center index for splitting segments
+        MAINTRACE      = 'Clip';              % Default contour version
+        MAINFUNC       = 'raw';               % Default contour direction
         SEGLENGTH      = [53 , 52 , 53 , 51]; % Lengths of sections
-        MANBUF         = 0;         % Cropping buffer around image
-        ARTBUF         = 0;         % Artificial buffer around image
-        IMGSCL         = 1;         % Rescale size for for image
+        MANBUF         = 0;                   % Cropping buffer around image
+        ARTBUF         = 0;                   % Artificial buffer around image
+        IMGSCL         = 1;                   % Rescale size for for image
         ManMidline
         AutoMidline
         NateMidline
+        PCAMidline
     end
 
     %%
@@ -65,8 +68,8 @@ classdef Curve < handle & matlab.mixin.Copyable
             if nargin < 4; mbuf = obj.MANBUF;    end
             if nargin < 5; scl  = obj.IMGSCL;    end
 
-            [trc , ~ , soo] = obj.Parent.getOutline(':', vsn, mbuf, scl);
-            xtra            = ((soo / 2) + mbuf);
+            trc = obj.Parent.getOutline(':', vsn, mbuf, scl);
+            isz = getDim(obj.getScaleSize, 1);
 
             % Slide if using buffered coordinates
             drc = obj.Direction;
@@ -84,23 +87,23 @@ classdef Curve < handle & matlab.mixin.Copyable
 
                 case 'reverse'
                     % Flip and Slide back to centered position
-                    seg_lengths = obj.SEGLENGTH;
-                    trc         = flipAndSlide(trc, seg_lengths, mbuf, scl);
+                    slens = obj.SEGLENGTH;
+                    trc   = flipAndSlide(trc, slens, isz);
 
                 case 'left'
                     % Get left-facing contour
                     % Flip left if facing right
                     if strcmpi(drc, 'right')
-                        seg_lengths = obj.SEGLENGTH;
-                        trc         = flipAndSlide(trc, seg_lengths, mbuf, -scl, xtra);
+                        slens = obj.SEGLENGTH;
+                        trc   = flipAndSlide(trc, slens, isz);
                     end
 
                 case 'right'
                     % Get left-facing contour
                     % Flip right if facing left
                     if strcmpi(drc, 'left')
-                        seg_lengths = obj.SEGLENGTH;
-                        trc         = flipAndSlide(trc, seg_lengths, mbuf, scl, -xtra);
+                        slens = obj.SEGLENGTH;
+                        trc   = flipAndSlide(trc, slens, isz);
                     end
 
                 case 'repos'
@@ -249,7 +252,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             idx = L(num);
         end
 
-        function seg = getSegment(obj, idx, vsn, fnc, mbuf, scl, trc)
+        function [seg , crd] = getSeg(obj, idx, vsn, fnc, mbuf, scl, trc)
             %% Get top, bottom, left, or right
             if nargin < 3; vsn  = obj.MAINTRACE; end
             if nargin < 4; fnc  = obj.MAINFUNC;  end
@@ -259,26 +262,13 @@ classdef Curve < handle & matlab.mixin.Copyable
 
             if isempty(trc); trc = obj.getTrace(vsn, fnc, mbuf, scl); end
 
-            switch idx
+            switch numel(idx)
                 case 1
-                    str = obj.getIndex(1);
-                    stp = obj.getIndex(2);
-                case 2
-                    str = obj.getIndex(2);
-                    stp = obj.getIndex(3);
-                case 3
-                    str = obj.getIndex(3);
-                    stp = obj.getIndex(4);
-                case 4
-                    str = obj.getIndex(4);
-                    stp = obj.getIndex(5);
+                    [seg , crd] = getSegment(trc, idx, obj.SEGLENGTH);
                 otherwise
-                    fprintf(2, '');
-                    seg = [];
-                    return;
+                    [seg , crd] = arrayfun(@(x) getSegment( ...
+                        trc, x, obj.SEGLENGTH), idx, 'UniformOutput', 0);
             end
-
-            seg = trc(str:stp,:);
         end
 
         function crn = getCornerPoint(obj, num, vsn, fnc, mbuf, scl)
@@ -306,11 +296,11 @@ classdef Curve < handle & matlab.mixin.Copyable
             if nargin < 4; mbuf = obj.MANBUF;    end
             if nargin < 5; scl  = obj.IMGSCL;    end
 
-            seg = obj.getSegment(2, vsn, fnc, mbuf, scl);
+            seg = obj.getSeg(2, vsn, fnc, mbuf, scl);
             mid = mean(seg,1);
         end
 
-        function mid = getBotMid(obj, vsn, fnc, mbuf, scl)
+        function [mid , midx] = getBotMid(obj, vsn, fnc, mbuf, scl)
             %% getBotMid: get midpoint of bottom segment
             % Inputs:
             %   obj: this Curve object
@@ -323,8 +313,9 @@ classdef Curve < handle & matlab.mixin.Copyable
             if nargin < 4; mbuf = obj.MANBUF;    end
             if nargin < 5; scl  = obj.IMGSCL;    end
 
-            seg = obj.getSegment(4, vsn, fnc, mbuf, scl);
-            mid = mean(seg,1);
+            seg  = obj.getSeg(4, vsn, fnc, mbuf, scl);
+            midx = round(size(seg,1) / 2);
+            mid  = seg(midx,:);
         end
 
         function [nrm , tng] = getTopNorm(obj, vsn, fnc, mbuf, scl)
@@ -340,7 +331,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             if nargin < 4; mbuf = obj.MANBUF;    end
             if nargin < 5; scl  = obj.IMGSCL;    end
 
-            top = obj.getSegment(2, vsn, fnc, mbuf, scl);
+            top = obj.getSeg(2, vsn, fnc, mbuf, scl);
             tng = top(end,:) - top(1,:);
             tng = tng / norm(tng);
             nrm = [tng(2) , -tng(1)];
@@ -359,7 +350,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             if nargin < 4; mbuf = obj.MANBUF;    end
             if nargin < 5; scl  = obj.IMGSCL;    end
 
-            top = obj.getSegment(4, vsn, fnc, mbuf, scl);
+            top = obj.getSeg(4, vsn, fnc, mbuf, scl);
             tng = top(end,:) - top(1,:);
             tng = tng / norm(tng);
             nrm = [tng(2) , -tng(1)];
@@ -398,6 +389,11 @@ classdef Curve < handle & matlab.mixin.Copyable
             hold off;
         end
 
+        function sclsz = getScaleSize(obj)
+            %% Return image rescale dimensions
+            sclsz = obj.Parent.getScaleSize * obj.IMGSCL;
+        end
+
         function plotSegments(obj, fidx, sidx, clr, vsn, fnc, mbuf, abuf, scl)
             %%
             if nargin < 2; fidx = 1;             end
@@ -420,7 +416,7 @@ classdef Curve < handle & matlab.mixin.Copyable
 
             clrs = {'r-' , 'g-' , 'b-' , 'y-'};
             for e = sidx
-                seg = obj.getSegment(e, vsn, fnc, mbuf, scl);
+                seg = obj.getSeg(e, vsn, fnc, mbuf, scl);
                 plt(seg, clrs{e}, 2);
             end
         end
@@ -517,7 +513,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             if nargin < 6; mbuf = obj.MANBUF;    end
             if nargin < 7; scl  = obj.IMGSCL;    end
 
-            seg = obj.getSegment(num, vsn, fnc, mbuf, scl, trc);
+            seg = obj.getSeg(num, vsn, fnc, mbuf, scl, trc);
             lng = sum(sum(diff(seg, 1, 1).^2, 2).^0.5);
         end
 
@@ -566,6 +562,56 @@ classdef Curve < handle & matlab.mixin.Copyable
             agl = (atan2(-nrm(2), -nrm(1)) * 180) / pi;
 
             obj.ApicalAngle = agl;
+        end
+
+        function mlen = getMidlineLength(obj, vsn, fnc, mbuf, scl)
+            %% getMidlineLength
+            if nargin < 2; vsn  = 'nate';     end
+            if nargin < 3; fnc  = 'int';      end
+            if nargin < 4; mbuf = obj.MANBUF; end
+            if nargin < 5; scl  = obj.IMGSCL; end
+            
+            mline = obj.getMidline(vsn, fnc, mbuf, scl);
+            w     = fiberBundle1d(mline);
+            mlen  = w.calculatelength;
+
+            obj.MidlineLength = mlen;
+        end
+
+        function [cpatch , cdata] = getCotyledonPatch(obj, href, cmth, tscl, tlen, nwid, dres, twid, tmth, fnc, mbuf, abuf, scl)
+            %% getCotyledonPatch: generate cotyledon patch
+            if nargin < 2;  href = [];           end
+            if nargin < 3;  cmth = 1;            end
+            if nargin < 4;  tscl = 20;           end
+            if nargin < 5;  tlen = 50;           end
+            if nargin < 6;  nwid = 25;           end
+            if nargin < 7;  dres = [50 , 50];    end
+            if nargin < 8;  twid = 3;            end
+            if nargin < 9;  tmth = 1;            end
+            if nargin < 10; fnc  = obj.MAINFUNC; end
+            if nargin < 11; mbuf = obj.MANBUF;   end
+            if nargin < 12; abuf = obj.ARTBUF;   end
+            if nargin < 13; scl  = obj.IMGSCL;   end
+
+            img  = obj.getImage('gray', 'upper', fnc, [], mbuf, abuf, scl);
+            trc  = obj.getTrace('Clip', fnc, mbuf, scl);
+            tcrd = obj.getTopNorm('Clip', fnc, mbuf, scl);
+
+            if ~isempty(href); img = normalizeImageWithHistogram(img, href); end
+            switch cmth
+                case 1
+                    % Generate disks from ends of left-right sections
+                    slens            = obj.SEGLENGTH;
+                    [cpatch , cdata] = sampleCotyledon(img, trc, ...
+                        slens, tscl, tlen, nwid, dres, twid, tmth);
+                case 2
+                    % Generate square from apex of midline
+                    mline = obj.getMidline('pca', fnc, mbuf, scl);
+                    mcrd  = mline(end,:);
+
+                    [cpatch , cdata] = generateCotyledon(img, mcrd, tcrd, cmth, ...
+                        tscl, tlen, nwid, dres);
+            end
         end
 
         function DrawMidline(obj, fidx, showcnt)
@@ -628,12 +674,12 @@ classdef Curve < handle & matlab.mixin.Copyable
             %   skl: skeleton structure (for debugging)
 
             if nargin < 2; mline = [];            end % Default to empty
-            if nargin < 3; typ   = 'man';         end % Default manually-traced
-            if nargin < 4; vsn   = obj.MAINTRACE; end % Default clipped contour
-            if nargin < 5; fnc   = obj.MAINFUNC;  end % Default contour direction
+            if nargin < 3; typ   = 'man';         end % Manually-traced
+            if nargin < 4; vsn   = obj.MAINTRACE; end % Clipped contour
+            if nargin < 5; fnc   = obj.MAINFUNC;  end % Contour direction
             if nargin < 6; mbuf  = obj.MANBUF;    end % Cropping buffer
-            if nargin < 7; abuf  = obj.ARTBUF;    end % Artificial buffer
-            if nargin < 8; scl   = obj.IMGSCL;    end % Image scale
+%             if nargin < 7; abuf  = obj.ARTBUF;    end % Artificial buffer
+            if nargin < 7; scl   = obj.IMGSCL;    end % Image scale
 
             skl = [];
             switch typ
@@ -660,6 +706,7 @@ classdef Curve < handle & matlab.mixin.Copyable
                             tpct = mline;
                         end
 
+                        abuf  = obj.ARTBUF;
                         img   = obj.getImage('gray', 'upper', ...
                             fnc, [], mbuf, abuf, scl);
                         trc   = obj.getTrace(vsn, fnc, mbuf, scl);
@@ -680,26 +727,68 @@ classdef Curve < handle & matlab.mixin.Copyable
                         trc  = obj.getTrace(vsn, fnc, mbuf, scl);
                         mpts = obj.MLINEINTRP;
 
-                        % If mline contains [rho , edg , res] values
-                        if ~isempty(mline)
-                            rho = mline(1);
-                            edg = mline(2);
-                            res = mline(3);
+                        if isempty(mline)
+                            % Compute midline with default parameters
+                            rho = obj.MLINEPARAMS(1);
+                            edg = obj.MLINEPARAMS(2);
+                            res = obj.MLINEPARAMS(3);
                         else
-                            % Default parameters
-                            rho = 5;
-                            edg = 3;
-                            res = 0.1;
+                            if mline
+                                % Set input as midline
+                                rho = [];
+                            else
+                                % If mline contains [rho , edg , res] values
+                                rho = mline(1);
+                                edg = mline(2);
+                                res = mline(3);
+                            end
                         end
 
-                        [mline , skl] = nateMidline( ...
-                            trc, obj.SEGLENGTH, rho, edg, res, mpts);
+                        if ~isempty(rho)
+                            [mline , skl] = nateMidline( ...
+                                trc, obj.SEGLENGTH, rho, edg, res, mpts);
+                        end
 
                         obj.NateMidline = mline;
                     catch e
                         fprintf(2, 'Error setting NateMidline [%s]\n%s\n', ...
                             typ, e.getReport);
                     end
+                case 'pca'
+                    trc   = obj.getTrace(vsn, fnc, mbuf, scl);
+                    slens = obj.SEGLENGTH;
+                    mpts  = obj.MidlineSize;
+
+                    if isempty(mline)
+                        % Use default parameters
+                        fprintf(2, 'Must enter PCA objects\n');
+                        return;
+                    else
+                        % Change default parameters
+                        pcv = mline{1};
+                        pmv = mline{2};
+
+                        if numel(mline) < 3
+                            ncv = pcv.NumberOfPCs;
+                            nmv = pmv.NumberOfPCs;
+                        else
+                            ncv = mline{3};
+                            nmv = mline{4};
+                        end
+                    end
+
+                    mline = pcaMidline(trc, pcv, pmv, slens, mpts, ncv, nmv);
+
+                    % Flip if using different direction
+                    if ~strcmpi(fnc, obj.Direction)
+                        abuf  = obj.ARTBUF;
+                        img   = obj.getImage('gray', 'upper', ...
+                            [], [], mbuf, abuf, scl);
+                        isz   = size(img,1);
+                        mline = flipLine(mline, isz);
+                    end
+                    
+                    obj.PCAMidline = mline;
             end
         end
 
@@ -707,7 +796,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             %% Return raw or interpolated midline
             % Computes interpolated or normalized midline at execution. This
             % saves memory by not storing them in the object.
-            if nargin < 2; vsn  = 'auto';     end % Default auto-generated
+            if nargin < 2; vsn  = 'nate';     end % Default to nate
             if nargin < 3; fnc  = 'int';      end % Default interpolated
             if nargin < 4; mbuf = obj.MANBUF; end % Cropping buffer
             if nargin < 5; scl  = obj.IMGSCL; end % Image scale
@@ -717,20 +806,23 @@ classdef Curve < handle & matlab.mixin.Copyable
                 case 'man';  mline = obj.ManMidline;
                 case 'auto'; mline = obj.AutoMidline;
                 case 'nate'; mline = obj.NateMidline;
+                case 'pca';  mline = obj.PCAMidline;
                 otherwise
-                    fprintf(2, 'Method %s must be [man|auto|nate]\n', vsn);
+                    fprintf(2, 'Method %s must be [man|auto|nate|pca]\n', vsn);
             end
 
             % Get interpolated, raw, or origin-centered midline
-            %             dsp = obj.SEGLENGTH(end) * scl;
-            sld = obj.SEGLENGTH(end);
+            % dsp = obj.SEGLENGTH(end) * scl;
+            % sld = obj.SEGLENGTH(end);
+            isz = size(obj.getImage('gray', 'upper', [], [], ...
+                mbuf, obj.ARTBUF, scl), 1);
             switch fnc
                 case 'raw'
                     % Keep raw coordinates
 
                 case 'flip'
                     % Flip original direction
-                    mline = flipLine(mline, sld, scl);
+                    mline = flipLine(mline, isz);
 
                 case 'left'
                     % Force left-facing midline
@@ -739,7 +831,7 @@ classdef Curve < handle & matlab.mixin.Copyable
 
                     % Flip left if facing right
                     if strcmpi(drc, 'right')
-                        mline = flipLine(mline, sld, scl);
+                        mline = flipLine(mline, isz);
                     end
 
                 case 'right'
@@ -749,7 +841,7 @@ classdef Curve < handle & matlab.mixin.Copyable
 
                     % Flip left if facing right
                     if strcmpi(drc, 'left')
-                        mline = flipLine(mline, sld, scl);
+                        mline = flipLine(mline, isz);
                     end
 
                 case 'int'
@@ -803,10 +895,10 @@ classdef Curve < handle & matlab.mixin.Copyable
             %   fidx: index to figure handle to visualize patches
             %   mth: method of midline to use [man|auto|nate] (default 'nate')
             %   fnc: method of midline to use [man|auto|nate] (default 'nate')
-            if nargin < 2; midx = ':';          end % Default to all midline indices
+            if nargin < 2; midx = ':';          end % All indices
             if nargin < 3; fidx = 0;            end % Don't visualize
             if nargin < 4; mth  = 'nate';       end % Default to NateMidline
-            if nargin < 5; fnc  = obj.MAINFUNC; end % Default to original direction
+            if nargin < 5; fnc  = obj.MAINFUNC; end % Original direction
 
             img   = obj.getImage(fnc);
             mline = obj.getMidline(mth, 'int');
@@ -821,7 +913,7 @@ classdef Curve < handle & matlab.mixin.Copyable
             % Sample image
             zm               = curve2framebundle(mline);
             [cm  , ~ , smpd] = ...
-                sampleAtDomain(img, zm(midx,:), scls{1}, doms{1}, dsz{1}, 0);
+                sampleAtDomain(img, zm(midx,:), scls{1}, doms{1}, dsz{1});
             ptch             = reshape(cm, [sq , numel(midx)]);
 
             if fidx

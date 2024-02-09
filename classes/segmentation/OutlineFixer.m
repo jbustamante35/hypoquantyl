@@ -137,8 +137,13 @@ classdef OutlineFixer < handle
                 switch class(obj.Object)
                     case 'CircuitJB'
                         %% Auto-segmentation when fixing outline
+                        npts  = 300;
+                        dsz   = 1;
+                        smth  = 1;
+
                         msk       = obj.Mask;
-                        [~ , trc] = extractContour(msk, 300, 'alt', 'Normalize');
+                        [~ , trc] = extractContour(msk, npts, ...
+                            'alt', 'Normalize', dsz, smth);
                     case 'Curve'
                         %% Auto-fix to midline based on distance transform
                         % Get distance transform
@@ -152,9 +157,9 @@ classdef OutlineFixer < handle
                 % Interpolate curve
                 intr = interpolateOutline(trc, obj.InterpFix);
                 intr = unique(intr, 'rows', 'stable');
+                intr = intr(1 : end - 1, :);
 
                 % Update Polygon
-                plt(intr, 'y.', 5);
                 obj.Polygon.Position = intr;
             end
 

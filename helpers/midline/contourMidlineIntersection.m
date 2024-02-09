@@ -13,24 +13,15 @@ function [trg , q] = contourMidlineIntersection(cntr, mline, mnrm, npts, mth)
 %   mth: method to find intersecting contour point [snap|fmin] (default snap)
 %
 % Output:
-%   OUT:
+%   trg:
+%   q:
 %
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
 
 %%
-switch nargin
-    case 3
-        npts = 5000;
-        mth  = 'snap';
-    case 4
-        mth = 'snap';
-    case 5
-    otherwise
-        fprintf(2, 'Error with inputs (%d)\n', nargin);
-        alpha = [];
-        return;
-end
+if nargin < 4; npts = 5000;   end
+if nargin < 5; mth  = 'snap'; end
 
 %% % Find targets from midline and half-way points to targets
 switch mth
@@ -49,7 +40,6 @@ switch mth
         trg2          = snap2curve(cntr(hidx+1:end,:), mline, 'delaunay');
         q             = trg - cntr(1:hidx,:);
         q2            = trg2 - cntr(hidx+1:end,:);
-
 
         % Place-holder return value because I don't know what I'm doing
         alpha = trg;
@@ -70,7 +60,7 @@ switch mth
 
     otherwise
         fprintf(2, 'Error with method %s [snap|fmin]\n', mth);
-        alpha = [];
+        [trg , q] = deal([]);
         return;
 end
 
@@ -87,7 +77,6 @@ end
 %
 % ttl = sprintf('Method [%s]', mth);
 % title(ttl, 'FontSize', 10);
-
 end
 
 function d = computeCrdMin(cntr, crd)

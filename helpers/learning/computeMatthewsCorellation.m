@@ -88,4 +88,5 @@ if ~isempty(fidxs)
     set(0, 'CurrentFigure', fidxs(2)); clf;
     confusionchart(G, lbl);
 end
+
 end

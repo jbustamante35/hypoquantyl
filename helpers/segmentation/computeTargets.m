@@ -1,18 +1,15 @@
-function [dvecs, dsz] = computeTargets(trgs, zvecs, toShape, toFix, seg_lengths, par)
+function [dvecs , dsz] = computeTargets(trgs, zvecs, toShape, par)
 %% computeTargets: compute vector displacements from tangent and frame bundles
 %
 %
 % Usage:
-%   [dvecs, dsz] = computeTargets( ...
-%       trgs, zvecs, toShape, toFix, seg_lengths, par)
+%   [dvecs , dsz] = computeTargets(trgs, zvecs, toShape, par)
 %
 % Input:
 %   trgs: target coordinates of a split contour
 %   zvecs: tangent bundle containing midpoints-tangents-normals
 %   toShape: reshape to vectorized size
-%   toFix: straighten top and bottom sections [based on segments_lengths]
-%   seg_lengths: lengths of bottom-left-top-right sections
-%   par: boolean to run with parallelization (default false)
+%   par: run on single-thread (0) or with parallelization (1) (default 0)
 %
 % Output:
 %   dvecs: displacement vectors to serve as target values for a neural net
@@ -20,10 +17,8 @@ function [dvecs, dsz] = computeTargets(trgs, zvecs, toShape, toFix, seg_lengths,
 %
 
 %%
-if nargin < 3; toShape     = 0;                   end
-if nargin < 4; toFix       = 0;                   end
-if nargin < 5; seg_lengths = [53 , 52 , 53 , 51]; end
-if nargin < 6; par         = 0;                   end
+if nargin < 3; toShape = 0; end
+if nargin < 4; par     = 0; end
 
 %%
 if par == 2
@@ -35,7 +30,7 @@ if par == 2
     dvecs   = cell(1, nCrvs);
     parfor tr = allCrvs
         aff       = tb2affine(zvecs{tr}, [1 , 1], toShape);
-        dvecs{tr} = computeDVector(aff, permute(trgs{tr}, [2 1]))';
+        dvecs{tr} = computeDVector(aff, permute(trgs{tr}, [2 , 1]))';
     end
     dvecs = cat(3, dvecs{:});
 
@@ -93,9 +88,6 @@ if toShape
 else
     dsz = size(dvecs);
 end
-
-%% Straighten top and bottom sections
-if toFix; dvecs = straightenSegment(dvecs, seg_lengths); end
 end
 
 function dvecs = computeDVector(aff, trg)

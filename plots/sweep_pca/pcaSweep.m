@@ -1,4 +1,4 @@
-function [scrStruct, simStruct] = pcaSweep(mns, evecs, scrs, pc, upFn, dwnFn, stp, vis, idx)
+function [scrStruct , simStruct] = pcaSweep(mns, evecs, scrs, pc, upFn, dwnFn, stp, vis, idx)
 %% pcaSweep: sweep through mean principal component scores
 % This function performs an iterative step up and down through a single
 % principal component, where the iterative step is defined by the user. User
@@ -14,8 +14,8 @@ function [scrStruct, simStruct] = pcaSweep(mns, evecs, scrs, pc, upFn, dwnFn, st
 %    dwnFn = @(x,y) x-y;
 %
 % Usage:
-%   [scoreStruct, simStruct] = pcaSweep( ...
-%       mns, evecs, scrs, pc, upFn, dwnFn, stp, vis, idx)
+%   [scrStruct, simStruct] = pcaSweep(mns, evecs, scrs, pc, ...
+%       upFn, dwnFn, stp, vis, idx)
 %
 % Input:
 %   mns: mean values subtracted from rasterized dataset
@@ -40,11 +40,18 @@ function [scrStruct, simStruct] = pcaSweep(mns, evecs, scrs, pc, upFn, dwnFn, st
 %
 
 %% Mean and StDev of all PCs in x and y coords
-% Take mean if idx parameter is true
-if nargin < 9
-    scoreMn = mean(scrs);
-else
+if nargin < 4; pc    = 1;            end
+if nargin < 5; upFn  = @(x,y) x + y; end
+if nargin < 6; dwnFn = @(x,y) x - y; end
+if nargin < 7; stp   = 1;            end
+if nargin < 8; vis   = 0;            end
+if nargin < 9; idx   = 0;            end
+
+% Take mean if idx parameter is not specified
+if idx
     scoreMn = scrs(idx,:);
+else
+    scoreMn = mean(scrs);
 end
 
 stDevs = std(scrs);
@@ -55,11 +62,11 @@ if pc > 0
     val    = stDevs(pc) * stp;
     itrUp  = upFn(scoreMn(pc), val);
     itrDwn = dwnFn(scoreMn(pc), val);
-    
+
     % Replace old with new values and store updated mean PC scores
-    [scoreUp, scoreDown] = deal(scoreMn);
-    scoreUp(pc)          = itrUp;
-    scoreDown(pc)        = itrDwn;
+    [scoreUp , scoreDown] = deal(scoreMn);
+    scoreUp(pc)           = itrUp;
+    scoreDown(pc)         = itrDwn;
 else
     % Hold up and down scores if no pc to change
     [scoreUp, scoreDown] = deal(scoreMn);
@@ -81,10 +88,9 @@ if vis
     hold on;
     plt(dwnSim, 'r-', 1);
     plt(upSim, 'g-', 1);
-    
+
     ttl = sprintf('PC_%d|Steps_%d', pc, stp);
     title(ttl);
     axis ij;
 end
-
 end

@@ -18,43 +18,43 @@ function [zpatch, patchData] = setZPatch(zSlice, img, SCL, DIM, VER, dom)
 %
 
 %% Set default scale factor scl to 10% of image size if not set
-if nargin < 3
-    VER = 2;                       % Default to version 2
-    SCL = ceil(size(img,1) * 0.1); % Scale by 10% of image size
-    DIM = 'tng';                   % Set from tangent vector
-end
+if nargin < 4; VER = 2;                       end % Default to version 2
+if nargin < 5; SCL = ceil(size(img,1) * 0.1); end % Scale by 10% of image size
+if nargin < 6; DIM = 'tng';                   end % Set from tangent vector
+if nargin < 7; DSK = 3;                       end % Disk size to smooth mask
 
 switch VER
     case 1
         % Patch at the default scale of 10% of image size
-        [zpatch, patchData] = runVersion1(zSlice, img, SCL, DIM);
-        
+        [zpatch , patchData] = runVersion1(zSlice, img, SCL, DIM);
+
     case 2
         % Patch at a given scale
-        [zpatch, patchData] = runVersion2(zSlice, img, SCL);
-        
+        [zpatch , patchData] = runVersion2(zSlice, img, SCL);
+
     case 3
         % Set scale with a single domain and domain size
-        scls    = SCL;
-        domSize = DIM;
-        [zpatch, patchData] = runVersion3(zSlice, img, scls, dom, domSize);
-        
+        scls                 = SCL;
+        domSize              = DIM;
+        [zpatch , patchData] = runVersion3(zSlice, img, scls, ...
+            dom, domSize, DSK);
+
     case 4
         % Multiple Scales, Domains, and Domain Sizes as cell arrays
-        scls    = SCL;
-        domSize = DIM;
-        [zpatch, patchData] = runVersion4(zSlice, img, scls, dom, domSize);
-        
+        scls                 = SCL;
+        domSize              = DIM;
+        [zpatch , patchData] = runVersion4(zSlice, img, scls, ...
+            dom, domSize, DSK);
+
     otherwise
         fprintf(2, 'Select Method to run [1|2|3]\n');
         zpatch    = [];
         patchData = [];
 end
-
 end
 
 
-function [boxTop, boxBot] = setBoxBounds(zSlice, scl)
+function [boxTop , boxBot] = setBoxBounds(zSlice, scl)
 %% setBoxBounds: set envelope boundaries by scaling normal and tangent vectors
 % Subtract mid off of normal and tangent
 mid    = zSlice(1:2);
@@ -70,7 +70,6 @@ sclnrmB = (-scl * rawnrm) + mid;
 % Store scaled Z-Vector slices
 boxTop = [mid , scltngT , sclnrmT];
 boxBot = [mid , scltngB , sclnrmB];
-
 end
 
 function env = setEnvelopeBounds(mid, nrmT, nrmB, tngT, tngB, ver)
@@ -84,7 +83,7 @@ switch ver
         topSld = nrmT;
         botVec = tngB;
         botSld = nrmB;
-        
+
     case 'nrm'
         % Use normal vector to set upper and lower bounds; tangent vectors are
         % used to slide vector through envelope
@@ -92,7 +91,7 @@ switch ver
         topSld = tngT;
         botVec = nrmB;
         botSld = tngB;
-        
+
     otherwise
         % Default to using tangents
         topVec = tngT;
@@ -111,14 +110,13 @@ bndTop = (endVec - mid) + topSld;
 bndBot = (endVec - mid) + botSld;
 
 % Generate envelope
-[eTop, sTop] = generateFullEnvelope(endVec, bndTop, iscl, 'cs');
-[eBot, ~]    = generateFullEnvelope(endVec, bndBot, iscl, 'cs');
+[eTop , sTop] = generateFullEnvelope(endVec, bndTop, iscl, 'cs');
+[eBot , ~]    = generateFullEnvelope(endVec, bndBot, iscl, 'cs');
 
 env = struct('UpperPoints', eTop, 'LowerPoints', eBot, 'GridSize', size(sTop));
-
 end
 
-function [ptcF, ptcT, ptcB] = patch2img(envTop, envBot, sz, img)
+function [ptcF , ptcT , ptcB] = patch2img(envTop, envBot, sz, img)
 %% patch2img: map Z-Patch envelope vectors onto image
 % Use patch coordinates to map onto corresponding image and replace
 % out-of-bounds coordinates to the median background intensity.
@@ -132,19 +130,18 @@ ptcB = reshape(outB, sz);
 
 % Combine Top and Bottom envelope images
 ptcF = handleFLIP([flipud(ptcT) ; ptcB], 3);
-
 end
 
-function [zpatch, patchData] = runVersion1(zSlice, img, SCL, VER)
+function [zpatch , patchData] = runVersion1(zSlice, img, SCL, VER)
 %% runVersion1: my old [less efficient] way of getting Z-Patches
 
 %% Crop Box vectors
-[boxTop, boxBot] = setBoxBounds(zSlice, SCL);
-mid              = zSlice(1:2);
-tngTop           = boxTop(3:4);
-tngBot           = boxBot(3:4);
-nrmTop           = boxTop(5:6);
-nrmBot           = boxBot(5:6);
+[boxTop , boxBot] = setBoxBounds(zSlice, SCL);
+mid               = zSlice(1:2);
+tngTop            = boxTop(3:4);
+tngBot            = boxBot(3:4);
+nrmTop            = boxTop(5:6);
+nrmBot            = boxBot(5:6);
 
 %% Envelope Structure set from requested vector [tangent|normal]
 env    = setEnvelopeBounds(mid, nrmTop, nrmBot, tngTop, tngBot, VER);
@@ -159,15 +156,12 @@ zpatch = patch2img(envTop, envBot, sz, img);
 
 %% Extra data for debugging and plotting
 patchData = struct('CropBoxTop', boxTop, 'CropBoxBot', boxBot, 'Envelope', env);
-
 end
 
-function [zpatch, patchData] = runVersion2(zSlice, img, SCL)
+function [zpatch , patchData] = runVersion2(zSlice, img, SCL)
 %% runNewMethod: faster method for getting Z-Patches
 % Convert image to double if not already done
-if ~isa(img, 'double')
-    img = double(img);
-end
+if ~isa(img, 'double'); img = double(img); end
 
 % Set tangent and normal to unit length
 m  = zSlice(1:2);
@@ -203,62 +197,49 @@ env.UpperPoints = Dn(hIdx+1 : end,:);
 env.GridSize    = [ceil(size(zpatch,1) / 2) , ceil(size(zpatch,2) * 2)];
 
 patchData = struct('CropBoxTop', boxTop, 'CropBoxBot', boxBot, 'Envelope', env);
-
 end
 
-function [zpatch , zdata] = runVersion3(z, img, scls, dom, domSize)
+function [zpatch , zdata] = runVersion3(z, img, scls, dom, domSize, dsk)
 %% runVersion3: generate patches at multiple scales using general domain
-VIS = 0;
-
 % Affine transform of Tangent Bundles
 aff = tb2affine(z, scls);
 
 % Sample image at affines
-smpl = tbSampler(double(img), aff, dom, domSize, VIS);
+smpl = tbSampler(double(img), aff, dom, domSize, dsk);
 
 % Return Patches sampled from the Core and Displacements along the Core
 szS    = size(smpl);
 zpatch = reshape(smpl, [szS(1) , prod(szS(2:end))]);
 
 %% Output zdata now has functions to return the patch and domain coordinates
-getIdxs   = @(s) extractIndices(s, size(dom,1));
+getIdxs   = @(s)   extractIndices(s, size(dom,1));
 vec2patch = @(i,s) rot90(reshape(zpatch(i, getIdxs(s)), domSize),1);
 domCrds   = @(i,s) getDim((squeeze(aff(i,:,:,s)) * dom')',1:2);
 
 % Return the functions in a structure
 zdata  = struct('vec2patch', vec2patch, 'domCrds', domCrds);
-
 end
 
-function [zpatch , zdata] = runVersion4(z, img, scls, dom, domSize)
+function [zpatch , zdata] = runVersion4(z, img, scls, dom, domSize, dsk)
 %% runVersion3: generate patches at multiple scales using general domain
-VIS = 0;
-
 [zpatch , zdata] = deal(cell(1, numel(dom)));
 for d = 1 : numel(dom)
     % Affine transform of Tangent Bundles
     aff = tb2affine(z, scls{d});
-    
+
     % Sample image at affines
-    smpl = tbSampler(double(img), aff, dom{d}, domSize{d}, VIS);
-    
+    smpl = tbSampler(double(img), aff, dom{d}, domSize{d}, dsk);
+
     % Return Patches sampled from the Core and Displacements along the Core
     szS       = size(smpl);
     zpatch{d} = reshape(smpl, [szS(1) , prod(szS(2:end))]);
-    
+
     %% Output zdata now has functions to return the patch and domain coordinates
-    getIdxs   = @(s) extractIndices(s, size(dom{d},1));
-%     vec2patch = @(i,s) rot90(reshape(zpatch{d}(i, getIdxs(s)), domSize{d}),1);
+    getIdxs   = @(s)   extractIndices(s, size(dom{d},1));
     vec2patch = @(i,s) reshape(zpatch{d}(i, getIdxs(s)), domSize{d});
     domCrds   = @(i,s) getDim((squeeze(aff(i,:,:,s)) * dom{d}')',1:2);
-    
+
     % Return the functions in a structure
     zdata{d}  = struct('vec2patch', vec2patch, 'domCrds', domCrds);
-    
 end
-
 end
-
-
-
-

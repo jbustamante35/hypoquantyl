@@ -1,28 +1,27 @@
-function flp = flipLine(mline, slen, scl)
+function flp = flipLine(mline, isz)
 %% flipLine: flip line along x-axis and slide to appropriate location
 % Works on most any curve. Use flipAndSlide to flip contours.
 %
 % Usage:
-%   flp = flipAndSlide(mline, slen, scl)
+%   flp = flipLine(mline, isz)
 %
 % Input:
 %   mline:
-%   slen: length of bottom segment (for flipping midlines)
-%   scl: 
+%   isz:
 %
 % Output:
 %   flp:
-%
-
-if nargin < 2; slen = 51; end
-if nargin < 3; scl  = 1;  end
-
-slen = slen * scl;
 
 %%
-bmid      = mline(1,:);
-dspl      = mline + (-bmid);
-dspl(:,1) = -dspl(:,1);
-sld       = [slen - bmid(1) , 0] * 2;
-flp       = dspl + sld + bmid;
+if nargin < 2; isz = 101; end
+
+bmid = mline(1,:);
+dspl = mline + (-bmid);
+flpd = [-dspl(:,1) , dspl(:,2)];
+fdsp = flpd + bmid;
+
+mpt  = round(isz / 2);
+mdst = bmid(1) - mpt;
+sld  = [(mpt - mdst) - bmid(1) , 0];
+flp  = fdsp + sld;
 end

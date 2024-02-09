@@ -7,16 +7,15 @@ function clrmap = generateColorArray(itrs, toSkip)
 %
 % Input:
 %   itrs: total colors to generate
-%   toSkip: color to skip [default []]
+%   toSkip: color to skip [default 'w']
 %
 % Output:
 %   clrmap: cell array of colors with skipped color excluded
 %
-if nargin < 1; itrs   = 7; end
-if nargin < 2; toSkip = []; end
+if nargin < 1; itrs   = 7;   end
+if nargin < 2; toSkip = 'w'; end
 
-clrs = {'k' , 'b' , 'r' , 'g' , 'c' , 'm'};
-
+clrs = {'b' , 'r' , 'g' , 'c' , 'm' , 'y' , 'k' , 'w'};
 if ~isempty(toSkip)
     if iscell(toSkip)
         skp = cellfun(@(x) strncmpi(x,clrs,1), toSkip, 'UniformOutput', 0);

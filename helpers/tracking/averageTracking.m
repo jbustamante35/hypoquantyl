@@ -1,95 +1,88 @@
-function [uregr , t , uvprf , regr , vprf] = averageTracking(t, sidxs, ftrp, ltrp, lthr, smth, rver, vis, gidx)
+function [uregr , uvel , T , regr , vel , len] = averageTracking(T, sidxs, frms, ltrp, lthr, smth)
 %% averageTracking: compile tracking data and compute average REGR
 %
 % Usage:
-%   [uregr , t , uvprf , regr , vprf] = averageTracking( ...
-%       t, sidxs, ftrp, ltrp, lthr, smth, rver, vis, gidx)
+%   [uregr , uvel , T , regr , vel] = averageTracking( ...
+%       T, sidxs, frms, ltrp, lthr, smth)
 %
 % Input:
-%   t: output of trackingProcessor
+%   T: output of trackingProcessor
 %   sidxs: seedlings to exclude from averaging [default []]
-%   ftrp: interpolation size for time (frames) [default 500]
+%   frms: range of frames to analyze
 %   ltrp: interpolation size for location (arclength) [default 1000]
-%   lthr: threshold length from tip for normalization [default 300]
-%   smth: smoothing disk size [default 1]
-%   rver: use original lenghts and velocities instead of repaired (default 0)
-%   vis: figure handle index to visualize intermediate steps [default 0]
-%   gidx: genotype index for visualization [default 0]
+%   lthr: threshold length from tip for normalization [default 600]
+%   smth: smooth resulting velocities and regrs [default 0]
 %
 % Output:
-%   uregr: mean REGR of top 'lthr' pixels from tip
-%   t: output returned with excluded seedlings
-%   uvprf: mean velocity profile of top 'lthr' pixels from tip
-%   regr: REGR per seedling
-%   vprf: velocity profile per seedling
-%
+%   uregr: averaged regr
+%   uvprf: averaged velocity
+%   T: output returned with excluded seedlings
+%   regr: length-normalized regr
+%   vel: length-normalized velocity
 
-if nargin < 2; sidxs = [];   end
-if nargin < 3; ftrp  = 500;  end
-if nargin < 4; ltrp  = 1000; end
-if nargin < 5; lthr  = 300;  end
-if nargin < 6; smth  = 1;    end
-if nargin < 7; rver  = 0;    end
-if nargin < 8; vis   = 0;    end
-if nargin < 9; gidx  = 0;    end
+if nargin < 2;  sidxs = [];   end
+if nargin < 3;  frms  = [];   end
+if nargin < 4;  ltrp  = 1000; end
+if nargin < 5;  lthr  = [];   end
+if nargin < 6;  smth  = 0;    end
 
 % Exclude Seedlings
-t = excludeSeedlings(t, sidxs);
+if ~isempty(sidxs); T = excludeSeedlings(T, sidxs); end
 
-% Extract raw or repaired arclength and velocity
-qq  = linspace(0, 1, ltrp);
-if rver
-    len = t.Output.Arclength.lraw;
-    vel = t.Output.Velocity.traw;
-else
-    len = t.Output.Arclength.lrep;
-    vel = t.Output.Velocity.trep;
+% Extract src or trg arclength and velocity
+L = T.Output.Arclength.trg;
+V = T.Output.Velocity;
+
+% Exclude frames
+if ~isempty(frms)
+    L = cellfun(@(x) x(:,frms), L, 'UniformOutput', 0);
+    V = cellfun(@(x) x(:,frms), V, 'UniformOutput', 0);
 end
 
 %%
-nsdls = numel(len);
-vprf  = cell(nsdls,1);
-for sidx = 1 : nsdls
-    blen = len{sidx} < lthr;
-    nv   = zeros(size(blen));
+LI = cellfun(@(x,v) interpolateGrid(x, 'xtrp', size(v,2), 'ytrp', ltrp), ...
+    L, V, 'UniformOutput', 0);
+if isempty(lthr); lthr = min(cellfun(@(x) x(end,1), LI)); end
 
-    % Show intermediate steps of filtering out by arclength
-    if vis
-        showArclengthProcessing(len{sidx}, blen, vel{sidx}, gidx, sidx);
-    end
+% Average normalized Velocities and Compute REGR
+nsdls              = numel(LI);
+[vel , regr , len] = deal(cell(nsdls, 1));
+for sidx = 1 : nsdls
+    % Store midline coordinates from apex to threshold length
+    li    = LI{sidx} <= lthr;
+    flens = sum(li);
+    nv    = cell(numel(flens),1);
 
     % Interpolate velocity profile to threshold length from tip
-    for i = 1 : size(blen,2)
-        flen    = find(blen(:,i));
-        nn      = linspace(0, qq(flen(end)), ltrp);
-        vv      = vel{sidx}(flen,i);
-        ff      = linspace(0, qq(flen(end)), numel(vv));
-        nv(:,i) = interp1(ff, vv, nn)';
+    for b = 1 : numel(nv)
+        lb    = li(:,b);
+        vv    = V{sidx}(lb,b);
+        nv{b} = interpolateVector(vv, ltrp);
     end
 
-    vprf{sidx} = nv;
+    len{sidx}  = li;
+    vel{sidx}  = cat(2, nv{:});
+    regr{sidx} = gradient(vel{sidx}')';
 end
 
-% Measure REGR and get means across all seedlings
-regr  = cellfun(@(x) measureREGR(x, 'fsmth', smth, ...
-    'xtrp', ftrp, 'ytrp', ltrp), vprf, 'UniformOutput', 0);
-uregr = mean(cat(3, regr{:}),3);
-uvprf = mean(cat(3, vprf{:}),3);
-
-% Show averaged REGR across seedlings
-if vis
-    figclr(4);
-    imagesc(uregr); colorbar; colormap jet;
-    title(sprintf('Averaged REGR\n%d seedlings', nsdls));
-    drawnow;
-end
+% Smooth velocities and regrs
+if smth
+    vel  = cellfun(@(x) interpolateGrid(x, 'fsmth', smth), ...
+        vel, 'UniformOutput', 0);
+    regr = cellfun(@(x) interpolateGrid(x, 'fsmth', smth), ...
+        regr, 'UniformOutput', 0);
 end
 
-function t = excludeSeedlings(t, sidxs)
+% Get means of velocities and regr
+uvel  = mean(cat(3, vel{:}), 3);
+uregr = mean(cat(3, regr{:}), 3);
+end
+
+function T = excludeSeedlings(T, sidxs)
 %% excludeSeedlings: remove seedlings from averaging
 %
 % Usage:
-%   t = excludeSeedlings(t, sidxs)
+%   T = excludeSeedlings(T, sidxs)
 %
 % Input:
 %   tinn: full input data
@@ -98,50 +91,27 @@ function t = excludeSeedlings(t, sidxs)
 % Output:
 %   tout: dataset with excluded seedlings
 
-o = t.Output;
+[flds1 , flds2 , flds3] = extractFields(T);
 
-o.Tracking.raw(:,sidxs)   = [];
-o.Tracking.lengths(sidxs) = [];
-o.Tracking.ilens(sidxs)   = [];
-
-o.Arclength.raw(sidxs) = [];
-o.Arclength.rep(sidxs) = [];
-o.Arclength.lraw(sidxs) = [];
-o.Arclength.lrep(sidxs) = [];
-
-o.Velocity.raw(sidxs) = [];
-o.Velocity.rep(sidxs) = [];
-o.Velocity.traw(sidxs) = [];
-o.Velocity.trep(sidxs) = [];
-
-o.Profile.raw(sidxs) = [];
-o.Profile.rep(sidxs) = [];
-
-o.REGR.raw(sidxs) = [];
-o.REGR.rep(sidxs) = [];
-
-t.Output        = o;
-t.Data.Excluded = sidxs;
+go1 = cellfun(@(x) ~isempty(x), flds2);
+for f1 = 1 : numel(flds1)
+    if go1(f1)
+        go2 = cellfun(@(x) ~isempty(x), flds3{f1});
+        for f2 = 1 : numel(flds2{f1})
+            if go2(f2)
+                % Remove from 3rd-level field
+                for f3 = 1 : numel(flds3{f1}{f2})
+                    T.(flds1{f1}).(flds2{f1}{f2}).(flds3{f1}{f2}{f3})(sidxs) = ...
+                        [];
+                end
+            else
+                % Remove from 2nd-level field
+                T.(flds1{f1}).(flds2{f1}{f2})(sidxs) = [];
+            end
+        end
+    else
+        % Remove from 1st-level field
+        T.(flds1{f1})(sidxs) = [];
+    end
 end
-
-function showArclengthProcessing(len, blen, vel, gidx, sidx)
-%% showArclengthProcessing
-% Full arclength
-figclr(1);
-imagesc(len);
-colormap jet;
-title(sprintf('%d | %d', gidx, sidx));
-
-% Arclength points above threshold
-figclr(2);
-imagesc(blen);
-colormap jet;
-title(sprintf('%d | %d', gidx, sidx));
-
-% Velocities within length threshold
-figclr(3);
-imagesc(vel);
-colormap jet;
-title(sprintf('%d | %d', gidx, sidx));
-drawnow;
 end

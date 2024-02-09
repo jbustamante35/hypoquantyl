@@ -1,0 +1,195 @@
+function [fa , tpt , fnm] = trackMidlineWhole(gimgs, gmids, ipcts, ifrm, ffrm, skp, dsk, dres, itrs, tolf, tolx, fidxs, par, sav)
+%% trackMidlineWhole: Follow all points through all frames
+%
+%
+% Usage:
+%   [fa , tpt , fnm] = trackMidlineWhole(gimgs, gmids, ipcts, ...
+%       ifrm, ffrm, skp, dsk, dres, itrs, tolf, tolx, fidxs, par, sav)
+%
+% Input:
+%   gimgs:
+%   gmids:
+%   ipcts:
+%   ifrm:
+%   ffrm:
+%   skp:
+%   dsk: size of disk domain [default 15]
+%   dres: resolution of disk domain [default 150]
+%   itrs: max iterations for patternsearch
+%   tolf: termination tolerance function value for patternsearch
+%   tolx: termination tolerance x-value for patternsearch
+%   fidx:
+%   par:
+%   sav:
+%
+% Output:
+%   fa:
+%   tpt:
+%   fnm:
+%
+
+%%
+if nargin < 3;  ipcts = 0 : 1 / (size(gmids{1},1)) : 1; end
+if nargin < 4;  ifrm  = 1;                              end
+if nargin < 5;  ffrm  = numel(gimgs);                   end
+if nargin < 6;  skp   = 1;                              end
+if nargin < 7;  dsk   = 15;                             end
+if nargin < 8;  dres  = 200;                            end
+if nargin < 9;  itrs  = 1000;                           end
+if nargin < 10; tolf  = 1e-4;                           end
+if nargin < 11; tolx  = 1e-4;                           end
+if nargin < 12; fidxs = [0 , 0];                        end
+if nargin < 13; par   = 0;                              end
+if nargin < 14; sav   = 0;                              end
+
+% Figure out which frames to grab
+[~ , sprA , sprB] = jprintf(' ', 0, 0, 80);
+
+wsrcs = ifrm : skp : ffrm;
+if wsrcs(end) ~= ffrm; wsrcs = [wsrcs , ffrm]; end
+wtrgs = wsrcs + skp;
+if wtrgs(end) > ffrm
+    wtrgs = [wtrgs(wtrgs < ffrm) , ffrm];
+    wsrcs = wtrgs - skp;
+end
+
+% Get images and midlines
+isrcs = gimgs(wsrcs);
+itrgs = gimgs(wtrgs);
+msrcs = gmids(wsrcs);
+mtrgs = gmids(wtrgs);
+nfrms = numel(isrcs);
+npcts = numel(ipcts);
+opcts = (1 : npcts) - 1;
+
+% Prep FiberBundles to show iterative tracking results
+if fidxs(1)
+    figclr(fidxs(1));
+    w  = cellfun(@(x) fiberBundle1d(x), gmids);
+    ws = w(wsrcs);
+    wt = w(wsrcs + skp);
+end
+
+%%
+% 1) Get percentages --> set points along source midline
+% 2) Track matching points from source to target midline
+% 3) Iterate to next frame --> Repeat 1-2
+tt = tic;
+fprintf(['\n\n%s\n\nTRACKING %02d POINTS THROUGH %02d FRAME SETS | ' ...
+    'START %02d | END %02d | SKIP %02d\n\n'], ...
+    sprA, npcts, nfrms, ifrm, ffrm, skp);
+
+[fa , tpt] = deal(cell(nfrms, npcts));
+for frm = 1 : nfrms
+    fsrc = wsrcs(frm);
+    ftrg = wtrgs(frm);
+    isrc = isrcs{frm};
+    itrg = itrgs{frm};
+    msrc = msrcs{frm};
+    mtrg = mtrgs{frm};
+
+    % If images are paths, read images
+    if ischar(isrc); isrc = double(imread(isrc)); end
+    if ischar(itrg); itrg = double(imread(itrg)); end
+
+    tf = tic;
+    fprintf(['%s\n\nTracking %02d points for set %02d of %02d ' ...
+        '[frame %02d and %02d]\n\n%s\n'], ...
+        sprB, npcts, frm, nfrms, fsrc, ftrg, sprB);
+    if par
+        parfor pct = 1 : npcts
+            % Initial percentages to evaluate first frame
+            ipct = ipcts(pct);
+
+            % Set lower bound to 0 or previous percentage
+            if pct > 1; ppct = opcts(pct); else; ppct = []; end
+
+            tp = tic;
+            fprintf('| Point %02d of %02d | Frames %02d and %02d | ', ...
+                pct, npcts, fsrc, ftrg);
+            [fa{frm,pct} , tpt{frm,pct}] = domainFinder( ...
+                isrc, itrg, msrc, mtrg, ipct, ...
+                'ppct', ppct, 'ds', dsk, 'dd', dres, 'fidx', 0);
+            fprintf('source %.03f --> target %.03f | [%.03f sec] |\n', ...
+                ipct, fa{frm,pct}(1), mytoc(tp));
+        end
+    else
+        for pct = 1 : npcts
+            % Initial percentages to evaluate first frame
+            ipct = ipcts(pct);
+
+            % Set lower bound to 0 or previous percentage
+            if pct > 1; ppct = opcts(pct); else; ppct = []; end
+
+            %
+            tp = tic;
+            fprintf('| Point %02d of %02d | Frames %02d and %02d | ', ...
+                pct, npcts, fsrc, ftrg);
+
+            [fa{frm,pct} , tpt{frm,pct}] = domainFinder( ...
+                isrc, itrg, msrc, mtrg, ipct, ...
+                'ppct', ppct, 'ds', dsk, 'dd', dres, 'itrs', itrs, ...
+                'tolf', tolf, 'tolx', tolx, 'fidx', fidxs(2));
+            fprintf('source %.03f --> target %.03f | [%.03f sec] |\n', ...
+                ipct, fa{frm,pct}(1), mytoc(tp));
+        end
+    end
+
+    fprintf(['%s\n\nFinished tracking %02d points for ' ...
+        'frame %02d of %02d [%.02f min (%.02f sec)]\n\n'], ...
+        sprB, npcts, frm, nfrms, mytoc(tf, 'min'), mytoc(tf, 'sec'));
+
+    %% Show all tracked points from this frame
+    if fidxs(1)
+        fnm = showTrackingFrame(ipcts, cat(1, fa{frm,:}), ws(frm), wt(frm), ...
+            npcts, isrcs{frm}, msrcs{frm}, mtrgs{frm}, ...
+            fsrc, ftrg, dsk, fidxs(1), sav);
+    end
+end
+
+fprintf(['%s\n\nFINISHED TRACKING %02d POINTS THROUGH %02d FRAMES SETS | ' ...
+    '[%.02f hrs (%.02f min)]\n\n%s\n\n'], ...
+    sprA, npcts, nfrms, mytoc(tt, 'hrs'), mytoc(tt, 'min'), sprA);
+
+%% Remove empty cells [if not starting at 1 and ending at nfrms]
+fa  = fa(~cellfun(@isempty,fa(:,1)),:);
+tpt = tpt(~cellfun(@isempty,tpt(:,1)),:);
+end
+
+function fnm = showTrackingFrame(tsrcs, fa, ws, wt, npcts, isrc, msrc, mtrg, fsrc, ftrg, dsk, fidx, sav)
+%% showTrackingFrame:
+%
+if nargin < 12; fidx = 1; end
+if nargin < 13; sav  = 0; end
+
+idxs  = [1 : 10 : size(msrc,1) , size(msrc,1)];
+ttrgs = fa(:,1);
+psrcs = ws.evalCurve(tsrcs, 'normalized');
+ptrgs = wt.evalCurve(ttrgs, 'normalized');
+pmtcs = arrayfun(@(x) [psrcs(x,:) ; ptrgs(x,:)], ...
+    (1 : npcts)', 'UniformOutput', 0);
+
+figclr(fidx,1);
+myimagesc(isrc);
+hold on;
+viscircles(msrc(idxs,:), dsk, 'Color', 'b');
+viscircles(mtrg(idxs,:), dsk, 'Color', 'r');
+plt(ptrgs(idxs,:), 'r.', 20);
+plt(ptrgs, 'r-', 2);
+cellfun(@(x) plt(x, 'w-', 2), pmtcs);
+
+ttl = sprintf('Frame %d to %d [%d Points]', fsrc, ftrg, npcts);
+title(ttl, 'FontSize', 10);
+
+drawnow;
+hold off;
+
+%
+fnm = [];
+if sav
+    fdir = 'tracking/frames';
+    fnm  = sprintf('%s_frame%02dto%02d_%03dpoints', ...
+        tdate, fsrc, ftrg, npcts);
+    saveFiguresJB(fidx, {fnm}, fdir);
+end
+end

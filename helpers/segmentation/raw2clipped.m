@@ -31,14 +31,16 @@ switch mth
 
         bidxs = find(blbl);
         tidxs = find(tlbl);
-        lidxs = [1 ; tidxs(1)];
 
         % Right section: closest bottom section index to end of top section
-        [~ , rend] = min(abs(tidxs(end) - bidxs));
-        ridxs      = [tidxs(end) ; bidxs(rend)];
+        [~ , lend]  = min(cntr(tidxs,1));
+        [~ , rstrt] = max(cntr(tidxs,1));
+        [~ , rend]  = max(cntr(bidxs,1));
 
         % Corners are sorted left and right indices
-        crns = sort([lidxs ; ridxs]);
+        lidxs = [1 ; tidxs(lend)];
+        ridxs = [tidxs(rstrt) ; bidxs(rend)];
+        crns  = sort([lidxs ; ridxs]);
     case 2
         %% Brute force search
         % Constant parameterrs

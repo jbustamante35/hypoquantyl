@@ -1,7 +1,7 @@
 function [WVECS , wsz , wfrms] = projectTargets(WTRGS, ZVECS, affInv)
 %% projectTargets: project segments into Z-Vector reference frames
 %
-% 
+%
 % Usage:
 %   [WVECS , wsz , wfrms] = projectTargets(WTRGS, ZVECS, affInv)
 %
@@ -9,7 +9,7 @@ function [WVECS , wsz , wfrms] = projectTargets(WTRGS, ZVECS, affInv)
 %   WTRGS:
 %   ZVECS:
 %   affInv:
-%   
+%
 % Output:
 %   WVECS:
 %   wsz:
@@ -17,9 +17,7 @@ function [WVECS , wsz , wfrms] = projectTargets(WTRGS, ZVECS, affInv)
 %
 
 %% Default projection direction is image to reference frame
-if nargin < 3
-    affInv = 0;
-end
+if nargin < 3; affInv = 0; end
 
 % Projection Direction
 tproject = @(z,w) (reconstructPmat(z,0,affInv) * [w , ones(size(w,1),1)]')';
@@ -49,5 +47,4 @@ else
     wsz   = size(wprm);
     WVECS = reshape(wprm, [ncrvs * nsegs , nsplt * 2]);
 end
-
 end

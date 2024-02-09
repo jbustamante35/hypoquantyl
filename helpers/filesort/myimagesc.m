@@ -7,7 +7,8 @@ if nargin < 2; clr = 'gray';  end
 if nargin < 3; im  = 'image'; end
 if nargin < 4; ax  = 'off';   end
 
-imagesc(img);
+% imagesc(img);
+image(img, 'CDataMapping', 'Scaled');
 colormap(clr);
 axis(im);
 axis(ax);

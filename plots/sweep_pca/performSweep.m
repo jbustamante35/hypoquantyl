@@ -14,7 +14,7 @@ function [scoresAll, simsAll, figs] = performSweep(varargin)
 % don't need to have an equal number PCs.
 %
 % The up and down functions [upFn|dwnFn] are an anonymous function that takes in
-% as input the PC score (x) and the value to increment by (y): 
+% as input the PC score (x) and the value to increment by (y):
 %    upFn  = @(x,y) x+y;
 %    dwnFn = @(x,y) x-y;
 %
@@ -49,7 +49,7 @@ for fn = fieldnames(args)'
     % function to assign variables to this local workspace.
     % See Alec Jacobson's blog post at
     % (http://www.alecjacobson.com/weblog/?p=3792)
-    
+
     feval(@() assignin('caller', cell2mat(fn), args.(cell2mat(fn))));
 end
 
@@ -82,7 +82,7 @@ for d = dim
         subplot(row, col, k);
         [scoresAll{d,k}, simsAll{d,k}] = ...
             arrayfun(@(x) pcSwp(d, pcA{d}(k), x), stps, 'UniformOutput', 0);
-        
+
         % Equalize axes limits if set to TRUE
         %         if isfield(axs, usr) && eqlax
         %             xlim(axs.(usr)(2,:));
@@ -94,17 +94,15 @@ for d = dim
         % Equalize axes limits
         %         xlim([-2000 0]);
         %         ylim([-1000 1000]);
-        typ = {'pcaX' 'pcaY'};
+        typ = {'pcaX' , 'pcaY'};
     end
-    
+
     if sv
         num = numel(pcA{d});
         fnm = sprintf('%s_PCSweepFull_%s_%dPCs', tdate, typ{d}, num);
-        savefig(figs(d), fnm);
-        saveas(figs(d), fnm, 'tiffn');
+        saveFiguresJB(figs(d), {fnm});
     end
 end
-
 end
 
 function args = parseInputs(varargin)

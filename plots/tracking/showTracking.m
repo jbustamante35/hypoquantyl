@@ -13,9 +13,14 @@ function fnms = showTracking(t, vprf, regr, varargin)
 %       p.addOptional('ftrp', 500);
 %       p.addOptional('ltrp', 1000);
 %       p.addOptional('lthr', 300);
+%       p.addOptional('bthr', 1);
+%       p.addOptional('fblu', 0);
+%       p.addOptional('fskp', []);
 %       p.addOptional('gidx', 0);
 %       p.addOptional('gset', '');
+%       p.addOptional('sidxs', []);
 %       p.addOptional('clr', 'jet');
+%       p.addOptional('cbar', 0);
 %       p.addOptional('eidx', 25 : 100);
 %       p.addOptional('midx', 200 : 300);
 %       p.addOptional('lidx', 400 : 500);
@@ -24,7 +29,6 @@ function fnms = showTracking(t, vprf, regr, varargin)
 %
 % Output:
 %   fnms:
-%
 
 %% Parse inputs
 args = parseInputs(varargin);
@@ -33,26 +37,71 @@ for fn = fieldnames(args)'
 end
 
 %%
-gnm  = t.Data.Genotype;
+% Exclude seedlings
+if ~isempty(sidxs)
+    vprf = cellfun(@(x) x, vprf(sidxs), 'UniformOutput', 0);
+    regr = cellfun(@(x) x, regr(sidxs), 'UniformOutput', 0);
+end
+
+% Exclude frames
+fexcl = ~ismember(1 : ftrp, fskp);
+ffix  = ftrp - numel(fskp);
+if ~isempty(fskp)
+    vprf = cellfun(@(x) x(:,fexcl), vprf, 'UniformOutput', 0);
+    regr = cellfun(@(x) x(:,fexcl), regr, 'UniformOutput', 0);
+end
+
+% Exclude partial lower midline
+bmax = bthr * ltrp;
+vprf = cellfun(@(x) x(1 : bmax,:), vprf, 'UniformOutput', 0);
+regr = cellfun(@(x) x(1 : bmax,:), regr, 'UniformOutput', 0);
+
+% Adjust early-middle-late indices
+eidx = round(epct * ffix);
+midx = round(mpct * ffix);
+lidx = round(lpct * ffix);
+
+%
+if iscell(t.Data.Genotype)
+    gnm = t.Data.Experiment{1};
+else
+    gnm = t.Data.Genotype;
+end
 gttl = fixtitle(gnm);
 ns   = numel(vprf);
-al   = cat(3, vprf{:});
-el   = cat(3, regr{:});
-alen = mean(al,3);
-elen = mean(el,3);
+
+[rlen , vlen] = averageTracking( ...
+        t, sidxs, finc, ftrp, ltrp, lthr, smth, rep, vis, eidx);
+% vl   = cat(3, vprf{:});
+% rl   = cat(3, regr{:});
+% alen = mean(vlen,3);
+% elen = mean(rlen,3);
 
 % ---------------------------------------------------------------------------- %
 % Velocity map of upper regions
-if ns > 1;    cols = 3; else; cols = 1; end
-if ns > cols; rows = 2; else; rows = 1; end
+fnms = cell(6, 1);
+cols = 6;
+if ismember(ns, 1);                   cols = 1;
+elseif ismember(ns, [2 , 4]);         cols = 2;
+elseif ismember(ns, [3 , 5 , 6 , 9]); cols = 3;
+elseif ns >= 6  && ns <= 16;          cols = 4;
+elseif ns >= 17 && ns <= 24;          cols = 5;
+end
+
+rows = 5;
+if ns <= 3;              rows = 1; end
+if ns >= 4  && ns <= 8;  rows = 2; end
+if ns >= 9  && ns <= 12; rows = 3; end
+if ns >= 13 && ns <= 24; rows = 4; end
 
 figclr(1);
 for sidx = 1 : ns
     subplot(rows, cols, sidx);
     imagesc(vprf{sidx});
     colormap(clr);
-    xlabel('t', 'FontSize', 10, 'FontWeight', 'b');
-    ylabel('L', 'FontSize', 10, 'FontWeight', 'b');
+    if cbar; colorbar('FontSize', 6); end
+    xlabel('t', 'FontSize', 6, 'FontWeight', 'b');
+    ylabel('L', 'FontSize', 6, 'FontWeight', 'b');
     ttl = sprintf('%s [seedling %d]', gttl, sidx);
     title(ttl, 'FontSize', 8);
 
@@ -70,9 +119,11 @@ figclr(2);
 for sidx = 1 : ns
     subplot(rows, cols, sidx);
     imagesc(regr{sidx});
+
     colormap(clr);
-    xlabel('t', 'FontSize', 10, 'FontWeight', 'b');
-    ylabel('L', 'FontSize', 10, 'FontWeight', 'b');
+    if cbar; colorbar('FontSize', 6); end
+    xlabel('t', 'FontSize', 6, 'FontWeight', 'b');
+    ylabel('L', 'FontSize', 6, 'FontWeight', 'b');
     ttl = sprintf('%s [seedling %d]', gttl, sidx);
     title(ttl, 'FontSize', 8);
 
@@ -85,9 +136,11 @@ fnms{2} = sprintf('%s_regrmaps_%s_genotype%02d_%02dseedlings_%s', ...
     tdate, gnm, gidx, ns, gset);
 
 % ---------------------------------------------------------------------------- %
-epos = [eidx(1) , 5 , numel(eidx) - 1 , ltrp - 5];
-mpos = [midx(1) , 5 , numel(midx) - 1 , ltrp - 5];
-lpos = [lidx(1) , 5 , numel(lidx) - 1 , ltrp - 5];
+epos = [eidx(1) , 3 , eidx(2) - eidx(1) , bmax - 3];
+mpos = [midx(1) , 3 , midx(2) - midx(1) , bmax - 3];
+lpos = [lidx(1) , 2 , lidx(2) - lidx(1) , bmax - 3];
+bpos = epos;
+if fblu; bpos = [fblu - 5 , 3 , 5 , bmax - 3]; end
 
 rows = 1;
 cols = 2;
@@ -95,24 +148,27 @@ cols = 2;
 % Map averaged Velocity and REGR
 figclr(3);
 subplot(rows, cols, 1);
-imagesc(alen);
+imagesc(vlen);
 colormap(clr);
-rectangle('Position', epos, 'EdgeColor', 'k', 'LineWidth', 2);
-rectangle('Position', mpos, 'EdgeColor', 'r', 'LineWidth', 2);
-rectangle('Position', lpos, 'EdgeColor', 'b', 'LineWidth', 2);
+if cbar; colorbar; end
+rectangle('Position', bpos, 'EdgeColor', 'k', 'LineWidth', 3);
+rectangle('Position', epos, 'EdgeColor', 'g', 'LineWidth', 3);
+rectangle('Position', mpos, 'EdgeColor', 'r', 'LineWidth', 3);
+rectangle('Position', lpos, 'EdgeColor', 'b', 'LineWidth', 3);
 
 xlabel('t', 'FontSize', 10, 'FontWeight', 'b');
 ylabel('L', 'FontSize', 10, 'FontWeight', 'b');
 ttl = sprintf('Averaged Velocity\n%s [%d seedlings]', gttl, ns);
 title(ttl, 'FontSize', 10);
-drawnow;
 
 subplot(rows, cols, 2);
-imagesc(elen);
+imagesc(rlen);
 colormap(clr);
-rectangle('Position', epos, 'EdgeColor', 'k', 'LineWidth', 2);
-rectangle('Position', mpos, 'EdgeColor', 'r', 'LineWidth', 2);
-rectangle('Position', lpos, 'EdgeColor', 'b', 'LineWidth', 2);
+if cbar; colorbar; end
+rectangle('Position', bpos, 'EdgeColor', 'k', 'LineWidth', 3);
+rectangle('Position', epos, 'EdgeColor', 'g', 'LineWidth', 3);
+rectangle('Position', mpos, 'EdgeColor', 'r', 'LineWidth', 3);
+rectangle('Position', lpos, 'EdgeColor', 'b', 'LineWidth', 3);
 
 xlabel('t', 'FontSize', 10, 'FontWeight', 'b');
 ylabel('L', 'FontSize', 10, 'FontWeight', 'b');
@@ -127,26 +183,26 @@ fnms{3} = sprintf('%s_averagedtracking_map_%s_genotype%02d_%02dseedlings_%s', ..
 % Plot ranges of time from averaged V and REGR
 figclr(4);
 subplot(rows, cols, 1);
-plt(mean(alen(:,eidx),2), 'k-', 2);
+plt(mean(vlen(:,eidx),2), 'k-', 2);
 hold on;
-plt(mean(alen(:,midx),2), 'r-', 2);
-plt(mean(alen(:,lidx),2), 'b-', 2);
+plt(mean(vlen(:,midx),2), 'r-', 2);
+plt(mean(vlen(:,lidx),2), 'b-', 2);
 
 xlabel('L', 'FontSize', 10, 'FontWeight', 'b');
 ylabel('V', 'FontSize', 10, 'FontWeight', 'b');
-lgn = {sprintf('%d - %d', eidx(1), eidx(end)) , ...
-    sprintf('%d - %d', midx(1), midx(end)) , ...
-    sprintf('%d - %d', lidx(1), lidx(end))};
+lgn = {sprintf('%d - %d', eidx(1), eidx(2)) , ...
+    sprintf('%d - %d', midx(1), midx(2)) , ...
+    sprintf('%d - %d', lidx(1), lidx(2))};
 ttl = sprintf('Averaged Velocity [top %d pixels]\n%s [%d seedlings]', ...
     lthr, gttl, ns);
 legend(lgn, 'Location', 'southeast', 'FontWeight', 'b');
 title(ttl, 'FontSize', 10);
 
 subplot(rows, cols, 2);
-plt(mean(elen(:,eidx),2), 'k-', 2);
+plt(mean(rlen(:,eidx),2), 'k-', 2);
 hold on;
-plt(mean(elen(:,midx),2), 'r-', 2);
-plt(mean(elen(:,lidx),2), 'b-', 2);
+plt(mean(rlen(:,midx),2), 'r-', 2);
+plt(mean(rlen(:,lidx),2), 'b-', 2);
 
 xlabel('L', 'FontSize', 10, 'FontWeight', 'b');
 ylabel('REGR', 'FontSize', 10, 'FontWeight', 'b');
@@ -160,8 +216,9 @@ fnms{4} = sprintf('%s_averagedtracking_plot_%s_genotype%02d_%02dseedlings_%s', .
 % ---------------------------------------------------------------------------- %
 % Map averaged Velocity [unmarked]
 figclr(5);
-imagesc(alen);
+imagesc(vlen);
 colormap(clr);
+if cbar; colorbar; end
 xlabel('t', 'FontSize', 10, 'FontWeight', 'b');
 ylabel('L', 'FontSize', 10, 'FontWeight', 'b');
 ttl = sprintf('Averaged Velocity\n%s [%d seedlings]', gttl, ns);
@@ -173,8 +230,9 @@ fnms{5} = sprintf('%s_averagedtracking_map_velocity_%s_genotype%02d_%02dseedling
 
 % Map averaged REGR [unmarked]
 figclr(6);
-imagesc(elen);
+imagesc(rlen);
 colormap(clr);
+if cbar; colorbar; end
 xlabel('t', 'FontSize', 10, 'FontWeight', 'b');
 ylabel('L', 'FontSize', 10, 'FontWeight', 'b');
 ttl = sprintf('Averaged REGR\n%s [%d seedlings]', gttl, ns);
@@ -197,18 +255,22 @@ function args = parseInputs(varargin)
 p = inputParser;
 
 % Misc Options
-p.addOptional('ftrp', 500);
-p.addOptional('ltrp', 1000);
+p.addOptional('ftrp', []);
+p.addOptional('ltrp', []);
 p.addOptional('lthr', 300);
+p.addOptional('bthr', 1);
+p.addOptional('fblu', 0);
+p.addOptional('fskp', []);
 p.addOptional('gidx', 0);
 p.addOptional('gset', '');
+p.addOptional('sidxs', []);
 p.addOptional('clr', 'jet');
-p.addOptional('eidx', 25 : 100);
-p.addOptional('midx', 200 : 300);
-p.addOptional('lidx', 400 : 500);
+p.addOptional('cbar', 0);
+p.addOptional('epct', [0.05 , 0.20]);
+p.addOptional('mpct', [0.40 , 0.60]);
+p.addOptional('lpct', [0.80 , 1.00]);
 
 % Visualization Options
-% p.addParameter('fidxs', 1 : 6);
 p.addParameter('sav', 0);
 
 % Parse arguments and output into structure

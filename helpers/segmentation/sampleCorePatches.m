@@ -1,10 +1,10 @@
-function smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, par, vis, sidx, dshp)
+function smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, par, dsk, fidx, sidx, dshp)
 %% sampleCorePatches: sample image from tangent bundle points
 %
 %
 % Usage:
 %   smpl = sampleCorePatches(img, zvec, ...
-%           scls, doms, domSizes, par, vis, sidx, dshp)
+%           scls, doms, domSizes, par, dsk, fidx, sidx, dshp)
 %
 % Input:
 %   img:
@@ -13,7 +13,8 @@ function smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, par, vis, sid
 %   doms:
 %   domSizes:
 %   par:
-%   vis: figure handle index to visualize image patches
+%   dsk: disk size to smooth binary mask
+%   fidx: figure handle index to visualize image patches
 %   sidx: save index
 %   dshp: shapes of domains (for text output)
 %
@@ -22,37 +23,27 @@ function smpl = sampleCorePatches(img, zvec, scls, doms, domSizes, par, vis, sid
 %
 
 %%
-switch nargin
-    case 5
-        par  = 0;
-        vis  = 0;
-        sidx = 0;
-        dshp = cell(size(doms));
-    case 6
-        vis  = 0;
-        sidx = 0;
-        dshp = cell(size(doms));
-    case 7
-        sidx = 0;
-        dshp = cell(size(doms));
-    case 8
-        dshp = cell(size(doms));
-end
+if nargin < 6;  par  = 0;                                                    end
+if nargin < 7;  dsk  = 3;                                                    end
+if nargin < 8;  fidx = 0;                                                    end
+if nargin < 9;  sidx = 0;                                                    end
+if nargin < 10; dshp = arrayfun(@(x) '', 1:numel(doms), 'UniformOutput', 0); end
 
 %%
 if par
     smpl = cell(numel(scls, 1));
-    parfor s = 1 : numel(scls)
+    parfor s = 1 : numel(scls) 
         scl = scls{s};
         dom = doms{s};
         dsz = domSizes{s};
         shp = dshp{s};
-        
-        smpl{s} = sampleAtDomain(img, zvec, scl, dom, dsz, vis, sidx, shp);
+
+        smpl{s} = sampleAtDomain(img, zvec, scl, dom, dsz, ...
+            dsk, fidx, sidx, shp);
     end
 else
     smpl = cellfun(@(s,d,ds,shp) ...
-        sampleAtDomain(img, zvec, s, d, ds, vis, sidx, shp), ...
+        sampleAtDomain(img, zvec, s, d, ds, dsk, fidx, sidx, shp), ...
         scls, doms, domSizes, dshp, 'UniformOutput', 0);
 end
 

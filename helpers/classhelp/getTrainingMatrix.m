@@ -1,9 +1,9 @@
-function [gIdx, sIdx, hIdx] = getTrainingMatrix(Ein, crc, fmt)
+function [gidx, sidx, hidx] = getTrainingMatrix(Ein, crc, fmt)
 %% getTrainingMatrix: extract the training matrix indices from trained data
 % Description
 %
 % Usage:
-%    [gIdx, sIdx, hIdx] = getTrainingMatrix(Ein, crc, fmt)
+%    [gidx, sidx, hidx] = getTrainingMatrix(Ein, crc, fmt)
 %
 % Input:
 %    Ein: Experiment object to draw Curve from
@@ -11,9 +11,9 @@ function [gIdx, sIdx, hIdx] = getTrainingMatrix(Ein, crc, fmt)
 %    fmt: format for output [sep|cat] (defaults to sep - 3 separate outputs)
 %
 % Output:
-%    gIdx: index of Genotype object
-%    sIdx: index of Seedling object
-%    hIdx: index of Hypocotyl object
+%    gidx: index of Genotype object
+%    sidx: index of Seedling object
+%    hidx: index of Hypocotyl object
 %
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
@@ -23,34 +23,34 @@ if nargin < 3; fmt = 'sep'; end
 
 % Extract indices
 if numel(crc) > 1
-    [gIdx , sIdx , hIdx] = arrayfun(@(c) ...
+    [gidx , sidx , hidx] = arrayfun(@(c) ...
         getIndices(Ein, c), crc, 'UniformOutput', 0);
-    gIdx                 = cat(1, gIdx{:});
-    sIdx                 = cat(1, sIdx{:});
-    hIdx                 = cat(1, hIdx{:});
+    gidx                 = cat(1, gidx{:});
+    sidx                 = cat(1, sidx{:});
+    hidx                 = cat(1, hidx{:});
 else
-    [gIdx , sIdx , hIdx] = getIndices(Ein, crc);
+    [gidx , sidx , hidx] = getIndices(Ein, crc);
 end
 
 % Keep output separate or combine into one matrix
-if strcmpi(fmt, 'cat'); gIdx = [gIdx , sIdx , hIdx]; end
+if strcmpi(fmt, 'cat'); gidx = [gidx , sidx , hidx]; end
 end
 
-function [gIdx , sIdx , hIdx] = getIndices(Ein, crc)
+function [gidx , sidx , hidx] = getIndices(Ein, crc)
 %% Extract indices from a CircuitJB object
 % Genotype Index
-gStr = string(arrayfun(@(x) ...
+gstr = string(arrayfun(@(x) ...
     x.GenotypeName, Ein.combineGenotypes, 'UniformOutput', 0));
-gIdx = find(crc.GenotypeName == gStr);
+gidx = find(crc.GenotypeName == gstr);
 
 % Seedling Index
-aa = '{';
-bb = '}';
-sStr = crc.Parent.SeedlingName;
-aIdx = strfind(sStr, aa);
-bIdx = strfind(sStr, bb);
-sIdx = str2double(sStr(aIdx+1:bIdx-1));
+aa   = '{';
+bb   = '}';
+sstr = crc.Parent.SeedlingName;
+aidx = strfind(sstr, aa);
+bidx = strfind(sstr, bb);
+sidx = str2double(sstr(aidx + 1 : bidx - 1));
 
 % Hypocotyl Frame
-hIdx = crc.getFrame;
+hidx = crc.getFrame;
 end

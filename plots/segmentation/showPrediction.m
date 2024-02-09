@@ -1,21 +1,36 @@
-function showPrediction(img, hyp, fidx, ttl, p, hopts)
+function fdata = showPrediction(img, hyp, fidx, ttl, tsz, lsz, msz, ax, scr, soff, hopts)
 %% showPrediction: show results from hypocotyl segmentation
 %
 %
 % Usage:
-%   showPrediction(img, hyp, fidx, ttl, p)
+%   fdata = showPrediction(img, hyp, fidx, ttl, ...
+%       tsz, lsz, msz, ax, scr, soff, hopts)
 %
 % Input:
 %   img:
 %   hyp: output from segmentation
 %   fidx:
-%   ttl:
-%   p:
+%   ttl: title string [default score]
+%   tsz: font size for title [default 10]
+%   lsz: line width for contour and midline [default 2]
+%   msz: marker size for coordinates [default 3]
+%   ax: axis style [default 'square']
+%   scr: show score above prediction
+%   soff: [x , y] offset to display score
+%   hopts: additional options (if using Hypocotyl object directly)
 %
-if nargin < 3; fidx  = 1;  end
-if nargin < 4; ttl   = ''; end
-if nargin < 5; p     = 0;  end
-if nargin < 6; hopts = []; end
+% Output:
+%   fdata: figure data
+
+if nargin < 3;  fidx  = 1;           end
+if nargin < 4;  ttl   = '';          end
+if nargin < 5;  tsz   = 10;          end
+if nargin < 6;  lsz   = 2;           end
+if nargin < 7;  msz   = 3;           end
+if nargin < 8;  ax    = 'square';    end
+if nargin < 9;  scr   = 0;           end
+if nargin < 10; soff  = [-25 , -70]; end
+if nargin < 11; hopts = [];          end
 
 switch class(hyp)
     case 'struct'
@@ -40,8 +55,13 @@ switch class(hyp)
             scl    = hopts{4};
             mscore = hopts{5};
         end
+        
+        if isempty(img)
+            img = hyp.getImage('gray', 'upper', drc, [], buf, 0, scl);
+        end
+
         cpre = hyp.getTrace(fnc, drc, buf, scl);
-        mpre = hyp.getMidline('nate', mdrc, buf, scl);
+        mpre = hyp.getMidline('pca', mdrc, buf, scl);
         zpre = hyp.getZVector('fnc', drc, 'vsn', fnc, 'mbuf', buf, 'scl', scl);
         zpre = zpre(:,1:2);
         bpre = hyp.getBotMid(fnc, drc, buf, scl);
@@ -51,16 +71,29 @@ switch class(hyp)
         gpre = 0;
 end
 
-if ~isempty(fidx); set(0, 'CurrentFigure', fidx); end
-myimagesc(img);
+if ~isempty(fidx); figclr(fidx,1); end
+myimagesc(img, 'gray', ax);
 hold on;
-plt(cpre, 'g-', 2);
-plt(mpre, 'r-', 2);
-plt(zpre, 'y.', 3);
+plt(cpre, 'g-', lsz);
+plt(mpre, 'r-', lsz);
+plt(zpre, 'y.', msz);
 plt(bpre, 'b.', 20);
 
-ttl = sprintf('%s [%.03f]', ttl, gpre);
-title(ttl, 'FontSize', 10);
-if p; pause(p); end
+% Show score above prediction
+if scr
+    xoff = soff(1);
+    yoff = soff(2);
+    gstr = num2str(round(gpre,2));
+    mcrd = mpre(end,:) + [xoff , yoff];
+    text(mcrd(1), mcrd(2), gstr, ...
+        'FontSize', tsz, 'FontWeight', 'b', 'Color', 'b');
+end
+
+if isempty(ttl); ttl = sprintf('%s [%.03f]', ttl, gpre); end
+title(ttl, 'FontSize', tsz);
+% if p; pause(p); end
 hold off;
+
+fdata = [];
+if nargout > 1; fdata = getframe(gcf); fdata = fdata.cdata; end
 end

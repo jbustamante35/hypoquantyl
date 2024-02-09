@@ -67,17 +67,17 @@ else
 end
 
 % Misc
-[scls , doms , dszs] = setupParams('toRemove', 1, 'zoomLvl', zoomLvl);
+[scls , doms , dszs] = setupParams('myShps', myShps, 'zoomLvl', zoomLvl);
 nitrs                = numel(fieldnames(Nd));
 nsplt                = round(size(pdw.InputData,2) / 2);
 nsegs                = size(pdx.InputData,2);
 citrs                = cell(nitrs,1);
 
+[~ , sprA , sprB] = jprintf('', 0, 0);
+tAll              = tic;
 if vis > 1
-    [~ , strH , strS] = jprintf('', 0, 0);
-    tAll              = tic;
     fprintf('%s\nDisplacement Window Predictor | %d Iterations | %d Patches | %dx%dx%d Domains\n%s\n', ...
-        strH, nitrs, nsegs, numel(scls), numel(doms), numel(dszs), strS);
+        sprA, nitrs, nsegs, numel(scls), numel(doms), numel(dszs), sprB);
 end
 
 % ---------------------------------------------------------------------------- %
@@ -92,7 +92,6 @@ if isempty(z)
     ptru = sampleCorePatches(img, zpre.initial, scls, doms, dszs, par);
 else
     if vis > 1; n = fprintf('Sampling given Z-Vector'); end
-    %     zseed              = true;
     zpre.initial       = z;
     zpre.score_initial = ...
         zVectorProjection(z, nsegs, pz.EigVecs, pz.MeanVals, 3);
@@ -110,7 +109,7 @@ switch vis
         jprintf('', toc(t), 1, 80 - sum(n));
     case 3
         jprintf('', toc(t), 1, 80 - n);
-        fprintf('%s\n', strS);
+        fprintf('%s\n', sprB);
 end
 
 % ---------------------------------------------------------------------------- %
@@ -134,7 +133,6 @@ for itr = 1 : nitrs
         n    = fprintf('Sampling patches from Z-Vector');
     end
 
-    %     if itr == 1 || zseed
     if itr == 1
         % Use initial Z-Vector and patches or use seeded Z-Vector again
         z    = zpre.initial;
@@ -162,13 +160,13 @@ for itr = 1 : nitrs
     dtmp = Nd.(nstr)(pprj')';
 
     if size(dtmp,2) == 2
-        dpre = [dtmp, ones(size(dtmp,1), 1)];
+        dpre = [dtmp , ones(size(dtmp,1) , 1)];
     else
         dpre = dtmp;
     end
 
     %     cpre = computeTargets(dpre, z, 0, par);
-    cpre = computeTargets(dpre, z, toShape, toFix, seg_lengths, par);
+    cpre = computeTargets(dpre, z, toShape, par);
 
     if vis == 3; jprintf('', toc(t), 1, 80 - n); end
 
@@ -190,18 +188,10 @@ for itr = 1 : nitrs
 
     %% Straighten top and bottom sections [not great yet]
     if toFix
-        % Index of top and bottom
-        L    = cumsum([1 , seg_lengths]);
-        sTop = cpre(L(2) : L(3), :);
-        sBot = cpre(L(4) : L(5)-1, :);
-
-        % Interpolate corners to segment lengths
-        fTop = interpolateOutline(sTop([1,end],:), size(sTop,1));
-        fBot = interpolateOutline(sBot([1,end],:), size(sBot,1));
-
-        % Replace with straightened sections
-        cpre(L(2) : L(3),:)   = fTop;
-        cpre(L(4) : L(5)-1,:) = fBot;
+        % Straighten top and bottom segments
+        tmp        = straightenSegment(cpre(:,1:2), seg_lengths, 1);
+        tmp(:,3,:) = 1;
+        cpre       = tmp;
     end
 
     % Store each iteration of contours
@@ -229,8 +219,8 @@ for itr = 1 : nitrs
 
         % Save each iteration
         if sav == 2
-            sdir = sprintf('displacementvector_%smethod_predictions/%s/curve%03dof%03d', ...
-                fmth, tset, cidx, ncrvs);
+            sdir = sprintf(['displacementvector_%smethod_predictions/%s/' ...
+                'curve%03dof%03d'], fmth, tset, cidx, ncrvs);
             fnms = sprintf('%s_iteration%02dof%02d', tdate, itr, nitrs);
             saveFiguresJB(fidx, {fnms}, sdir);
         end
@@ -246,7 +236,7 @@ for itr = 1 : nitrs
             % End of Iteration
             nitr = fprintf('Finished Iteration %d of %d', itr, nitrs);
             jprintf('', toc(titr), 1, 80 - nitr);
-            fprintf('%s\n\n', strH);
+            fprintf('%s\n\n', sprA);
     end
 end
 
@@ -309,7 +299,7 @@ end
 
 if vis >= 1
     jprintf('', toc(t), 1, 80 - n);
-    fprintf('%s\nFinished! [%.02f sec]\n%s\n', strS, toc(tAll), strH);
+    fprintf('%s\nFinished! [%.02f sec]\n%s\n', sprB, toc(tAll), sprA);
 end
 end
 
@@ -358,7 +348,7 @@ p.addParameter('ctru', [0 , 0]);
 p.addParameter('ztru', [0 , 0]);
 p.addParameter('ptru', [0 , 0]);
 p.addParameter('zoomLvl', [0.5 , 1.5]);
-p.addParameter('toRemove', 1);
+p.addParameter('myShps', [2 , 3 , 4]);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

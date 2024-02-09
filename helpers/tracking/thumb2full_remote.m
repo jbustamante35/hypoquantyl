@@ -34,7 +34,8 @@ rmlines = fliplr(fliplr(mline) .* scls);
 
 % Flip if needed
 if toFlip
-    rcntrs  = flipAndSlide(rcntrs, slens);
+    isz     = size(simg,1);
+    rcntrs  = flipAndSlide(rcntrs, slens, isz);
     rmlines = flipLine(rmlines, slen);
 end
 

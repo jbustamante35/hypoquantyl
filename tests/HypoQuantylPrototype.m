@@ -60,6 +60,9 @@ fprintf('Extracted %d hypocotyls from %d genotypes in %s [%.02f sec]\n\n', ...
 % Format as [ [gidxN1 , sidxM1] , [gidxN2 , sidxM2] ];
 % toExclude = [ [4 , 2] ; [7 , 1] ; [10 , 1] ];
 
+ex.combineGenotypes;
+ex.combineSeedlings;
+
 %% Concatenate and Save Results
 if sav; ex.SaveExperiment; end
 

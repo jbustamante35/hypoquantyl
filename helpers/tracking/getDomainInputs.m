@@ -49,9 +49,10 @@ hmlow       = mline(hclow);
 
 % Flip curves back to original direction
 if toFlip
-    hcupp = flipAndSlide(hcupp, slens);
+    isz   = size(himg,1);
+    hcupp = flipAndSlide(hcupp, slens, isz);
     hmupp = flipLine(hmupp, slen);
-    hclow = flipAndSlide(hclow, slens);
+    hclow = flipAndSlide(hclow, slens, isz);
     hmlow = flipLine(hmlow, slen);
 end
 

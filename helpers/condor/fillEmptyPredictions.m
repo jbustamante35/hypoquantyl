@@ -101,7 +101,8 @@ bpre = eout.bpre;
 
 %
 if toFlip
-    cpre = flipAndSlide(cpre, seg_lengths);
+    isz  = size(img,1);
+    cpre = flipAndSlide(cpre, seg_lengths, isz);
     mpre = flipLine(mpre, seg_lengths(end));
     zpre = contour2corestructure(cpre);
     bpre = flipLine(bpre, seg_lengths(end));

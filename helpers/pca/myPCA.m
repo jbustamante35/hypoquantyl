@@ -16,23 +16,15 @@ function pca_custom = myPCA(rawD, numC, mth)
 %
 
 %% Default to method using PcaJB object
-if nargin < 3
-    mth = 'new';
-end
+if nargin < 3; mth = 'new'; end
 
 switch mth
-    case 'old'
-        pca_custom = runOldMethod(rawD, numC);
-        
-    case 'new'
-        pca_custom = runNewMethod(rawD, numC);
-        
+    case 'old'; pca_custom = runOldMethod(rawD, numC);
+    case 'new'; pca_custom = runNewMethod(rawD, numC);
     otherwise
         fprintf(2, 'Method %s must be [old|new]\n', mth);
         pca_custom = [];
 end
-
-
 end
 
 function pca_custom = runOldMethod(rawD, numC)
@@ -45,7 +37,7 @@ subD = bsxfun(@minus, rawD, avgD);
 covD = (subD' * subD) / size(subD,1);
 
 % Get Eigenvector and Eigenvalues
-[eigV, eigX] = eigs(covD, numC);
+[eigV , eigX] = eigs(covD, numC);
 
 % Compute Variance Explained pre PC
 varX = variance_explained(eigX);
@@ -79,4 +71,3 @@ end
 function pca_custom = runNewMethod(rawD, numC)
 pca_custom = PcaJB(rawD, numC);
 end
-

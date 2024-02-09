@@ -1,0 +1,262 @@
+function [pout , pstat , pinn] = trackingProcessor(fa, tpt, w, ipcts, varargin)
+%% trackingProcessor: process tracking data
+%
+%
+% Usage:
+%   [pout , pstat , pinn] = trackingProcessor(fa, tpt, w, ipcts, varargin)
+%
+% Input:
+%   fa:
+%   tpa:
+%   w:
+%   ipcts:
+%   varargin: various options
+%       smth: smoothing parameter for length and velocity profiles
+%       pintrp: interpolation size for percentages along midlines
+%       fin: cell array of image file paths to images
+%       gmids: raw midline inputs
+%
+% Output:
+%   pout: output structure containing processed and analyzed tracking data
+%   pstat: metadata and information about tracking inputs
+%   pinn: input structure with images and midlines [optional]
+%
+
+%% Parse inputs
+args = parseInputs(varargin);
+for fn = fieldnames(args)'
+    feval(@() assignin('caller', cell2mat(fn), args.(cell2mat(fn))));
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+[nfrms , nsdls] = size(w);
+if isempty(ifrm); ifrm = 1; ffrm = nfrms - 1; end
+
+fwin  = ifrm : skp : ffrm;
+if fwin(end) ~= ffrm; fwin = [fwin , ffrm]; end
+% [nwin , npcts] = size(tpt);
+nwin  = numel(fwin);
+npcts = numel(ipcts);
+
+P = repmat(struct(), npcts, nsdls);
+for sidx = 1 : nsdls
+    for pidx = 1 : npcts
+        for hidx = 1 : nwin
+            if iscell(fa{sidx})
+                P(pidx,sidx).percent(hidx) = fa{sidx}{hidx,pidx}(1);
+                P(pidx,sidx).stretch(hidx) = fa{sidx}{hidx,pidx}(2);
+                P(pidx,sidx).tpt(hidx,:)   = tpt{sidx}{hidx,pidx};
+            else
+                P(pidx,sidx).percent(hidx) = fa{pidx,sidx}(hidx,1);
+                P(pidx,sidx).stretch(hidx) = fa{pidx,sidx}(hidx,2);
+                P(pidx,sidx).tpt(hidx,:)   = tpt{pidx,sidx}(hidx,:);
+            end
+        end
+    end
+end
+
+%% Convert tracked percentages to arclength from tip of midline
+ws = w(fwin,:);
+% ws = w(fwin + skp,:);
+
+% Total length of midline per time
+lrraw = arrayfun(@(x) x.calculatelength(0, 1), w);
+lrrep = arrayfun(@(x) smooth(lrraw(:,x), smth), 1 : nsdls, 'UniformOutput', 0);
+lirep = cellfun(@(x) interpolateGrid(repmat(x',10,1), ftrp, 1)', ...
+    lrrep, 'UniformOutput', 0);
+
+% ---------------------------------------------------------------------------- %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ArcLengths %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Raw arclength from tip of midline
+arraw = arrayfun(@(z) flipud(cell2mat(arrayfun(@(y) arrayfun(@(x) ...
+    ws(y,z).calculatelength(P(x,z).percent(y), 1), ...
+    (1 : npcts)'), ...
+    1 : nwin, 'UniformOutput', 0))), ...
+    1 : nsdls, 'UniformOutput', 0);
+
+% Find and repair frames with bad arclengths
+arrep = cellfun(@(x) interpolateGrid(x, 'fsmth', smth), ...
+    arraw, 'UniformOutput', 0);
+% nidxs = cellfun(@(x) findBadArclengths(x(end,:)), arraw, 'UniformOutput', 0);
+% arrep = cellfun(@(p,n) repairBadArclengths(p,n), ...
+%     arraw, nidxs, 'UniformOutput', 0);
+
+% Interpolate Lengths
+airaw = cellfun(@(x) interpolateGrid(x, ...
+    'xtrp', ftrp, 'ytrp', ltrp, 'fsmth', smth), arraw, 'UniformOutput', 0);
+airep = cellfun(@(x) interpolateGrid(x, ...
+    'xtrp', ftrp, 'ytrp', ltrp, 'fsmth', smth), arrep, 'UniformOutput', 0);
+
+% ---------------------------------------------------------------------------- %
+%%%%%%%%%%%%%%%%%%%%%%%%%%% Velocity %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Velocities
+vrraw = arrayfun(@(x) measureVelocity(arraw{x}, 1), ...
+    1 : nsdls, 'UniformOutput', 0);
+vrrep = arrayfun(@(x) measureVelocity(arrep{x}, 1), ...
+    1 : nsdls, 'UniformOutput', 0);
+
+% ---------------------------------------------------------------------------- %
+%%%%%%%%%%%%%%%%%%%% Relative Elemental Growth Rate %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% REGR
+[eiraw , viraw] = cellfun(@(x) measureREGR(x, ...
+    'xtrp', ftrp, 'ytrp', ltrp, 'fsmth', smth), vrraw, 'UniformOutput', 0);
+[eirep , virep] = cellfun(@(x) measureREGR(x, ...
+    'xtrp', ftrp, 'ytrp', ltrp, 'fsmth', smth), vrrep, 'UniformOutput', 0);
+
+% ---------------------------------------------------------------------------- %
+%%%%%%%%%%%%%%%%%%%%%%%% Velocity Profile %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Velocity profiles
+prraw = cellfun(@(a,v) arrayfun(@(x) [a(:,x) , v(:,x)], ...
+    1 : nwin, 'UniformOutput', 0), arraw, vrraw, 'UniformOutput', 0);
+prrep = cellfun(@(a,v) arrayfun(@(x) [a(:,x) , v(:,x)], ...
+    1 : nwin, 'UniformOutput', 0), arrep, vrrep, 'UniformOutput', 0);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Store and save results
+if ~isempty(SeedlingIndex); nsdls = SeedlingIndex; end
+
+pinn.ImagePath = FIN;   % Store paths to images
+pinn.Mids      = GMIDS; % Store raw midlines
+
+pstat.Experiment  = ExperimentName;
+pstat.Genotype    = GenotypeName;
+pstat.GenoIndex   = GenotypeIndex;
+pstat.Seedlings   = nsdls;
+pstat.Frames      = nfrms;
+pstat.Window      = fwin;
+pstat.Percentages = ipcts;
+
+pout.Tracking.raw     = P;    % Tracking Data
+pout.Tracking.lengths = lrrep;   % Full midline lengths
+pout.Tracking.ilens   = lirep;   % Interpolated midline lengths
+
+pout.Arclength.raw    = arraw; % Raw arclengths
+pout.Arclength.rep    = arrep; % Repaired arclengths
+pout.Arclength.iraw   = airaw; % Raw interpolated arclengths
+pout.Arclength.irep   = airep; % Repaired interpolated arclengths
+
+pout.Velocity.raw     = vrraw; % Raw velocities
+pout.Velocity.rep     = vrrep; % Repaired velocities
+pout.Velocity.iraw    = viraw; % Raw interpolated velocities
+pout.Velocity.irep    = virep; % Repaired interpolated velocities
+
+pout.Profile.raw      = prraw; % Raw velocity per arclength
+pout.Profile.rep      = prrep; % Repaired velocity per arclength
+
+pout.REGR.raw         = eiraw; % Raw interpolated REGR
+pout.REGR.rep         = eirep; % Repaired interpolated REGR
+
+T = struct('Data', pstat, 'Input', pinn, 'Output', pout);
+if nargout == 1; pout = T; end
+if sav
+    hdir = sprintf('%s/%s/%s', kdir, ExperimentName, GenotypeName);
+    if ~isfolder(hdir); mkdir(hdir); end
+    tnm  = sprintf(['%s/%s_trackingresults_%s_genotype%02d_%02dseedlings_' ...
+        '%02dframes_%03dpoints_processed'], ...
+        hdir, tdate, GenotypeName, GenotypeIndex, nsdls, nfrms, npcts);
+    save(tnm, '-v7.3', 'T');
+end
+end
+
+function args = parseInputs(varargin)
+%% Parse input parameters for Constructor method
+p = inputParser;
+
+% Misc Options
+p.addOptional('ifrm', []);
+p.addOptional('ffrm', []);
+p.addOptional('skp', 1);
+p.addOptional('smth', 1);
+p.addOptional('ftrp', 500);
+p.addOptional('ltrp', 1000);
+
+% Information Options
+p.addOptional('ExperimentName', 'experiment');
+p.addOptional('GenotypeName', 'genotype');
+p.addOptional('GenotypeIndex', 0);
+p.addOptional('SeedlingIndex', []);
+p.addOptional('FIN', []);
+p.addOptional('GMIDS', []);
+
+% Visualization Options
+p.addOptional('kdir', 'tracking_results');
+p.addOptional('sav', 0);
+
+% Parse arguments and output into structure
+p.parse(varargin{1}{:});
+args = p.Results;
+end
+
+function nfix = findBadArclengths(Ls, lthrsh)
+%% findBadArclengths: identify frames with problem arc lengths
+if nargin < 3; lthrsh = 0; end % Threshold for arclength drop
+
+dsts  = diff(Ls) < lthrsh;
+fidxs = find(dsts)';
+
+aa   = arrayfun(@(x) Ls(x) < Ls, fidxs, 'UniformOutput', 0);
+bb      = arrayfun(@(x) find(aa{x}(fidxs(x) + 1 : end), 1 ), ...
+    (1 : numel(fidxs))', 'UniformOutput', 0);
+bmt     = cellfun(@isempty, bb);
+bb(bmt) = num2cell(zeros(sum(bmt),1));
+bb      = cat(1, bb{:});
+nfix    = [fidxs , fidxs + bb];
+end
+
+function afix = repairBadArclengths(ainn, nidxs)
+%% repairBadArclengths
+afix   = ainn;
+nfixes = size(nidxs,1);
+for n = 1 : nfixes
+    tst = ainn(:,[nidxs(n,1) , nidxs(n,2)]);
+    X   = 1 : size(tst, 2);
+    Xq  = linspace(X(1), X(end), nidxs(n,2) - nidxs(n,1) + 1)';
+    Vq  = cell2mat(arrayfun(@(x) interp1(X, tst(x,:), Xq)', ...
+        1 : size(tst,1), 'UniformOutput', 0)');
+
+    afix(:, nidxs(n,1) + 1 : nidxs(n,2) - 1) = Vq(:, 2 : end - 1);
+end
+end
+
+% function [nidxs , nchk] = findBadArclengths(Ls, nwin, lthrsh)
+% %% findBadArclengths: identify frames with problem arc lengths
+% if nargin < 3; lthrsh = 10; end % Threshold for arclength drop
+%
+% % Find problem frames
+% nchk  = true(1, nwin);
+% nchks = numel(nchk) - 1;
+% for ncur = 1 : nchks
+%     % Check if comparison should be made
+%     if nchk(ncur)
+%         nnxt = ncur + 1;
+%         lcur = Ls(ncur);
+%         lnxt = Ls(nnxt);
+%         lchk = lcur < (lnxt - lthrsh);
+%
+%         % Check if current length < next length
+%         if ~lchk
+%             % Current length < than next length, check length after next and
+%             % mark each bad length false
+%             while ~lchk
+%                 nchk(nnxt) = false;
+%                 nnxt       = nnxt + 1;
+%
+%                 % Stop if at last frame
+%                 if nnxt > nchks; break; end
+%                 lnxt = Ls(nnxt);
+%                 lchk = lcur < lnxt;
+%             end
+%         end
+%     end
+% end
+%
+% % Adjust position to be 1 frame back [arclength value is from bad frame]
+% nchk(end) = true; % Last frame is always good
+% nidxs     = find(nchk);
+% rr        = regionprops(nchk, 'PixelIdxList');
+% for e = 1 : numel(rr)
+%     tmpi = rr(e).PixelIdxList(1);
+%     if tmpi > 1; nchk(tmpi - 1) = true; end
+% end
+% end

@@ -69,8 +69,8 @@ for gidx = 1 : ngens
                 if isempty(hcupp)
                     % Make an attempt at segmentation
                     if ~isempty(hhist)
-                        uimg       = double(imhistmatch(uint8(uimg), ...
-                            uint8(hhist.Data), hhist.NumBins, 'method', 'uniform'));
+                        uimg = double(imhistmatch(uint8(uimg), uint8(hhist.Data), ...
+                            hhist.NumBins, 'method', 'uniform'));
                     end
 
                     [~ , eout] = evaluateDirection(uimg, ...

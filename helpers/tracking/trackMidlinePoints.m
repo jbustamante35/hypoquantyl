@@ -122,8 +122,8 @@ end
 function fnm = showTrackingFrame(tsrcs, fa, ws, wt, npcts, isrc, msrc, mtrg, fsrc, ftrg, fidx, sav)
 %% showTrackingFrame:
 %
-if nargin < 11; fidx = 1; end;
-if nargin < 12; sav  = 0; end;
+if nargin < 11; fidx = 1; end
+if nargin < 12; sav  = 0; end
 
 ttrgs = getDim(cat(1, fa{:}), 1);
 psrcs = ws.evalCurve(tsrcs, 'normalized');

@@ -187,7 +187,7 @@ classdef Hypocotyl < handle
             if size(frm,1) > size(frm,2); frm = frm'; end
 
             % Get full image
-            sclsz   = (obj.Parent.getScaleSize * scl) - (scl - 1);
+            sclsz   = (obj.getScaleSize * scl) - (scl - 1);
             fimg    = obj.Parent.getImage(frm, req, mbuf);
             man_bnd = [0 , 0 , mbuf * 2 , 0];
 
@@ -298,15 +298,12 @@ classdef Hypocotyl < handle
 
         function gi = getGenotypeIndex(obj)
             %% Return index of the Genotype
-            [~ , gi] = obj.Origin.search4Genotype(obj.GenotypeName);
+            gi = obj.Parent.getGenotypeIndex;
         end
 
         function si = getSeedlingIndex(obj)
             %% Return index of the Seedling
-            sn = obj.SeedlingName;
-            aa = strfind(sn, '{');
-            bb = strfind(sn, '}');
-            si  = str2double(sn(aa+1:bb-1));
+            si = obj.Parent.getSeedlingIndex;
         end
 
         function setCropBox(obj, frms, bbox, rgn)
@@ -335,16 +332,18 @@ classdef Hypocotyl < handle
             end
         end
 
-        function [bbox , ubox , lbox] = getCropBox(obj, frm, rgn, buf)
+        function [bbox , ubox , lbox] = getCropBox(obj, frm, rgn, mbuf, abuf, scl)
             %% Return CropBox parameter
             % The CropBox is a [4 x 1] vector that defines the bounding box
             % to crop from Parent Seedling. This can be from either the upper or
             % lower region of the Seedling.
 
             % Defaults
-            if nargin < 2; frm = ':'; end
-            if nargin < 3; rgn = 1;   end
-            if nargin < 4; buf = 0;   end
+            if nargin < 2; frm  = ':'; end
+            if nargin < 3; rgn  = 1;   end
+            if nargin < 4; mbuf = 0;   end
+            if nargin < 5; abuf = 0;   end
+            if nargin < 6; scl  = 0;   end
 
             % Region dimension
             ubox = obj.CropBox(frm, :, 1);
@@ -364,10 +363,11 @@ classdef Hypocotyl < handle
             end
 
             % Buffer bounding box
-            if buf
-                img          = obj.getImage(frm, 'gray', rgn, [], buf);
-                soff         = [-buf , -buf , buf*2 , buf];
-                [bbox , oob] = bufferCropBox(bbox, soff, img);
+            if mbuf
+                %                 img  = obj.getImage(frm, 'gray', rgn, [], mbuf, abuf, scl);
+                img  = obj.Parent.getImage(frm, 'gray', mbuf);
+                soff = [0 , 0 , mbuf*2 , 0];
+                bbox = bufferCropBox(bbox, soff, img);
             end
         end
 
@@ -469,6 +469,11 @@ classdef Hypocotyl < handle
             obj.Circuit(frm) = crc;
         end
 
+        function sclsz = getScaleSize(obj)
+            %% Return image rescale dimensions
+            sclsz = obj.Parent.getScaleSize;
+        end
+
         function crc = getCircuit(obj, frm)
             %% Return CircuitJB object
             if nargin < 2; frm = 0; end % First available CircuitJB
@@ -536,6 +541,7 @@ classdef Hypocotyl < handle
             % Note that this only checks for a CircuitJB object in the original
             % orientation and assumes that the flipped orientation will give
             % the same result.
+            [untrained_frames , trained_frames] = deal([]);
             try
                 if isempty(obj.Circuit)
                     % Initialize Circuit property
@@ -549,7 +555,6 @@ classdef Hypocotyl < handle
                 end
             catch e
                 fprintf(2, 'Error returning untrained frames\n%s', e.message);
-                [untrained_frames , trained_frames] = deal([]);
             end
         end
 

@@ -1,4 +1,4 @@
-function mypca = pcaAnalysis(rawD, numC, sav, dName, varargin)
+function mypca = pcaAnalysis(vec, npc, sav, pnm, varargin)
 %% pcaAnalysis: custom pca analysis
 % This function takes in rasterized data set of size [N x d] and returns a
 % structure containing all data extracted after pca analysis. User defines
@@ -25,9 +25,9 @@ function mypca = pcaAnalysis(rawD, numC, sav, dName, varargin)
 
 %% PCA using my custom pca function and MATLAB's built-in pca function
 % Default to Method 1 and no visualization
-if nargin < 2; numC  = 3;              end
+if nargin < 2; npc   = 3;              end
 if nargin < 3; sav   = 0;              end
-if nargin < 4; dName = sprintf('pca'); end
+if nargin < 4; pnm = sprintf('pca'); end
 
 if nargin < 2
     fprintf(2, 'Not enough input arguments [%d]\n', nargin);
@@ -36,7 +36,7 @@ if nargin < 2
 end
 
 %%
-mypca = PcaJB(rawD, numC, 'DataName', dName, varargin{:});
+mypca = PcaJB(vec, npc, 'DataName', pnm, varargin{:});
 fname = mypca.DataName;
 
 % ---------------------------------------------------------------------------- %

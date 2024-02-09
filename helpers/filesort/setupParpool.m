@@ -21,31 +21,19 @@ poolExists = ~isempty(gcp('nocreate'));
 allCores   = feature('numcores');
 halfCores  = ceil(allCores / 2);
 
-switch nargin
-    case 0
-        nCores = halfCores;
-        testOn = 0;
-    case 1
-        testOn = 0;
-    case 2
-    otherwise
-        fprintf(2, 'Error with inputs [%d | 2 Expected]\n', nargin);
-        [P, allCores, nCores] = deal([]);
-        return;
-end
+if nargin < 1; nCores = halfCores; end
+if nargin < 2; testOn = 0;         end
 
 %% Light it Up or Shut it Down
 if nCores == 0
     %% Close the pool if selecting 0 cores
     fprintf('Shutting down parallel pool...\n');
-    if poolExists
-        delete(gcp('nocreate'));
-    end
-    
+    if poolExists; delete(gcp('nocreate')); end
+
 elseif nCores > allCores
     %% Error check to make sure you don't break anything
     fprintf(2, 'Too many cores selected [%d of %d total]\n', nCores, allCores);
-    
+
 elseif poolExists
     %% Decide if pool needs to be reset or not
     currCores = get(parcluster, 'NumWorkers');
@@ -61,16 +49,14 @@ elseif poolExists
         delete(gcp('nocreate'));
         P = startPool(nCores, testOn);
     end
-        
+
 else
     %% Create parallel pool with nCores workers
     fprintf('Setting up pool of %d Workers...', nCores);
     P = startPool(nCores, testOn);
-    
 end
 
-fprintf('DONE! [%.02f sec]\n', toc(t));
-
+fprintf('DONE! [%.02f min (%.02f sec)]\n', mytoc(t, 'min'), mytoc(t, 'sec'));
 end
 
 function P = startPool(nCores, testOn)
@@ -80,9 +66,5 @@ set(P, 'NumWorkers', nCores);
 parpool(P);
 
 % Test it out
-if testOn
-    parfor i = 1 : 100
-        fprintf('%d.', i);
-    end
-end
+if testOn; testparfor(100); end
 end
