@@ -9,13 +9,13 @@ classdef PcaJB < handle
         NumberOfPCs
         OptimalPCs
     end
-    
+
     properties (Access = protected)
         %% Private properties
         ZScoreReshape % Dimensions to reshape data before Z-Score normalization
         ZScoreNorm    % Strucutre with values for Z-Score normalization
     end
-    
+
     methods (Access = public)
         %% Constructor method
         function obj = PcaJB(varargin)
@@ -23,12 +23,12 @@ classdef PcaJB < handle
             if ~isempty(varargin)
                 % Parse inputs to set properties
                 args = obj.parseConstructorInput(varargin);
-                
+
                 fn = fieldnames(args);
                 for k = fn'
                     obj.(cell2mat(k)) = args.(cell2mat(k));
                 end
-                
+
                 % Set name for savefile
                 obj.DataName = obj.setName(obj.DataName);
             else
@@ -37,45 +37,45 @@ classdef PcaJB < handle
             end
         end
     end
-    
+
     methods (Access = public)
         %% Primary Methods to get data
         function pnm = setName(obj, pstr, ovr)
             %% Set default name for this object
             if nargin < 2; pstr = ''; end
             if nargin < 3; ovr  = 0;  end
-            
+
             pnm = sprintf('%s_pcaResults_%s_%dPCs', ...
                 tdate, pstr, obj.NumberOfPCs);
-            
+
             if ovr; obj.DataName = pnm; end
         end
-        
+
         function X = getInput(obj, znorm, N)
             %% Get N-rows of the input
             if nargin < 2; znorm = obj.ZScoreNormalize; end
             if nargin < 3; N     = ':';                 end
-            
+
             % Use raw input or perform Z-Score normalization
             if znorm
                 if isempty(obj.ZScoreNorm.Input)
-                    D = obj.ComputeZScoreNorm;
+                    X = obj.ComputeZScoreNorm;
                 else
-                    D = obj.ZScoreNorm.Input;
+                    X = obj.ZScoreNorm.Input;
                 end
             else
-                D = obj.InputData;
+                X = obj.InputData;
             end
-            
-            X = D(N,:);
+
+            if ~strcmpi(N, ':'); X = X(N,:); end
         end
-        
+
         function [z , mu , sig , rshp] = getZScoreNorm(obj, req)
             %% Return properties from Z-Score normalization
             if isempty(obj.ZScoreNorm.Input)
                 [z , mu , sig , obj] = obj.ComputeZScoreNorm;
             end
-            
+
             switch nargin
                 case 1
                     z   = obj.ZScoreNorm.Input;
@@ -84,90 +84,85 @@ classdef PcaJB < handle
                 case 2
                     z = obj.ZScoreNorm.(req);
             end
-            
+
             rshp = obj.ZScoreReshape;
         end
-        
-        function M = MeanVals(obj, X, ndims)
+
+        function [M , X] = MeanVals(obj, X, ndims)
             %% Means of the input data
             if nargin < 2; X     = obj.getInput; end
             if nargin < 3; ndims = [];           end
-            
+
             % Dimensions of input to compute on
-            if isempty(ndims)
-                ndims = size(X, 2);
-            end
-            
+            if isempty(ndims); ndims = size(X, 2); end
+
             M = mean(X, 1);
             M = M(1 : ndims);
         end
-        
-        function C = CovVarMatrix(obj, X, M)
+
+        function [C , X , M] = CovVarMatrix(obj, X, M)
             %% Variance-Covariance matrix
             % The (subD' * subD) calculation takes a very long time for large
             % datasets (N > 10000). Consider using a faster function.
-            if nargin < 2; X = obj.getInput;    end
-            if nargin < 3; M = obj.MeanVals(X); end
-            
+            if nargin < 2; X = obj.getInput; end
+            if nargin < 3; M = obj.MeanVals; end
+
             S = bsxfun(@minus, X, M);
             C = cov(S);
-            %             C = (S' * S) / (size(S, 1)-1);
         end
-        
-        function E = EigVecs(obj, neigs)
+
+        function [E , C , X , M] = EigVecs(obj, neigs)
             %% Eigenvectors
             if nargin < 2 || neigs == 0; neigs = obj.NumberOfPCs; end
-            
-            E = obj.getEigens('vec', neigs);
-            E = E(:, 1 : neigs);
+
+            [E , C , X , M] = obj.getEigens('vec', neigs);
+            E               = E(:, 1 : neigs);
         end
-        
-        function V = EigVals(obj, neigs)
+
+        function [V , C , X , M] = EigVals(obj, neigs)
             %% Eigenvalues
             if nargin < 2 || neigs == 0; neigs = obj.NumberOfPCs; end
-            
-            V = obj.getEigens('val', neigs);
-            V = V(1 : neigs , 1 : neigs);
+
+            [V , C , X , M] = obj.getEigens('val', neigs);
+            V               = V(1 : neigs , 1 : neigs);
         end
-        
+
         function [varX , pctN] = VarExplained(obj, pct, n)
             %% Variance explained
             % pct: cutoff percentage (default: 1.0)
             % n: number of dimensions to return (default: NumberOfPCs)
             if nargin < 2; pct = 0.999;           end
             if nargin < 3; n   = obj.NumberOfPCs; end
-            
+
             V             = obj.EigVals(size(obj.InputData,2));
             [varx , pctN] = variance_explained(V, pct);
-            
+
             varX = varx(1 : n);
-            
+
             obj.OptimalPCs = pctN;
         end
-        
-        function S = PCAScores(obj, N, neigs)
+
+        function [S , E , U] = PCAScores(obj, N, neigs)
             %% Principal component scores
             if nargin < 2; N     = ':';             end
             if nargin < 3; neigs = obj.NumberOfPCs; end
-            
+
             X = obj.getInput;
-            M = obj.MeanVals(X);
+            U = obj.MeanVals(X);
             E = obj.EigVecs(neigs);
-            S = pcaProject(X, E, M, 'sim2scr');
+            S = pcaProject(X, E, U, 'sim2scr');
             S = S(N,:);
         end
-        
+
         function Y = SimData(obj, N, neigs)
             %% Simulated data after projecting data on eigenvectors
             if nargin < 2; N     = ':';             end
             if nargin < 3; neigs = obj.NumberOfPCs; end
-            
-            S = obj.PCAScores(N, neigs);
-            E = obj.EigVecs(neigs);
-            M = obj.MeanVals;
-            Y = pcaProject(S, E, M, 'scr2sim');
+
+            [S , E , M] = obj.PCAScores(N, neigs);
+            Y           = pcaProject(S, E, M, 'scr2sim');
         end
-        
+
         function [z , mu , sig] = ComputeZScoreNorm(obj, ndim, rshp)
             %% Perform Z-Score normalization
             % To convert normalized dataset 'z' back to the original, multiply
@@ -189,11 +184,11 @@ classdef PcaJB < handle
             %   mu: mean of dataset
             %   sig: standard deviation of dataset
             %
-            
+
             %%
             if nargin < 2; ndim = 1;                 end
             if nargin < 3; rshp = obj.ZScoreReshape; end
-            
+
             % Reshape data
             if rshp
                 shp = size(obj.InputData);
@@ -201,17 +196,17 @@ classdef PcaJB < handle
             else
                 X = obj.InputData;
             end
-            
+
             % Z-Score normalize
             [z , mu , sig] = zscore(X, ndim);
-            
+
             % Convert back to original shape
             if rshp; z = reshape(z, shp); end
-            
+
             obj.ZScoreNorm = struct('Input', z, 'Mu', mu, 'Sigma', sig);
         end
     end
-    
+
     methods (Access = private)
         %% Private helper methods
         function args = parseConstructorInput(varargin)
@@ -225,28 +220,29 @@ classdef PcaJB < handle
             p.addOptional('ZScoreReshape', 0);
             p.addOptional('ZScoreNorm', ...
                 struct('Input', [], 'Mu', [], 'Sigma', []));
-            
+
             % Parse arguments into structure
             p.parse(varargin{2}{:});
             args = p.Results;
         end
-        
-        function X = getEigens(obj, req, npcs)
+
+        function [E , C , X , M] = getEigens(obj, req, npcs)
             %% Get Eigenvectors or Eigenvalues
             if nargin < 2; req  = 'vec';           end
             if nargin < 3; npcs = obj.NumberOfPCs; end
-            
-            C       = obj.CovVarMatrix;
-            [E , V] = eigs(C, npcs);
-            
+
+            [M , X] = obj.MeanVals;
+            C       = obj.CovVarMatrix(X, M);
+%             [E , V] = eigs(C, npcs);
+            [E , V] = eigs(C, size(C,1));
+
             switch req
                 case 'vec'
-                    X = E;
                 case 'val'
-                    X = V;
+                    E = V;
                 otherwise
                     fprintf(2, 'Error getting eigen%s\n', req);
-                    X = [];
+                    E = [];
             end
         end
     end

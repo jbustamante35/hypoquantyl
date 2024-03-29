@@ -4,6 +4,5 @@ function xx = operateOnMidlines(m1,m2)
 
 % Get displacement from index
 didx = @(m,idx) m(idx,:);
-Dm   = D()
-
+Dm   = D();
 end

@@ -31,13 +31,10 @@ function [wpre , wnet , zpevecs , zpmns] = nn_wvectors(inputs, targets, par, nzp
 %
 
 %% Setup the net
-switch nargin
-    case 3
-        nzp     = 6;
-        nlayers = 5;
-        trnfn   = 'trainlm';
-        wsz     = 0;
-end
+if nargin < 3; nzp     = 6;         end
+if nargin < 4; nlayers = 5;         end
+if nargin < 5; trnfn   = 'trainlm'; end
+if nargin < 6; wsz     = 0;         end
 
 % Use with parallelization or GPU
 % [NOTE 10.24.2019]
@@ -97,5 +94,4 @@ if wsz
     wpre = reshape(wpre, wsz);
     wpre = permute(wpre, [3 , 4 , 1 , 2]);
 end
-
 end

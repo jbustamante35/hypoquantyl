@@ -1,8 +1,8 @@
 function trc = split2trace(oLine, aPts, num_anchors)
 %% split2trace: split contour into separate traces defined by anchor points
-% This function takes coordinates defining an outline and coordinates defining 
-% anchor points along that outline, and returns an array of sub-outlines, where
-% the start and end point of each of those sub-outlines are 2 anchorpoints.
+% This function takes coordinates of an outline and coordinates of anchor points
+% along that outline, and returns an array of sub-outlines, where the start and 
+% end point of each of those sub-outlines are 2 anchorpoints.
 %
 % Usage:
 %   trc = split2trace(oLine, aPts, num_anchors)
@@ -40,5 +40,4 @@ end
 % Remove duplicate points
 trc = arrayfun(@(x) unique(trc(:,:,x), 'rows'), ...
     1 : num_anchors, 'UniformOutput', 0);
-
 end

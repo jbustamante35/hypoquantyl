@@ -1,8 +1,6 @@
 function [dpre , dnet , evecs , mns] = nn_dvectors(inputs, targets, dsz, par, npd, nlayers, trnfn)
 %% nn_dvector: train CNN model to predict D-Vector given a Z-Vector slice
 %
-%
-%
 % Parallel/GPU Codes ['par' parameter]:
 %   | Input |  CPU  |  GPU   |              Note             |
 %   |  ---  |  ---  |  ---   |              ---              |
@@ -30,7 +28,6 @@ function [dpre , dnet , evecs , mns] = nn_dvectors(inputs, targets, dsz, par, np
 %   dnet: neural net object after training
 %   evecs: eigenvectors after folding input to PC scores
 %   mns: column means of the input matrix
-%
 
 %% Setup the net
 if nargin < 4; par     = 0;         end
@@ -58,8 +55,8 @@ switch par
         % To run in parallel, with workers each assigned to a different unique
         % GPU, with extra workers running on CPU:
         pll = 'yes';
-        %         trnfn = 'trainscg';
         gll = 'no';
+        % trnfn = 'trainscg';
     case 3
         %
         % Using only workers with unique GPUs might result in higher speed, as
@@ -75,10 +72,8 @@ switch par
 end
 
 %% Fold Patches to PC scores
-pp    = myPCA(inputs, npd);
-evecs = pp.EigVecs;
-mns   = pp.MeanVals;
-scrs  = pcaProject(inputs, evecs, mns, 'sim2scr');
+pp                   = myPCA(inputs, npd);
+[scrs , evecs , mns] = pp.PCAScores;
 
 %% Run a fitnet to predict displacement vectors from image patches
 dnet = fitnet(nlayers, trnfn);

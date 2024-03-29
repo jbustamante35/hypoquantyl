@@ -4,10 +4,10 @@ function [scls , doms , domSizes , domShapes] = setupParams(varargin)
 %
 % Usage:
 %   [scls , doms , domSizes , domShapes] =  ...
-%       setupParams(toRemove, zoomLvl, ds, sq, vl, hl, d, s, v, h)
+%       setupParams(myShps, zoomLvl, ds, sq, vl, hl, d, s, v, h)
 %
 % Input:
-%   toRemove: index to remove unneeded domains and domain sizes
+%   myShps: select specific domain shapes [disk|square|vert line|horz line]
 %   zoomLvl: zoom levels for each domain
 %   ds: scale sizes for disk patch
 %   sq: scale sizes for square patch
@@ -32,8 +32,8 @@ for fn = fieldnames(args)'
 end
 
 %% Set Scales
-scls           = {diskScale , squareScale , vertScale , horzScale};
-scls(toRemove) = [];
+scls = {diskScale , squareScale , vertScale , horzScale};
+if ~isempty(myShps); scls = scls(myShps); end % Select specific shapes
 
 % Append additional scaling if given
 scls = cellfun(@(scl) [scl ; cell2mat(arrayfun(@(zl) scl * zl, ...
@@ -41,26 +41,24 @@ scls = cellfun(@(scl) [scl ; cell2mat(arrayfun(@(zl) scl * zl, ...
 
 %% Generate domains
 [doms , domSizes , domShapes] = generateDomains( ...
-    diskDomain, squareDomain, vertDomain, horzDomain, toRemove);
-
+    diskDomain, squareDomain, vertDomain, horzDomain, myShps);
 end
 
 function args = parseInputs(varargin)
 %% Parse input parameters for Constructor method
 % Need descriptions for all these parameters
-% pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 
 p = inputParser;
-p.addParameter('toRemove', []);
+p.addParameter('myShps', []);
 p.addParameter('zoomLvl', []);
-p.addParameter('diskScale', [30 , 30]);
-p.addParameter('squareScale', [30 , 30]);
-p.addParameter('vertScale', [50 , 1]);
-p.addParameter('horzScale', [1 , 50]);
-p.addParameter('diskDomain', [30 , 30]);
-p.addParameter('squareDomain', [30 , 30]);
-p.addParameter('vertDomain', [3 , 100]);
-p.addParameter('horzDomain', [100 , 3]);
+p.addParameter('diskScale',    [30  ,  30]);
+p.addParameter('squareScale',  [30  ,  30]);
+p.addParameter('vertScale',    [50  ,   1]);
+p.addParameter('horzScale',    [1   ,  50]);
+p.addParameter('diskDomain',   [30  ,  30]);
+p.addParameter('squareDomain', [30  ,  30]);
+p.addParameter('vertDomain',   [100 ,   3]);
+p.addParameter('horzDomain',   [3   ,  100]);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

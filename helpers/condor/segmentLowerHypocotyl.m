@@ -18,8 +18,8 @@ function out = segmentLowerHypocotyl(msk, varargin)
 % Output:
 %   out: results
 %       info: metadata about input mask
-%       cntr: re-formatted contour of lower mask
-%       mline: midline generated from contour
+%       cout: re-formatted contour of lower mask
+%       mout: midline generated from contour
 %
 
 %%
@@ -31,15 +31,15 @@ try
     end
 
     % Segment, smooth, process to regions, extract midline
-    [cntr , mline] = mask2clipped(msk, dsz, npts, init, creq, ...
-        mth, smth, seg_lengths, fidx);
+    [cout , mout] = mask2clipped(msk, dsz, npts, init, creq, ...
+        mth, smth, seg_lengths, mline, fidx);
 
     %% If good
     isgood = true;
     err    = [];
 catch err
     %% If error
-    [cntr , mline] = deal([]);
+    [cout , mout] = deal([]);
     isgood         = false;
     fprintf(2, '\n%s\n\n', err.getReport);
 end
@@ -47,12 +47,12 @@ end
 %% Output
 info = struct('GenotypeName', GenotypeName, 'GenotypeIndex', GenotypeIndex, ...
     'SeedlingIndex', SeedlingIndex, 'Frame', Frame);
-out  = struct('info', info, 'c', cntr, 'm', mline, ...
+out  = struct('info', info, 'c', cout, 'm', mout, ...
     'err', err, 'isgood', isgood);
 
 if sav
-    mkdir('output');
-    outnm = sprintf('output/%s_results_lower', tdate);
+    if ~isfolder(ddir); mkdir(ddir); end
+    outnm = sprintf('%s/%s_results_lower', ddir, tdate);
     save(outnm, '-v7.3', 'out');
 end
 end
@@ -62,13 +62,14 @@ function args = parseInputs(varargin)
 p = inputParser;
 
 % Misc Options
-p.addOptional('dsz', 3);
+p.addOptional('dsz', 5);
 p.addOptional('npts', 210);
 p.addOptional('init', 'alt');
 p.addOptional('creq', 'Normalize');
 p.addOptional('mth', 1);
 p.addOptional('smth', 1);
 p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
+p.addOptional('mline', []);
 
 % Information Options
 p.addOptional('GenotypeName', 'genotype');
@@ -79,6 +80,7 @@ p.addOptional('Frame', 0);
 % Visualization Options
 p.addOptional('sav', 0);
 p.addOptional('fidx', 0);
+p.addOptional('ddir', 'output');
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

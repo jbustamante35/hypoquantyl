@@ -25,6 +25,7 @@ classdef Experiment < handle
         ExperimentPath
         Genotypes
         NumberOfGenotypes
+        NumberOfSeedlings
         GenotypeSets
         CurvesTraced
     end
@@ -51,9 +52,10 @@ classdef Experiment < handle
 
             prps   = properties(class(obj));
             deflts = { ...
-                'ExperimentPath'   , pwd   ; ...
-                'CurvesTraced'     , 0     ; ...
-                'NumberOfGenotypes', 0   } ;
+                'ExperimentPath'    , pwd   ; ...
+                'CurvesTraced'      , 0     ; ...
+                'NumberOfGenotypes' , 0     ; ...
+                'NumberOfSeedlings' , 0   } ;
             obj    = classInputParser(obj, prps, deflts, vargs);
 
             % Generate name
@@ -117,8 +119,9 @@ classdef Experiment < handle
                 % Filter and Sort
                 cellfun(@(x) x.SortSeedlings(v, mth), G, 'UniformOutput', 0);
 
+                nsdls                 = numel(obj.combineSeedlings);
+                obj.NumberOfSeedlings = nsdls;
                 if v
-                    nsdls = numel(obj.combineSeedlings);
                     fprintf('\n%s\nExtracted %d Seedlings from %s [%.02f sec]\n%s\n', ...
                         sprB, nsdls, obj.ExperimentName, toc(t), sprA);
                 end
@@ -162,26 +165,36 @@ classdef Experiment < handle
             end
         end
 
-        function SaveExperiment(obj)
+        function SaveExperiment(ex)
             %% Prune superfluous data, dereference parents, then save
+            [~ , sprA] = jprintf(' ', 0, 0, 80);
+
             % Remove RawSeedlings and PreHypocotyls
             tPrune = tic;
-            g      = obj.combineGenotypes;
+            g      = ex.combineGenotypes;
             arrayfun(@(x) x.PruneSeedlings, g, 'UniformOutput', 0);
-            fprintf('[%.02f sec] Pruned %d Genotypes\n', toc(tPrune), numel(g));
+            fprintf('\n%s\n[%.02f sec] Pruned %d Genotypes\n', ...
+                sprA, toc(tPrune), numel(g));
 
             tPrune = tic;
-            s      = obj.combineSeedlings;
+            s      = ex.combineSeedlings;
             arrayfun(@(x) x.PruneHypocotyls, s, 'UniformOutput', 0);
             fprintf('[%.02f sec] Pruned %d Seedlings\n', toc(tPrune), numel(s));
 
+            % Update numbers
+            ex.combineGenotypes;
+            ex.combineSeedlings;
+            ex.combineHypocotyls;
+            ex.combineContours;
+
             % Save full Experiment object
             tSave = tic;
-            nm = sprintf('%s_%s_%dGenotypes_%03dContours', tdate, ...
-                obj.ExperimentName, obj.NumberOfGenotypes, obj.CurvesTraced);
-            ex = obj;
+            nm    = sprintf('%s_%s_%dGenotypes_%dSeedlings_%03dContours', ...
+                tdate, ex.ExperimentName, ex.NumberOfGenotypes, ...
+                ex.NumberOfSeedlings, ex.CurvesTraced);
             save(nm, '-v7.3', 'ex');
-            fprintf('[%.02f sec] Saved dataset %s\n', toc(tSave), nm);
+            fprintf('[%.02f sec] Saved dataset %s\n%s\n', ...
+                mytoc(tSave, 'min'), nm, sprA);
         end
 
         function LoadExperiment(obj)
@@ -216,21 +229,23 @@ classdef Experiment < handle
             end
         end
 
-        function IMGS = PrepareHypocotylImages(obj, RESCALE)
+        function IMGS = PrepareHypocotylImages(obj, vsn, rgn, fnc, mbuf, abuf, scl)
             %% Prepare hypocotyl images for CNN
-            if nargin < 2; RESCALE = 1; end % Rescale hypocotyl image size
+            if nargin < 2; vsn  = 'gray';  end
+            if nargin < 3; rgn  = 'upper'; end
+            if nargin < 4; fnc  = 'left';  end
+            if nargin < 5; mbuf = [];      end
+            if nargin < 6; abuf = [];      end
+            if nargin < 7; scl  = [];      end
 
             CRVS = obj.combineContours;
 
-            % Resize hypocotyl images to isz x isz
-            isz      = ceil(size(CRVS(1).getImage('gray')) * RESCALE);
-            imgs_raw = arrayfun(@(x) x.getImage('gray'), CRVS, 'UniformOutput', 0);
-            imgs_rsz = cellfun(@(x) imresize(x, isz), imgs_raw, 'UniformOutput', 0);
-            imgs     = cat(3, imgs_rsz{:});
-            imSize   = size(imgs);
-
-            % Reshape image data as X values and use Midpoint PCA scores as Y values
-            IMGS = double(reshape(imgs, [imSize(1:2), 1, imSize(3)]));
+            if isempty(mbuf); mbuf = CRVS(1).getProperty('MANBUF'); end
+            if isempty(abuf); abuf = CRVS(1).getProperty('ARTBUF'); end
+            if isempty(scl);  scl  = CRVS(1).getProperty('IMGSCL'); end
+            
+            IMGS = arrayfun(@(x) x.getImage(vsn, rgn, fnc, [], mbuf, abuf, scl), ...
+                CRVS, 'UniformOutput', 0);
         end
     end
 
@@ -258,10 +273,13 @@ classdef Experiment < handle
             else
                 G = obj.getGenotype;
             end
+
+            obj.NumberOfGenotypes = numel(G);
         end
 
-        function [g, i] = search4Genotype(obj, nm)
+        function [g , i] = search4Genotype(obj, nm, rev)
             %% Return specific Genotype by GenotypeName
+            if nargin < 3; rev = 0; end
             gts  = obj.getGenotype;
             gnms = arrayfun(@(x) x.GenotypeName, gts, 'UniformOutput', 0)';
             mtc  = strmatch(nm, gnms, 'exact');
@@ -272,6 +290,9 @@ classdef Experiment < handle
                 g = [];
                 i = [];
             end
+
+            % Reverse output
+            if rev; tmp = g; g = i; i = tmp; end
         end
 
         function S = combineSeedlings(obj, asCell, getGood)
@@ -290,6 +311,8 @@ classdef Experiment < handle
                     G, 'UniformOutput', 0);
                 S = cat(1, S{:});
             end
+
+            obj.NumberOfSeedlings = numel(S);
         end
 
         function H = combineHypocotyls(obj, req, asCell)

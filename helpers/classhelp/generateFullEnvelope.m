@@ -19,9 +19,7 @@ function [crvs, strc] = generateFullEnvelope(crds, dist2env, numCrvs, alg)
 %   strc: envelope structure reshaped as an image
 %
 
-if nargin < 4
-    alg = 'hq';
-end
+if nargin < 4; alg = 'hq'; end
 
 switch alg
     case 'hq'
@@ -38,7 +36,11 @@ switch alg
             interpolateOutline([crds(x,:) ; dist2env(x,:)], numCrvs), ...
             1 : length(crds), 'UniformOutput', 0);
         crvs = cat(1, pts{:});
-        strc = cat(2, pts{:});
+%         strc = cat(2, pts{:});
+        sx   = cellfun(@(x) x(:,1), pts, 'UniformOutput', 0);
+        sy   = cellfun(@(x) x(:,2), pts, 'UniformOutput', 0);
+        strc = [cat(2, sx{:}) , cat(2, sy{:})];
+        
         
     otherwise
         % Error

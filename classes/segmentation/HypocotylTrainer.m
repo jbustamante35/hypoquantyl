@@ -27,8 +27,8 @@ classdef HypocotylTrainer < handle
 
         % Dataset Splitting
         TrainingPct
-        ValidationPct
         TestingPct
+        ValidationPct
 
         % PCA Parameters
         NPX
@@ -36,6 +36,9 @@ classdef HypocotylTrainer < handle
         NPZ
         NZP
         NPM
+        NCV
+        NMV
+        NPT
         ZNorm
         ZShape
 
@@ -44,10 +47,23 @@ classdef HypocotylTrainer < handle
         ZRotate
         ZRotateType
         Split2Stitch
-        NSplt
 
         % Midline Patch Attributes
         PatchSize
+        MLineSize
+        MLineParams
+        MLineMethod
+        Bwid
+        TolFun
+        TolX
+        CEpochs
+
+        % Cotyledon Patch Attributes
+        TScale
+        TLen
+        TNWid
+        TRes
+        TTWid
 
         % Z-Vector CNN
         FilterRange
@@ -55,11 +71,11 @@ classdef HypocotylTrainer < handle
         FilterLayers
         DropoutLayer
         MiniBatchSize
-        MaxEpochs
+        ZEpochs
         InitialLearningRate
 
         % D-Vector NN
-        Iterations
+        Recursions
         FoldMethod
         toFix
         SegLengths
@@ -67,6 +83,8 @@ classdef HypocotylTrainer < handle
         NPD
         DLayers
         DTrainFnc
+        Dshape
+        Dzoom
 
         % BasePoint CNN
         BasePoint
@@ -127,43 +145,60 @@ classdef HypocotylTrainer < handle
             prps   = properties(class(obj));
             deflts = { ...
                 % Curve Properties
-                'HTName'              , []     ; ...
-                'UniqueName'          , []     ; ...
-                'SaveDirectory'       , pwd    ; ...
-                'SegmentSize'         , 25     ; ...
-                'SegmentSteps'        , 1      ; ...
-                'ContourVsn'          , 'Clip' ; ...
-                'ImageFnc'            , 'left' ; ...
+                'HTName'              , []     ; ... % Long name
+                'UniqueName'          , []     ; ... % Descriptive name
+                'SaveDirectory'       , pwd    ; ... % Main folder to store data
+                'SegmentSize'         , 25     ; ... % Number of coordinates per segment
+                'SegmentSteps'        , 1      ; ... % Step size to next segment
+                'ContourVsn'          , 'Clip' ; ... % Contour type [Full|Clip]
+                'ImageFnc'            , 'left' ; ... % Direction of seedling to use [left|right]
 
                 % Dataset Splitting
-                'TrainingPct'         , 0.8 ; ...
-                'ValidationPct'       , 0.1 ; ...
-                'TestingPct'          , 0.1 ; ...
+                'TrainingPct'         , 0.8 ; ... % Split percentage to use for training
+                'TestingPct'          , 0.1 ; ... % Split percentage to use for testing
+                'ValidationPct'       , 0.1 ; ... % Split percentage to use for validation
+                'Splits'              , []  ; ... % Splitting dataset
 
                 % Image Properties
-                'Histogram'           , struct('Data', [], 'Tag', '', 'NumBins', 0) ; ...
-                'ManBuf'              , 0 ; ...
-                'ArtBuf'              , 0 ; ...
-                'ImgScl'              , 1 ; ...
+                'Histogram'           , struct('Data', [], 'Tag', '', 'NumBins', 0) ; ... % Histogram to normalize to
+                'ManBuf'              , 0 ; ... % Buffer size for seedling cropbox
+                'ArtBuf'              , 0 ; ... % Buffer size to artificially generate
+                'ImgScl'              , 1 ; ... % Scaling size for cropped hypocotyl image
 
-                % PCA Parametersrunning
-                'NPX'                 , 0 ; ... % 6
-                'NPY'                 , 0 ; ... % 6
-                'NPZ'                 , 0 ; ... % 10
-                'NZP'                 , 0 ; ... % 10
-                'NPM'                 , 0 ; ... % 20
-                'ZNorm'               , struct('ps', 0, 'pz', 0, 'pp', 0) ; ...
-                'ZShape'              , struct('ps', 0, 'pz', 0, 'pp', 0) ; ...
+                % PCA Parameters
+                'NPX'                 , 0 ; ... % PCs for x-component of segments [default 6]
+                'NPY'                 , 0 ; ... % PCs for y-component of segments [default 6]
+                'NPZ'                 , 0 ; ... % PCs for Z-Vector [default 10]
+                'NZP'                 , 0 ; ... % PCs for sampled Z-Vector patches [default 10]
+                'NPM'                 , 0 ; ... % PCs for sampled midline [default 20]
+                'NCV'                 , 0 ; ... % PCs for contours in stitching [default 20]
+                'NMV'                 , 0 ; ... % PCs for midlines in stitching [default 20]
+                'NPT'                 , 0 ; ... % PCs for sampled cotyledon [default 3]
+                'ZNorm'               , struct('ps', 0, 'pz', 0, 'pp', 0) ; ... % Z-Score Normalize for PCA
+                'ZShape'              , struct('ps', 0, 'pz', 0, 'pp', 0) ; ... % Dimensions to reshape Z-Score normalization
 
                 % Z-Vector Attributes
-                'AddMid'              , 0     ; ...
-                'ZRotate'             , 0     ; ...
-                'ZRotateType'         , 'rad' ; ...
-                'Split2Stitch'        , 0     ; ...
-                'NSplt'               , 25    ; ...
+                'AddMid'              , 0     ; ... % Re-center Z-Vector from [0 , 0]
+                'ZRotate'             , 0     ; ... % Using radians for Z-Vector instead of tangents-normals
+                'ZRotateType'         , 'rad' ; ... % Method if using radians for Z-Vector
+                'Split2Stitch'        , 0     ; ... % PCA on individual Z-Vector factors
 
                 % Midline Patch Attributes
-                'PatchSize'           , 20    ; ...
+                'PatchSize'           , 20            ;                 ... % Width to sample out from midline
+                'MLineSize'           , 50            ;                 ... % Midline length
+                'MLineParams'         , [5 , 3 , 0.1] ;                 ... % Midline generation parameters
+                'MLineMethod'         , 'nate' ;                        ... % Midline generation method
+                'Bwid'                , [0.1 , 0.1 , 0.1 , 0.1 , 1.0] ; ... % Bwid for ksdensity
+                'TolFun'              , 1e-4 ;                          ... % Termination tolerance on function value
+                'TolX'                , 1e-4 ;                          ... % Termination tolerance on X
+                'CEpochs'             , 100  ;                          ... % Max iterations for segmentation optimizer
+
+                % Cotyledon Patch Attributes
+                'TScale'              , 5         ; ... % Scaling distance of tangent vector
+                'TLen'                , 50        ; ... % Length of ellispse along tangent
+                'TNWid'               , 30        ; ... % Width of ellipse along normal
+                'TRes'                , [30 , 30] ; ... % Resolution of sampling ellipse
+                'TTWid'               , 3         ; ... % Size of window for computing tangent
 
                 % Z-Vector CNN
                 'FilterRange'         , 7            ; ...
@@ -171,18 +206,20 @@ classdef HypocotylTrainer < handle
                 'FilterLayers'        , 1            ; ...
                 'DropoutLayer'        , 0.2          ; ...
                 'MiniBatchSize'       , 128          ; ...
-                'MaxEpochs'           , 300          ; ...
+                'ZEpochs'             , 300          ; ...
                 'InitialLearningRate' , 1e-4         ; ...
 
                 % D-Vector NN
-                'Iterations'          , 20                  ; ...
-                'FoldMethod'          , 'local'             ; ...
-                'toFix'               , 0                   ; ...
-                'SegLengths'          , [53 , 52 , 53 , 51] ; ...
-                'NPF'                 , 10                  ; ...
-                'NPD'                 , 10                  ; ...
-                'DLayers'             , 5                   ; ...
-                'DTrainFnc'           , 'trainlm'           ; ...
+                'Recursions'          , 20                  ; ... % D-Vector recursive recursions
+                'FoldMethod'          , 'local'             ; ... % Smoothing method after recursion
+                'toFix'               , 0                   ; ... %
+                'Dshape'              , 1                   ; ... % Z-Vector patch shapes to remove
+                'Dzoom'               , [0.5 , 1.5]         ; ... %Z-Vector patch zoom levels
+                'SegLengths'          , [53 , 52 , 53 , 51] ; ... % Lengths to split left-top-right-bottom segments
+                'NPF'                 , [7 , 6 , 5]         ; ... % PCs for folding D-Vector contour predictions
+                'NPD'                 , 10                  ; ... % PCs for Z-Vector patches containing D-Vector
+                'DLayers'             , 5                   ; ... % Number of layers for D-Vector fitnet
+                'DTrainFnc'           , 'trainlm'           ; ... % Training algorithm for D-Vector fitnet
 
                 % BasePoint CNN
                 'BasePoint'               , 0           ; ...
@@ -233,9 +270,9 @@ classdef HypocotylTrainer < handle
 
         function splt = SplitDataset(obj, toSplit, toSet)
             %% Split Curves into training, validation, and testing sets
-            % Validation and Testing sets shouldn't be seen by training algorithm
-            if nargin < 2; toSplit  = 0; end
-            if nargin < 3; toSet    = 0; end
+            % Validation and Testing sets not seen by training algorithm
+            if nargin < 2; toSplit = 0; end
+            if nargin < 3; toSet   = 0; end
 
             t       = tic;
             crvs    = obj.Curves;
@@ -258,7 +295,7 @@ classdef HypocotylTrainer < handle
             %% Run PCA functions
             % PCA can be run with method 1 (training only) or method 2
             % (training and validation, testing untouched [default])
-            if nargin < 2; mth    = 'withval';  end % With training and validation
+            if nargin < 2; mth = 'withval'; end % With training and validation
 
             switch mth
                 case 'trn'
@@ -273,31 +310,44 @@ classdef HypocotylTrainer < handle
                     return;
             end
 
-            [px , py , pz , pp , pm] = hypoquantylPCA(C, obj.Save, ...
-                'vsn', obj.ContourVsn, 'fnc', obj.ImageFnc, 'pcx', obj.NPX, ...
-                'pcy', obj.NPY, 'pcz', obj.NPZ, 'pcp', obj.NZP, 'pcm', obj.NPM, ...
-                'addMid', obj.AddMid, 'znorm', obj.ZNorm, 'zshp', obj.ZShape, ...
-                'bdsp', obj.BasePoint, 'nsplt', obj.NSplt, 'zrotate', obj.ZRotate, ...
-                'hhist', obj.Histogram, 'rtyp', obj.ZRotateType, ...
-                'split2stitch', obj.Split2Stitch, 'mbuf', obj.ManBuf, ...
-                'abuf', obj.ArtBuf, 'scl', obj.ImgScl, 'sdir', obj.SaveDirectory);
+            [~ , ~ , ~ , ~ , ~ , ~ , ~ , ~ , ~ , ~ , msample , ~ , ...
+                tsample , ~] = obj.getFunctions;
 
-            obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp, 'pm', pm);
+            [px , py , pz , pp , pm , pc , pv , pt] = hypoquantylPCA(C, ...
+                obj.Save, 'vsn', obj.ContourVsn, 'fnc', obj.ImageFnc, ...
+                'pcx', obj.NPX, 'pcy', obj.NPY, 'pcp', obj.NZP, ...
+                'pcm', obj.NPM, 'pcv', obj.NCV, 'pmv', obj.NMV, ...
+                'pct', obj.NPT, 'addMid', obj.AddMid, 'znorm', obj.ZNorm, ...
+                'zshp', obj.ZShape, 'bdsp', obj.BasePoint, ...
+                'nsplt', obj.SegmentSize, 'zrotate', obj.ZRotate, ...
+                'msample', msample, 'tsample', tsample, ...
+                'href', obj.Histogram, 'rtyp', obj.ZRotateType, ...
+                'split2stitch', obj.Split2Stitch, 'mbuf', obj.ManBuf, ...
+                'abuf', obj.ArtBuf, 'scl', obj.ImgScl, ...
+                'SaveDir', obj.SaveDirectory);
+
+            obj.PCA = struct('px', px, 'py', py, 'pz', pz, 'pp', pp, ...
+                'pm', pm, 'pc', pc, 'pv', pv, 'pt', pt);
         end
 
-        function TrainZVectors(obj, pcs)
+        function TrainZVectors(obj, pcs, par, sav, vis, vrb)
             %% Train Z-Vectors
-            if nargin < 2; pcs = 1 : obj.NPZ; end
+            if nargin < 2; pcs = 1 : obj.NPZ;   end
+            if nargin < 3; par = obj.Parallel;  end
+            if nargin < 4; sav = obj.Save;      end
+            if nargin < 5; vis = obj.Visualize; end
+            if nargin < 6; vrb = obj.Verbose;   end
 
             t = tic;
             if obj.Split2Stitch
-                n    = fprintf('Preparing %d images and [%d|%d] Z-Vectors PC scores', ...
+                n    = fprintf(['Preparing %d images and [%d|%d] ' ...
+                    'Z-Vectors PC scores'], ...
                     numel(obj.getSplits('trnIdx')), obj.NPZ{1}, obj.NPZ{2});
                 flds = fieldnames(obj.PCA.pz);
                 vtyp = flds{end};
             else
-                n = fprintf('Preparing %d images and %d Z-Vectors PC scores', ...
-                    numel(obj.getSplits('trnIdx')), obj.NPZ);
+                n = fprintf(['Preparing %d images and %d Z-Vectors ' ...
+                    'PC scores'], numel(obj.getSplits('trnIdx')), obj.NPZ);
             end
 
             if ~isempty(obj.Images)
@@ -331,8 +381,7 @@ classdef HypocotylTrainer < handle
             jprintf(' ', toc(t), 1, 80 - n);
 
             %%
-            %             [IN , OUT] = deal(cell(1, size(ZSCRS,2)));
-            [IN , OUT] = deal(cell(1, pcs));
+            [IN , OUT] = deal(cell(1, numel(pcs)));
 
             if isempty(obj.isOptimized); obj.isOptimized.znn = 0; end
 
@@ -350,29 +399,43 @@ classdef HypocotylTrainer < handle
                         'MBSize', obj.MiniBatchSize, ...
                         'Dropout', obj.DropoutLayer{pc}, ...
                         'ILRate', obj.InitialLearningRate{pc}, ...
-                        'MaxEps', obj.MaxEpochs, ...
-                        'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+                        'MaxEps', obj.ZEpochs, 'Parallel', par, ...
+                        'Verbose', vrb, 'Visualize', vis, ...
+                        'Save', sav, 'SaveDir', obj.SaveDirectory);
                 end
             else
                 % Use same parameters for each PC [old method]
                 for pc = pcs
-                    [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, pc, ...
-                        'Save', obj.Save, 'FltRng', obj.FilterRange, ...
+                    [IN{pc}, OUT{pc}] = znnTrainer(IMGS, ZSCRS, obj.Splits, ...
+                        pc, 'Save', obj.Save, 'FltRng', obj.FilterRange, ...
                         'NumFltRng', obj.NumFilterRange, ...
-                        'MBSize', obj.MiniBatchSize, 'Dropout', obj.DropoutLayer, ...
-                        'ILRate', obj.InitialLearningRate, 'MaxEps', obj.MaxEpochs, ...
-                        'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+                        'MBSize', obj.MiniBatchSize, ...
+                        'Dropout', obj.DropoutLayer, ...
+                        'ILRate', obj.InitialLearningRate, ...
+                        'MaxEps', obj.ZEpochs, 'Parallel', par, ...
+                        'Verbose', vrb, 'Visualize', vis, ...
+                        'Save', sav, 'SaveDir', obj.SaveDirectory);
                 end
             end
 
-            obj.ZVectors(pcs) = struct('ZIN', IN(pcs), 'ZOUT', OUT(pcs));
+            if isempty(obj.ZVectors)
+                obj.ZVectors = struct('ZIN', IN(pcs), 'ZOUT', OUT(pcs));
+            else
+                obj.ZVectors(pcs) = struct('ZIN', IN(pcs), 'ZOUT', OUT(pcs));
+            end
         end
 
-        function TrainDVectors(obj)
+        function TrainDVectors(obj, par, sav, vis, myShps, zoomLvl)
             %% Train D-Vectors
+            if nargin < 2; par     = obj.Parallel;  end
+            if nargin < 3; sav     = obj.Save;      end
+            if nargin < 4; vis     = obj.Visualize; end
+            if nargin < 5; myShps  = obj.Dshape;   end
+            if nargin < 6; zoomLvl = obj.Dzoom;     end
+
             t = tic;
-            n = fprintf('Training D-Vectors through %d recursive iterations [%s folding]', ...
-                obj.Iterations, obj.FoldMethod);
+            n = fprintf(['Training D-Vectors through %d ' ...
+                'recursions [%s folding]'], obj.Recursions, obj.FoldMethod);
 
             IMGS  = arrayfun(@(c) c.getImage('gray', 'upper', ...
                 obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, obj.ImgScl), ...
@@ -392,10 +455,14 @@ classdef HypocotylTrainer < handle
 
             nfigs             = numel(obj.Figures);
             cidxs             = pullRandom(obj.Splits.trnIdx, nfigs, 0);
-            [IN , OUT , fnms] = dnnTrainer(IMGS, CNTRS, obj.Iterations, ...
-                obj.NSplt, cidxs, obj.FoldMethod, obj.toFix, obj.SegLengths, ...
-                obj.NPF, obj.NPD, obj.DLayers, obj.DTrainFnc, ...
-                obj.Save, obj.Visualize, obj.Parallel);
+            [IN , OUT , fnms] = dnnTrainer(IMGS, CNTRS, ...
+                'nitrs', obj.Recursions, 'nsplt', obj.SegmentSize, ...
+                'cidxs', cidxs, 'fmth', obj.FoldMethod, 'toFix', obj.toFix, ...
+                'seg_lengths', obj.SegLengths, 'NPF', obj.NPF, ...
+                'myShps', myShps, 'zoomLvl', zoomLvl, 'NPD', obj.NPD, ...
+                'NLAYERS', obj.DLayers, 'TRNFN', obj.DTrainFnc, ...
+                'Visualize', vis, 'Parallel', par, ...
+                'Save', sav, 'SaveDir', obj.SaveDirectory);
 
             jprintf(' ', toc(t), 1, 80 - n);
 
@@ -403,8 +470,13 @@ classdef HypocotylTrainer < handle
             obj.FigNames = fnms;
         end
 
-        function TrainBVectors(obj)
+        function TrainBVectors(obj, par, sav, vis, vrb)
             %% Train B-Vectors: base point displacements
+            if nargin < 2; par = obj.Parallel;  end
+            if nargin < 3; sav = obj.Save;      end
+            if nargin < 4; vis = obj.Visualize; end
+            if nargin < 5; vrb = obj.Verbose;   end
+
             t = tic;
             n = fprintf('Preparing %d images and base points', ...
                 numel(obj.getSplits('trnIdx')));
@@ -460,9 +532,12 @@ classdef HypocotylTrainer < handle
             [IN , OUT] = znnTrainer(IMGS, BPTS, [], 1, ...
                 'Save', obj.Save, 'FltRng', obj.BaseFilterRange, ...
                 'NumFltRng', obj.BaseNumFilterRange, ...
-                'MBSize', obj.BaseMiniBatchSize, 'Dropout', obj.BaseDropoutLayer, ...
-                'ILRate', obj.BaseInitialLearningRate, 'MaxEps', obj.MaxEpochs, ...
-                'Parallel', obj.Parallel, 'Verbose', obj.Verbose);
+                'MBSize', obj.BaseMiniBatchSize, ...
+                'Dropout', obj.BaseDropoutLayer, ...
+                'ILRate', obj.BaseInitialLearningRate, ...
+                'MaxEps', obj.ZEpochs, 'Parallel', par, ...
+                'Verbose', vrb, 'Visualize', vis, ...
+                'Save', sav, 'SaveDir', obj.SaveDirectory);
 
             obj.BVectors = struct('BIN', IN, 'BOUT', OUT);
         end
@@ -517,13 +592,41 @@ classdef HypocotylTrainer < handle
             crvs       = obj.Curves;
             obj.Curves = [];
 
+            % Remove Images
+            imgs = obj.Images;
+            obj.storeImages('kill');
+
             HT  = obj;
             fnm = sprintf('%s%s%s_%dZOpt_%dBOpt', dnm, filesep, obj.HTName, ...
                 obj.isOptimized.znn, obj.isOptimized.bnn);
             save(fnm, '-v7.3', 'HT');
 
-            % Replace Curves after saving
+            % Replace Curves and Images after saving
             obj.Curves = crvs;
+            obj.Images = imgs;
+        end
+
+        function LoadZVectors(obj, zdir, pcs)
+            %% Load training from .mat file
+            if nargin < 2; zdir = sprintf('%s/zvector_training/pcs', pwd); end
+            if nargin < 3; pcs  = 1 : obj.NPZ;                             end
+            zd      = dir(zdir);
+            zd(1:2) = [];
+            ZD      = arrayfun(@(x) load(sprintf('%s/%s', ...
+                x.folder, x.name)), zd);
+
+            AD = repmat(struct, size(ZD));
+            for i = 1 : numel(ZD)
+                AD(i).ZIN = ZD(i).IN;
+                AD(i).ZOUT = ZD(i).OUT;
+            end
+
+            if isempty(obj.ZVectors)
+                obj.ZVectors = AD;
+            else
+                obj.ZVectors(pcs) = [];
+                obj.ZVectors      = AD(pcs);
+            end
         end
 
         function OptimizeParameters(obj, mth, pc)
@@ -541,7 +644,7 @@ classdef HypocotylTrainer < handle
             switch mth
                 case 'znn'
                     %% Run metaparameter optimization for Z-Vector CNN
-                    if iscell(obj.FilterRange)
+                    if iscell(obj.NumFilterRange) && ~isempty(obj.ZParams_bak)
                         % Replace previously-optimized with original ranges
                         zparams                  = obj.ZParams_bak;
                         obj.FilterRange          = zparams.FilterRange_bak;
@@ -556,7 +659,7 @@ classdef HypocotylTrainer < handle
                     ilrate = obj.InitialLearningRate;
                     %                     nlay   = obj.FilterLayers;
                     %                     mbsize = obj.MiniBatchSize;
-                    %                     maxeps = obj.MaxEpochs;
+                    %                     maxeps = obj.ZEpochs;
 
                     % Define optimizable variables
                     params = [
@@ -568,18 +671,16 @@ classdef HypocotylTrainer < handle
                         optimizableVariable('InitialLearnRate', ilrate, 'Transform', 'log')
                         %                         optimizableVariable('FilterLayers'    , nlay,   'Type', 'integer')
                         %                         optimizableVariable('MiniBatchSize'   , mbsize, 'Type', 'integer')
-                        %                         optimizableVariable('MaxEpochs'       , maxeps, 'Type',  'integer')
+                        %                         optimizableVariable('ZEpochs'       , maxeps, 'Type',  'integer')
                         ];
 
                     % Get training and validation images and scores
-                    if obj.toStore
-                        obj.storeImages;
+                    if ~isempty(obj.Images)
                         IMGS = obj.Images;
                     else
                         IMGS = arrayfun(@(x) x.getImage('gray', 'upper', ...
                             obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, ...
                             obj.ImgScl), obj.Curves, 'UniformOutput', 0);
-
                     end
 
                     % Normalize images to histogram
@@ -635,7 +736,8 @@ classdef HypocotylTrainer < handle
                         % Bayes optimization
                         hrs      = 2; % Hours to run optimization
                         bay{npc} = bayesopt(fnc{npc}, params, ...
-                            'MaxTime', hrs*60*60, 'IsObjectiveDeterministic', 0, ...
+                            'MaxTime', hrs*60*60, ...
+                            'IsObjectiveDeterministic', 0, ...
                             'UseParallel', 0, 'Verbose', obj.Verbose);
 
                         % Store into this object for debugging
@@ -661,7 +763,7 @@ classdef HypocotylTrainer < handle
                     ilrate = obj.InitialLearningRate;
                     %                     nlay   = obj.FilterLayers;
                     %                     mbsize = obj.MiniBatchSize;
-                    %                     maxeps = obj.MaxEpochs;
+                    %                     maxeps = obj.ZEpochs;
 
                     % Define optimizable variables
                     params = [
@@ -673,13 +775,12 @@ classdef HypocotylTrainer < handle
                         optimizableVariable('InitialLearnRate', ilrate, 'Transform', 'log')
                         %                         optimizableVariable('FilterLayers'    , nlay,   'Type', 'integer')
                         %                         optimizableVariable('MiniBatchSize'   , mbsize, 'Type', 'integer')
-                        %                         optimizableVariable('MaxEpochs'       , maxeps, 'Type',  'integer')
+                        %                         optimizableVariable('ZEpochs'       , maxeps, 'Type',  'integer')
                         ];
 
                     % Get training and validation images and scores
                     %                     if isempty(obj.Images)
-                    if obj.toStore
-                        obj.storeImages;
+                    if ~isempty(obj.Images)
                         IMGS = obj.Images;
                     else
                         IMGS = arrayfun(@(x) x.getImage('gray', 'upper', ...
@@ -731,7 +832,8 @@ classdef HypocotylTrainer < handle
                         % Bayes optimization
                         hrs      = 2; % Hours to run optimization
                         bay{npc} = bayesopt(fnc{npc}, params, ...
-                            'MaxTime', hrs*60*60, 'IsObjectiveDeterministic', 0, ...
+                            'MaxTime', hrs*60*60, ...
+                            'IsObjectiveDeterministic', 0, ...
                             'UseParallel', 0, 'Verbose', obj.Verbose);
 
                         % Store into this object for debugging
@@ -760,17 +862,16 @@ classdef HypocotylTrainer < handle
         function SetOptimizedParameters(obj, req)
             %% Set parameters to best values after optimization
             % Each PC should have it's own set of optimized parameters
-            % NOTE: Rename properties to actual parameter names (get rid of XRange)
+            % NOTE: Rename properties to parameter names (get rid of XRange)
             if nargin < 2; req = 'znn'; end % Z-Vector
 
             switch req
                 case 'znn'
                     %% Backup original ranges/values
-                    %                     oflds = {'FilterRange' ; 'NumFilterRange' ; 'MiniBatchSize' ; ...
-                    %                         'DropoutLayer'  ; 'InitialLearningRate' ; 'MaxEpochs'};
                     oflds = {'FilterRange' ; 'NumFilterRange' ; ...
                         'DropoutLayer'  ; 'InitialLearningRate'};
-                    bflds = cellfun(@(x) sprintf('%s_bak', x), oflds, 'UniformOutput', 0);
+                    bflds = cellfun(@(x) sprintf('%s_bak', x), ...
+                        oflds, 'UniformOutput', 0);
 
                     if isempty(obj.ZParams_bak)
                         for fld = 1 : numel(oflds)
@@ -847,11 +948,17 @@ classdef HypocotylTrainer < handle
 
         function pca = getPCA(obj, req)
             %% Return PCA results
-            switch nargin
-                case 1
-                    pca = obj.PCA;
-                case 2
-                    pca = obj.PCA.(req);
+            try
+                switch nargin
+                    case 1
+                        pca = obj.PCA;
+                    case 2
+                        pca = obj.PCA.(req);
+                end
+            catch
+                % If 'req' doesn't exist, create it
+                obj.PCA.(req) = [];
+                pca           = obj.PCA.(req);
             end
         end
 
@@ -927,8 +1034,8 @@ classdef HypocotylTrainer < handle
                 case 'all'
                     % Return all parameters
                 otherwise
-                    fprintf(2, 'Error requesting optimization parameters %s\n', ...
-                        req);
+                    fprintf(2, ['Error requesting optimization parameters ' ...
+                        '%s\n'], req);
             end
         end
 
@@ -939,16 +1046,14 @@ classdef HypocotylTrainer < handle
 
         function obj = storeImages(obj, req)
             %% Store images in a property variable, or remove them for saving
-            if nargin < 2
-                req = 'set';
-            end
+            if nargin < 2; req = 'set'; end
 
             switch req
                 case 'set'
                     % Store images in property
                     imgs = arrayfun(@(x) x.getImage('gray', 'upper', ...
-                        obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, obj.ImgScl), ...
-                        obj.Curves, 'UniformOutput', 0);
+                        obj.ImageFnc, [], obj.ManBuf, obj.ArtBuf, ...
+                        obj.ImgScl), obj.Curves, 'UniformOutput', 0);
                     obj.Images = imgs;
 
                 case 'kill'
@@ -982,14 +1087,14 @@ classdef HypocotylTrainer < handle
 
                 case 'testing'
                     % Not yet implemented
-                    fprintf(2, 'Type (%s) not implemented [training|validation]\n', ...
-                        typ);
+                    fprintf(2, ['Type (%s) not implemented ' ...
+                        '[training|validation]\n'], typ);
                     [din , dout] = deal([]);
                     return;
 
                 otherwise
-                    fprintf(2, 'Type (%s) should be [training|validation|testing]\n', ...
-                        typ);
+                    fprintf(2, ['Type (%s) should be ' ...
+                        '[training|validation|testing]\n'], typ);
                     [din , dout] = deal([]);
                     return;
             end
@@ -1014,12 +1119,12 @@ classdef HypocotylTrainer < handle
             obj.ZVectors.IN.(typ).ZSCRS = dout;
         end
 
-        function [pz , pdp , pdx , pdy , pdw , pm , Nz , Nd , Nb , trnIdx , valIdx , tstIdx] = loadHTNetworks(obj, varargin)
+        function [pz , pdp , pdx , pdy , pdw , pm , pt , Nz , Nd , Nb , trnIdx , valIdx , tstIdx] = loadHTNetworks(obj, varargin)
             %% loadHTNetworks: Load models and PCA from HypocotylTrainer object
             % Description
             %
             % Usage:
-            %   [pz , pdp , pdx , pdy , pdw , pm , Nz , Nd , Nb , ...
+            %   [pz , pdp , pdx , pdy , pdw , pm , pt , Nz , Nd , Nb , ...
             %       trnIdx , valIdx , tstIdx] = obj.loadHTNetworks(varargin)
             %
             % Output:
@@ -1028,6 +1133,8 @@ classdef HypocotylTrainer < handle
             %   pdx:
             %   pdy:
             %   pdw:
+            %   pm:
+            %   pc:
             %   Nz:
             %   Nd:
             %   Nb:
@@ -1042,7 +1149,7 @@ classdef HypocotylTrainer < handle
             valIdx = splts.valIdx;
             tstIdx = splts.tstIdx;
 
-            % ---------------------------------------------------------------------------- %
+            % ---------------------------------------------------------------- %
             % Load Z-Vector models
             zout = obj.getZVector('ZOUT');
             pz   = obj.getPCA('pz');
@@ -1051,7 +1158,7 @@ classdef HypocotylTrainer < handle
                 1 : numel(Nz), 'UniformOutput', 0);
             Nz   = cell2struct(Nz, nstr);
 
-            % ---------------------------------------------------------------------------- %
+            % ---------------------------------------------------------------- %
             % Load D-Vector models
             dout = obj.getDVector('DOUT');
             Nd   = dout.Net;
@@ -1066,53 +1173,67 @@ classdef HypocotylTrainer < handle
             pdy = dout.pdf.pdy;
             pdw = dout.pdf.pdw;
 
-            % ---------------------------------------------------------------------------- %
-            % Load midline patch PCA
+            % ---------------------------------------------------------------- %
+            % Load midline and cotyledon patch PCA
             pm = obj.getPCA('pm');
+            pt = obj.getPCA('pt');
 
-            % ---------------------------------------------------------------------------- %
+            % ---------------------------------------------------------------- %
             % Load B-Vector model
             bout = obj.getBVector('BOUT');
-
-            %             bnet = load('/home/jbustamante/Dropbox/EdgarSpalding/labdata/development/HypoQuantyl/datasets/matfiles/netoutputs/bnnout.mat');
-            %             bnet = bnet.OUT.Net;
-            %             bout.Net = bnet;
             Nb   = bout.Net;
 
             if nargout == 1
-                splts = struct('trnIdx', trnIdx , 'valIdx', valIdx , 'tstIdx', tstIdx);
-                hout  = {pz   ,  pdp  ,  pdx  ,  pdy  ,  pdw  ,  Nz  ,  Nd  ,  Nb  ,  splts}';
-                flds  = {'pz' , 'pdp' , 'pdx' , 'pdy' , 'pdw' , 'Nz' , 'Nd' , 'Nb' , 'splts'}';
+                splts = struct('trnIdx', trnIdx , 'valIdx', valIdx , ...
+                    'tstIdx', tstIdx);
+                hout  = {pz   ,  pdp  ,  pdx  ,  pdy  ,  pdw  , ...
+                    pm , pt , Nz  ,  Nd  ,  Nb  ,  splts}';
+                flds  = {'pz' , 'pdp' , 'pdx' , 'pdy' , 'pdw' , ...
+                    'pm' , 'pt' , 'Nz' , 'Nd' , 'Nb' , 'splts'}';
                 pz    = cell2struct(hout, flds);
             end
         end
 
-        function [bpredict , bcnv, zpredict , zcnv, cpredict , mline , mscore , sopt , mmaster] = getFunctions(obj, seg_lengths, par, vis, toFix, bwid, psz, nopts, tolfun, tolx, npxy, npw)
+        function [bpredict , bcnv, zpredict , zcnv, cpredict , mline , mscore , tscore , escore , sopt , mmaster , msample , mcnv , tsample , tcnv] = getFunctions(obj, seg_lengths, par, vis, toFix, bwid, psz, cepox, tolf, tolx, npxy, npw, myShps, zoomLvl, mpts, mmth, mparams, tscl, tlen , tnwid, tres, ttwid)
             %% getFunctions
             % Defaults
-            if nargin < 2;  seg_lengths = obj.Curves(1).getProperty('SEGLENGTH'); end
-            if nargin < 3;  par         = 0;                                      end
-            if nargin < 4;  vis         = 0;                                      end
-            if nargin < 5;  toFix       = 0;                                      end
-            if nargin < 6;  bwid        = 0.5;                                    end
-            if nargin < 7;  psz         = obj.PatchSize;                          end
-            if nargin < 8;  nopts       = obj.MaxEpochs;                          end
-            if nargin < 9;  tolfun      = 1e-4;                                   end
-            if nargin < 10; tolx        = 1e-4;                                   end
-            if nargin < 11; npxy        = [];                                     end
-            if nargin < 12; npw         = [];                                     end
+            if nargin < 2;  seg_lengths = obj.SegLengths;  end
+            if nargin < 3;  par         = obj.Parallel;    end
+            if nargin < 4;  vis         = obj.Visualize;   end
+            if nargin < 5;  toFix       = obj.toFix;       end
+            if nargin < 6;  bwid        = obj.Bwid;        end
+            if nargin < 7;  psz         = obj.PatchSize;   end
+            if nargin < 8;  cepox       = obj.CEpochs;     end
+            if nargin < 9;  tolf        = obj.TolFun;      end
+            if nargin < 10; tolx        = obj.TolX;        end
+            if nargin < 11; npxy        = obj.NPF(1:2);    end
+            if nargin < 12; npw         = obj.NPF(3);      end
+            if nargin < 13; myShps      = obj.Dshape;      end
+            if nargin < 14; zoomLvl     = obj.Dzoom;       end
+            if nargin < 15; mpts        = obj.MLineSize;   end
+            if nargin < 16; mmth        = obj.MLineMethod; end
+            if nargin < 17; mparams     = obj.MLineParams; end
+            if nargin < 18; tscl        = obj.TScale;      end
+            if nargin < 19; tlen        = obj.TLen;        end
+            if nargin < 20; tnwid       = obj.TNWid;       end
+            if nargin < 21; tres        = obj.TRes;        end
+            if nargin < 22; ttwid       = obj.TTWid;       end
 
             %%
-            [pz , pdp , pdx , pdy , pdw , pm , Nz , Nd , Nb] = ...
+            [pz , pdp , pdx , pdy , pdw , pm , pt , Nz , Nd , Nb] = ...
                 obj.loadHTNetworks;
 
             %
             [bpredict , bcnv , zpredict , zcnv , cpredict , mline , mscore , ...
-                sopt , mmaster] = loadSegmentationFunctions( ...
-                pz, pdp, pdx, pdy, pdw, pm, Nz, Nd, Nb, 'par', par, 'vis', vis, ...
-                'seg_lengths', seg_lengths, 'psz', psz, 'toFix', toFix, ...
-                'npxy', npxy, 'npw', npw, 'bwid', bwid, 'nopts', nopts, ...
-                'tolfun', tolfun, 'tolx', tolx);
+                tscore , escore , sopt , mmaster, msample , mcnv , ...
+                tsample , tcnv] = loadSegmentationFunctions(pz, pdp, pdx, ...
+                pdy, pdw, pm, pt, Nz, Nd, Nb, 'par', par, 'vis', vis, ...
+                'psz', psz, 'npw', npw, 'seg_lengths', seg_lengths, ...
+                'toFix', toFix, 'npxy', npxy, 'bwid', bwid, 'cepox', cepox, ...
+                'tolf', tolf, 'tolx', tolx, 'myShps', myShps, ...
+                'zoomLvl', zoomLvl, 'mpts', mpts, 'mmth', mmth, ...
+                'mparams', mparams, 'tscl', tscl, 'tlen', tlen, ...
+                'nwid', tnwid, 'tres', tres, 'twid', ttwid);
         end
 
         function htname = makeName(obj, toUpdate, sdir, unm)
@@ -1130,7 +1251,7 @@ classdef HypocotylTrainer < handle
             npd   = obj.NPD;
             rot   = obj.ZRotate;
             rtyp  = obj.ZRotateType;
-            itrs  = obj.Iterations;
+            itrs  = obj.Recursions;
 
             % Has Histogram to Normalize to
             h = ~isempty(obj.Histogram);
@@ -1143,11 +1264,15 @@ classdef HypocotylTrainer < handle
             end
 
             if obj.Split2Stitch
-                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02d-%02dpz_%02dzp_%02dfw_%02dfx_%02dfy_%02dpd_%dzrotate_%s_%dhistogram_%diterations', ....
+                htname = sprintf(['%s_hypocotyltrainer_%dcurves_%dtrained_' ...
+                    '%02dpx_%02dpy_%02d-%02dpz_%02dzp_%02dfw_%02dfx_%02dfy_' ...
+                    '%02dpd_%dzrotate_%s_%dhistogram_%drecursions'], ....
                     tdate, ncrvs, ntrnd, npx, npy, npz{1}, npz{2}, ...
                     nzp, npf, npd, rot, rtyp, h, itrs);
             else
-                htname = sprintf('%s_hypocotyltrainer_%dcurves_%dtrained_%02dpx_%02dpy_%02dpz_%02dzp_%02dfw_%02dfx_%02dfy_%02dpd_%dzrotate_%s_%dhistogram_%diterations', ....
+                htname = sprintf(['%s_hypocotyltrainer_%dcurves_%dtrained_' ...
+                    '%02dpx_%02dpy_%02dpz_%02dzp_%02dfw_%02dfx_%02dfy_' ...
+                    '%02dpd_%dzrotate_%s_%dhistogram_%drecursions'], ....
                     tdate, ncrvs, ntrnd, npx, npy, npz, nzp, npf, ...
                     npd, rot, rtyp, h, itrs);
             end
@@ -1158,8 +1283,7 @@ classdef HypocotylTrainer < handle
             % Overwrite name
             if toUpdate
                 obj.HTName        = htname;
-                obj.SaveDirectory = sprintf('%s%s%s_%s', ...
-                    sdir, filesep, tdate, unm);
+                obj.SaveDirectory = sprintf('%s/%s', sdir, unm);
             end
         end
 
@@ -1194,7 +1318,8 @@ classdef HypocotylTrainer < handle
         function [SSCR , ZSLC] = prepareSVectors(obj)
             %% Process x-/y-coordinate PCA scores and Z-Vector slices
             t = tic;
-            n = fprintf('Prepping Z-Vector slices and S-Vector scores to train S-Vectors');
+            n = fprintf(['Prepping Z-Vector slices and ' ...
+                'S-Vector scores to train S-Vectors']);
 
             % Combine PC scores for X-/Y-Coordinates
             SSCR = [obj.PCA.px.PCAScores , obj.PCA.py.PCAScores];
@@ -1203,7 +1328,7 @@ classdef HypocotylTrainer < handle
             ZSLC = zVectorConversion( ...
                 obj.PCA.pz.InputData, obj.Curves(1).NumberOfSegments, ...
                 numel(obj.Splits.trnIdx), 'rev');
-            %             ZSLC = [ZSLC , addNormalVector(ZSLC)]; % Exclude normal vector
+            % ZSLC = [ZSLC , addNormalVector(ZSLC)]; % Exclude normal vector
 
             % Add Z-Patch PC scores to Z-Slice
             ZSLC = [ZSLC , obj.PCA.pp.PCAScores];
@@ -1219,17 +1344,18 @@ classdef HypocotylTrainer < handle
                 %% Train network with parameters and evaluate validation error
                 % Load parameters
                 flt    = params.FilterSize;
-                nflt   = [params.NumFilters1 , params.NumFilters2 , params.NumFilters3];
+                nflt   = [params.NumFilters1 , params.NumFilters2 , ...
+                    params.NumFilters3];
                 drp    = params.DropoutLayer;
                 ilrate = params.InitialLearnRate;
                 %                 nlay   = params.FilterLayers;
                 %                 mbsize = params.MiniBatchSize;
-                %                 maxeps = params.MaxEpochs;
+                %                 maxeps = params.ZEpochs;
 
                 %% Default properties [no to optimize]
                 nlay   = obj.FilterLayers;
                 mbsize = obj.MiniBatchSize;
-                maxeps = obj.MaxEpochs;
+                maxeps = obj.ZEpochs;
 
                 %% Misc properties
                 sav = 0; % Don't save output between optimizations
@@ -1238,7 +1364,7 @@ classdef HypocotylTrainer < handle
                 vrb = obj.Verbose;
 
                 %%
-                [~, ZOUT] = znnTrainer(Timgs, Tscrs, obj.Splits, pc, ...
+                [~ , ZOUT] = znnTrainer(Timgs, Tscrs, obj.Splits, pc, ...
                     'FltRng', flt, 'NumFltRng', nflt, 'FltLayers', nlay, ...
                     'MBSize', mbsize, 'Dropout', drp, 'ILRate', ilrate, ...
                     'MaxEps', maxeps, 'Vimgs', Vimgs, 'Vscrs', Vscrs, ...

@@ -44,9 +44,7 @@ for e = 1 : size(tb,1)
         tmp = aff0 * scl;
 
         % Return the inverse of the transformation
-        if affineInvert
-            tmp = inv(tmp);
-        end
+        if affineInvert; tmp = inv(tmp); end
 
         aff(e,:,:,s) = tmp;
     end

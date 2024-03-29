@@ -61,7 +61,6 @@ if nargin > 8
 else
     LEN             = 25;
     STP             = 1;
-    DVIS            = false; % Visualize image patches (you don't want this)
     toRemove        = 1;   
     zoomLvl         = [];    % Usually [0.5 , 1.5]
     foldPredictions = 1;     % PCA folding at each iteration
@@ -117,7 +116,7 @@ if isempty(z)
 end
 
 % Get image patches and differnet scales and domain shapes/sizes
-x = sampleCorePatches(imgs, z, scls, dom, domSize, DVIS);
+x = sampleCorePatches(imgs, z, scls, dom, domSize);
 
 switch v
     case 1
@@ -261,7 +260,7 @@ for itr = allItrs
     
     z = curve2framebundle(tshp); % normalizes length along curve
     %     z = contour2corestructure(tshp);
-    x = sampleCorePatches(imgs, z, scls, dom, domSize, DVIS);
+    x = sampleCorePatches(imgs, z, scls, dom, domSize);
     
     switch v
         case 1

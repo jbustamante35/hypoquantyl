@@ -51,7 +51,8 @@ for i = 1 : numel(lidx)
 %         flpchk = ~hcol{ii}.info.toFlip;
         infchk = hb.g ~= Inf;
         if flp && infchk && flpchk
-            hb.c = flipAndSlide(hb.c, slens);
+            isz  = size(hor.getImage,1);
+            hb.c = flipAndSlide(hb.c, slens, isz);
             hb.z = contour2corestructure(hb.c);
             hb.m = flipLine(hb.m, slens(end));
             hb.b = hb.m(1,:);
@@ -82,7 +83,8 @@ for i = 1 : numel(ridx)
         flpchk = ~hcol{ii}.info.toFlip;
         infchk = hb.g ~= Inf;
         if flp && infchk && flpchk
-            hb.c = flipAndSlide(hb.c, slens);
+            isz  = size(hor.getImage,1);
+            hb.c = flipAndSlide(hb.c, slens, isz);
             hb.z = contour2corestructure(hb.c);
             hb.m = flipLine(hb.m, slens(end));
             hb.b = hb.m(1,:);

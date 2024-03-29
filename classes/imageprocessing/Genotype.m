@@ -514,8 +514,8 @@ classdef Genotype < handle
 
         function [fnm , ttl , dsp] = makeName(obj)
             %% makeName: create filename, figure title, and display output
-            gnm  = obj.GenotypeName;
-            gttl = fixtitle(gnm);
+            gnm   = obj.GenotypeName;
+            gttl  = fixtitle(gnm);
             nsdls = obj.NumberOfSeedlings;
             nfrms = obj.TotalImages;
 

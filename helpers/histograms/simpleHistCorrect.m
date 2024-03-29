@@ -17,12 +17,14 @@ function nimg = simpleHistCorrect(img, ithrsh, nbins)
 if nargin < 2; ithrsh = 0.01; end
 if nargin < 3; nbins  = 256;  end
 
+img(img > nbins - 1) = nbins - 1;
+
 [h , hx] = imhist(img / (nbins - 1), nbins);
 h        = h / sum(h);
 bwid     = bwlarge(h > ithrsh / 100);
 fidx     = find(bwid);
 
 %
-hcorr = @(value)(value - fidx(1)) / (fidx(end) - fidx(1));
+hcorr = @(pix)(pix - fidx(1)) / (fidx(end) - fidx(1));
 nimg  = (nbins - 1) * hcorr(img);
 end

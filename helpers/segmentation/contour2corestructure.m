@@ -1,9 +1,9 @@
-function [Z, L, segs, lbl] = contour2corestructure(cntr, len, stp, toCenter)
+function [Z , L , segs , lbl] = contour2corestructure(cntr, len, stp, toCenter)
 %% contour2corestructure: create the tangent bundle of a contour
 % This function
 %
 % Usage:
-%   [Z, L, segs, lbl] = contour2corestructure(cntr, len, step)
+%   [Z , L , segs , lbl] = contour2corestructure(cntr, len, step, toCenter)
 %
 % Input:
 %   cntr: x-/y-coordinates of a closed contour
@@ -28,7 +28,7 @@ lbl = labelContour(cntr);
 
 %% Split contour into segments
 segs = split2Segments(cntr, len, stp, 1, toCenter);
-lbl  = split2Segments(lbl, len, stp, 1, toCenter);
+lbl  = split2Segments(lbl,  len, stp, 1, toCenter);
 
 %% Get Tangent Bundle and Displacements along bundle in the tangent frame
 coref1  = squeeze(segs(end,:,:) - segs(1,:,:));

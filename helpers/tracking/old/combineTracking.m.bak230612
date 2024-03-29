@@ -1,0 +1,54 @@
+function Y = combineTracking(T, flds1, flds2)
+%% combineTracking: concatenate tracking results across time lapses
+%
+% Usage:
+%   Y = combineTracking(T, flds1, flds2)
+%
+% Input:
+%   T: array of tracking results
+%   flds1: main fields
+%   flds2: sub-fields
+for i = 1 : numel(flds1)
+    fld1 = flds1{i};
+    X    = cellfun(@(x) combineField(T, fld1, x), ...
+        flds2{i}, 'UniformOutput', 0);
+    X   = cat(1, X{:});
+    for ii = 1 : numel(flds2{i})
+        fld2 = flds2{i}{ii};
+        switch fld1
+            case 'Data'
+                Y.(fld1).(fld2) = X(ii,:);
+            otherwise
+                Y.Output.(fld1).(fld2) = X(ii,:);
+        end
+    end
+end
+end
+
+function X = combineField(T, fld1, fld2)
+%% combineField: subfunction that replaces single field
+%
+% Usage:
+%   X = combineField(T, fld1, fld2)
+%
+% Input:
+%   T:
+%   fld1: main field [default 'Velocity']
+%   fld2: sub-field [default 'raw']
+if nargin < 2; fld1 = 'Velocity'; end
+if nargin < 3; fld2 = 'raw';      end
+
+switch fld1
+    case 'Data'
+        f1 = arrayfun(@(y) structfun(@(x) x, ...
+            y.(fld1), 'UniformOutput', 0), T, 'UniformOutput', 0);
+        f1 = cat(1, f1{:})';
+        X  = arrayfun(@(x) x.(fld2), f1, 'UniformOutput', 0);
+    otherwise
+        f1 = arrayfun(@(y) structfun(@(x) x, ...
+            y.Output.(fld1), 'UniformOutput', 0), T, 'UniformOutput', 0);
+        f1 = cat(1, f1{:});
+        f2 = arrayfun(@(x) x.(fld2), f1, 'UniformOutput', 0);
+        X  = cat(2, f2{:});
+end
+end

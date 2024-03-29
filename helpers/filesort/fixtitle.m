@@ -1,16 +1,26 @@
-function ttl = fixtitle(str, ver)
+function ttl = fixtitle(str, vsn)
 %% fixtitle: Fix names of titles for plotting
-% Set ver to 'carrots' to use for CarrotSweeper plotting, leave empty for most
+% Set vsn to 'carrots' to use for CarrotSweeper plotting, leave empty for most
 % other uses.
+if nargin < 2; vsn = 'carrots'; end
 
-if nargin > 1 && isequal(ver, 'carrots')
-    ttl = strrep(str, '_', '\_');
-    ttl = strrep(ttl, '^', '\^');
-    ttl = strrep(ttl, '{', '|');
-    ttl = strrep(ttl, '}', '|');
-    ttl = strrep(ttl, '+', ' ');
-else
-    ttl = strrep(str, '_', '|');
-    ttl = strrep(ttl, '^', '|');
+switch vsn
+    case 'carrots'
+        ttl = strrep(str, '_', '\_');
+        ttl = strrep(ttl, '^', '\^');
+        ttl = strrep(ttl, '{', '|');
+        ttl = strrep(ttl, '}', '|');
+        ttl = strrep(ttl, '+', ' ');
+    case 'hypoquantyl'
+        ttl = strrep(str, '_', '|');
+        ttl = strrep(ttl, '^', '|');
+    case 'other'
+        ttl = strrep(str, '_', ' ');
+        ttl = strrep(ttl, '^', '\^');
+        ttl = strrep(ttl, '{', '|');
+        ttl = strrep(ttl, '}', '|');
+        ttl = strrep(ttl, '+', ' ');
+    case 'file'
+        ttl = strrep(str, ' ', '_');
 end
 end

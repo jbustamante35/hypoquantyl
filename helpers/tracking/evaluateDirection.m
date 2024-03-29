@@ -1,10 +1,11 @@
-function [toFlip , eout , fout , fnm] = evaluateDirection(img, bpredict, zpredict, cpredict, mline, mscore, msample, fidx, sav, v)
+function [toFlip , eout , fout , fnm] = evaluateDirection(img, bpredict, zpredict, cpredict, mline, mscore, msample, seg_lengths, fidx, sav, v)
 %% evaluateFirstFrame: check direction image is facing
 %
 %
 % Usage:
-%   [toFlip , eout , fout  , fnm] = evaluateDirection(img, bpredict, zpredict, ...
-%       cpredict, mline, msample, mcnv, mgrade, fidx, sav, v)
+%   [toFlip , eout , fout , fnm] = evaluateDirection(img, bpredict, ...
+%       zpredict, cpredict, mline, mscore, msample, seg_lengths, fidx, sav, v)
+%
 %
 % Input:
 %   img:
@@ -12,9 +13,9 @@ function [toFlip , eout , fout , fnm] = evaluateDirection(img, bpredict, zpredic
 %   zpredict:
 %   cpredict:
 %   mline:
+%   mscore:
 %   msample:
-%   mcnv:
-%   mgrade:
+%   seg_lengths:
 %   fidx:
 %   sav:
 %   v:
@@ -24,12 +25,12 @@ function [toFlip , eout , fout , fnm] = evaluateDirection(img, bpredict, zpredic
 %   eout:
 %   fout:
 %   fnm:
-%
 
 %%
-if nargin < 9;  fidx = 0; end
-if nargin < 10; sav  = 0; end
-if nargin < 11; v    = 0; end
+if nargin < 8;  seg_lengths = [53 , 51 , 53 , 52]; end
+if nargin < 9;  fidx        = 0;                   end
+if nargin < 10; sav         = 0;                   end
+if nargin < 11; v           = 0;                   end
 
 %% Evaluate 1st frame
 if v; tE = tic; fprintf('EVALUATING DIRECTION OF IMAGE\n'); end
@@ -45,7 +46,7 @@ try
     [corg ,  morg , zorg , borg , gorg] = predictFromImage( ...
         iorg, bpredict, zpredict, cpredict, mline, mscore);
 
-    [~ , dorg] = getCurveDirection(corg);
+    [~ , dorg] = getCurveDirection(corg, seg_lengths);
     if v; fprintf('%s | ', dorg); end
 
     if v; fprintf('Sampling Midline | '); end
@@ -67,7 +68,7 @@ try
     [cflp ,  mflp , zflp , bflp , gflp] = predictFromImage( ...
         iflp, bpredict, zpredict, cpredict, mline, mscore);
 
-    [~ , dflp] = getCurveDirection(cflp);
+    [~ , dflp] = getCurveDirection(cflp, seg_lengths);
     if v; fprintf('%s | ', dflp); end
 
     if v; fprintf('Sampling Midline | '); end

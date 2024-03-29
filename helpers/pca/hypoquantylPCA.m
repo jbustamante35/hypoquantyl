@@ -1,10 +1,9 @@
-function [px , py , pz , pp , pm] = hypoquantylPCA(CRVS, sav, varargin)
+function [px , py , pz , pp , pm , pc , pv , pt] = hypoquantylPCA(CRVS, sav, varargin)
 %% hypoquantylPCA: run PCA on x-/y-coordinates and z-vectors
-% Description
-%
+% Perform PCA on various aspects of Curves
 %
 % Usage:
-%   [px , py , pz , pp , pm] = hypoquantylPCA(CRVS, sav, ...
+%   [px , py , pz , pp , pm , pc , pv , pt] = hypoquantylPCA(CRVS, sav, ...
 %       'pcx', pcx, 'pcy', pcy, 'pcz', pcz, 'pcp', pcp, ...
 %       'addMid', addMid, 'zrotate', zrotate, 'rtyp', rtyp, ...
 %       'znorm', znorm, 'zshp', zshp, 'split2stitch', split2stitch)
@@ -50,6 +49,8 @@ function [px , py , pz , pp , pm] = hypoquantylPCA(CRVS, sav, varargin)
 %   py: PCA object from midpoint-normalized y-coordinates
 %   pz: PCA object from Z-Vectors
 %   pp: PCA object from Z-Patches
+%   pc: PCA object for vectorized contours
+%   pv: PCA object for vectorized midlines
 %
 % Author Julian Bustamante <jbustamante@wisc.edu>
 %
@@ -65,21 +66,34 @@ ncrvs = numel(CRVS);
 nsegs = CRVS(1).NumberOfSegments;
 
 % Separator strings
-[~ , sepA , sepB] = jprintf('', 0, 0);
+[~ , sprA , sprB] = jprintf('', 0, 0);
 
 % Set default arguments
 if nargin < 2; sav = 0; end
 
 tAll = tic;
 if iscell(pcz)
-    fprintf('%s\nRunning HypoQuantyl PCA Pipeline [%d %ss | %d pcx | %d pcy | [%d-%d] pcz | %d pcp | %d pcm]\n%s\n', ...
-        sepA, ncrvs, class(CRVS), pcx, pcy, pcz{1}, pcz{2}, pcp, pcm, sepB);
+    fprintf(['%s\nRunning HypoQuantyl PCA Pipeline [%d %ss | %d pcx | ' ...
+        '%d pcy | [%d-%d] pcz | %d pcp | %d pcm]\n%s\n'], ...
+        sprA, ncrvs, class(CRVS), pcx, pcy, pcz{1}, pcz{2}, pcp, pcm, sprB);
 else
-    fprintf('%s\nRunning HypoQuantyl PCA Pipeline [%d %ss | %d pcx | %d pcy | %d pcz | %d pcp | %d pcm]\n%s\n', ...
-        sepA, ncrvs, class(CRVS), pcx, pcy, pcz, pcp, pcm, sepB);
+    fprintf(['%s\nRunning HypoQuantyl PCA Pipeline [%d %ss | %d pcx | ' ...
+        '%d pcy | %d pcz | %d pcp | %d pcm]\n%s\n'], ...
+        sprA, ncrvs, class(CRVS), pcx, pcy, pcz, pcp, pcm, sprB);
 end
 
-[px , py , pz , pp , pm] = deal([]);
+% Extract and Histogram-Normalize Images
+IMGS = arrayfun(@(x) x.getImage('gray', 'upper', fnc, ...
+    [], mbuf, abuf, scl), CRVS, 'UniformOutput', 0);
+if ~isempty(href)
+    hhist = href.Data;
+    hmth  = href.Tag;
+    nbins = href.NumBins;
+    IMGS  = cellfun(@(x) normalizeImageWithHistogram( ...
+        x, hhist, hmth, nbins), IMGS, 'UniformOutput', 0);
+end
+
+[px , py , pz , pp , pm , pc , pv , pt] = deal([]);
 
 %% Split and Midpoint-Normalize x-/y-coordinates [S-Vectors]
 % Rasterize S-Vectors
@@ -103,18 +117,14 @@ jprintf(' ', toc(t), 1, 80 - n);
 % Prepare and Process Z-Vectors
 t = tic;
 n = fprintf('Preparing and Processing Z-Vectors');
-if iscell(pcz)
-    zchk = cat(1, pcz{:});
-else
-    zchk = pcz;
-end
+if iscell(pcz); zchk = cat(1, pcz{:}); else; zchk = pcz; end
 
 if zchk > 0
     midx = round(nsplt / 2);
     rZ   = arrayfun(@(c) c.getZVector(zdims, 'vsn', vsn, 'fnc', fnc, ...
         'addMid', addMid, 'rot', zrotate, 'rtyp', rtyp, 'dpos', dpos, ...
-        'nsplt', nsplt, 'midx', midx, 'bdsp', bdsp, 'mbuf', mbuf, 'scl', scl), ...
-        CRVS, 'UniformOutput', 0);
+        'nsplt', nsplt, 'midx', midx, 'bdsp', bdsp, 'mbuf', mbuf, ...
+        'scl', scl), CRVS, 'UniformOutput', 0);
     Z   = cat(1, rZ{:});
     pz  = zvectorPCA(Z, sav, pcz, nsegs, ncrvs, ...
         addMid, zrotate, rtyp, znorm.pz, zshp.pz, split2stitch);
@@ -145,22 +155,40 @@ t = tic;
 n = fprintf('Generating Midline Patches');
 if pcm > 0
     % Get images and normalize with histogram if given
-    mI = arrayfun(@(x) x.getImage('gray', 'upper', fnc, [], mbuf, abuf, scl), ...
-        CRVS, 'UniformOutput', 0);
-    if ~isempty(hhist)
-        href  = hhist.Data;
-        hmth  = hhist.Tag;
-        nbins = hhist.NumBins;
-        mI    = cellfun(@(x) normalizeImageWithHistogram( ...
-            x, href, hmth, nbins), mI, 'UniformOutput', 0);
-    end
-
     mP = arrayfun(@(x) x.getMidline(mmth, mtyp), CRVS, 'UniformOutput', 0);
-    mp = cellfun(@(i,m) sampleMidline(i,m,0,psz,'full'), ...
-        mI, mP, 'UniformOutput', 0);
+    mp = cellfun(@(i,m) msample(i,m), IMGS, mP, 'UniformOutput', 0);
+    %     mp = cellfun(@(i,m) sampleMidline(i, m, 0, psz, 'full'), ...
+    %         IMGS, mP, 'UniformOutput', 0);
     MP = cellfun(@(x) x(:)', mp, 'UniformOutput', 0);
     MP = cat(1, MP{:});
     pm = mpatchPCA(MP, ncrvs, pcm);
+end
+jprintf(' ', toc(t), 1, 80 - n);
+
+% ---------------------------------------------------------------------------- %
+%% Vectorize and Stitch Contours-Midlines
+t = tic;
+n = fprintf('Generating Contour-Midline Stitching');
+if pcv > 0 && pmv > 0
+    CTRU = arrayfun(@(x) x.getTrace(vsn, fnc, mbuf, scl), ...
+        CRVS, 'UniformOutput', 0);
+    MTRU = arrayfun(@(x) x.getMidline('pca', fnc, mbuf, scl), ...
+        CRVS, 'UniformOutput', 0);
+    MC   = cell2mat(cellfun(@(x) x(:)', CTRU, 'UniformOutput', 0));
+    MM   = cell2mat(cellfun(@(x) x(:)', MTRU, 'UniformOutput', 0));
+
+    [pc , pv] = stitchPCA(MC, MM, ncrvs, pcv, pmv);
+end
+jprintf(' ', toc(t), 1, 80 - n);
+
+% ---------------------------------------------------------------------------- %
+%% Cotyledon Patches
+t = tic;
+n = fprintf('Generating Cotyledon Patches');
+if pct > 0
+    tP = cellfun(@(i,c) tsample(i,c), IMGS, CTRU, 'UniformOutput', 0);
+    TP = cell2mat(cellfun(@(x) x(:)', tP, 'UniformOutput', 0));
+    pt = tpatchPCA(TP, ncrvs, pct);
 end
 jprintf(' ', toc(t), 1, 80 - n);
 
@@ -169,16 +197,20 @@ jprintf(' ', toc(t), 1, 80 - n);
 t = tic;
 n = fprintf('Saving PCA Datasets');
 if sav
-    if ~isempty(px); save([sdir , filesep , px.DataName], '-v7.3', 'px'); end
-    if ~isempty(py); save([sdir , filesep , py.DataName], '-v7.3', 'py'); end
-    if ~isempty(pz); save([sdir , filesep , pz.DataName], '-v7.3', 'pz'); end
-    if ~isempty(pp); save([sdir , filesep , pp.DataName], '-v7.3', 'pp'); end
-    if ~isempty(pm); save([sdir , filesep , pm.DataName], '-v7.3', 'pm'); end
+    pdir = sprintf('%s/pca', SaveDir);
+    if ~isfolder(pdir); mkdir(pdir); pause(0.5); end
+    if ~isempty(px); save([pdir , filesep , px.DataName], '-v7.3', 'px'); end
+    if ~isempty(py); save([pdir , filesep , py.DataName], '-v7.3', 'py'); end
+    if ~isempty(pz); save([pdir , filesep , pz.DataName], '-v7.3', 'pz'); end
+    if ~isempty(pp); save([pdir , filesep , pp.DataName], '-v7.3', 'pp'); end
+    if ~isempty(pm); save([pdir , filesep , pm.DataName], '-v7.3', 'pm'); end
+    if ~isempty(pc); save([pdir , filesep , pc.DataName], '-v7.3', 'pc'); end
+    if ~isempty(pv); save([pdir , filesep , pv.DataName], '-v7.3', 'pv'); end
 end
 jprintf(' ', toc(t), 1, 80 - n);
 
 fprintf('%s\nFinished PCA pipeline on %d %ss [ %.03f sec]\n%s\n', ...
-    sepB, ncrvs, class(CRVS), toc(tAll), sepA);
+    sprB, ncrvs, class(CRVS), toc(tAll), sprA);
 end
 
 function [px , py] = svectorPCA(X, Y, ncrvs, pcx, pcy, znorm, zshp)
@@ -208,8 +240,8 @@ end
 
 if split2stitch
     % Split midpoints from tangent/rotations, then stitch after PCA
-    zmids = Z(:,1:2);
-    ztngs = Z(:,vvec);
+    zmids = Z(:, 1 : 2);
+    ztngs = Z(:, vvec);
     vmids = zVectorConversion(zmids, nsegs, ncrvs, 'prep', addMid, rtyp);
     vtngs = zVectorConversion(ztngs, nsegs, ncrvs, 'prep', addMid, rtyp);
 
@@ -219,7 +251,6 @@ if split2stitch
         'ZScoreNormalize', znorm{1}, 'ZScoreReshape', zshp{1});
     pv  = pcaAnalysis(vtngs, pcz{2}, 0, vnm, ...
         'ZScoreNormalize', znorm{2}, 'ZScoreReshape', zshp{2});
-
     pz = struct('mids', pm, vtyp, pv);
 
     if sav
@@ -257,35 +288,53 @@ mnm = sprintf('mp%dHypocotyls', ncrvs);
 pm  = pcaAnalysis(MP, pcm, 0, mnm);
 end
 
+function [pc , pv] = stitchPCA(MC, MM, ncrvs, pnc, pnv)
+%% Contour-Midline PCA stitching
+cnm = sprintf('cvector%dHypocotyls', ncrvs);
+vnm = sprintf('mvector%dHypocotyls', ncrvs);
+pc  = pcaAnalysis(MC, pnc, 0, cnm);
+pv  = pcaAnalysis(MM, pnv, 0, vnm);
+end
+
+function pt = tpatchPCA(TP, ncrvs, pct)
+%% Cotyledon Patches
+tnm = sprintf('tp%dHypocotyls', ncrvs);
+pt  = pcaAnalysis(TP, pct, 0, tnm);
+end
+
 function args = parseInputs(varargin)
 %% Parse input parameters
+
 p = inputParser;
 p.addOptional('pcx', 6);
 p.addOptional('pcy', 6);
 p.addOptional('pcz', 10);
 p.addOptional('pcp', 10);
 p.addOptional('pcm', 20);
+p.addOptional('pcv', 20);
+p.addOptional('pmv', 20);
+p.addOptional('pct', 3);
 p.addOptional('addMid', 0);
 p.addOptional('zrotate', 0);
 p.addOptional('rtyp', 'rad');
 p.addOptional('dpos', 0);
 p.addOptional('bdsp', 0);
 p.addOptional('mmth', 'nate');
-% p.addOptional('mtyp', 'int');
 p.addOptional('mtyp', 'left');
-p.addOptional('psz', 20);
 p.addOptional('nsplt', 25);
 p.addOptional('znorm', struct('ps', 0, 'pz', 0, 'pp', 0));
-p.addOptional('zshp', struct('ps', 0, 'pz', 0, 'pp', 0));
+p.addOptional('zshp',  struct('ps', 0, 'pz', 0, 'pp', 0));
 p.addOptional('split2stitch', 0);
-p.addOptional('sdir', pwd);
+p.addOptional('msample', []);
+p.addOptional('tsample', []);
+p.addOptional('SaveDir', pwd);
 p.addOptional('zdims', 1 : 4);
 p.addOptional('vsn', 'Clip');
 p.addOptional('fnc', 'left');
 p.addOptional('mbuf', 0);
 p.addOptional('abuf', 0);
 p.addOptional('scl', 1);
-p.addOptional('hhist', []);
+p.addOptional('href', []);
 
 % Parse arguments and output into structure
 p.parse(varargin{1}{:});

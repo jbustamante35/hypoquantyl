@@ -51,13 +51,23 @@ try
     fprintf('Nd class == %s\n\n', ndclass);
 
     %% Function Handles
-    [bpredict , ~ , zpredict , zcnv, cpredict , mline , mscore , sopt , mmaster , msample] = ...
-        loadSegmentationFunctions(pz, pdp, pdx, pdy, pdw, ...
-        pm, Nz, Nd, Nb, 'seg_lengths', seg_lengths, 'toFix', toFix, ...
-        'bwid', bwid, 'psz', psz, 'nopts', nopts, 'tolfun', tolfun, ...
-        'tolx', tolx, 'z2c', z2c, 'par', par, 'vis', vis);
-
+%     [bpredict , ~ , zpredict , zcnv , cpredict , mline , mscore , ...
+%         sopt , ~, msample] = loadSegmentationFunctions( ...
+%         pz, pdp, pdx, pdy, pdw, pm, Nz, Nd, Nb, 'par', par, ...
+%         'vis', vis, 'seg_lengths', seg_lengths, 'psz', psz, ...
+%         'toFix', toFix, 'npxy', npxy, 'npw', npw, 'bwid', bwid, ...
+%         'nopts', nopts, 'tolfun', tolfun, 'tolx', tolx, ...
+%         'myShps', myShps, 'zoomLvl', zoomLvl, ...
+%         'mpts', mpts, 'mmth', mmth, 'mparams', mparams);
     % ------------------------------------------------------------------------ %
+    %% Normalize by histogram if given
+    if ~isempty(href)
+        hhist = href.Data;
+        hmth  = href.Tag;
+        nbins = href.NumBins;
+        img   = normalizeImageWithHistogram(img, hhist, hmth, nbins);
+    end
+
     %% Evaluate 1st frame and get initial guess or force a direction
     tE = tic;
     fprintf('Evaluating direction | ');
@@ -65,7 +75,7 @@ try
     if isempty(toFlip)
         % Compare both grade for both directions
         [toFlip , eout , fout] = evaluateDirection(img, bpredict, zpredict, ...
-            cpredict, mline, mscore, msample, fidx, sav, vis);
+            cpredict, mline, mscore, msample, seg_lengths, fidx, sav, vis);
 
         % Get initial guesses
         img   = eout.img;
@@ -76,7 +86,8 @@ try
         ginit = eout.gpre;
         hkeep = eout.keep;
 
-        fprintf('DONE! - keep %s [%.03f sec]\n\n', hkeep, toc(tE));
+        fprintf('DONE! - keep %s (score %.03f) [%.03f sec]\n\n', ...
+            hkeep, ginit, toc(tE));
     else
         % Use defined direction
         hkeep = 'original';
@@ -88,13 +99,12 @@ try
         [cinit , minit , zinit , binit] = predictFromImage(img, ...
             bpredict, zpredict, cpredict, mline);
 
-        ginit = mgrade(mcnv(msample(img, minit)));
+        ginit = mscore(img, minit);
         fprintf('Forcing %s direction [%.03f sec]\n\n', hkeep, toc(tE));
     end
 
     % ------------------------------------------------------------------------ %
     %% Run Optimizer
-    %     [copt , mopt , zopt , bopt , gopt] = deal([]); % Empty if no optimization
     if nopts
         % Minimization of M-Patch PC scores
         t = tic;
@@ -106,9 +116,10 @@ try
             bpredict, zpredict, cpredict, mline, zopt);
 
         % Grade optimized result
-        gopt = mgrade(mcnv(msample(img, mopt)));
+        gopt = mscore(img, mopt);
 
-        fprintf('DONE! [%.03f sec] | %d x %d | %d x %d | %d x %d | %.02f -> %.02f |\n', ...
+        fprintf(['DONE! [%.03f sec] | %d x %d | %d x %d | ' ...
+            '%d x %d | %.02f -> %.02f |\n'], ...
             toc(t), size(copt), size(mopt), size(zopt), ginit, gopt);
     else
         % Just use initial guess as 'optimized'
@@ -123,14 +134,18 @@ try
     %% Flip Contour and Midline if using flipped image
     if toFlip
         % Flip Z-Vectors, Contours, Midlines
-        cflps = cellfun(@(x) flipAndSlide(x, seg_lengths), ...
-            {cinit , copt}, 'UniformOutput', 0);
-        mflps = cellfun(@(x) flipLine(x, seg_lengths(end)), ...
-            {minit , mopt}, 'UniformOutput', 0);
+        %         sld   = seg_lengths(end) * scl;
+        isz   = size(img,1);
+        %         cflps = cellfun(@(x) flipAndSlide(x, seg_lengths, 0, scl), ...
+        %             {cinit , copt, fout.cpre}, 'UniformOutput', 0);
+        cflps = cellfun(@(x) flipAndSlide(x, seg_lengths, isz), ...
+            {cinit , copt, fout.cpre}, 'UniformOutput', 0);
+        mflps = cellfun(@(x) flipLine(x, isz), ...
+            {minit , mopt, fout.mpre}, 'UniformOutput', 0);
         zflps = cellfun(@(x) contour2corestructure(x), ...
             cflps, 'UniformOutput', 0);
-        bflps = cellfun(@(x) flipLine(x, seg_lengths(end)), ...
-            {binit , bopt}, 'UniformOutput', 0);
+        bflps = cellfun(@(x) flipLine(x, isz), ...
+            {binit , bopt, fout.bpre}, 'UniformOutput', 0);
 
         % Replace re-flipped curves
         zinit = zflps{1};
@@ -141,12 +156,17 @@ try
         copt  = cflps{2};
         mopt  = mflps{2};
         bopt  = bflps{2};
+
+        fout.zpre  = zflps{3};
+        fout.cpre  = cflps{3};
+        fout.mpre  = mflps{3};
+        fout.bpre  = bflps{3};
     end
 
     % ------------------------------------------------------------------------ %
     %% Output if good
     init   = struct('z', zinit, 'c', cinit, 'm', minit, 'b', binit, 'g', ginit); % Initial Guesses
-    opt    = struct('z', zopt,  'c', copt,  'm', mopt,  'b', bopt,  'g', gopt);  % Optimized    
+    opt    = struct('z', zopt,  'c', copt,  'm', mopt,  'b', bopt,  'g', gopt);  % Optimized
     err    = [];
     isgood = true;
 
@@ -176,6 +196,11 @@ catch err
         opt = struct('z', [],  'c', [],  'm', [],  'b', [],  'g', []);
     end
 
+    % Make flipped just so no errors
+    if isempty(find(strcmp('flp', aa), 1))
+        flp = struct('z', [],  'c', [],  'm', [],  'b', [],  'g', []);
+    end
+
     isgood = false;
     fprintf(2, '\n%s\n\n', err.getReport);
 end
@@ -187,8 +212,8 @@ out  = struct('info', info, 'init', init, 'opt', opt, 'flp', flp, ...
     'err', err, 'isgood', isgood);
 
 if sav
-    mkdir('output');
-    outnm = sprintf('output/%s_results_upper', tdate);
+    if ~isfolder(ddir); mkdir(ddir); end
+    outnm = sprintf('%s/%s_results_upper', ddir, tdate);
     save(outnm, '-v7.3', 'out');
 end
 end
@@ -198,35 +223,58 @@ function args = parseInputs(varargin)
 p = inputParser;
 
 % Model Options
-p.addOptional('Nz', 'znnout');
-p.addOptional('Nd', 'dnnout');
-p.addOptional('Nb', 'bnnout');
 p.addOptional('pz', 'pz');
-p.addOptional('pm', 'pm');
 p.addOptional('pdp', 'pdp');
 p.addOptional('pdx', 'pdx');
 p.addOptional('pdy', 'pdy');
 p.addOptional('pdw', 'pdw');
+p.addOptional('pm', 'pm');
+p.addOptional('Nz', 'znnout');
+p.addOptional('Nd', 'dnnout');
+p.addOptional('Nb', 'bnnout');
 
 % Optimization Options
-p.addOptional('nopts', 100);
 p.addOptional('ncycs', 1);
+p.addOptional('nopts', 100);
+p.addOptional('mbuf', 0);
+p.addOptional('scl', 1);
+p.addOptional('toFlip', []);
+p.addOptional('keepBoth', 0);
+
+% Segmentation Function Handles
+p.addOptional('bpredict', []);
+p.addOptional('zpredict', []);
+p.addOptional('cpredict', []);
+p.addOptional('mline', []);
+p.addOptional('mscore', []);
+p.addOptional('sopt', []);
+p.addOptional('msample', []);
+
+% Segmentation Function Options
+p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
+p.addOptional('ymin', 10);
 p.addOptional('bwid', 0.5);
 p.addOptional('psz', 20);
+p.addOptional('npxy', []);
+p.addOptional('npw', []);
 p.addOptional('toFix', 0);
-p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
-
-% Miscellaneous Options
-p.addOptional('path2subs', 0);
-p.addOptional('z2c', 0);
 p.addOptional('tolfun', 1e-4);
 p.addOptional('tolx', 1e-4);
+p.addOptional('z2c', 0);
+p.addOptional('myShps', [2 , 3 , 4]);
+p.addOptional('zoomLvl', [0.5 , 1.5]);
+p.addOptional('mpts', 50);
+p.addOptional('mmth', 'nate');
+p.addOptional('mparams', [5 , 3 , 0.1]);
+
+% Miscellaneous Options
+p.addOptional('href', []);
+p.addOptional('path2subs', 0);
 p.addOptional('fidx', 0);
 p.addOptional('par', 0);
 p.addOptional('vis', 0);
 p.addOptional('sav', 0);
-p.addOptional('toFlip', []);
-p.addOptional('keepBoth', 0);
+p.addOptional('ddir', 'output');
 
 % Information Options
 p.addOptional('GenotypeName', 'genotype');

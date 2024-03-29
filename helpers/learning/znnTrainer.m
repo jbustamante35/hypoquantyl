@@ -1,4 +1,4 @@
-function [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, pc, varargin)
+function [ZIN , ZOUT] = znnTrainer(IMGS, ZSCRS, splts, pc, varargin)
 %% znnTrainer: CNN to predict Z-Vector slices given grayscale images
 % This function runs a convolution neural net on image stacks to train these
 % images to learn a single PC score. This function was meant to be used in a
@@ -11,7 +11,7 @@ function [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, pc, varargin)
 % from that model on the training, validation, and testing datasets.
 %
 % Usage:
-%   [IN, OUT] = znnTrainer(IMGS, ZSCRS, splts, pc, varargin)
+%   [IN , OUT] = znnTrainer(IMGS, ZSCRS, splts, pc, varargin)
 %
 % Input:
 %   SCRS: PCA scores of Z-Vector data set [N pcz]
@@ -91,7 +91,7 @@ switch Parallel
         exenv = 'multi-gpu';
     otherwise
         fprintf(2, 'Incorrect Option %d [0|1|2]\n', par);
-        [IN , OUT] = deal([]);
+        [ZIN , ZOUT] = deal([]);
         return;
 end
 
@@ -105,7 +105,7 @@ switch Visualize
         vis = 'training-progress';
     otherwise
         fprintf(2, 'Incorrect Option %d [0|1|2]\n', par);
-        [IN , OUT] = deal([]);
+        [ZIN , ZOUT] = deal([]);
         return;
 end
 
@@ -159,21 +159,16 @@ jprintf(' ', toc(t), 1, 80 - sum(n1,n2));
 t = tic;
 n = fprintf('Saving initial training');
 
-IN  = struct('ZSCRS', ZSCRS, 'zinn', cnnY);
-OUT = struct('SplitSets', splts, 'Net', znet);
+ZIN  = struct('zinn', cnnY);
+ZOUT = struct('Net', znet);
 
 % Save results in structure
 if Save
-    pdir = sprintf('zvector_training/pcs');
-
-    if ~isfolder(pdir)
-        mkdir(pdir);
-        pause(0.5);
-    end
-
+    pdir = sprintf('%s/zvector', SaveDir);
+    if ~isfolder(pdir); mkdir(pdir); pause(0.5); end
     pnm  = sprintf('%s/%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
         pdir, tdate, NCRVS, pc, PCZ);
-    save(pnm, '-v7.3', 'IN', 'OUT');
+    save(pnm, '-v7.3', 'ZIN', 'ZOUT');
 end
 
 jprintf(' ', toc(t), 1, 80 - n);
@@ -188,11 +183,10 @@ ypre = double(znet.predict(IMGS));
 yerr = mean((ZSCRS - ypre).^2, 1) .^ 0.5;
 
 % Compute error of validation set (if given)
+[valPre , valErr] = deal([]);
 if ~isempty(Vimgs)
     valPre = znet.predict(Vimgs);
     valErr = mean((Vscrs - valPre).^2, 1) .^ 0.5;
-else
-    valErr = [];
 end
 
 jprintf(' ', toc(t), 1, 80 - n);
@@ -203,16 +197,17 @@ jprintf(' ', toc(t), 1, 80 - n);
 t = tic;
 n = fprintf('Saving final outputs');
 
-IN  = struct('ZSCRS', ZSCRS, 'zinn', cnnY);
-OUT = struct('SplitSets', splts, 'Predictions', ypre, 'Error', yerr, ...
-    'Net', znet, 'ValErr', valErr);
+ZIN  = struct('zinn', cnnY);
+ZOUT = struct('Predictions', ypre, 'Error', yerr, 'Net', znet, ...
+    'ValPredictions', valPre, 'ValErr', valErr);
 
 % Save results in structure
 if Save
-    pdir = sprintf('zvector_training');
+    pdir = sprintf('%s/zvector', SaveDir);
+    if ~isfolder(pdir); mkdir(pdir); pause(0.5); end
     pnm  = sprintf('%s/%s_ZScoreCNN_%dContours_pc%02dof%02d', ...
         pdir, tdate, NCRVS, pc, PCZ);
-    save(pnm, '-v7.3', 'IN', 'OUT');
+    save(pnm, '-v7.3', 'ZIN', 'ZOUT');
 end
 
 jprintf(' ', toc(t), 1, 80 - n);
@@ -222,8 +217,6 @@ end
 
 function args = parseInputs(varargin)
 %% Parse input parameters
-% Need descriptions for all these parameters
-% pcaX, pcaY, dim2chg, mns, eigs, scrs, pc2chg, upFn, dwnFn, stp, f
 
 p = inputParser;
 p.addOptional('FltRng', 7);
@@ -236,6 +229,7 @@ p.addOptional('ILRate', 1e-4);
 p.addOptional('Vimgs', []);
 p.addOptional('Vscrs', []);
 p.addOptional('Save', 0);
+p.addOptional('SaveDir', pwd);
 p.addOptional('Parallel', 0);
 p.addOptional('Verbose', 0);
 p.addOptional('Visualize', 0);

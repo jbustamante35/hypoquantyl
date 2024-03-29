@@ -34,7 +34,6 @@ switch class(PF)
         pdy = PF(2);
 
         if isempty(npcs)
-%             [npx , npy] = deal(pdx.NumberOfPCs);
             npx = pdx.NumberOfPCs;
             npy = pdy.NumberOfPCs;
         else

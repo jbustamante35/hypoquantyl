@@ -15,6 +15,7 @@ function D = getDim(X, n)
 % Output:
 %   D: data from desired dimension defined by n
 %
+if nargin < 2; n = 1; end
 
 try
     if iscell(X)
@@ -26,5 +27,4 @@ try
 catch
     fprintf(2, 'Input should either be cell array or data matrix\n');
 end
-
 end

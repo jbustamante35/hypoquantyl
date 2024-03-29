@@ -43,7 +43,6 @@ switch mth
         nrefs  = size(ref,1);
         dsts   = cell(nrefs, 1);
         getDst = @(c)  sum(c .^ 2, 2) .^ 0.5;
-        %                 getDst = @(c)  sum(c(:,2) .^ 2, 2) .^ 0.5;
         for n = 1 : nrefs
             % Distance along tangents and normals in each reference frame
             vdst = arrayfun(@(x) (squeeze(affs(n,:,:)) * [trg(x,:) , 1]')', ...
@@ -52,12 +51,6 @@ switch mth
 
             % If normal vector is negative, set distance to infinity
             vdst(vdst(:,2) < 0, 2) = inf;
-
-            % If tangent is > 1 times the normal, set distance to infinity
-            %             rat = vdst(:,2) .* (abs(vdst(:,1)) .^ -1);
-            %             thrsh = 2;
-            %             vdst(rat < thrsh, 1) = inf;
-            %             vdst(abs(vdst(:,1)) > vdst(:,2), 1) = inf;
 
             % Compute length of vector
             dsts{n} = getDst(vdst(:,1:2));
@@ -79,11 +72,7 @@ switch mth
         ext = extendCurve(trg, ref, v.tx, scl, esz, rot);
 
         % Define point of extension
-        if rot
-            ept = 3 * esz;
-        else
-            ept = esz;
-        end
+        if rot; ept = 3 * esz; else; ept = esz; end
 
         % Re-snap points on extended curve to end of original curve
         [snp , idx]   = snap2curve(ref, ext, 'affs');

@@ -1,4 +1,4 @@
-function msk = crds2mask(img, crd, buff, keep_org_size)
+function msk = crds2mask(img, crds, buff, keep_org_size)
 %% crds2mask: create logical mask with input coordinates set to true
 % This function sets up a probability distribution matrix by creating a logical
 % mask where pixels containing a contour are set to true.
@@ -16,15 +16,13 @@ function msk = crds2mask(img, crd, buff, keep_org_size)
 %
 
 %%
-if nargin < 3
-    buff          = 2;
-    keep_org_size = 1;
-end
+if nargin < 3; buff          = 2; end
+if nargin < 4; keep_org_size = 1; end
 
 %% Convert coordinates to integers if needed
-if ~startsWith(class(crd), 'int')
-    crd           = floor(crd);
-    crd(crd == 0) = 1;
+if ~startsWith(class(crds), 'int')
+    crds           = floor(crds);
+    crds(crds == 0) = 1;
 end
 
 %% Create mask and set coordinates to true
@@ -41,22 +39,20 @@ orgSize = size(img);
 msk     = createMask(orgSize, buff);
 
 try
-    idx = sub2ind(size(msk), crd(:,2), crd(:,1));
+    idx = sub2ind(size(msk), crds(:,2), crds(:,1));
 catch
     % Subtract y-coordinates by size of out-of-bounds coordinates
     % Should this subtract both x-/y-coordinates?
-    crd_max = mode(crd(crd(:,2) == max(crd(:,2)), 2) - org(2));
+    crd_max = mode(crds(crds(:,2) == max(crds(:,2)), 2) - org(2));
     org(2)  = org(2) - crd_max;
-    crd     = slideCoords(crd, org);
-    idx     = sub2ind(size(msk), crd(:,2), crd(:,1));
+    crds    = slideCoords(crds, org);
+    idx     = sub2ind(size(msk), crds(:,2), crds(:,1));
 end
 
 msk(idx) = true;
 
 % Reduce final mask to size of original image
-if keep_org_size
-    msk = msk(1 : orgSize(1) , 1 : orgSize(2));
-end
+if keep_org_size; msk = msk(1 : orgSize(1) , 1 : orgSize(2)); end
 end
 
 function m = createMask(sz, buff)
@@ -65,13 +61,8 @@ function m = createMask(sz, buff)
 % Input:
 %   sz: size of original image
 %   buff: number pixels to buffer by
-if buff > 0
-    b = floor(sz * buff);
-    m = zeros(b);
-else
-    b = floor(sz);
-    m = zeros(b);
-end
+if buff; b = floor(sz * buff); else; b = floor(sz); end
+m = zeros(b);
 end
 
 function c = slideCoords(crd, org)

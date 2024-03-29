@@ -56,5 +56,11 @@ fIdx = cell2mat(cellfun(@(r,h) M(r(ismember(r, h))), ...
     rIdx, hIdx, 'UniformOutput', 0));
 
 %% Combine indices to get final output matrix
-I = unique(sortrows([gIdx , sIdx , fIdx]), 'rows', 'stable');
+try
+    I = unique(sortrows([gIdx , sIdx , fIdx]), 'rows', 'stable');
+catch
+    % Try transposing seedling indices
+    sIdx = sIdx';
+    I    = unique(sortrows([gIdx , sIdx , fIdx]), 'rows', 'stable');
+end
 end

@@ -1,11 +1,11 @@
-function [cpre ,  mpre , zpre , bpre , gpre , citrs] = predictFromImage(img, bpredict, zpredict, cpredict, mline, mscore, bpre, zpre, toStruct, addbvec, cidx, ymin)
+function [cpre ,  mpre , zpre , bpre , gpre , citrs] = predictFromImage(img, bpredict, zpredict, cpredict, mline, escore, bpre, zpre, toStruct, addbvec, cidx, ymin)
 %% predictFromImage:
 %
 %
 % Usage:
-%   [cpre ,  mpre , zpre , bpre , gpre , citrs] = predictFromImage( ...
-%       img, bpredict, zpredict, cpredict, mline, mscore, zpre, toStruct, ...
-%       nobvec, cidx, ymin)
+%   [cpre ,  mpre , zpre , bpre , gpre , citrs] = predictFromImage(img, ...
+%       bpredict, zpredict, cpredict, mline, escore, bpre, zpre, ...
+%       toStruct, addbvec, cidx, ymin)
 %
 % Input:
 %   img: image to predict [does not normalize]
@@ -13,8 +13,9 @@ function [cpre ,  mpre , zpre , bpre , gpre , citrs] = predictFromImage(img, bpr
 %   zpredict: model to predict Z-Vector
 %   cpredict: model to predict contour
 %   mline: function handle to generate midline from contour
-%   mscore: function handle to score prediction
-%   z: initial Z-Vector seed (must be B-Vector subtracted) [default []]
+%   escore: function handle to score prediction
+%   bpre: initial B-Vector seed [default []]
+%   zpre: initial Z-Vector seed (must be B-Vector subtracted) [default []]
 %   toStruct: if single output, store into structure [default 0]
 %   addbvec: don't add back B-Vector to Z-Vector (when I screw up) [default 0]
 %   cidx: index to use as label [turns on verbosity]
@@ -41,8 +42,7 @@ if nargin < 12; ymin     = 10; end
 isz   = size(img,1);
 wrows = isz - ymin : isz;
 
-[~ , sprA , sprB]            = jprintf(' ', 0, 0, 80);
-% [bpre ,  cpre , mpre , gpre] = deal([]);
+[~ , sprA , sprB]    = jprintf(' ', 0, 0, 80);
 [cpre , mpre , gpre] = deal([]);
 
 % ---------------------------------------------------------------------------- %
@@ -86,6 +86,7 @@ try
     % Generate midline
     if cidx; t = tic; n = fprintf('Midline [%03d]', cidx); end
     mpre = mline(cpre);
+    bpre = mpre(1,:);
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
 catch e
     fprintf(2, '\n%s\nError generating midline\n%s\n%s\n%s\n\n', ...
@@ -96,7 +97,7 @@ end
 try
     % Grade prediction
     if cidx; t = tic; n = fprintf('Grade [%03d]', cidx); end
-    gpre = mscore(img, mpre);
+    gpre = escore(img, cpre);
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
 catch e
     fprintf(2, '\n%s\nError grading prediction\n%s\n%s\n%s\n\n', ...
