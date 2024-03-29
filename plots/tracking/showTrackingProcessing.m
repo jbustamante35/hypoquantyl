@@ -13,6 +13,7 @@ function showTrackingProcessing(v, r, ttl, fidx, fdims, fblu, vaxis, raxis, fsz,
 %   vaxis: limit range for velocity figure
 %   raxis: limit range for regr figure
 
+%%
 if nargin < 1;  v     = [];          end
 if nargin < 2;  r     = [];          end
 if nargin < 3;  ttl   = [];          end
