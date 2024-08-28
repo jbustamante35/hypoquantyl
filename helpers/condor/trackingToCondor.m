@@ -47,6 +47,7 @@ tA = tic;
 fprintf(['\n\n%s\n%s\n%s\n\t\t\t\t\t\tMIDLINE TRACKER 3.0\n' ...
     '%s\n%s\n%s\n\n\n\n'], sprA, sprB, sprA, sprA, sprB, sprA);
 
+finit = ffrm;
 nsdls = numel(GIMGS);
 TRACK = cell(nsdls, 1);
 for nidx = 1 : nsdls
@@ -57,7 +58,7 @@ for nidx = 1 : nsdls
     gidx  = GIDXS(nidx);
     sidx  = SIDXS(nidx);
 
-    if isempty(ffrm); ffrm = size(gimgs,1) - 1; end
+    if isempty(finit); ffrm = size(gimgs,1) - 1; end
     nfrms = numel(ifrm : ffrm);
 
     % ------------------------------------------------------------------------ %

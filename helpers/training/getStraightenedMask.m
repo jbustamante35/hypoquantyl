@@ -29,11 +29,16 @@ try
     % Set unit length vector to place outer boundary
     tng  = gradient(crds')';
     d2e  = sum((tng .* tng), 2).^(-0.5);
-    ulng = bsxfun(@times, tng, d2e) * SCL;
+%     ulng = bsxfun(@times, tng, d2e) * SCL;
+    tng  = bsxfun(@times, tng, d2e);
+    nrm  = [-tng(:,2) , tng(:,1)];
+    ulng = nrm * SCL;
 
     % Compute distances from midline points to edge of envelope
-    bndsOut = [-ulng(:,2) , ulng(:,1)] + crds;
-    bndsInn = [ulng(:,2) , -ulng(:,1)] + crds;
+    %     bndsOut = [-ulng(:,2) , ulng(:,1)] + crds;
+    %     bndsInn = [ulng(:,2) , -ulng(:,1)] + crds;
+    bndsOut = ulng + crds;
+    bndsInn = -ulng + crds;
 
     %% Map curves to image
     [envO, datO] = map2img(img, crds, bndsOut, SCL, BNZ, BG);
@@ -84,6 +89,7 @@ end
 env = reshape(mapimg, sz);
 
 % Extra data for visualization or debugging
-edata = struct('eCrds', eCrds, 'eGrid', eGrid, 'GridSize', size(eGrid));
+edata = struct('eCrds', eCrds, 'eGrid', eGrid, ...
+    'eBnds', ebnds, 'GridSize', size(eGrid));
 end
 

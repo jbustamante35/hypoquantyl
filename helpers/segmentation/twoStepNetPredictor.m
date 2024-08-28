@@ -1,4 +1,4 @@
-function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, zseed, v)
+function [Cntr , Znrms , Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy, Nz, Ns, zseed, v)
 %% twoStepNetPredictor: the two-step neural net to predict hypocotyl contours
 % This function runs the full pipeline for the 2-step neural net algorithm that
 % returns the x-/y-coordinate segments in the image reference frame from a given
@@ -17,7 +17,7 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy
 % Predict S-Vector scores from Z-Vector slices
 %
 % Usage:
-%   [Cntr, Znrms, Simg] = twoStepNetPredictor( ...
+%   [Cntr , Znrms , Simg] = twoStepNetPredictor( ...
 %                           img, px, py, pz, pp, Nz, Ns, zseed, v)
 %
 % Input:
@@ -40,9 +40,7 @@ function [Cntr, Znrms, Simg] = twoStepNetPredictor(img, px, py, pz, pp, psx, psy
 %   Cntr: the continous contour generated from the segments [not implemented]
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if nargin < 11
-    v = 0;
-end
+if nargin < 11; v = 0; end
 
 %% Run the pipeline!
 if isempty(zseed)
@@ -83,9 +81,7 @@ function Znrms = zScrsFromImage(img, Nz, pz, v)
 %
 
 %%
-if nargin < 4
-    v = 0;
-end
+if nargin < 4; v = 0; end
 
 pcz = size(pz.EigVecs,2);
 

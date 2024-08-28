@@ -530,10 +530,15 @@ classdef Genotype < handle
             dsp = sprintf('%s | %d Seedlings | %d Frames', gnm, nsdls, nfrms);
         end
 
-        function setProperty(obj, req, val)
+        function setProperty(obj, req, val, subreq)
             %% Returns a property of this Genotype object
+            if nargin < 4; subreq = []; end
             try
-                obj.(req) = val;
+                if isempty(subreq)
+                    obj.(req) = val;
+                else
+                    obj.(req).(subreq) = val;
+                end
             catch e
                 fprintf(2, 'Property %s does not exist\n%s\n', ...
                     req, e.message);

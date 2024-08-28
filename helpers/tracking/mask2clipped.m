@@ -4,6 +4,8 @@ function [cout , mout] = mask2clipped(msk, dsz, npts, init, creq, mth, smth, seg
 %
 % Usage:
 %   [cout , mout] = mask2clipped(msk, varargin)
+%   [cout , mout] = mask2clipped(msk, dsz, npts, init, creq, mth, smth, ...
+%       seg_lengths, mline, fidx, itr)
 %
 % Input:
 %   msk: binary mask of lower region

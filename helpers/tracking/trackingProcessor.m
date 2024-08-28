@@ -96,7 +96,7 @@ vpos = cellfun(@(y) cell2mat(arrayfun(@(x) vcat(vcat(:,1) == x, 3), ...
     y, 'UniformOutput', 0)'), fshft, 'UniformOutput', 0);
 ppos = cellfun(@(v,x) [mean(v(end - fmax + 1 : end)) , ki , mean(x) , ni], ...
     vpos, xpos, 'UniformOutput', 0);
-pbak = ppos;
+pbak = ppos; %  flf parameters ([vmax , k , x0 , n])
 
 % ---------------------------------------------------------------------------- %
 %% Fit ranges of arclengths and velocities to FLF function
@@ -116,6 +116,7 @@ for frm = 1 : numel(xpos)
 
     if frm < numel(xpos); ppos{frm+1}([2 , 4]) = oparams([2 , 4]); end
 
+    % Display progress
     if fidx
         frms = fshft{frm};
         xfrm = linspace(0, max(xv(:,1)), max(xv(:,1)));
@@ -153,7 +154,7 @@ pstat.SeedIndex   = SeedlingIndex;
 pstat.Frames      = nfrms;
 pstat.Tracks      = npcts;
 
-% Inputs and Parameters
+% Inputs and FLF Parameters
 pinn.Percentages = ipcts;
 pinn.Window      = vrng;
 pinn.Fmax        = fmax;
@@ -168,7 +169,7 @@ pout.Percent.src   = psrc; % Source Percentages
 pout.Percent.trg   = ptrg; % Tracked Percentages
 pout.Arclength.src = lsrc; % Source Arclengths
 pout.Arclength.trg = ltrg; % Tracked Arclengths
-pout.Params        = U;    % Fit parameters to flf
+pout.Params        = U;    % Fit parameters to flf [vmax , k , x0 , n]
 pout.Profile       = vels; % Velocity per Arclength
 pout.Velocity      = V;    % Velocity
 pout.REGR          = R;    % REGR

@@ -46,6 +46,7 @@ end
 
 %% Run smoothing kernel
 if smth
+    % Use high smoothing values for full-res images
     ksz  = ceil(size(img,1) / smth);
     krnl = ones(ksz) / ksz^2;
     blr  = conv2(msk, krnl, 'same');
