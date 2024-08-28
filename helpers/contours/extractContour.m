@@ -1,9 +1,9 @@
-function [cntr, cout] = extractContour(bw, npts, alt, req, dsz, smth)
+function [cntr , cout] = extractContour(bw, npts, alt, req, dsz, smth)
 %% extractContour: find contour of single image
 % This function blah
 %
 % Usage:
-%   [cntr, cout] = extractContour(bw, npts, alt, req)
+%   [cntr , cout] = extractContour(bw, npts, alt, req)
 %
 % Input:
 %   bw: bw image
@@ -32,9 +32,9 @@ if dsz
 end
 
 %% Get boundaries of inputted bw image
-bndAll   = bwboundaries(bw, 'noholes');
-[~, lrg] = max(cellfun(@numel, bndAll));
-bnds     = fliplr(bndAll{lrg});
+bndAll    = bwboundaries(bw, 'noholes');
+[~ , lrg] = max(cellfun(@numel, bndAll));
+bnds      = fliplr(bndAll{lrg});
 
 % Remove any identical points
 bnds = unique(bnds, 'rows', 'stable');

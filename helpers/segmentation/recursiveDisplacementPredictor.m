@@ -57,11 +57,12 @@ if nargin > 8
     args = parseInputs(varargin);
     for fn = fieldnames(args)'
         feval(@() assignin('caller', cell2mat(fn), args.(cell2mat(fn))));
-    end    
+    end
 else
     LEN             = 25;
     STP             = 1;
-    toRemove        = 1;   
+    %     toRemove        = 1;
+    myShps          = [2 , 3];
     zoomLvl         = [];    % Usually [0.5 , 1.5]
     foldPredictions = 1;     % PCA folding at each iteration
     lastFrmFold     = 1;     % PCA folding at final interation
@@ -75,7 +76,8 @@ nItrs             = numel(pdp.EigVecs);
 allItrs           = 1 : nItrs;
 
 % Domains
-[scls , dom , domSize] = setupParams('toRemove', toRemove, 'zoomLvl', zoomLvl);
+% [scls , dom , domSize] = setupParams('toRemove', toRemove, 'zoomLvl', zoomLvl);
+[scls , dom , domSize] = setupParams('myShps', myShps, 'zoomLvl', zoomLvl);
 
 %% Get initial frame bundle and image patches
 switch v
@@ -99,12 +101,12 @@ if isempty(z)
             % Each iteration
             fprintf('Predicting Tangent Bundle from Image...');
     end
-    
+
     z = predictZvectorFromImage(imgs, Nz, pz, rot, split2stitch, addMid, uLen);
-    
+
     % Initial Z-Vector prediction from image
     Znrms.initial = z;
-    
+
     switch v
         case 1
             % Condense each iteration
@@ -142,7 +144,7 @@ for itr = allItrs
             fprintf('\n%s\nPredicting image from Iteration %d...\n', ...
                 sprA, itr);
     end
-    
+
     % ------------------------------------------------------------------------ %
     %% Predict vector displacements from image patches
     % Fold image patches into PC scores
@@ -156,9 +158,9 @@ for itr = allItrs
             fprintf('%s\nFolding Image Patch into %d PC scores...', ...
                 sprB, size(pdp.EigVecs{itr}, 2));
     end
-    
+
     vprj = pcaProject(x, pdp.EigVecs{itr}, pdp.MeanVals{itr}, 'sim2scr');
-    
+
     switch v
         case 1
             % Condense each iteration
@@ -167,7 +169,7 @@ for itr = allItrs
             % Each iteration
             fprintf('DONE [%.02f sec]\n', toc(t));
     end
-    
+
     % ------------------------------------------------------------------------ %
     %% Run neural net on PC scores of image patches
     switch v
@@ -180,10 +182,10 @@ for itr = allItrs
             fprintf('Predicting %d-D vector from Neural Net...', ...
                 size(pdp.EigVecs{itr}, 1));
     end
-    
+
     netstr = sprintf('N%d', itr);
     ypre   = (Nd.(netstr)(vprj'))';
-    
+
     switch v
         case 1
             % Condense each iteration
@@ -192,7 +194,7 @@ for itr = allItrs
             % Each iteration
             fprintf('DONE [%.02f sec]\n', toc(t));
     end
-    
+
     % ------------------------------------------------------------------------ %
     %% Map and Reshape predictions to image frame
     switch v
@@ -204,9 +206,9 @@ for itr = allItrs
             t = tic;
             fprintf('Reshaping and Mapping back to image frame...');
     end
-    
+
     tshp = computeTargets(ypre, z, false);
-    
+
     switch v
         case 1
             % Condense each iteration
@@ -215,7 +217,7 @@ for itr = allItrs
             % Each iteration
             fprintf('DONE [%.02f sec]\n', toc(t));
     end
-    
+
     % ------------------------------------------------------------------------ %
     %% Smooth predicted targets using PCA on predicted displacement vectors
     if foldPredictions
@@ -229,10 +231,10 @@ for itr = allItrs
                 fprintf('Smoothing %d predictions with %d PCs...', ...
                     size(tshp,1), npc);
         end
-        
+
         % Convert to PC scores, Back-Project, and Reshape for x-/y-coordinates
         tshp = pcaSmooth(tshp, pdx, pdy);
-        
+
         switch v
             case 1
                 % Condense each iteration
@@ -245,7 +247,7 @@ for itr = allItrs
         %% Don't smooth predictions and only take x-/y-coordinates
         tshp = tshp(:,1:2);
     end
-    
+
     % ------------------------------------------------------------------------ %
     %% Create frame bundle from initial predicted contour
     switch v
@@ -257,11 +259,11 @@ for itr = allItrs
             t = tic;
             fprintf('Computing new frame bundle and sampling new patches...');
     end
-    
+
     z = curve2framebundle(tshp); % normalizes length along curve
     %     z = contour2corestructure(tshp);
     x = sampleCorePatches(imgs, z, scls, dom, domSize);
-    
+
     switch v
         case 1
             % Condense each iteration
@@ -270,7 +272,7 @@ for itr = allItrs
             % Each iteration
             fprintf('DONE [%.02f sec]\n', toc(t));
     end
-    
+
     % ------------------------------------------------------------------------ %
     %% Fold at the last iteration
     if itr == nItrs && lastFrmFold
@@ -283,10 +285,10 @@ for itr = allItrs
                 tt = tic;
                 fprintf('Smoothing final iteration with %d PCs...', npc);
         end
-        
+
         % Convert to PC scores, Back-Project, and Reshape for x-/y-coordinates
         tshp = pcaSmooth(tshp, pdx, pdy);
-        
+
         switch v
             case 1
                 % Condense each iteration
@@ -296,13 +298,13 @@ for itr = allItrs
                 fprintf('DONE [%.02f sec]...\n', toc(tt));
         end
     end
-    
+
     % Store each iteration's contour and close it
     Simg{itr} = [tshp ; tshp(1,:)];
-    
+
     switch v
         case 1
-            % Condense each iteration           
+            % Condense each iteration
             fprintf('o');
         case 2
             % Each iteration
@@ -351,7 +353,8 @@ p = inputParser;
 p.addParameter('LEN', 25);
 p.addParameter('STP', 1);
 p.addParameter('DVIS', false);
-p.addParameter('toRemove', 1);
+% p.addParameter('toRemove', 1);
+p.addParameter('myShps', [2 , 3]);
 p.addParameter('zoomLvl', []);
 p.addParameter('foldPredictions', 1);
 p.addParameter('lastFrmFold', 1);

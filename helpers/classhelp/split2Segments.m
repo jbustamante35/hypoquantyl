@@ -36,7 +36,7 @@ switch mth
         wid    = size(trc,2);
         padtrc = double([trc ; trc(1:pad,:)]);
         segF   = im2colF(padtrc, [len , wid], [stp, 1]);
-        segs   = reshape(segF, [len , wid , size(segF,2)]);
+        segs   = reshape(segF, int16([len , wid , size(segF,2)]));
 
         % Re-index so start point is at desired index
         segs = circshift(segs, toCenter - 1, 3); %#ok<NASGU>

@@ -1,7 +1,8 @@
 function D = getDim(X, n)
 %% getDim: returns n-dimension of multi-dimensional data
-% This function is basically just a shortcut for concatenating a cell array and returning the
-% desired dimension. It can also be used for a multi-dimensional data matrix
+% This function is basically just a shortcut for concatenating a cell array 
+% and returning the desired dimension. It can also be used for a 
+% multi-dimensional data matrix.
 %
 % This basically only works for 2D data right now.
 %

@@ -1,8 +1,8 @@
-function F = trackingWhole(gimgs, gmids, npcts, varargin)
-%% trackingWhole: tracking all points through all frames
+function F = trackingWholeCurve(gimgs, gmids, npcts, varargin)
+%% trackingWholeCurve: tracking all points through all frames
 %
 % Usage:
-%   F = trackingWhole(gimgs, gmids, npcts, varargin)
+%   F = trackingWholeCurve(gimgs, gmids, npcts, varargin)
 %
 % Input:
 %   gimgs:

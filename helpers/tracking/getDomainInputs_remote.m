@@ -51,11 +51,11 @@ end
 % ---------------------------------------------------------------------------- %
 %% Remap upper and lower, then stitch midlines
 [gcupp , gmupp] = thumb2full_remote(uimg, simg, hcupp, hmupp, ubox, gbox, ...
-    toFlip, slens, slen);
+    toFlip, slens, slen, mbuf);
 
 if ~isempty(hmlow)
     [gclow , gmlow] = thumb2full_remote(lmsk, simg, hclow, hmlow, lbox, gbox, ...
-        toFlip, slens, slen);
+        toFlip, slens, slen, mbuf);
 else
     [gclow , gmlow] = deal([]);
 end
@@ -91,6 +91,7 @@ p.addOptional('smth', 1);
 p.addOptional('slens', [53 , 52 , 53 , 51]);
 p.addOptional('slen', 51);
 p.addOptional('msz', 50);
+p.addOptional('mbuf', 0);
 p.addOptional('fidx', 0);
 p.addOptional('hcupp', []);
 p.addOptional('hmupp', []);
