@@ -1,8 +1,5 @@
 # From CarrotSweeper
-# Functions and files from CarrotSweeper that need to move to this repository
-## Many of these have copies in HypoQuantyl, but MATLAB seems to take from
-CarrotSweeper instead
-
+# Path to functions and files shared with CarrotSweeper
 /home/jbustamante/Dropbox/EdgarSpalding/projects/carrotsweeper/carrot-straightener/extractIndices.m
 /home/jbustamante/Dropbox/EdgarSpalding/projects/carrotsweeper/carrot-straightener/fixtitle.m
 /home/jbustamante/Dropbox/EdgarSpalding/projects/carrotsweeper/carrot-straightener/generateFullEnvelope.m
