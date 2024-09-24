@@ -30,14 +30,62 @@ to deploy onto the distributed computing servers provided by
 [HTCondor](https://htcondor.org/). Using their servers we have completed
 high-throughput analyses consisting of over 23,000 individual images.
 
-### Highlights:
-- **Input Images:** High-resolution time-lapse images of plant hypocotyls.
-- **Processing Pipeline:** Automated segmentation using machine learning,
-  followed by quantitative growth analysis.
-- **Segmentation Pipeline:** Automated segmentation using machine learning,
-  followed by quantitative growth analysis.
-- **REGR Measurements:** Relative Elemental Growth Rate (REGR), expressed
-  as %/hour, providing detailed insight into growth kinematics.
+### Pipeline Overview:
+1) **Input**: High-resolution time-lapse image sequence of *A. thaliana*
+    hypocotyls *[see example image below]*
+   - Image resolution should be high enough such that natural texture along the
+     seedling are clearly visible
+   - Observed growth between frames should not exceed >20 pixels to ensure
+     accurate tracking*
+   - Filename convention is *condition*_*genotype*_t*frame*.TIF </br>
+     **e.g.** </br>
+     > *blue_cry1_t020.TIF* </br>
+
+     references the 20th frame of a *cry1* mutant under
+     blue light conditions
+   - Directory structure is a directory tree containing inner subfolders
+     organized as so: </br>
+     > &rarr; *condition* </br>
+     >>  &rarr; *genotype* </br>
+     >>>  &rarr; *image stacks* </br>
+     >>>>  &rarr; *image frames* </br>
+
+     **e.g.** </br>
+     > &rarr; [conditions] </br>
+       *dark* </br>
+     >> &rarr; [genotypes]</br>
+        *cry1* </br>
+     >>> &rarr; [image stacks] </br>
+         *001_dark_cry1* </br>
+     >>>> &rarr; [image frames] </br>
+          *dark_cry1_t001.TIF* </br>
+          *dark_cry1_t002.TIF* </br>
+          *dark_cry1_t003.TIF* </br>
+
+2) **Image Processing:** Grayscale thresholding and basic object
+    detection organizes and prepares seedlings for segmentation
+   - Hypocotyls are isolated and split into upper and lower regions
+
+3) **Segmentation Pipeline:** Automated self-correcting segmentation method
+    that implements a two-part machine learning algorithm to generate a contour and
+    its midline from the upper region hypocotyl images.**
+   - **Part 1** of ML segmentation 'seeds' the image with reference points for </br>
+     **Part 2**, which identifies contour points </br>
+   - The quality of the output from **Part 2** is evaluated by a grading
+     function. If the grade does not meet a threshold, it is piped back into
+     the segmentation pipeline to retry with adjusted parameters and
+     re-evaluated. This repeats until the quality threshold is met or after a
+     set number of retries.
+
+4) **REGR Measurements:** Quantitative analysis Relative Elemental Growth Rate (REGR), expressed
+as %/hour, providing detailed insight into growth kinematics.
+
+<p style="font-size: 12px;"><em>
+* 20 pixels was the threshold for our purposes, but the actual limit is*
+*likely much larger* </br>
+** The Segmentation Pipeline is only done on upper region images; lower
+*regions are segmented using basic grayscale thresholding.
+</em></p>
 
 ### Authors
 ##### Main Author
@@ -51,7 +99,8 @@ high-throughput analyses consisting of over 23,000 individual images.
     Department of Botany <br />
 
 #### Acknowledgements
-**Guosheng Wu**: Generated the original image dataset to train models <br />
+**Guosheng Wu**: Generated the original image dataset to train early machine
+learning models <br />
 
 ### License
 MIT license found in [LICENSE](./LICENSE) <br />
@@ -63,7 +112,7 @@ To use **HypoQuantyl**, ensure that your system meets the following
 requirements:
 
 - [**MATLAB Version**](https://www.mathworks.com/support/requirements/previous-releases.html) \
-The tool was developed from **MATLAB R2018a** up to **R2022b**. Earlier
+This tool was developed from **MATLAB R2018a** up to **R2022b**. Earlier
 or later versions may work but not guaranteed.
 
 - **MATLAB Toolboxes:** \

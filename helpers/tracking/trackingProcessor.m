@@ -2,7 +2,7 @@ function [T , lout] = trackingProcessor(finn, winn, npcts, varargin)
 %% trackingProcessor: process tracking data
 %
 % Usage:
-%   [T , lout] = trackingProcessor(ptrg, winn, ipcts, varargin)
+%   [T , lout] = trackingProcessor(finn, winn, npcts, varargin)
 %
 % Input:
 %   finn:
@@ -18,7 +18,7 @@ function [T , lout] = trackingProcessor(finn, winn, npcts, varargin)
 %           ki: [default 0.007]
 %           ni: [default 0.06]
 %
-%       Information Options
+%       Information Options (labeling results)
 %           ExperimentName: [default 'experiment']
 %           GenotypeName: [default 'genotype']
 %           GenotypeIndex: [default 0]
