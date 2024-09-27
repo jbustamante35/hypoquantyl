@@ -1,5 +1,5 @@
 %% HypoQuantyl: main class for running program
-% This class runs the main HypoQuantyl program blah blah blah
+% This class runs the main HypoQuantyl pipeline
 
 classdef HypoQuantyl < handle
     properties (Access = public)
@@ -8,15 +8,15 @@ classdef HypoQuantyl < handle
         AnalysisDate
         Experiments
         NumExperiments
-        
+
     end
-    
+
     properties (Access = private)
         %% Private data for this class
-        
+
     end
-    
-    
+
+
     methods (Access = public)
         %% Constructor and Main methods
         function obj = HypoQuantyl(varargin)
@@ -35,7 +35,7 @@ classdef HypoQuantyl < handle
                 'Experiments',  repmat(Experiment, 0)
                 'NumExperiments', 0};
             obj    = classInputParser(obj, prps, deflts, vargs);
-            
+
             %             narginchk(1, 2);
             %
             %             switch nargin
@@ -52,12 +52,12 @@ classdef HypoQuantyl < handle
             %                     fprintf(2, 'Incorrect arguments');
             %                     return;
             %             end
-            
+
         end
-        
+
     end
-    
-    
+
+
     methods (Access = public)
         %% Main helper methods
         function obj = LoadExperiment(obj, ex)
@@ -69,12 +69,12 @@ classdef HypoQuantyl < handle
                 obj.Experiments(obj.NumExperiments) = ex;
                 obj.NumExperiments                  = obj.NumExperiments + 1;
             end
-            
+
         end
-        
+
     end
-    
-    
+
+
     methods (Access = private)
         %% Private helper methods
         % Set up date string for filename of results
@@ -89,7 +89,7 @@ classdef HypoQuantyl < handle
                     dout = datestr(now, 'dd-mmm-yyyy');
             end
         end
-        
+
     end
-    
+
 end
