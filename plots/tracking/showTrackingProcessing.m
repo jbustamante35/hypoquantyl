@@ -1,4 +1,4 @@
-function showTrackingProcessing(v, r, ttl, fidx, fdims, fblu, vaxis, raxis, fsz, fcnv)
+function fnm = showTrackingProcessing(v, r, ttl, fidx, fdims, fblu, vaxis, raxis, fsz, fcnv)
 %% showTrackingProcessing
 %
 % Usage:
@@ -14,16 +14,16 @@ function showTrackingProcessing(v, r, ttl, fidx, fdims, fblu, vaxis, raxis, fsz,
 %   raxis: limit range for regr figure
 
 %%
-if nargin < 1;  v     = [];          end
-if nargin < 2;  r     = [];          end
-if nargin < 3;  ttl   = [];          end
-if nargin < 4;  fidx  = 1;           end
-if nargin < 5;  fdims = [1 , 2 , 1]; end
-if nargin < 6;  fblu  = 0;           end
-if nargin < 7;  vaxis = [0 , 5];     end
-if nargin < 8;  raxis = [0 , 0.005]; end
-if nargin < 9;  fsz   = [5 , 8 , 8]; end
-if nargin < 10; fcnv  = [];          end
+if nargin < 1;  v     = [];            end
+if nargin < 2;  r     = [];            end
+if nargin < 3;  ttl   = [];            end
+if nargin < 4;  fidx  = 1;             end
+if nargin < 5;  fdims = [1 , 2 , 1];   end
+if nargin < 6;  fblu  = 0;             end
+if nargin < 7;  vaxis = [0 , 0.3 , 4]; end
+if nargin < 8;  raxis = [0 , 8 , 5];   end
+if nargin < 9;  fsz   = [5 , 8 , 8];   end
+if nargin < 10; fcnv  = [];            end
 
 if isempty(v); [ltrp , ftrp] = size(r); else; [ltrp , ftrp] = size(v); end
 lax = 0 : round(ltrp / 4) : ltrp;
@@ -54,10 +54,10 @@ if ~isempty(fcnv)
 
     % Some absurd nonsense to make x-axis look nicer
     ntrp = round(ftrp, 1, 'significant');
-    htrp = round(f2h(ntrp),1);
+    htrp = round(f2h(ntrp,2),1);
     nfax = numel(fax);
-    fax  = h2f(1 : round(htrp / nfax) : htrp);
-    xax  = f2h(fax);
+    fax  = h2f(1 : round(htrp / nfax) : htrp,2);
+    xax  = f2h(fax,2);
 
     xu = 'h';
     yu = 'mm';
@@ -80,7 +80,7 @@ if ~isempty(v)
     imagesc(v);
     colormap jet;
     colorbar;
-    clim(vaxis);
+    clim(vaxis(1:2));
     hold on;
     plt(blu, 'r-', fsz(1));
     xlabel(xlbl, 'FontWeight', 'b', 'FontSize', fsz(2));
@@ -92,7 +92,7 @@ if ~isempty(v)
 
     setAxis(fidx, fsz(2), 'b');
 
-    vax = vaxis(1) : 1 : vaxis(2);
+    vax = interpolateVector(vaxis(1:2), vaxis(3));
     cb  = colorbar;
     cb.FontWeight = 'b';
     cb.FontSize   = fsz(3);
@@ -110,7 +110,7 @@ if ~isempty(r)
     imagesc(r);
     colormap jet;
     colorbar;
-    clim(raxis);
+    clim(raxis(1:2));
     hold on;
     plt(blu, 'r-', fsz(1));
     xlabel(xlbl, 'FontWeight', 'b', 'FontSize', fsz(2));
@@ -122,7 +122,7 @@ if ~isempty(r)
 
     setAxis(fidx, fsz(2), 'b');
 
-    rax = round(raxis(1) : raxis(2) / 5 : raxis(2), 3);
+    rax = interpolateVector(raxis(1:2), raxis(3));
     cb  = colorbar;
     cb.FontWeight = 'b';
     cb.FontSize   = fsz(3);
@@ -131,4 +131,6 @@ if ~isempty(r)
     xticklabels(xax);
     yticklabels(yax);
 end
+
+fnm = sprintf('%s_velocity_regr_results', tdate);
 end

@@ -15,8 +15,8 @@ function [T , lout] = trackingProcessor(finn, winn, npcts, varargin)
 %           othr: [default 3]
 %           vrng: [default 10]
 %           fmax: [default 20]
-%           ki: [default 0.007]
-%           ni: [default 0.06]
+%           ki: [default 0.02]
+%           ni: [default 0.3]
 %
 %       Information Options (labeling results)
 %           ExperimentName: [default 'experiment']
@@ -55,9 +55,6 @@ lsrc  = flipud(cat(2, lsrc{:}));
 lsrc  = interpolateGrid(lsrc, 'fsmth', smth);
 
 % Get target percentages from spots and convert to lengths along midline
-% ptrg = interpolateGrid(ptrg, 'fsmth', smth);
-% ptrg = [ipcts' , ptrg];
-% ptrg = [zeros(1, nfrms + 1) ; ptrg(2 : end - 1, :) ; ones(1, nfrms + 1)];
 ptrg = [zeros(1, nfrms) ; ptrg(2 : end - 1, :) ; ones(1, nfrms)];
 ltrg = arrayfun(@(y) arrayfun(@(x) winn(y).calculatelength(ptrg(x,y-1), 1), ...
     (1 : npcts)'), 2 : nfrms + 1, 'UniformOutput', 0);
@@ -84,9 +81,7 @@ fshft = cellfun(@(x) x(1 : vrng), fshft, 'UniformOutput', 0);
 fshft = [fshft(end) ; fshft(1:end-1)];
 
 % Deal with problem of looping around back to start
-ffix  = nfrms - vrng + 2 : nfrms;
-% idxs  = cell2mat(cellfun(@(x) x < vrng, fshft(ffix), 'UniformOutput', 0));
-% for i = 1 : numel(ffix); fshft{ffix(i)}(idxs(i,:)) = nfrms; end
+ffix        = nfrms - vrng + 2 : nfrms;
 fshft(ffix) = [];
 
 % Positions, Velocities, and FLF Parameters
@@ -198,7 +193,7 @@ p.addOptional('tol', [1e-12 , 1e-12]);
 % Parameter Options
 p.addOptional('smth', 1);
 p.addOptional('ltrp', 1000);
-p.addOptional('othr', 3);
+p.addOptional('othr', 2.5);
 p.addOptional('vrng', 10);
 p.addOptional('fmax', 20);
 p.addOptional('ki', 0.02);

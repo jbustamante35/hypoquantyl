@@ -1,10 +1,13 @@
-function P = hypocotylSegmenter(hyp, ht, pm, nopts, seg_lengths, toFix, bwid, psz, sav, par, vis)
-%% hypocotylSegmenter:
-%
+function GSEGS = hypocotylSegmenter(gens, edate, vrb, path2subs, keepBoth, Nb, Nz, pz, Nd, pdp, pdx, pdy, pdw, pm, bpredict, zpredict, cpredict, sopt, mline, mscore, msample, myShps, zoomLvl, mpts, mmth, mparams, stolf, stolx, toFix, bwid, nopts, dsz, smth, npts, slens, mbuf, abuf, scl, href, par, flp, isdl, ihyp)
+%% hypocotylSegmenter: segmentation pipeline on a full dataset
+% This is a wrapper script for the full segmentation pipeline
 %
 % Usage:
-%   P = hypocotylSegmenter(hyp, ht, pm, seg_lengths, ...
-%       toFix, bwid, psz, sav, par, vis)
+%   GSEGS = hypocotylSegmenter(gens, edate, vrb, path2subs, keepBoth, ...
+%     Nb, Nz, pz, Nd, pdp, pdx, pdy, pdw, pm, ...
+%     bpredict, zpredict, cpredict, sopt, mline, mscore, msample, myShps, ...
+%     zoomLvl, mpts, mmth, mparams, stolf, stolx, toFix, bwid, nopts, ...
+%     dsz, smth, npts, slens, mbuf, abuf, scl, href, par, flp, isdl, ihyp);
 %
 % Input:
 %
@@ -13,323 +16,162 @@ function P = hypocotylSegmenter(hyp, ht, pm, nopts, seg_lengths, toFix, bwid, ps
 %
 %
 
-%% Defaults
-if nargin < 4; nopts       = 0;                   end
-if nargin < 5; seg_lengths = [53 , 52 , 53 , 51]; end
-if nargin < 6; toFix       = 0;                   end
-if nargin < 7; bwid        = 0.5;                 end
-if nargin < 8; psz         = 20;                  end
-if nargin < 9; sav         = 0;                   end
-if nargin < 10; par        = 0;                   end
-if nargin < 11; vis        = 0;                   end
+%% 
+ngens = numel(gens);
+GSEGS = cell(ngens, 1);
+te = tic;
+fprintf(['\n\n\n%s\n%s\n%s\n\n\nSEGMENTING %02d GENOTYPES' ...
+    '\n\n\n%s\n%s\n%s\n\n\n'], sprA, sprA, sprA, ngens, sprA, sprA, sprA);
+for gi = 1 : ngens
+    % For each genotype
+    gidx  = gi;
+    gen   = gens(gidx);
+    sdls  = gen.getSeedling;
+    gttl  = gen.GenotypeName;
+    mhyps = max(arrayfun(@(x) x.Lifetime, sdls));
+    sidxs = arrayfun(@(x) x.getSeedlingIndex, sdls);
+    nsdls = numel(sdls);
 
-%% Make empty output structure
-if isempty(hyp)
-    flds      = {'zpre' , 'cpre' , 'mpre' , 'spre' , ...
-        'gpre' , 'rmc' , 'rml' , 'keepOrg'};
-    flds{2,1} = [];
-    P         = struct(flds{:});
-    return;
-end
+    tg = tic;
+    fprintf('\n%s\nSEGMENTING GENOTYPE %02d of %02d [%s]\n%s\n', ...
+        sprA, gi, ngens, gttl, sprA);
 
-%% Start!
-tItr  = tic;
-gnm   = hyp.GenotypeName;
-hnm   = sprintf('%s_%s_%s', ...
-    hyp.GenotypeName, hyp.SeedlingName, hyp.HypocotylName);
-gdir  = sprintf('timecourse/%s/seedlings/%s', gnm, hnm);
-ttlnm = fixtitle(hnm);
+    % ------------------------------------------------------------------------ %
+    % For each seedling
+    fsdl  = nsdls;
+    HSEG  = cell(mhyps,nsdls);
+    asdls = isdl : fsdl;
 
-fprintf('Running pipeline with hypocotyl %s\n', hnm);
+    fprintf('\n\n%s\n%s\n\n\n%s | %d Frames | %d Seedlings\n\n\n%s\n%s', ...
+        sprB, sprB, gttl, gen.TotalImages, fsdl, sprB, sprB);
+    for ns = asdls
+        sidx  = sidxs(ns);
+        s     = sdls(ns);
+        h     = s.MyHypocotyl;
+        nhyps = h.Lifetime;
 
-% ---------------------------------------------------------------------------- %
-%% Get Functions
-% [zpredict , cpredict , cpredict2 , mline , mscore , sopt] = ...
-%     getFunctions(ht, pm, seg_lengths, par, vis, toFix, bwid, psz, nopts);
-[~ , ~ , zpredict , ~ , cpredict , mline , mscore , sopt] = ...
-    ht.getFunctions(seg_lengths, par, vis, toFix, bwid, psz, nopts);
+        % -------------------------------------------------------------------- %
+        % For each frame
+        fhyp  = nhyps;
+        ahyps = ihyp : fhyp;
 
-[~ , ~ , ~ , ~, cpredict2 , ~ , ~ , ~ , ~ , ~] = ...
-    ht.getFunctions(seg_lengths, 0, vis, toFix, bwid, psz, nopts);
+        ts = tic;
+        fprintf('\n\n%s | Seedling %d of %d | %d Frames\n', ...
+            gttl, sidx, fsdl, fhyp);
 
-% ---------------------------------------------------------------------------- %
-%% Evaluate 1st frame
-tE = tic;
-fprintf('Evaluating first frames | ');
+        % Collect all upper images and lower masks first
+        [uimgs , lmsks] = deal(cell(numel(ahyps),1));
+        for hidx = ahyps
+            % ---------------------- Upper Region ---------------------------- %
+            if vrb; fprintf('\nUpper Hypocotyl '); end
+            try
+                uimgs{hidx} = h.getImage( ...
+                    hidx, 'gray', 'upper', [], mbuf, abuf, scl);
 
-% Grab original and flipped images
-fprintf('Grabbing original and flipped hypocotyl images...\n');
-rorgs = hyp.getImage';
-rflps = cellfun(@(x) fliplr(x), rorgs, 'UniformOutput', 0);
+                if vrb
+                    fprintf(['| %s | gidx %02d | sidx %02d | hidx %02d | ' ...
+                        '[good] |\n'], gttl, gidx, sidx, hidx);
+                end
+            catch
+                fprintf(2, ['| %s | gidx %02d | sidx %02d | hidx %02d | ' ...
+                    '[No upper image] |\n'], gttl, gidx, sidx, hidx);
+                uimgs{hidx} = [];
+            end
 
-% Original
-t = tic;
-fprintf('Original | '); iorg = rorgs{1};
-if nopts
-    % With optimization [nopts iterations]
-    fprintf('Contour (%d nopt)| ', nopts); corg = sopt(iorg);
-    fprintf('Z-Vector | ');                zorg = contour2corestructure(corg);
-else
-    % Use Initial Guess
-    fprintf('Z-Vector | '); zorg = zpredict(iorg,0);
-    fprintf('Contour | ');  corg = cpredict(iorg, zorg);
-end
-fprintf('Midline | ');                 morg = mline(corg);
-fprintf('Grading Sampled Midline | '); gorg = mscore(iorg,morg);
-eorg = EvaluatorJB('Trace', corg, 'SegmentLengths', seg_lengths);
-dorg = eorg.getDirection;
-fprintf('DONE! [%.03f sec]\n', toc(t));
+            % ---------------------- Upper Region ---------------------------- %
+            if vrb; fprintf('Lower Hypocotyl '); end
+            try
+                lmsks{hidx} = h.getImage( ...
+                    hidx, 'bw', 'lower', [], mbuf, abuf, scl);
 
-% Flipped
-t = tic;
-fprintf('Flipped | '); iflp = rflps{1};
-if nopts
-    % With optimization [nopts iterations]
-    fprintf('Contour (%d nopt)| ', nopts); cflp = sopt(iflp);
-    fprintf('Z-Vector | ');                zflp = contour2corestructure(cflp);
-else
-    fprintf('Z-Vector | '); zflp = zpredict(iflp, 0);
-    fprintf('Contour | ');  cflp = cpredict(iflp, zflp);
-end
-fprintf('Midline | ');                 mflp = mline(cflp);
-fprintf('Grading Sampled Midline | '); gflp = mscore(iflp,mflp);
-eflp = EvaluatorJB('Trace', cflp, 'SegmentLengths', seg_lengths);
-dflp = eflp.getDirection;
-fprintf('DONE! [%.03f sec]\n', toc(t));
+                if vrb
+                    fprintf(['| %s | gidx %02d | sidx %02d | hidx %02d | ' ...
+                        '[good] |\n'], gttl, gidx, sidx, hidx);
+                end
+            catch
+                fprintf(2, ['| %s | gidx %02d | sidx %02d | hidx %02d | ' ...
+                    '[No lower mask] |\n'], gttl, gidx, sidx, hidx);
+                lmsks{hidx} = [];
+            end
+        end
 
-% ---------------------------------------------------------------------------- %
-%% Check 1st frames for original and flipped
-fidx = 1;
-fprintf('Showing 1st frame evaluation on figure %d...', fidx);
+        % ---------------------- Parallel Segmentation ----------------------- %
+        if par
+            ncores = feature('numcores');
+            pcores = ncores * 0.75; % Use 3/4 cores available
+            setupParpool(pcores, 1);
+            parfor hidx = ahyps
+                th = tic;
+                fprintf(['%s\n\t\t\t\t\tSegmenting on ' ...
+                    'parallel threads\n%s\n'], sprB, sprB);
+                uimg = uimgs{hidx};
+                lmsk = lmsks{hidx};
 
-% Original
-figclr(fidx);
-subplot(121);
-myimagesc(iorg);
-hold on;
-plt(zorg(:,1:2), 'y.', 2);
-plt(corg, 'g-', 2);
-plt(morg, 'r--', 2);
-ttl = sprintf('Frame 1 [Original]\nDirection (%s) | [p %.03f]', dorg, gorg);
-title(ttl, 'FontSize', 10);
+                % Make input parameters visable in each thread [weird hack]
+                HSEG{hidx,ns} = segmentFullHypocotyl(uimg, lmsk, 'edate', edate, ...
+                    'Nb', Nb, 'Nz', Nz, 'pz', pz, 'Nd', Nd, 'pdp', pdp, ...
+                    'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'pm', pm, ...
+                    'bpredict', bpredict, 'zpredict', zpredict, ...
+                    'cpredict', cpredict, 'sopt', sopt, 'mline', mline, ...
+                    'mscore', mscore, 'msample', msample, 'myShps', myShps, ...
+                    'zoomLvl', zoomLvl, 'mpts', mpts, 'mmth', mmth, ...
+                    'mparams', mparams, 'tolfun', stolf, 'tolx', stolx, ...
+                    'toFix', toFix, 'bwid', bwid, 'nopts', nopts, 'dsz', dsz, ...
+                    'smth', smth, 'npts', npts, 'seg_lengths', slens, ...
+                    'mbuf', mbuf, 'scl', scl, 'href', href, 'par', 0, ...
+                    'vis', 0, 'fidx', 0, 'sav', 0, 'Frame', hidx, ...
+                    'GenotypeName', gttl, 'GenotypeIndex', gidx, ...
+                    'SeedlingIndex', sidx, 'toFlip', flp, 'keepBoth', keepBoth, ...
+                    'path2subs', path2subs);
 
-% Flipped
-subplot(122);
-myimagesc(iflp);
-hold on;
-plt(zflp(:,1:2), 'y.', 2);
-plt(cflp, 'g-', 2);
-plt(mflp, 'r--', 2);
-ttl = sprintf('Frame 1 [Flipped]\nDirection (%s) | [p %.03f]', dflp, gflp);
-title(ttl, 'FontSize', 10);
+                fprintf(['%s\nFINISHED FRAME %d of %d ' ...
+                    '[Seedling %d of %d] (%s) [%.03f sec]\n%s\n'], ...
+                    sprB, hidx, fhyp, sidx, nsdls, gttl, mytoc(th, 'sec'), sprA);
+            end
+        else
+            % ------------------ Single-Thread Segmentation ------------------ %
+            for hidx = ahyps
+                th = tic;
+                fprintf(['%s\n\t\t\t\t\tSegmenting on ' ...
+                    'single-thread\n%s\n'], sprB, sprB);
+                uimg = uimgs{hidx};
+                lmsk = lmsks{hidx};
+                HSEG{hidx,ns} = segmentFullHypocotyl(uimg, lmsk, 'edate', edate, ...
+                    'Nb', Nb, 'Nz', Nz, 'pz', pz, 'Nd', Nd, 'pdp', pdp, ...
+                    'pdx', pdx, 'pdy', pdy, 'pdw', pdw, 'pm', pm, ...
+                    'bpredict', bpredict, 'zpredict', zpredict, ...
+                    'cpredict', cpredict, 'sopt', sopt, 'mline', mline, ...
+                    'mscore', mscore, 'msample', msample, 'myShps', myShps, ...
+                    'zoomLvl', zoomLvl, 'mpts', mpts, 'mmth', mmth, ...
+                    'mparams', mparams, 'tolfun', stolf, 'tolx', stolx, ...
+                    'toFix', toFix, 'bwid', bwid, 'nopts', nopts, 'dsz', dsz, ...
+                    'smth', smth, 'npts', npts, 'seg_lengths', slens, ...
+                    'mbuf', mbuf, 'scl', scl, 'href', href, 'par', 0, ...
+                    'vis', 0, 'fidx', 0, 'sav', 0, 'Frame', hidx, ...
+                    'GenotypeName', gttl, 'GenotypeIndex', gidx, ...
+                    'SeedlingIndex', sidx, 'toFlip', flp, 'keepBoth', keepBoth, ...
+                    'path2subs', path2subs);
 
-fnms{fidx} = sprintf('%s_hypocotylpredictions_originalvsflipped_%scurve', ...
-    tdate, dorg);
+                fprintf(['%s\nFINISHED FRAME %d of %d ' ...
+                    '[Seedling %d of %d] (%s) [%.03f sec]\n%s\n'], ...
+                    sprB, hidx, fhyp, sidx, nsdls, gttl, mytoc(th, 'sec'), sprA);
+            end
+        end
 
-if sav
-    tS = tic;
-    fprintf('Saving figure %d...', fidx);
-    odm = sprintf('%s/original_vs_flipped', gdir);
-    saveFiguresJB(fidx, fnms(fidx), odm);
-    fprintf('DONE! [%.03f sec]\n', toc(tS));
-end
-
-% ---------------------------------------------------------------------------- %
-%% Evaluate Direction [get left-facing]
-t = tic;
-fprintf('Evaluating Directions of first frames...');
-
-keepOrg = 1;
-if ~isequal(dorg, dflp)
-    % Make sure they didn't determine the same direction
-    if strcmpi(dorg, 'right')
-        % Flip if original is right-facing
-        keepOrg = 0;
+        fprintf(['\n\nFINISHED SEEDLING %d of %d (%s) | ' ...
+            '%d Frames [%.03f sec]\n\n%s'], ...
+            sidx, fsdl, gttl, fhyp, mytoc(ts, 'min'), sprB);
     end
-else
-    % Direction somehow gave same result
-    if gorg >= gflp
-        % Get lowest probabilty score [most probable]
-        keepOrg = 0;
-    end
+
+    GSEGS{gidx} = HSEG;
+    fprintf('\n%s\nFINSIHED %s GENOTYPE %02d of %02d [%.03f sec]\n%s\n', ...
+        sprA, gttl, gidx, ngens, mytoc(tg, 'hrs'), sprA);
 end
 
-% Keep original or use flipped based on evaluation
-if keepOrg
-    himgs = rorgs;
-    hkeep = 'right';
-else
-    himgs = rflps;
-    hkeep = 'left';
-end
+GSEGS = cellfun(@(x) cell2mat(x), GSEGS, 'UniformOutput', 0);
 
-nimgs = numel(himgs);
-
-fprintf('Original [%s] | Flipped [%s] | Keep [%s] | %.03f sec\n', ...
-    dorg, dflp, hkeep, toc(t));
-
-fprintf('FINISHED EVALUATING FIRST FRAME [%.03f sec]\n\n', toc(tE));
-
-% ---------------------------------------------------------------------------- %
-%% Run images through whole pipeline
-tR = tic;
-fprintf('Running %d %s-facing images through pipeline\n', nimgs, hkeep);
-
-[zp , cp , mp , sp , gp] = deal(cell(nimgs,1));
-parfor frm = 1 : nimgs
-    t = tic;
-    fprintf('Predicting %s curve [frame %02d of %02d]...', dorg, frm, nimgs);
-    himg = himgs{frm};
-    if nopts
-        % With optimization (nopts iterations)
-        fprintf('Contour (%d iterations)| ', nopts); cp{frm} = sopt(himg);
-        fprintf('Generating Z-Vector | ');           zp{frm} = contour2corestructure(cp{frm});
-    else
-        % Use initial guess
-        fprintf('Predicting Z-Vector | '); zp{frm} = zpredict(himg, 0);
-        fprintf('Contour | ');             cp{frm} = cpredict2(himg, zp{frm});
-    end
-    fprintf('Generating Midline | ');    mp{frm} = mline(cp{frm});
-    fprintf('Sampling Midline | ');      sp{frm} = msample(himg, mp{frm});
-    fprintf('Grading Midline Patch | '); gp{frm} = mscore(himg,mp{frm});
-    fprintf('DONE! [%.03f sec]\n', toc(t));
-end
-
-gpres = cat(1, gp{:});
-
-fprintf('FINISHED RUNNING THROUGH PIPELINE [%.03f sec]\n\n', toc(tR));
-
-% ---------------------------------------------------------------------------- %
-%% Check results
-fidx1 = 2;
-fidx2 = 3;
-fidx3 = 4;
-tC = tic;
-fprintf('Saving Predictions, Midline Patches, and Probabilities in figure %d, %d, %d...\n', ...
-    fidx1, fidx2, fidx3);
-
-for frm = 1 : nimgs
-    himg = himgs{frm};
-    zpre = zp{frm};
-    cpre = cp{frm};
-    mpre = mp{frm};
-    spre = sp{frm};
-    gpre = gp{frm};
-
-    % Predictions
-    figclr(fidx1);
-    myimagesc(himg);
-    hold on;
-    plt(zpre(:,1:2), 'y.', 2);
-    plt(cpre, 'g-', 2);
-    plt(mpre, 'r--', 2);
-    ttl = sprintf('%s\n[%s] | Original [%s]\nFrame %d of %d', ...
-        ttlnm, hkeep, dorg, frm, nimgs);
-    title(ttl, 'FontSize', 10);
-
-    fnms{fidx1} = sprintf('%s_predictions_timecourse_%s_frame%02dof%02d', ...
-        tdate, hnm, frm, nimgs);
-
-    % Midline Patches
-    figclr(fidx2);
-    myimagesc(spre);
-    ttl = sprintf('Midline Patch [p %.03f]\nFrame %d of %d', gpre, frm, nimgs);
-    title(ttl, 'FontSize', 10);
-
-    fnms{fidx2} = sprintf('%s_midlinepatches_timecourse_%s_frame%02dof%02d', ...
-        tdate, hnm, frm, nimgs);
-
-    % Probabilities through Frames
-    figclr(fidx3);
-    plt(gpres, 'k-', 2);
-    ttl = sprintf('Curve [%d Frames]\nMidline Patch Probability', nimgs);
-    title(ttl, 'FontSize', 10);
-
-    fnms{fidx3} = sprintf('%s_probabilities_timecourse_%s_%dframes', ...
-        tdate, hnm, nimgs);
-
-    if sav
-        t = tic;
-        fprintf('Saving Frame %02d of %02d...', frm, nimgs);
-        nm1 = sprintf('%s/predictions', gdir);
-        nm2 = sprintf('%s/midlinepatches', gdir);
-        saveFiguresJB(fidx1, fnms(fidx1), nm1);
-        saveFiguresJB(fidx2, fnms(fidx2), nm2);
-        saveFiguresJB(fidx3, fnms(fidx3), gdir);
-        fprintf('DONE! [%.03f sec]\n', toc(t));
-    else
-        pause(0.3);
-    end
-end
-
-% ---------------------------------------------------------------------------- %
-%% When complete, flip back to original direction
-t = tic;
-if ~keepOrg
-    % Flip contour and midline to match original direction
-    fprintf('Flipping back to original direction...');
-    hc = cellfun(@(x) flipAndSlide(x, seg_lengths), cp, 'UniformOutput', 0);
-    hm = cellfun(@(x) flipLine(x, seg_lengths(end)), mp, 'UniformOutput', 0);
-else
-    fprintf('Keepin images in original direction...');
-    hc = cp;
-    hm = mp;
-end
-
-fprintf('DONE! [%.03f sec]\n', toc(t));
-fprintf('FINISHED SAVING FIGURES [%.03f sec]\n\n', toc(tC));
-
-% ---------------------------------------------------------------------------- %
-%% Remap original results to full-res images
-tM = tic;
-fprintf('Remapping %s to full resolution image\n', hnm);
-[rmc , rml, rmi] = deal(cell(nimgs, 1));
-for frm = 1 : nimgs
-    t = tic;
-    fprintf('Remapping %s [frame %02d of %02d]...', hnm, frm, nimgs);
-    [rmc{frm} , rml{frm} , rmi{frm}] = thumb2full(hyp, frm, hc{frm}, hm{frm});
-    fprintf('DONE! [%.03f sec]\n', toc(t));
-end
-
-% ---------------------------------------------------------------------------- %
-%% Play full res results
-fidx = 4;
-tP   = tic;
-fprintf('Showing %s remap on figure %d\n', hnm, fidx);
-
-for frm = 1 : nimgs
-    figclr(fidx);
-    myimagesc(rmi{frm}.gimg);
-    hold on;
-    plt(rmc{frm}, 'g-', 2);
-    plt(rml{frm}, 'r--', 2);
-
-    ttl = sprintf('Full-Res Remap [frame %d of %d]\n%s', frm, nimgs, ttlnm);
-    title(ttl, 'FontSize', 10);
-
-    fnms{fidx} = sprintf('%s_remap_timecourse_%s_frame%02dof%02d', ...
-        tdate, hnm, frm, nimgs);
-
-    if sav
-        tS = tic;
-        fprintf('Saving Frame %02d of %02d...', frm, nimgs);
-        tnm = sprintf('%s/remap', gdir);
-        saveFiguresJB(fidx, fnms(fidx), tnm);
-        fprintf('DONE! [%.03f sec]\n', toc(tS));
-    else
-        pause(0.2);
-    end
-end
-
-fprintf('DONE! [%.03f sec]\n', toc(tP));
-fprintf('FINISHED REMAP [%.03f sec]\n\n', toc(tM));
-
-% ---------------------------------------------------------------------------- %
-%% Place Results in Struct
-flds = {'zpre' , 'cpre' , 'mpre' , 'spre' , 'gpre' , 'rmc' , 'rml' , 'keepOrg'};
-dats = {zp , cp , mp , sp , gpres , rmc , rml , keepOrg};
-P    = cell2struct(dats', flds');
-
-fprintf('FINISHED FULL PIPELINE for %s [%.03f sec]\n\n', hnm, toc(tItr));
+fprintf(['\n\n\n%s\n%s\n%s\n\n\nFINISHED ALL %02d GENOTYPES [%.02f hrs]' ...
+    '\n\n\n%s\n%s\n%s\n\n\n'], ...
+    sprA, sprA, sprA, ngens, mytoc(te, 'hrs'), sprA, sprA, sprA);
 
 end

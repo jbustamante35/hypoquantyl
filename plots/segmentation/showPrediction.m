@@ -1,4 +1,5 @@
-function fdata = showPrediction(img, hyp, fidx, ttl, tsz, lsz, msz, ax, scr, soff, hopts)
+% function fdata = showPrediction(img, hyp, fidx, ttl, tsz, lsz, msz, ax, scr, soff, hopts)
+function fdata = showPrediction(img, hyp, varargin)
 %% showPrediction: show results from hypocotyl segmentation
 %
 %
@@ -52,7 +53,7 @@ switch class(hyp)
             scl    = hopts{4};
             mscore = hopts{5};
         end
-        
+
         if isempty(img)
             img = hyp.getImage('gray', 'upper', drc, [], buf, 0, scl);
         end
@@ -99,15 +100,15 @@ function args = parseInputs(varargin)
 %% Parse input parameters for Constructor method
 p = inputParser;
 
-if nargin < 3;  fidx  = 1;           end
-if nargin < 4;  ttl   = '';          end
-if nargin < 5;  tsz   = 10;          end
-if nargin < 6;  lsz   = 2;           end
-if nargin < 7;  msz   = 3;           end
-if nargin < 8;  ax    = 'square';    end
-if nargin < 9;  scr   = 0;           end
-if nargin < 10; soff  = [-25 , -70]; end
-if nargin < 11; hopts = [];          end
+p.addOptional('fidx' , 1);
+p.addOptional('ttl'  , '');
+p.addOptional('tsz'  , 10);
+p.addOptional('lsz'  , 2);
+p.addOptional('msz'  , 3);
+p.addOptional('ax'   , 'square');
+p.addOptional('scr'  , 0);
+p.addOptional('soff' , [-25 , -70]);
+p.addOptional('hopts', []);
 
 % Misc Options
 p.addOptional('xtrp', []);

@@ -97,7 +97,13 @@ end
 try
     % Grade prediction
     if cidx; t = tic; n = fprintf('Grade [%03d]', cidx); end
-    gpre = escore(img, cpre);
+    try
+        % If grading by contour
+        gpre = escore(img, cpre);
+    catch
+        % If grading midline
+        gpre = escore(img, mpre);
+    end
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
 catch e
     fprintf(2, '\n%s\nError grading prediction\n%s\n%s\n%s\n\n', ...

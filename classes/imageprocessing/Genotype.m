@@ -443,6 +443,11 @@ classdef Genotype < handle
             end
         end
 
+        function gi = getGenotypeIndex(obj)
+            %% Return index of the Genotype
+            [~ , gi] = obj.Parent.search4Genotype(obj.GenotypeName);
+        end
+
         function [ubox , lbox] = setHypocotylCropBox(obj, hidxs, frms, v)
             %% Compute CropBox for upper and lower regions of a Hypocotyl
             if nargin < 2; hidxs = 1 : obj.NumberOfSeedlings; end

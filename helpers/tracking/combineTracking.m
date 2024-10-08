@@ -1,14 +1,20 @@
-function Y = combineTracking(T)
+function Y = combineTracking(T, sidxs)
 %% combineTracking: concatenate tracking results across time lapses
 %
 % Usage:
-%   Y = combineTracking(T)
+%   Y = combineTracking(T, sidxs)
 %
 % Input:
 %   T: cell array of tracking results
+%   sidxs: indices to exclude (default [])
+
+if nargin < 2; sidxs = []; end
+
+if ~isempty(sidxs); T = T(setdiff(1 : numel(T), sidxs)); end
 
 if ~iscell(T); T = arrayfun(@(x) x, T, 'UniformOutput', 0); end
 [flds1 , flds2 , flds3] = extractFields(T{1});
+% flds = extractFields(T{1}, '');
 
 %% Concatenate cell array into single structure
 go1 = cellfun(@(x) ~isempty(x), flds2);
