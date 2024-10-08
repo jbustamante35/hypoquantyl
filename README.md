@@ -3,8 +3,6 @@ An image processing and analysis tool for automated, high-throughput
 measurements of hypocotyl growth kinematics. [*Publication currently under
 review*]
 
-
-
 #### Growth Kinematics
 Growth kinematics describes the spatial distribution of growth along a surface.
 In plants, this refers to the rate of elongation of cells along different
@@ -14,8 +12,6 @@ distinct texture patches along the midline of the hypocotyl over time. These
 patches, or 'elements,' represent stem segments, and their expansion allows
 the software to calculate growth rates expressed as the Relative Elemental
 Growth Rate (REGR).
-
-
 
 #### Machine Learning-Based Segmentation
 HypoQuantyl provides an automated and robust segmentation process for each
@@ -98,53 +94,45 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
   work but are not guaranteed.
 
 - **Required MATLAB Toolboxes**:
+  - [Curve Fitting Toolbox](https://www.mathworks.com/products/curvefitting.html)
+  - [Global Optimization Toolbox](https://www.mathworks.com/products/global-optimization.html)
   - [Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html)
-  - [Statistics and Machine Learning Toolbox](https://www.mathworks.com/products/statistics.html)
+  - [Mapping Toolbox](https://www.mathworks.com/products/mapping.html)
   - [Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html)
+  - [Sensor Fusion and Tracking Toolbox](https://www.mathworks.com/products/sensor-fusion-and-tracking.html)
+  - [Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
+  - [Statistics and Machine Learning Toolbox](https://www.mathworks.com/products/statistics.html)
+  - [Symbolic Math Toolbox](https://www.mathworks.com/products/symbolic.html)
+  - [Wavelet Toolbox](https://www.mathworks.com/products/wavelet.html)
 
 - Clone the repository:
    ```bash
    git clone https://github.com/jbustamante35/hypoquantyl.git
    ```
 
-- Install the required MATLAB toolboxes:
+- Install the required MATLAB toolboxes listed above. Check using the
+  following command in the Matlab console:
    ```matlab
-   matlab.addons.install('Image Processing Toolbox')
-   matlab.addons.install('Statistics and Machine Learning Toolbox')
-   matlab.addons.install('Parallel Computing Toolbox')
+   matlab.addons.installedAddons;
    ```
 
-#### Running HypoQuantyl
-1. Add the repository to the MATLAB path:
-   ```matlab
-   path_to_hypoquantyl = '%PATH_TO_HYPOQUANTYL%';
-   addpath(genpath(fileparts(which(path_to_hypoquantyl))));
+### Running HypoQuantyl
+1. Add this repository to your MATLAB path (**NOTE!** make sure to remove the
+   .git subfolder to avoid a messy path)
 
-   % Remove .git folder from the path
-   rmpath(genpath([path_to_hypoquantyl, '/.git']));
-   ```
+2. Download example image stacks in our lab's [Google Drive folder](https://drive.google.com/drive/folders/1FcC6anjcwPGbj-CnBY_zGDb0h_jTO3DV?usp=sharing).
+     - Image data are time-lapse image stacks of the following:
+        - Single *cry1* mutant seedling grown in darkness *[91 MB]*
+        - Five *wt* seedlings grown in blue light after 2 hrs in darkness *[20 MB]*
 
-2. Download sample image dataset at [to-do]
+4. Download the **HQ.mat** dataset containing neural net models, PCA
+   eigenvectors, helper function handles, and constants required to run this
+   program *[62 MB]*.
 
-3. Run HypoQuantyl.m [to-do]
+5. Open [*hypoquantyl_script.m*](./hypoquantyl_script.m) in the matlab editor to set input parameters,
+   point to image stack folder, and set output destination folder.
 
----
+6. Run HypoQuantyl.m [to-do]
 
-##### Main Features
-| Algorithm          | Description                                                    |
-| ---                | ---                                                            |
-| **Pre-Processing** | Identifies the region of the seedling containing the hypocotyl |
-| **Segmentation**   | Learning-based segmentationn                                   |
-| **Tracking**       | Eulerian tracking algorithm                                    |
-| **Analysis**       | Compute REGR, Statistics, and Visualizations                   |
-| **Training**       | Manually trace contours to create ground truth datasets        |
 
-#### Core Classes
-| Class                | Description                                              |
-| ---                  | ---                                                      |
-| **Experiment**       | Loads and processes folders containing image stacks      |
-| **Curve**            | Raw data of segmented hypocotyl contours                 |
-| **HypocotylTrainer** | Implements machine learning models for segmentation      |
-| **PcaJB**            | Principal Component Analysis (PCA) for segmentation data |
-| **OutlineFixer**     | Refinement and repair of ground truth segmentation data  |
 

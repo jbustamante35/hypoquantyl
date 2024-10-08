@@ -64,7 +64,7 @@ for nidx = 1 : nsdls
     % ------------------------------------------------------------------------ %
     % Iterate through all frames
     tS = tic;
-    fprintf(['\n%s\nLoading cFlow object | %s | %03d of %03d | ' ...
+    fprintf(['\n%s\nTracking | %s | %03d of %03d | ' ...
         'Frames %03d to %03d [total %03d]\n%s\n'], ...
         sprA, gnm, nidx, nsdls, ifrm, ffrm, nfrms, sprB);
 
@@ -75,7 +75,7 @@ for nidx = 1 : nsdls
     switch dbug
         case 0
             % Create output directory
-            fprintf('\t\t\t\t\tPrepping Condor Object\n%s\n', sprB);
+            fprintf('\t\t\t\t\tPrepping HTCondor Object\n%s\n', sprB);
             gpath       = sprintf('%s/%s/', home_oPath, enm);
             map_command = sprintf('%s>%s', node_oPath, gpath);
             mmkdir(gpath);
@@ -104,13 +104,13 @@ for nidx = 1 : nsdls
                 'ExperimentName', enm, 'GenotypeName', gnm, ...
                 'GenotypeIndex', gidx, 'SeedlingIndex', sidx, 'Frames', nfrms);
 
-            ttm = 'days';
+            ttm = 'hrs';
         case 2
             % Show information and inputs
             info  = struct('ExperimentName', enm, 'GenotypeName', gnm, ...
                 'GenotypeIndex', gidx, 'SeedlingIndex', sidx, 'Frames', nfrms);
             out   = struct('gimgs', gimgs, 'gmids', gmids);
-            TRACK{nidx} = struct('info', info, 'out', out);
+            TRACK{nidx} = struct('info', info, 'T', out);
             fprintf(['GenotypeIndex: %02d\nSeedlingIndex: %02d\nFrame: ' ...
                 '%02d to %02d [total %02d]\n'], gidx, sidx, ifrm, ffrm, nfrms);
 
@@ -144,7 +144,7 @@ end
 % Send to condor
 if ~dbug; CFLO.submitDag(auth, 50, 50); end
 
-fprintf(['\n\n%s\n%s\n%s\n\t\t\t\t\tFINISHED TRACKING! [%.02f min]\n%s\n%s' ...
+fprintf(['\n\n%s\n%s\n%s\n\t\t\t\t\tFINISHED TRACKING! [%.02f hrs]\n%s\n%s' ...
     '\n%s\n\n\n\n'], sprA, sprB, sprA, mytoc(tA, ttm), sprA, sprB, sprA);
 end
 

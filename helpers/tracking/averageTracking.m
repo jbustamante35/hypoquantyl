@@ -3,7 +3,7 @@ function [T , vru , vre , vri , len] = averageTracking(T, sidxs, frms, ltrp, lth
 %
 % Usage:
 %   [T , vru , vre , vri , len] = averageTracking( ...
-%       T, sidxs, frms, ltrp, lthr, smth)
+%       T, sidxs, frms, ltrp, lthr, smth, ferr)
 %
 % Input:
 %   T: output of trackingProcessor
@@ -21,6 +21,7 @@ function [T , vru , vre , vri , len] = averageTracking(T, sidxs, frms, ltrp, lth
 %   vri: individual regr and velocities
 %   len: reference mask for cutoff arclength
 
+%% Parse Inputs
 if nargin < 2; sidxs = [];   end
 if nargin < 3; frms  = [];   end
 if nargin < 4; ltrp  = 1000; end
@@ -28,7 +29,7 @@ if nargin < 5; lthr  = [];   end
 if nargin < 6; smth  = 0;    end
 if nargin < 7; ferr  = [];   end
 
-% Exclude Seedlings
+% Exclude Seedlings [deprecated - exclude before this stage]
 if ~isempty(sidxs); T = excludeSeedlings(T, sidxs); end
 
 % Extract src or trg arclength and velocity
@@ -111,6 +112,7 @@ function T = excludeSeedlings(T, sidxs)
 %   tout: dataset with excluded seedlings
 
 [flds1 , flds2 , flds3] = extractFields(T);
+% flds = extractFields(T, '');
 
 go1 = cellfun(@(x) ~isempty(x), flds2);
 for f1 = 1 : numel(flds1)

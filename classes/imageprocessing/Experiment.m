@@ -165,10 +165,9 @@ classdef Experiment < handle
             end
         end
 
-        function SaveExperiment(ex)
+        function SaveExperiment(ex, edir)
             %% Prune superfluous data, dereference parents, then save
-            [~ , sprA] = jprintf(' ', 0, 0, 80);
-
+            if nargin < 2; edir = []; end
             % Remove RawSeedlings and PreHypocotyls
             tPrune = tic;
             g      = ex.combineGenotypes;
@@ -188,9 +187,11 @@ classdef Experiment < handle
             ex.combineContours;
 
             % Save full Experiment object
+            if isempty(edir); edir = pwd; end
+
             tSave = tic;
-            nm    = sprintf('%s_%s_%dGenotypes_%dSeedlings_%03dContours', ...
-                tdate, ex.ExperimentName, ex.NumberOfGenotypes, ...
+            nm    = sprintf('%s/%s_%s_%dGenotypes_%dSeedlings_%03dContours', ...
+                edir, tdate, ex.ExperimentName, ex.NumberOfGenotypes, ...
                 ex.NumberOfSeedlings, ex.CurvesTraced);
             save(nm, '-v7.3', 'ex');
             fprintf('[%.02f sec] Saved dataset %s\n%s\n', ...

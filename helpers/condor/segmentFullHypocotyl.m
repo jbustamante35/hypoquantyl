@@ -8,31 +8,68 @@ function out = segmentFullHypocotyl(uimg, lmsk, varargin)
 %   uimg: upper hypocotyl image
 %   lmsk: lower hypocotyl mask
 %   varargin: various options
-%         Model Options
-%         p.addOptional('Nb', 'bnnout');
-%         p.addOptional('Nz', 'znnout');
-%         p.addOptional('Nd', 'dnnout');
-%         p.addOptional('pz', 'pz');
-%         p.addOptional('pdp', 'pdp');
-%         p.addOptional('pdw', 'pdw');
-%         p.addOptional('pdx', 'pdx');
-%         p.addOptional('pdy', 'pdy');
-%         p.addOptional('pm', 'pm');
+% Model Options
+%       p.addOptional('pz', 'pz');
+%       p.addOptional('pdp', 'pdp');
+%       p.addOptional('pdx', 'pdx');
+%       p.addOptional('pdy', 'pdy');
+%       p.addOptional('pdw', 'pdw');
+%       p.addOptional('pm', 'pm');
+%       p.addOptional('Nz', 'znnout');
+%       p.addOptional('Nb', 'bnnout');
+%       p.addOptional('Nd', 'dnnout');
+%       p.addOptional('path2subs', 0);
 %
-%         Optimization Options
-%         p.addOptional('ncycs', 1);
-%         p.addOptional('nopts', 100);
-%         p.addOptional('toFix', 0);
-%         p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
+%       % Segmentation Function Handles
+%       p.addOptional('bpredict', []);
+%       p.addOptional('zpredict', []);
+%       p.addOptional('cpredict', []);
+%       p.addOptional('mline', []);
+%       p.addOptional('mscore', []);
+%       p.addOptional('sopt', []);
+%       p.addOptional('msample', []);
 %
-%         Miscellaneous Options
-%         p.addOptional('sav', 0);
+%       % Optimization Options
+%       p.addOptional('ncycs', 1);
+%       p.addOptional('nopts', 100);
+%       p.addOptional('mbuf', 0);
+%       p.addOptional('scl', 1);
 %
-%         Information Options
-%         p.addOptional('GenotypeName', 'genotype');
-%         p.addOptional('GenotypeIndex', 0);
-%         p.addOptional('SeedlingIndex', 0);
-%         p.addOptional('Frame', 0);
+%       % Mask Smoothing Options
+%       p.addOptional('dsz', 5);
+%       p.addOptional('smth', 5);
+%       p.addOptional('npts', 210);
+%       p.addOptional('href', []);
+%
+%       % Segmentation Function Options
+%       p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
+%       p.addOptional('ymin', 10);
+%       p.addOptional('bwid', [0.1 , 0.1 , 0.1]);
+%       p.addOptional('psz', 20);
+%       p.addOptional('toFix', 0);
+%       p.addOptional('tolfun', 1e-4);
+%       p.addOptional('tolx', 1e-4);
+%       p.addOptional('myShps', [2 , 3 , 4]);
+%       p.addOptional('zoomLvl', [0.5 , 1.5]);
+%       p.addOptional('mpts', 50);
+%       p.addOptional('mmth', 'nate');
+%       p.addOptional('mparams', [5 , 3 , 0.1]);
+%
+%       % Miscellaneous Options
+%       p.addOptional('sav', 0);
+%       p.addOptional('par', 0);
+%       p.addOptional('vis', 0);
+%       p.addOptional('fidx', 0);
+%       p.addOptional('edate', tdate);
+%       p.addOptional('toFlip', []);
+%       p.addOptional('keepBoth', 0);
+%       p.addOptional('ddir', 'output');
+%
+%       % Information Options
+%       p.addOptional('GenotypeName', 'genotype');
+%       p.addOptional('GenotypeIndex', 0);
+%       p.addOptional('SeedlingIndex', 0);
+%       p.addOptional('Frame', 0);
 %
 % Output:
 %   out: output structure
@@ -117,12 +154,9 @@ p.addOptional('seg_lengths', [53 , 52 , 53 , 51]);
 p.addOptional('ymin', 10);
 p.addOptional('bwid', [0.1 , 0.1 , 0.1]);
 p.addOptional('psz', 20);
-% p.addOptional('npxy', []);
-% p.addOptional('npw', []);
 p.addOptional('toFix', 0);
 p.addOptional('tolfun', 1e-4);
 p.addOptional('tolx', 1e-4);
-% p.addOptional('z2c', 0);
 p.addOptional('myShps', [2 , 3 , 4]);
 p.addOptional('zoomLvl', [0.5 , 1.5]);
 p.addOptional('mpts', 50);

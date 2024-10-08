@@ -1,9 +1,8 @@
-function ex = HypoQuantylPreprocessor(edir, eset, mth, sav, toExclude, vrb, fidxs, vmth, opts, odir)
-%% HypoQuantylPreprocessor: preprocessor for images to pipe into HypoQuantyl
-% This function loads a directory of images
+function ex = imagePreprocessor(edir, eset, mth, sav, toExclude, vrb, fidxs, vmth, opts, odir)
+%% imagePreprocessor: preprocessor for images to pipe into HypoQuantyl
 %
 % Usage:
-%   ex = HypoQuantylPreprocessor( ...
+%   ex = imagePreprocessor( ...
 %       edir, eset, mth, sav, toExclude, vrb, fidxs, vmth, opts)
 %
 % Input:
@@ -57,7 +56,6 @@ fprintf('Extracted %d hypocotyls from %d genotypes in %s [%.02f sec]\n\n', ...
 %% Exclude Seedlings
 % Format as [ [gidxN1 , sidxM1] , [gidxN2 , sidxM2] ];
 % toExclude = [ [4 , 2] ; [7 , 1] ; [10 , 1] ];
-
 ex.combineGenotypes;
 ex.combineSeedlings;
 
