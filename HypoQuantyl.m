@@ -286,43 +286,23 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Show REGR and Velocity
-[figs , fnms] = makeBlankFigures(2, 1);
+%% Store results into .csv files
 
-fidx  = 1;
-ttl   = fixtitle(sprintf('%s (%d seedlings)', enm, nsdls));
-rows  = [1 , 2 , 1];
-vaxis = [0 , 0.3 , 4]; % [min , max , values_to_show]
-raxis = [0 , 8 , 5];   % [min , max , values_to_show]
-fsz   = [5 , 8 , 8];
-fcnv  = {2 , frm2hr , hr2frm};
-fblu  = 0;
-
-% Mean Velocity and REGR
-fnms{1} = showTrackingProcessing(VVU{1},VRU{1}, ttl, fidx, ...
-    rows, fblu, vaxis, raxis, fsz, fcnv);
-
-% Individual Velocities and REGRs
-MRI = cellfun(@(x) interpolateGrid(x, 'xtrp', 500, 'ytrp', 500, 'fsmth', 3), ...
-    VRI{1}, 'UniformOutput', 0);
-
-figclr(2);
-montage(MRI, 'Size', [1 , numel(MRI)], 'DisplayRange', []);
-colormap jet; colorbar; clim([0 , 10]);
-fnms{2} = sprintf('%s_regr_individuals_%02dseedlings', tdate, numel(MRI));
 
 % ---------------------------- Save Analysis --------------------------------- %
-if sav
-    adir = sprintf('%s/output/%s/analysis', odir, edate);
-    if ~isfolder(adir); mkdir(adir); end
-    saveFiguresJB(figs, fnms);
-end
+% if sav
+%     adir = sprintf('%s/output/%s/analysis', odir, edate);
+%     if ~isfolder(adir); mkdir(adir); end
+%     saveFiguresJB(figs, fnms);
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Outputs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Store results into output
-HQ = struct('models', hqmod, 'preprocessing', ex, 'segmentation', GSEGS, ...
-    'remapping', GMAPS, 'tracking', TRACK);
+hqinn = load(sprintf('%s/hqinputs', odir));
+HQ    = struct('inputs', hqinn, 'models', hqmod, ...
+    'preprocessing', ex, 'segmentation', GSEGS, 'remapping', GMAPS, ...
+    'tracking', TRACK);
 
 end

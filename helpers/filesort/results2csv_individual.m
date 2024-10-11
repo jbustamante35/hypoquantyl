@@ -1,5 +1,12 @@
 function results2csv_individual(idata, ipths, varargin)
 %% results2csv_individual: export individual seedling to csv files
+%
+%
+% Usage:
+%   results2csv_individual(idata, ipths, varargin)
+%
+% Input:
+%   idata: results
 
 %% Parse inputs
 args = parseInputs(varargin);

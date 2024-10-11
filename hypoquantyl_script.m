@@ -1,4 +1,3 @@
-% function odir = hypoquantyl_script
 %% HypoQuantyl Parmeters Script
 % Select sample data to run [single|dark|cry1 or multiple|blue|col0]
 % tset = 'single'; % Sample type [ single | multiple ]
@@ -85,7 +84,8 @@ ni    = 0.3;                       % FLF fit initial n
 if strcmp(tset, 'multiple'); iex  = 5; else iex = []; end
 
 % Save parameters into .mat file
-hqout = sprintf('%s/hqout', odir);
-save(hqout, '-v7.3')
+ostr     = {'hqinputs' ; sprintf('%s_hqinputs', edate)};
+hqinputs = cellfun(@(x) sprintf('%s/%s', odir, x), ostr, 'UniformOutput', 0);
+save(hqinputs{1}, '-v7.3');
+save(hqinputs{2}, '-v7.3');
 pause(3);
-% end
