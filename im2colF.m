@@ -6,6 +6,7 @@ try
     Z = im2colF_c(F, X, Y);
 catch
     % Default to matlab's im2col
-    Z = im2col(F, X, Y);
+    % Z = im2col(F, X, 'distinct');
+    Z = im2col(F, X, 'sliding');
 end
 end
