@@ -1,18 +1,18 @@
 %% HypoQuantyl Parmeters Script
 % Select sample data to run [single|dark|cry1 or multiple|blue|col0]
-% tset = 'single'; % Sample type [ single | multiple ]
-% cset = 'dark';   % Condition   [ dark   | blue     ]
-% gset = 'cry1';   % Genotype    [ cry1   | col0     ]
-tset = 'multiple'; % Sample type [ single | multiple ]
-cset = 'blue';     % Condition   [ dark   | blue     ]
-gset = 'col0';     % Genotype    [ cry1   | col0     ]
+tset = 'single'; % Sample type [ single | multiple ]
+cset = 'dark';   % Condition   [ dark   | blue     ]
+gset = 'cry1';   % Genotype    [ cry1   | col0     ]
+% tset = 'multiple'; % Sample type [ single | multiple ]
+% cset = 'blue';     % Condition   [ dark   | blue     ]
+% gset = 'col0';     % Genotype    [ cry1   | col0     ]
 
 path_to_data = '/mnt/spaldingdata/JulianBustamante/data/sampleimages';
 
 % General options
 vrb   = 1;     % Verbosity [ 0 none | 1 verbose ]
 sav   = 1;     % Save results into .mat files
-par   = 1;     % Use parallel processing [0 | 1]
+par   = 0;     % Use parallel processing [0 | 1]
 odir  = pwd;   % Directory path to store results [default pwd]
 edate = tdate; % Date of analysis [or 'YYMMDD' (for manual)]
 

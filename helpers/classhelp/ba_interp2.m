@@ -56,6 +56,7 @@ catch
     % Default to matlab's interp2
     % error('ERROR: The mex file was not compiled. Use  $ mex -O ba_interp2.cpp      to compile it');
     % fprintf('ERROR: The mex file was not compiled. Use  $ mex -O ba_interp2.cpp to compile it');
+    if nargin < 4; method = 'linear'; end
     Z = interp2(F, X, Y, method);
 end
 end
