@@ -94,9 +94,11 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
 
        mkdir kinematics_analysis;
        mv single_seedling.zip kinematics_analysis;
+       mv multiple_seedling.zip kinematics_analysis;
        mv HQ.mat kinematics_analysis;
        cd kinematics_analysis;
        unzip single_seedling.zip
+       unzip multiple_seedling.zip
 
 - Clone this repository:
 
@@ -113,7 +115,7 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
    ```
 
 2. In the script, set general options as needed: </br>
-  **(1)** Sample image stack to analyze [`tset` , `cset` , `gset`],  </br>
+  **(1)** Sample image stack to analyze [`tset`],  </br>
   **(2)** Verbosity (`vrb`),  </br>
   **(3)** Save results into .mat files (`sav`),  </br>
   **(4)** Run with  parallelization (`par`) [see above on *System
@@ -194,6 +196,7 @@ prepare the seedlings for segmentation.
 
    ![Image](misc/preprocess/preprocessing.png) </br></br></br>
 
+**[to-do]** finish pipeline descriptions
 4. **Segmentation Pipeline**: A 3-stage machine learning pipeline generates the
    midline used to measure growth kinematics.
    - **S-Phase**: A 'seeding' phase where a convolutional neural network (CNN)
