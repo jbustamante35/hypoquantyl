@@ -13,7 +13,9 @@ try
     eval(sprintf('%s_%s = HQ', ...
         HQ.inputs.tset, HQ.preprocessing.ExperimentName));
 catch err
-    fprintf('\n%s\nError in hqscript5\n%s\n%s\n', sprA, err.getReport, sprA);
+    fprintf('\n%s\nError in %s\n%s\n%s\n', ...
+        sprA, err.getReport, mfilename, sprA);
+    HQ = [];
 end
 fprintf('\n%s\nFinished in %.02f hours\n%s\n', sprB, mytoc(th, 'hrs'), sprA);
 
@@ -21,8 +23,12 @@ fprintf('\n%s\nFinished in %.02f hours\n%s\n', sprB, mytoc(th, 'hrs'), sprA);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Basic analysis of results
-hq = single_dark_cry1;
-% hq = multiple_blue_col0;
+switch HQ.inputs.tset
+    case 'single'
+        hq = single_dark_cry1;
+    case 'multiple'
+        hq = multiple_blue_col0;
+end
 
 ex    = hq.preprocessing;
 g     = ex.combineGenotypes;
