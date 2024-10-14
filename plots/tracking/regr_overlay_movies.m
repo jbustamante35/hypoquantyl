@@ -76,7 +76,7 @@ for ei = einit : nexs
         uinfo.LineWidth  = lwid;
         uinfo.Date       = rdate;
 
-        figclr(2,1);
+        figclr(fidx+1,1);
         subplot(211); imagesc(uregr); colorbar; clim(rlims);
         subplot(212); imagesc(ulen); colorbar; clim(rlims); drawnow;
         showREGR(uimg, umid, ulen, uregr, uinfo, msample, fidx, sav);

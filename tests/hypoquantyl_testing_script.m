@@ -70,4 +70,16 @@ figclr(2);
 montage(MRI, 'Size', [1 , numel(MRI)], 'DisplayRange', []);
 colormap jet; colorbar; clim([0 , 10]);
 
-% Additional options to store into tabulated csv format [to-do]
+%%
+sav   = 1;
+fidx  = 2;
+rdate = tdate;
+
+regr_overlay_movies(T(idx), STBL, uimgs, umaps, uenms(idx), senms, msample, ...
+    'rdate', rdate, 'fidx', fidx, 'sav', sav);
+
+
+%% Additional options to store into tabulated csv format [to-do]
+
+
+

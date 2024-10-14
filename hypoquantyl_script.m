@@ -1,16 +1,17 @@
 %% HypoQuantyl Parmeters Script
 
 % 1) Select sample data to run. Uncomment as needed.
-tset = 'single'; % [single_seedling.zip]   1 cry1 mutant grown for 8h in darkness
-% tset = 'multiple'; % [multiple_seedling.zip] 5 wt seedlings grown for 2h in darkness then 6h blue light
+% tset = 'single'; % [single_seedling.zip]   1 cry1 mutant grown for 8h in darkness
+tset = 'multiple'; % [multiple_seedling.zip] 5 wt seedlings grown for 2h in darkness then 6h blue light
 
 % 2) File path to where you downloaded and unzipped the sample images
 % path_to_data = '/home/username/Downloads/testimages';
+path_to_data = '/home/jbustamante/Dropbox/EdgarSpalding/scratchnotes/sampledata/images/';
 
 % 3) General options
 vrb   = 1;     % Verbosity [ 0 none | 1 verbose ]
 sav   = 1;     % Save results into .mat files
-par   = 0;     % Use parallel processing [0 | 1]
+par   = 1;     % Use parallel processing [0 | 1]
 odir  = pwd;   % Directory path to store results [default pwd]
 edate = tdate; % Date of analysis [format string as 'YYMMDD' to set manually]
 
