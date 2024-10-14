@@ -8,5 +8,4 @@ function list = dir2(varargin)
 list         = dir(varargin{:});
 self_indices = ismember({list.name}, {'.', '..', '.DS_STORE'});
 list(self_indices) = [];
-
 end

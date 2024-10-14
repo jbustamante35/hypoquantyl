@@ -1,20 +1,23 @@
 %% HypoQuantyl Parmeters Script
-% Select sample data to run [single|dark|cry1 or multiple|blue|col0]
-tset = 'single'; % Sample type [ single | multiple ]
-cset = 'dark';   % Condition   [ dark   | blue     ]
-gset = 'cry1';   % Genotype    [ cry1   | col0     ]
-% tset = 'multiple'; % Sample type [ single | multiple ]
-% cset = 'blue';     % Condition   [ dark   | blue     ]
-% gset = 'col0';     % Genotype    [ cry1   | col0     ]
 
-path_to_data = '/mnt/spaldingdata/JulianBustamante/data/sampleimages';
+% 1) Select sample data to run. Uncomment as needed.
+tset = 'single'; % [single_seedling.zip]   1 cry1 mutant grown for 8h in darkness
+% tset = 'multiple'; % [multiple_seedling.zip] 5 wt seedlings grown for 2h in darkness then 6h blue light
 
-% General options
+% 2) File path to where you downloaded and unzipped the sample images
+% path_to_data = '/home/username/Downloads/testimages';
+path_to_data = '/home/jbustamante/Dropbox/EdgarSpalding/scratchnotes/sampledata/images/';
+% path_to_data = 'C:\\home\jbustamante\Dropbox\EdgarSpalding\scratchnotes\sampledata\images\';
+
+% 3) General options
 vrb   = 1;     % Verbosity [ 0 none | 1 verbose ]
 sav   = 1;     % Save results into .mat files
 par   = 0;     % Use parallel processing [0 | 1]
 odir  = pwd;   % Directory path to store results [default pwd]
-edate = tdate; % Date of analysis [or 'YYMMDD' (for manual)]
+edate = tdate; % Date of analysis [format string as 'YYMMDD' to set manually]
+
+% Advanced parameters are below, but not recommended to toggle unless you know
+% how they are implemented in this pipeline
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% Advanced Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -80,12 +83,17 @@ fmax  = 20;                        % FLF fit Fmax
 ki    = 0.02;                      % FLF fit initial k
 ni    = 0.3;                       % FLF fit initial n
 
-% Exclude slow-growing seedling [for mutli-seedling sample data]
+% Exclude slow-growing seedling [for multiple_seedling.zip]
 if strcmp(tset, 'multiple'); iex  = 5; else iex = []; end
+
+% ---------------------------------------------------------------------------- %
+%% Export inputs
+if endsWith(path_to_data, filesep); path_to_data = path_to_data(1 : end-1); end
 
 % Save parameters into .mat file
 ostr     = {'hqinputs' ; sprintf('%s_hqinputs', edate)};
-hqinputs = cellfun(@(x) sprintf('%s/%s', odir, x), ostr, 'UniformOutput', 0);
+hqinputs = cellfun(@(x) sprintf('%s%s%s', odir, filesep, x), ...
+    ostr, 'UniformOutput', 0);
 save(hqinputs{1}, '-v7.3');
 save(hqinputs{2}, '-v7.3');
-pause(3);
+pause(2);

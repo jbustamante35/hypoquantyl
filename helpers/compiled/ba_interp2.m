@@ -48,7 +48,7 @@ function Z = ba_interp2(F, X, Y, method)
 % GPL
 % (c) 2008 Brian Amberg
 % http://www.brian-amberg.de/
-
+if nargin < 4; method = 'linear'; end
 try
     % Try compiled version
     Z = ba_interp2_c(F, X, Y, method);
@@ -56,7 +56,7 @@ catch
     % Default to matlab's interp2
     % error('ERROR: The mex file was not compiled. Use  $ mex -O ba_interp2.cpp      to compile it');
     % fprintf('ERROR: The mex file was not compiled. Use  $ mex -O ba_interp2.cpp to compile it');
-    if nargin < 4; method = 'linear'; end
+    fprintf(2, '%s not compiled, defaulting to interp2\n', mfilename);
     Z = interp2(F, X, Y, method);
 end
 end

@@ -53,11 +53,12 @@ try
     porg = msample(iorg, morg);
 
     if v; fprintf(' (%.03f) | DONE! [%.03f sec]\n', gorg, toc(t)); end
-catch
+catch err
     [corg ,  morg , zorg , borg , porg] = deal([0 , 0]);
     gorg = Inf;
     dorg = '';
-    if v; fprintf(2, ' [%.03f] | ERROR! [%.03f sec]\n', gorg, toc(t)); end
+    if v; fprintf(2, [' [evaluateDirection] [%.03f] | ' ...
+            'ERROR! [%.03f sec]\n%s\n'], gorg, toc(t), err.getReport); end
 end
 
 % ---------------------------------------------------------------------------- %
@@ -75,11 +76,12 @@ try
     pflp = msample(iflp, mflp);
 
     if v; fprintf(' (%.03f) | DONE! [%.03f sec]\n', gflp, toc(t)); end
-catch
+catch err
     [cflp ,  mflp , zflp , bflp , pflp] = deal([0 , 0]);
     gflp = Inf;
     dflp = '';
-    if v; fprintf(2, ' [%.03f] | ERROR! [%.03f sec]\n', gflp, toc(t)); end
+    if v; fprintf(2, [' [evaluateDirection] [%.03f] | ' ...
+            'ERROR! [%.03f sec]\n%s\n'], gflp, toc(t), err.getReport); end
 end
 
 % ---------------------------------------------------------------------------- %
@@ -151,7 +153,8 @@ title(ttl, 'FontSize', 10);
 
 drawnow;
 
-fnm = sprintf('%s_hypocotylpredictions_originalvsflipped_keep%s', tdate, hkeep);
+fnm = pprintf(sprintf('%s_hypocotylpredictions_originalvsflipped_keep%s', ...
+    tdate, hkeep));
 
 if sav
     if v; fprintf('Saving figure %d...', fidx); end

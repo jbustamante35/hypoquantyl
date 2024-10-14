@@ -11,7 +11,7 @@ function t = mytoc(t, mth, rnd)
 % Output:
 %   t: time elapsed in converted time
 if nargin < 2; mth = 'sec'; end
-if nargin < 3; rnd = 2;     end
+if nargin < 3; rnd = 10;    end
 
 t = round(toc(t), rnd);
 switch mth

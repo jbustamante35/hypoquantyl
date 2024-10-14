@@ -51,9 +51,10 @@ try
     if cidx; t = tic; n = fprintf('BVector [%03d]', cidx); end
     if isempty(bpre); bpre = bpredict(img, wrows, 0); end
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
-catch e
-    fprintf(2, '\n%s\nError predicting B-Vector\n%s\n%s\n%s\n\n', ...
-        sprA, sprB, e.getReport, sprA);
+catch err
+    fprintf(2, ['\n%s\nError [predictFromImage] ' ...
+        'predicting B-Vector\n%s\n%s\n%s\n\n'], ...
+        sprA, sprB, err.getReport, sprA);
 end
 
 % ---------------------------------------------------------------------------- %
@@ -65,9 +66,10 @@ try
     if isempty(zpre); zpre = zpredict(img, 0); end
     if addbvec; zpre = [zpre(:,1:2) + bpre , zpre(:,3:end)]; end
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
-catch e
-    fprintf(2, '\n%s\nError predicting Z-Vector\n%s\n%s\n%s\n\n', ...
-        sprA, sprB, e.getReport, sprA);
+catch err
+    fprintf(2, ['\n%s\nError [predictFromImage] ' ...
+        'predicting Z-Vector\n%s\n%s\n%s\n\n'], ...
+        sprA, sprB, err.getReport, sprA);
 end
 
 % ---------------------------------------------------------------------------- %
@@ -76,9 +78,10 @@ try
     if cidx; t = tic; n = fprintf('DVector [%03d]', cidx); end
     [cpre , ~ , citrs] = cpredict(img, zpre);
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
-catch e
-    fprintf(2, '\n%s\nError predicting D-Vector\n%s\n%s\n%s\n\n', ...
-        sprA, sprB, e.getReport, sprA);
+catch err
+    fprintf(2, ['\n%s\nError [predictFromImage] ' ...
+        'predicting D-Vector\n%s\n%s\n%s\n\n'], ...
+        sprA, sprB, err.getReport, sprA);
 end
 
 % ---------------------------------------------------------------------------- %
@@ -88,9 +91,10 @@ try
     mpre = mline(cpre);
     bpre = mpre(1,:);
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
-catch e
-    fprintf(2, '\n%s\nError generating midline\n%s\n%s\n%s\n\n', ...
-        sprA, sprB, e.getReport, sprA);
+catch err
+    fprintf(2, ['\n%s\nError [predictFromImage] ' ...
+        'generating midline\n%s\n%s\n%s\n\n'], ...
+        sprA, sprB, err.getReport, sprA);
 end
 
 % ---------------------------------------------------------------------------- %
@@ -105,9 +109,10 @@ try
         gpre = escore(img, mpre);
     end
     if cidx; jprintf('', toc(t), 1, 80 - sum(n)); end
-catch e
-    fprintf(2, '\n%s\nError grading prediction\n%s\n%s\n%s\n\n', ...
-        sprA, sprB, e.getReport, sprA);
+catch err
+    fprintf(2, ['\n%s\nError [predictFromImage] ' ...
+        'grading prediction\n%s\n%s\n%s\n\n'], ...
+        sprA, sprB, err.getReport, sprA);
 end
 
 % ---------------------------------------------------------------------------- %

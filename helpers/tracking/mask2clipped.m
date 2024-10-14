@@ -51,10 +51,12 @@ try
     else
         mout = [];
     end
-catch
-    fprintf(2, 'Error [attempt %02d of %02d]...', itr, MAXITRS);
+catch err
+    fprintf(2, 'Error [mask2clipped] [attempt %02d of %02d]...', itr, MAXITRS);
     if itr == MAXITRS
         [cout , mout] = deal([]);
+        fprintf(2, ['\n%s\nError [mask2clipped] max attempts reached (%d)\n' ...
+            '%s\n%s\n%s'], sprB, MAXITRS, err.getReport, sprB);
     else
         % Remove lower rows of mask and re-attempt conversion
         blk = 1 : size(msk,1) - BLK;

@@ -32,27 +32,34 @@ deployment on distributed computing servers provided by
 
 ### Getting Started
 To use **HypoQuantyl**, ensure your system meets the following requirements:
+- **System Recommendations**:
+  - This software was optimized for **Linux operating systems** and has been
+   tested on **MacOS**. We have not yet tested on **Windows**. There may be
+   some places that do not handle the differences in file path conventions
+   *(using '/' in Linux/Mac vs '\\' in Windows*).
 
-- **MATLAB Version**:
-  This tool was developed for MATLAB R2018a to R2022b. Other versions may
-  work but are not guaranteed.
+  - If running with `parallel` flag (`par = 1`), I recommend a machine with
+  **>12 CPU cores** to ensure stability.
+
+  - **8+ GB RAM** minimum, and **24+ GB** if using `parallel` flag.
+
+- **MATLAB Version**: </br>
+  This tool was developed on Matlab **R2018a** to **R2022b**. Versions
+  slightly earlier and later should work fine but are not guaranteed.
 
 - **Required MATLAB Toolboxes**:
   - [Curve Fitting Toolbox](https://www.mathworks.com/products/curvefitting.html)
   - [Global Optimization Toolbox](https://www.mathworks.com/products/global-optimization.html)
   - [Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html)
   - [Mapping Toolbox](https://www.mathworks.com/products/mapping.html)
-  - [Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html)
   - [Sensor Fusion and Tracking Toolbox](https://www.mathworks.com/products/sensor-fusion-and-tracking.html)
   - [Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
   - [Statistics and Machine Learning Toolbox](https://www.mathworks.com/products/statistics.html)
   - [Symbolic Math Toolbox](https://www.mathworks.com/products/symbolic.html)
   - [Wavelet Toolbox](https://www.mathworks.com/products/wavelet.html)
 
-- Clone the repository:
-   ```bash
-   git clone https://github.com/jbustamante35/hypoquantyl.git
-   ```
+  (Optional) if you run pipeline with `parallel` flag (`par = 1`).
+  - [Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html)
 
 - Install the required MATLAB toolboxes listed above. Check using the
   following command in the Matlab console:
@@ -60,81 +67,111 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
    matlab.addons.installedAddons;
    ```
 
-### Running HypoQuantyl
-1. Add this repository to your MATLAB path
-    - **NOTE!** make sure to remove the `./.git` subfolder to avoid a messy path
+- Download example image stacks in our lab's [Dryad Data Repository](http://datadryad.org/stash/share/Vh8MaMvB8jRan1BAWxIqm1qiKayizm4Hr056hgtR2MI).
+  See below in **Pipeline Overview** for details about filename conventions.
 
-2. Download example image stacks in our lab's [Dryad Data Repository](http://datadryad.org/stash/share/Vh8MaMvB8jRan1BAWxIqm1qiKayizm4Hr056hgtR2MI)
      - Sample images are time-lapse image stacks of the following (see bottom of page):
-        - [`single_seedling.zip`] Single *cry1* mutant seedling grown for 8 h in darkness *[91 MB]*
+        - [`single_seedling.zip`] Single *cry1* mutant seedling grown for 8 h in darkness *[96 MB]*
         - [`multiple_seedling.zip`] Five *wt* seedlings grown for 6 h in blue light, after an initial 2 h in darkness *[20 MB]*
 
-   Sample Images: </br>
-   **`single_seedling.zip`**
-   ![Alt Text](misc/single_dark_cry1.png)
+     - Single frame from sample image stacks: </br>
 
-   **`multiple_seedling.zip`**
-   ![Alt Text](misc/multiple_blue_col0.png)
+       **`single_seedling.zip`** </br>
+       ![Alt Text](misc/single_dark_cry1_small.png) </br>
+
+       </br></br>
+
+       **`multiple_seedling.zip`** </br>
+       ![Alt Text](misc/multiple_blue_col0_small.png)
 
 
-4. Download the `HQ.mat` dataset that contains neural net models, PCA
-   eigenvectors, helper functions, and constants required to run this
-   program *[62 MB]*.
+- Download the `HQ.mat` file in the Dryad data repository. This contains neural
+  net models, PCA eigenvectors, helper functions, and constants required to run
+  this program *[64 MB]*.
 
-5. Open [*hypoquantyl_script.m*](./hypoquantyl_script.m) in the matlab editor
-   to set input parameters, point to the image stack folder, and set the output
-   destination folder.
+- Place image stack(s) and `HQ.mat` into the **same directory** and separate
+  from the code repository.
+
+       mkdir kinematics_analysis;
+       mv single_seedling.zip kinematics_analysis;
+       mv HQ.mat kinematics_analysis;
+       cd kinematics_analysis;
+       unzip single_seedling.zip
+
+- Clone this repository:
+
+       git clone https://github.com/jbustamante35/hypoquantyl.git
+
+- Add `hypoquantyl` to your MATLAB path with subfolders
+    - **NOTE!** remember to remove the `./.git` subfolder to avoid messy paths
+
+### Running HypoQuantyl
+1. Open [*hypoquantyl_script.m*](./hypoquantyl_script.m) in the matlab editor.
 
    ```matlab
    edit hypoquantyl_script;
    ```
 
-   Once opened, select which sample time course set to analyze [`tset` ,
-   `cset` , `gset`], then set parameters for verbosity (`vrb`), saving results
-   into a .mat file (`sav`), using parallelization (`par`), output directory
-   (`odir`), and date of analysis (`edate`).
+2. In the script, set general options as needed: </br>
+  **(1)** Sample image stack to analyze [`tset` , `cset` , `gset`],  </br>
+  **(2)** Verbosity (`vrb`),  </br>
+  **(3)** Save results into .mat files (`sav`),  </br>
+  **(4)** Run with  parallelization (`par`) [see above on *System
+   Requirements*],  </br>
+  **(5)** File path to output directory (`odir`), </br>
+  **(6)** Date of analysis (`edate`). </br>
 
+   `hypoquantyl_script.m`
    ```matlab
    %% HypoQuantyl Parmeters Script
-   % Select sample data to run. Uncomment as needed.
 
-   % Single cry1 mutant grown for 8 h darkness [single_seedling.zip]
+   % 1) Select sample data to run. Uncomment as needed.
+
+   % [single_seedling.zip]
+   % Single cry1 mutant grown for 8 h darkness
    % tset = 'single'; % Sample type
    % cset = 'dark';   % Condition
    % gset = 'cry1';   % Genotype
 
-   % Five wt seedlings grown for 2 h darkness, then 6 h blue light [multiple_seedling.zip]
+   % [multiple_seedling.zip]
+   % Five wt seedlings grown for 2 h darkness, then 6 h blue light
    tset = 'multiple'; % Sample type
    cset = 'blue';     % Condition
    gset = 'col0';     % Genotype
 
-   % File path to where you downloaded and unzipped the sample images
+   % 2) File path to where you downloaded and unzipped the sample images
    path_to_data = '/home/username/Downloads/testimages';
 
-   % General options
+   % 3) General options
    vrb   = 1;     % Verbosity [ 0 none | 1 verbose ]
-   sav   = 1;     % Save results into .mat files?
+   sav   = 1;     % Save results into .mat files
    par   = 1;     % Use parallel processing [0 | 1]
    odir  = pwd;   % Directory path to store results [default pwd]
    edate = tdate; % Date of analysis [format string as 'YYMMDD' to set manually]
 
-   % Advanced parameters are below these lines but
-   % is not recommended to toggle unless you know what they do
+   % Advanced parameters are below, but not recommended to toggle unless you know
+   % how they are implemented in this pipeline
    ```
 
-6. Run `HypoQuantyl.m` in the Matlab console!
+3. Run `HypoQuantyl.m` in the Matlab console!
 
    ```matlab
-   HQ = HypoQuantyl;`
+   HQ = HypoQuantyl;
    ```
 
-   Runtimes may vary drastically depending on processing power, total CPU
-   threads, and use of the parallel processing parameter. On our
-   ***CENT OS RHEL 7*** Linux server with an ***Intel Xeon Silver 4210R*** CPU
-   of **40 cores** and **376 GB RAM**, analyzing a single seedling for 96
-   frames using the default parameters takes about **10 min**.
+4. Analysis of Results **[to-do]**
 
-7. Analysis of Results
+
+#### NOTE ABOUT PERFORMANCE
+   Runtimes may vary drastically depending on processing power, total CPU
+   threads, and use of the parallel processing parameter.
+
+   On our ***CENT OS RHEL 7*** Linux server with an ***Intel Xeon Silver
+   4210R*** CPU of **40 cores**, analyzing a single seedling for 96 frames
+   takes about **10 min**.
+
+   On a conventional personal laptop with **8 cores** and no use of parallel
+   processing, a single seedling may take over **5 hours**.
 
 ---
 

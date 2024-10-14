@@ -3,12 +3,13 @@ function [ridx , rx] = pullRandom(X, n, getrx, toSort)
 % Description
 %
 % Usage:
-%    [ridx , rx] = pullRandom(X, n, getrx)
+%    [ridx , rx] = pullRandom(X, n, getrx, toSort)
 %
 % Input:
 %    X: distribution of numbers
 %    n: number of random pulls (optional) [defaults to 1]
 %    getrx: return the actual value instead of the index
+%    toSort: sort after pullring random
 %
 % Output:
 %    ridx: random index or indices from distribution
@@ -25,9 +26,10 @@ if nargin < 4; toSort = 1;       end
 
 %% Return random index and object
 % Check if Shuffle function is available
-if ~isempty(which('Shuffle')) && n <= numel(X)
+% if ~isempty(which('Shuffle')) && n <= numel(X)
+try
     ridx = Shuffle(length(X), 'index', n);
-else
+catch
     % No Shuffle function found
     ridx = randi(length(X), [1 , n]);
 end

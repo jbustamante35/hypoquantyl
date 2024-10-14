@@ -4,6 +4,13 @@ function HQ = HypoQuantyl
 ti = tic;
 fprintf('\n%s\nReading through hypoquantyl_script...\n%s\n', sprA, sprB);
 run('hypoquantyl_script.m');
+
+% Finish path to images
+cinn = dir2(pprintf(sprintf('%s%s%s', path_to_data, filesep, tset)));
+cset = cinn.name;
+ginn = dir2(pprintf(sprintf('%s%s%s', cinn.folder, filesep, cset)));
+gset = ginn.name;
+
 fprintf('Date of Analysis: %s\n', edate);
 fprintf('Input Path: %s\n', path_to_data);
 fprintf('Output Path: %s\n', odir);
@@ -18,7 +25,8 @@ fprintf('%s\nDONE! Loaded %d parameters [%.03f sec]\n%s\n', ...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Prepare Models %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Load learning models
-hqmod = load(sprintf('%s/%s', path_to_data, hqnm));
+hqinn = pprintf(sprintf('%s%s%s', path_to_data, filesep, hqnm));
+hqmod = load(hqinn);
 hqmod = hqmod.HQ;
 
 % -------------------------- Load into environment --------------------------- %
@@ -33,24 +41,20 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%% Image Pre-Processing %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Detect seedlings and prepare hypocotyl images
-if endsWith(path_to_data, '/'); path_to_data = path_to_data(1 : end-1); end
-path_to_conditions = sprintf('%s/%s', path_to_data, tset);
-path_to_genotypes  = sprintf('%s/%s', path_to_conditions, cset);
+path_to_conditions = cinn.folder;
+path_to_genotypes  = ginn.folder;
 
-edir = path_to_genotypes;
-eset = gset;
 opts = {'HYPOCOTYLLENGTH' , hlng};
-ex   = imagePreprocessor(edir, eset, mth, 0, toExclude, ...
+ex   = imagePreprocessor(path_to_genotypes, gset, mth, 0, toExclude, ...
     vrb, fidxs, vmth, opts, 0);
 
 gens  = ex.combineGenotypes;
-sdls  = ex.combineSeedlings;
 ngens = numel(gens);
 enm   = ex.ExperimentName;
 
 % ------------------------ Save Pre-Processing ------------------------------- %
 if sav
-    xdir = sprintf('%s/output/%s/preprocessing', odir, edate);
+    xdir = pprintf(sprintf('%s/output/%s/preprocessing', odir, edate));
     if ~isfolder(xdir); mkdir(xdir); end
     ex.SaveExperiment(xdir);
 end
@@ -126,10 +130,10 @@ for gidx = 1 : numel(BSEG); GSEGS{gidx}(FBAD{gidx}) = BSEG{gidx}; end
 
 % -------------------------- Save Segmentation ------------------------------- %
 if sav
-    sdir = sprintf('%s/output/%s/segmentation', odir, edate);
+    sdir = pprintf(sprintf('%s/output/%s/segmentation', odir, edate));
     if ~isfolder(sdir); mkdir(sdir); end
-    snm  = sprintf('%s/%s_segmentation_%s_%dgenotypes', ...
-        sdir, edate, enm, ngens);
+    snm  = pprintf(sprintf('%s/%s_segmentation_%s_%dgenotypes', ...
+        sdir, edate, enm, ngens));
     save(snm, '-v7.3', 'GSEGS');
 end
 
@@ -196,10 +200,10 @@ end
 
 % ---------------------------- Save Remapping -------------------------------- %
 if sav
-    rdir = sprintf('%s/output/%s/remapping', odir, edate);
+    rdir = pprintf(sprintf('%s/output/%s/remapping', odir, edate));
     if ~isfolder(rdir); mkdir(rdir); end
-    rnm  = sprintf('%s/%s_remapping_%s_%dgenotypes', ...
-        rdir, edate, enm, ngens);
+    rnm  = pprintf(sprintf('%s/%s_remapping_%s_%dgenotypes', ...
+        rdir, edate, enm, ngens));
     save(rnm, '-v7.3', 'GMAPS');
 end
 
@@ -276,10 +280,10 @@ if sav
     TRACK.raw = TY;
     TRACK.converted = struct('UVEL', VVU, 'UREGR', VRU, ...
         'EVEL', VVE, 'EREGR', VRE, 'VI', VVI, 'RI', VRI);
-    vdir = sprintf('%s/output/%s/tracking', odir, edate);
+    vdir = pprintf(sprintf('%s/output/%s/tracking', odir, edate));
     if ~isfolder(vdir); mkdir(vdir); end
-    vnm  = sprintf('%s/%s_tracking_%s_%dgenotypes', ...
-        vdir, edate, enm, ngens);
+    vnm  = pprintf(sprintf('%s/%s_tracking_%s_%dgenotypes', ...
+        vdir, edate, enm, ngens));
     save(vnm, '-v7.3', 'TRACK');
 end
 
@@ -291,7 +295,7 @@ end
 
 % ---------------------------- Save Analysis --------------------------------- %
 % if sav
-%     adir = sprintf('%s/output/%s/analysis', odir, edate);
+%     adir = pprintf(sprintf('%s/output/%s/analysis', odir, edate));
 %     if ~isfolder(adir); mkdir(adir); end
 %     saveFiguresJB(figs, fnms);
 % end
@@ -300,7 +304,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Outputs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Store results into output
-hqinn = load(sprintf('%s/hqinputs', odir));
+hqinn = load(pprintf(sprintf('%s/hqinputs', odir)));
 HQ    = struct('inputs', hqinn, 'models', hqmod, ...
     'preprocessing', ex, 'segmentation', GSEGS, 'remapping', GMAPS, ...
     'tracking', TRACK);

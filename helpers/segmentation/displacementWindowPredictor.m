@@ -1,5 +1,5 @@
 function [cpre , zpre , citrs , fnms] = displacementWindowPredictor(img, varargin)
-%% displacementWindowPredictor:
+%% displacementWindowPredictor: 
 %
 %
 % Usage:
@@ -76,7 +76,8 @@ citrs                = cell(nitrs,1);
 [~ , sprA , sprB] = jprintf('', 0, 0);
 tAll              = tic;
 if vis > 1
-    fprintf('%s\nDisplacement Window Predictor | %d Iterations | %d Patches | %dx%dx%d Domains\n%s\n', ...
+    fprintf(['%s\nDisplacement Window Predictor | ' ...
+        '%d Iterations | ' '%d Patches | %dx%dx%d Domains\n%s\n'], ...
         sprA, nitrs, nsegs, numel(scls), numel(doms), numel(dszs), sprB);
 end
 

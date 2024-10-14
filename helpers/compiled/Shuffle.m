@@ -1,4 +1,4 @@
-function X = Shuffle(Arg1, Arg2, Arg3)  %#ok<INUSD,STOUT>
+function X = Shuffle(Arg1, Arg2, Arg3)  
 % Random permutation of array elements
 % SHUFFLE works in Inplace, Index and Derange mode:
 %
@@ -89,7 +89,7 @@ function X = Shuffle(Arg1, Arg2, Arg3)  %#ok<INUSD,STOUT>
 %    X(w) = X(i);
 %    X(i) = t;
 % end
- 
+
 % for i = n:-1:2   % Knuth shuffle in backward direction:
 %    w    = ceil(rand * i);   % 1 <= w <= i
 %    t    = X(w);
@@ -105,4 +105,12 @@ function X = Shuffle(Arg1, Arg2, Arg3)  %#ok<INUSD,STOUT>
 % end
 % X = X(1:nOut);
 
-error(['JSimon:', mfilename, ':NoMex'], 'Need compiled mex file!');
+try
+    X = Shuffle_c(Arg1, Arg2, Arg3);
+catch
+    % error(['JSimon:', mfilename, ':NoMex'], 'Need compiled mex file!');
+    fprintf(2, '%s not compiled, defaulting to X(randperm(numel(X))\n', ...
+        mfilename);
+    X = uint8(randi(Arg1, [1 , Arg3]));
+end
+end

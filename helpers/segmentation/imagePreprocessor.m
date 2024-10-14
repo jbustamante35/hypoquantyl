@@ -31,7 +31,7 @@ if nargin < 10; odir      = [];           end
 %% Create Experiment and add Genotypes
 % Genotypes are sub-directories from Experiment path
 tExp = tic;
-epth = sprintf('%s/%s', edir, eset);
+epth = pprintf(sprintf('%s%s%s', edir, filesep, eset));
 ex   = Experiment('ExperimentPath', epth);
 if ~isempty(opts); ex.setProperty(opts{1}, opts{2}); end
 ex.AddGenotypes;

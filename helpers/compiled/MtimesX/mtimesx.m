@@ -264,7 +264,6 @@
 
 function varargout = mtimesx(varargin)
 
-
 try
     %\
     % If you got here then mtimesx is not compiled yet, so go compile it first.
@@ -279,6 +278,7 @@ try
     [varargout{1:nargout}] = mtimesx_c(varargin{:});
 catch
     % Use default mtimes
+    fprintf(2, 'MtimesX.cpp not compiled, defaulting to mtimes\n');
     [varargout{1:nargout}] = mtimes(varargin{:});
 end
 
