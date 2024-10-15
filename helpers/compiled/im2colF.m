@@ -4,11 +4,11 @@ if nargin < 3; mth = 'sliding'; end
 
 try
     % Try compiled version
-    Z = im2colF_c(F, X);
+    Z = im2colF_c(F, X, mth);
 catch
     % Default to matlab's im2col
-    fprintf(2, 'im2colF not compiled, defaulting to im2col\n');
+    % fprintf('%s not compiled, defaulting to im2col\n', mfilename);
     % Z = im2col(F, X, 'distinct');
-    Z = im2col(F, X, mth);
+    Z = im2col(F, X, 'sliding');
 end
 end

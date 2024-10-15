@@ -56,7 +56,7 @@ catch
     % Default to matlab's interp2
     % error('ERROR: The mex file was not compiled. Use  $ mex -O ba_interp2.cpp      to compile it');
     % fprintf('ERROR: The mex file was not compiled. Use  $ mex -O ba_interp2.cpp to compile it');
-    fprintf(2, '%s not compiled, defaulting to interp2\n', mfilename);
+    % fprintf('%s not compiled, defaulting to interp2\n', mfilename);
     Z = interp2(F, X, Y, method);
 end
 end

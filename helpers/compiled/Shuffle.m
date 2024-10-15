@@ -109,8 +109,8 @@ try
     X = Shuffle_c(Arg1, Arg2, Arg3);
 catch
     % error(['JSimon:', mfilename, ':NoMex'], 'Need compiled mex file!');
-    fprintf(2, '%s not compiled, defaulting to X(randperm(numel(X))\n', ...
-        mfilename);
+    % fprintf('%s not compiled, defaulting to X(randperm(numel(X))\n', ...
+    %     mfilename);
     X = uint8(randi(Arg1, [1 , Arg3]));
 end
 end

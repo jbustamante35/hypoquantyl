@@ -2,8 +2,8 @@ function HQ = HypoQuantyl
 %%
 % Read through and load parameters script
 ti = tic;
-fprintf('\n%s\nReading through hypoquantyl_script...\n%s\n', sprA, sprB);
-run('hypoquantyl_script.m');
+fprintf('\n%s\nReading through hypoquantyl_parameters_script...\n%s\n', sprA, sprB);
+run('hypoquantyl_parameters_script.m');
 
 % Finish path to images
 cinn = dir2(pprintf(sprintf('%s%s%s', path_to_data, filesep, tset)));

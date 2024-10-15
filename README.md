@@ -31,8 +31,6 @@ deployment on distributed computing servers provided by
 ---
 
 ### Getting Started
-To use **HypoQuantyl**, ensure your system meets the following requirements:
-
 #### **System Recommendations**:
   - This software was optimized for **Linux operating systems** and has been
    tested on **MacOS**. We have not yet tested on **Windows**. There may be
@@ -48,7 +46,7 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
   This tool was developed on Matlab **R2018a** to **R2022b**. Versions
   slightly earlier and later should work fine but are not guaranteed.
 
-#### **Required MATLAB Toolboxes**:
+#### **MATLAB Toolboxes**:
   - [Curve Fitting Toolbox](https://www.mathworks.com/products/curvefitting.html)
   - [Global Optimization Toolbox](https://www.mathworks.com/products/global-optimization.html)
   - [Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html)
@@ -68,15 +66,18 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
    matlab.addons.installedAddons;
    ```
 
+#### Download Neural Net Models
+- Download the `HQ.mat` file from our lab's [Dryad data repository](http://datadryad.org/stash/share/Vh8MaMvB8jRan1BAWxIqm1qiKayizm4Hr056hgtR2MI).
+This contains neural net models, PCA eigenvectors, helper functions, and
+constants required to run this program *[64 MB]*.
+
 #### Download Sample Image Datasets
-- Download example image stacks in our lab's [Dryad Data Repository](http://datadryad.org/stash/share/Vh8MaMvB8jRan1BAWxIqm1qiKayizm4Hr056hgtR2MI).
+- Download example image stacks from the same [Dryad repository](http://datadryad.org/stash/share/Vh8MaMvB8jRan1BAWxIqm1qiKayizm4Hr056hgtR2MI).
   See below in **Pipeline Overview** for details about filename conventions.
 
-     - Sample images are time-lapse image stacks of the following (see bottom of page):
+     - The sample data are time-lapse image stacks of the following:
         - [`single_seedling.zip`] Single *cry1* mutant seedling grown for 8 h in darkness *[96 MB]*
         - [`multiple_seedling.zip`] Five *wt* seedlings grown for 6 h in blue light, after an initial 2 h in darkness *[20 MB]*
-
-     - Single frame from sample image stacks: </br>
 
        **`single_seedling.zip`** </br>
        ![Alt Text](misc/single_dark_cry1_small.png) </br>
@@ -86,15 +87,10 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
        **`multiple_seedling.zip`** </br>
        ![Alt Text](misc/multiple_blue_col0_small.png)
 
+     - Place image stacks and `HQ.mat` into the **same directory**. Make sure
+       this code repository is in a separate directory.
 
-#### Download Neural Net Models and Other Important Data
-- Download the `HQ.mat` file in the Dryad data repository. This contains neural
-  net models, PCA eigenvectors, helper functions, and constants required to run
-  this program *[64 MB]*.
-
-- Place image stack(s) and `HQ.mat` into the **same directory** and separate
-  from the code repository.
-
+       ```bash
        mkdir analysis_folder;
 
        mv single_seedling.zip analysis_folder;
@@ -105,12 +101,12 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
 
        unzip single_seedling.zip
        unzip multiple_seedling.zip
-
+       ```
 #### Clone this repository:
 
        git clone https://github.com/jbustamante35/hypoquantyl.git
 
-   - Add `hypoquantyl` to your MATLAB path with subfolders
+   - Add `hypoquantyl` to your MATLAB path **(with subfolders)**
      - **NOTE!** remember to remove the `./.git` subfolder to avoid messy paths
 
 ### Running HypoQuantyl
@@ -154,6 +150,7 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
 
    - A testing script is provided in
    [tests/hypoquantyl_testing_script.m](tests/hypoquantyl_testing_script.m).
+
    Or simply run:
 
    ```matlab
@@ -161,6 +158,8 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
    ```
 
 4. Analysis of Results **[to-do]**
+   - Results are stored in the location set as the output directory (`odir`).
+
 
 
 #### NOTE ABOUT PERFORMANCE

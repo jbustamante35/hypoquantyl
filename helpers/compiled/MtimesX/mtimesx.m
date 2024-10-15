@@ -278,7 +278,7 @@ try
     [varargout{1:nargout}] = mtimesx_c(varargin{:});
 catch
     % Use default mtimes
-    fprintf(2, 'MtimesX.cpp not compiled, defaulting to mtimes\n');
+    % fprintf('%s not compiled, defaulting to mtimes\n', mfilename);
     [varargout{1:nargout}] = mtimes(varargin{:});
 end
 

@@ -1,8 +1,8 @@
 %% HypoQuantyl Testing Script
-% Open hypoquantyl_script to adjust input parameters
+% Open hypoquantyl_parameters_script to adjust input parameters
 % The variables set here are saved into the hqinputs.mat file where you set the
 % output directory (parameter name is 'odir')
-edit hypoquantyl_script.m
+edit hypoquantyl_parameters_script.m
 
 %% Run the pipeline!
 % This will read the parameters set from the script and output everything into
