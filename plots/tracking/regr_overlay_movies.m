@@ -49,9 +49,9 @@ for ei = einit : nexs
 
         switch rtyp
             case 'average'
-                uregr = T{eidx}.Stats.cuREGR;
+                uregr = T{eidx}.Stats.UREGR;
             case 'single'
-                uregr = T{eidx}.Output.cREGR{si};
+                uregr = T{eidx}.Output.REGR{si};
         end
 
         ulen  = T{eidx}.Stats.LENS{si};
@@ -76,10 +76,7 @@ for ei = einit : nexs
         uinfo.LineWidth  = lwid;
         uinfo.Date       = rdate;
 
-        figclr(fidx+1,1);
-        subplot(211); imagesc(uregr); colorbar; clim(rlims);
-        subplot(212); imagesc(ulen); colorbar; clim(rlims); drawnow;
-        showREGR(uimg, umid, ulen, uregr, uinfo, msample, fidx, sav);
+        showREGR(uimg, umid, ulen, uregr, uinfo, msample, fidx, sav, rdir);
 
         fprintf('DONE! [%.02f min] |\n', mytoc(ts, 'min'));
     end
@@ -100,6 +97,7 @@ p = inputParser;
 p.addOptional('einit', 1);
 p.addOptional('sav', 0);
 p.addOptional('rdate', tdate);
+p.addOptional('rdir', pwd);
 p.addOptional('fidx', 1);
 p.addOptional('dscl', 0.12);
 p.addOptional('ltrp', 1000);

@@ -1,4 +1,4 @@
-function showREGR(gimgs, gmids, glens, uregr, ginfo, msample, fidx, sav)
+function showREGR(gimgs, gmids, glens, uregr, ginfo, msample, fidx, sav, rdir)
 %% showREGR: overlay seedling time lapse with REGR
 %
 % Usage:
@@ -25,7 +25,8 @@ hc              = arrayfun(@(x) cc(x,:), HC, 'UniformOutput', 0);
 
 enm   = gnm(getDim(strfind(gnm, '_'), 1) + 1 : end);
 gttl  = fixtitle(gnm);
-rdir  = sprintf('regroverlays/%s/%s/%s/s%02d', rdate, enm, gnm, sidx);
+rdir  = pprintf(sprintf('%s/regroverlays/%s/%s/%s/s%02d', ...
+    rdir, rdate, enm, gnm, sidx));
 
 % Set crop to highest point from time lapse
 xlft = min(cellfun(@(x) min(x(:,1), [], 'all'), gmids)) - 100;
@@ -33,32 +34,27 @@ xrgt = max(cellfun(@(x) max(x(:,1), [], 'all'), gmids)) + 100;
 ybot = size(gimgs{1},1);
 ytop = min(cellfun(@(x) min(x(:,2), [], 'all'), gmids)) - 150;
 
-%%
+%% Prepare Data for Plotting
+gls = flipud(glens);
+lis = arrayfun(@(x) getCutIndex(gls(:,x), ltrp), ...
+    1 : size(gls,2), 'UniformOutput', 0)';
+gms = cellfun(@(x) interpolateOutline(x, ltrp), gmids, 'UniformOutput', 0);
+gms = cellfun(@(m,l) interpolateOutline(m(l,:), ltrp), ...
+    gms, lis, 'UniformOutput', 0);
+
+% Sample image along cut midline
+[~ , mgrds] = cellfun(@(i,m) msample(i,m), gimgs, gms, 'UniformOutput', 0);
+cms         = cellfun(@(y) flipud(arrayfun(@(x) ...
+        [y.InnerData.eBnds(x,:) ; y.OuterData.eBnds(x,:)], ...
+        1 : size(y.OuterData.eBnds,1), 'UniformOutput', 0)'), ...
+        mgrds, 'UniformOutput', 0);
+
+%% Plot REGR Overlays
 figclr(fidx);
 for frm = 1 : nfrms
-
-    %
     gi = gimgs{frm};
-    gm = gmids{frm};
-    gl = flipud(glens(:,frm));
+    cm = cms{frm};
 
-    % Cut off midline at threshold length
-    gm = interpolateOutline(gm, ltrp);
-    if sum(gl) == ltrp
-        lidxs = 1 : ltrp;
-    else
-        lidxs = [getDim(find(gl)', 1) - 1 ; find(gl)];
-    end
-
-    gm = interpolateOutline(gm(lidxs,:), ltrp);
-
-    % Sample image along cut midline
-    [~ , mgrd] = msample(gi,gm);
-    cm         = flipud(arrayfun(@(x) ...
-        [mgrd.InnerData.eBnds(x,:) ; mgrd.OuterData.eBnds(x,:)], ...
-        1 : size(mgrd.OuterData.eBnds,1), 'UniformOutput', 0)');
-
-    %
     ttl = sprintf('%s (g%02d | s%02d)\nfrm %02d of %02d', ...
         gttl, gidx, sidx, frm, nfrms);
 
@@ -136,5 +132,14 @@ if isfield(ginfo, 'Date')
     rdate = ginfo.Date;
 else
     rdate = tdate;
+end
+end
+
+function lidxs = getCutIndex(lens, ltrp)
+%% getCutIndex: get midline indices at cut threshold
+if sum(lens) == ltrp
+    lidxs = 1 : ltrp;
+else
+    lidxs = [getDim(find(lens)', 1) - 1 ; find(lens)];
 end
 end

@@ -2,16 +2,19 @@ function fnm = showTrackingProcessing(v, r, ttl, fidx, fdims, fblu, vaxis, raxis
 %% showTrackingProcessing
 %
 % Usage:
-%   showTrackingProcessing(v, r, ttl, fidx, fblu, vaxis, raxis)
+%   fnm = showTrackingProcessing(v, r, ttl, fidx, ...
+%       fdims, fblu, vaxis, raxis, fsz, fcnv)
 %
 % Input:
 %   v: velocity
 %   r: regr
 %   ttl: figure title
-%   fidx: figure handle index
-%   fblu: frame that blue light was turned on
-%   vaxis: limit range for velocity figure
-%   raxis: limit range for regr figure
+%   fidx: figure handle index (default 1)
+%   fblu: frame that blue light was turned on (default 0)
+%   vaxis: velocity limit range and c-axis length (default [0 , 0.3 , 4])
+%   raxis: regr limit range and c-axis length (default [0 , 8 , 5])
+%   fsz: font size array (default [5 , 8 , 8])
+%   fcnv: conversion functions (default [])
 
 %%
 if nargin < 1;  v     = [];            end

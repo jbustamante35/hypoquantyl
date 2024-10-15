@@ -32,7 +32,8 @@ deployment on distributed computing servers provided by
 
 ### Getting Started
 To use **HypoQuantyl**, ensure your system meets the following requirements:
-- **System Recommendations**:
+
+#### **System Recommendations**:
   - This software was optimized for **Linux operating systems** and has been
    tested on **MacOS**. We have not yet tested on **Windows**. There may be
    some places that do not handle the differences in file path conventions
@@ -47,7 +48,7 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
   This tool was developed on Matlab **R2018a** to **R2022b**. Versions
   slightly earlier and later should work fine but are not guaranteed.
 
-- **Required MATLAB Toolboxes**:
+#### **Required MATLAB Toolboxes**:
   - [Curve Fitting Toolbox](https://www.mathworks.com/products/curvefitting.html)
   - [Global Optimization Toolbox](https://www.mathworks.com/products/global-optimization.html)
   - [Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html)
@@ -61,12 +62,13 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
   (Optional) if you run pipeline with `parallel` flag (`par = 1`).
   - [Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html)
 
-- Install the required MATLAB toolboxes listed above. Check using the
-  following command in the Matlab console:
+  - Install the required MATLAB toolboxes listed above. **Verify** your
+  toolboxes using using the following Matlab console command:
    ```matlab
    matlab.addons.installedAddons;
    ```
 
+#### Download Sample Image Datasets
 - Download example image stacks in our lab's [Dryad Data Repository](http://datadryad.org/stash/share/Vh8MaMvB8jRan1BAWxIqm1qiKayizm4Hr056hgtR2MI).
   See below in **Pipeline Overview** for details about filename conventions.
 
@@ -85,6 +87,7 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
        ![Alt Text](misc/multiple_blue_col0_small.png)
 
 
+#### Download Neural Net Models and Other Important Data
 - Download the `HQ.mat` file in the Dryad data repository. This contains neural
   net models, PCA eigenvectors, helper functions, and constants required to run
   this program *[64 MB]*.
@@ -92,20 +95,23 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
 - Place image stack(s) and `HQ.mat` into the **same directory** and separate
   from the code repository.
 
-       mkdir kinematics_analysis;
-       mv single_seedling.zip kinematics_analysis;
-       mv multiple_seedling.zip kinematics_analysis;
-       mv HQ.mat kinematics_analysis;
-       cd kinematics_analysis;
+       mkdir analysis_folder;
+
+       mv single_seedling.zip analysis_folder;
+       mv multiple_seedling.zip analysis_folder;
+       mv HQ.mat analysis_folder;
+
+       cd analysis_folder;
+
        unzip single_seedling.zip
        unzip multiple_seedling.zip
 
-- Clone this repository:
+#### Clone this repository:
 
        git clone https://github.com/jbustamante35/hypoquantyl.git
 
-- Add `hypoquantyl` to your MATLAB path with subfolders
-    - **NOTE!** remember to remove the `./.git` subfolder to avoid messy paths
+   - Add `hypoquantyl` to your MATLAB path with subfolders
+     - **NOTE!** remember to remove the `./.git` subfolder to avoid messy paths
 
 ### Running HypoQuantyl
 1. Open [*hypoquantyl_script.m*](./hypoquantyl_script.m) in the matlab editor.
@@ -115,13 +121,12 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
    ```
 
 2. In the script, set general options as needed: </br>
-  **(1)** Sample image stack to analyze [`tset`],  </br>
-  **(2)** Verbosity (`vrb`),  </br>
-  **(3)** Save results into .mat files (`sav`),  </br>
-  **(4)** Run with  parallelization (`par`) [see above on *System
-   Requirements*],  </br>
-  **(5)** File path to output directory (`odir`), </br>
-  **(6)** Date of analysis (`edate`). </br>
+  **(1)** [`tset `] Sample image stack to analyze  </br>
+  **(2)** [`vrb  `] Verbosity </br>
+  **(3)** [`sav  `] Save results into .mat files </br>
+  **(4)** [`par  `] Run with  parallelization [see above on *System Requirements*],  </br>
+  **(5)** [`odir `] File path to output directory </br>
+  **(6)** [`edate`] Date of analysis </br>
 
    `hypoquantyl_script.m`
    ```matlab
@@ -147,13 +152,13 @@ To use **HypoQuantyl**, ensure your system meets the following requirements:
 
 3. Run `HypoQuantyl.m` in the Matlab console!
 
+   - A testing script is provided in
+   [tests/hypoquantyl_testing_script.m](tests/hypoquantyl_testing_script.m).
+   Or simply run:
+
    ```matlab
    HQ = HypoQuantyl;
    ```
-
-   **NOTE**
-   *A testing script is provided in
-   [tests/hypoquantyl_testing_script.m](tests/hypoquantyl_testing_script.m)*
 
 4. Analysis of Results **[to-do]**
 

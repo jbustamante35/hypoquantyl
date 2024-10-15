@@ -23,6 +23,10 @@ fprintf('\n%s\nFinished in %.02f hours\n%s\n', sprB, mytoc(th, 'hrs'), sprA);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Basic analysis of results
+% Figure 1 (left): Average Velocity
+% Figure 1 (right): Average REGR
+% Figure 2: Movie overlaying REGR on seedling(s)
+
 switch HQ.inputs.tset
     case 'single'
         hq = single_dark_cry1;
@@ -30,6 +34,17 @@ switch HQ.inputs.tset
         hq = multiple_blue_col0;
 end
 
+odir = hq.inputs.odir;
+edate = hq.inputs.edate;
+rdir = pprintf(sprintf('%s/outputs/%s/analysis', odir, edate));
+
+% Function Handles
+fns     = getConversionFunctions(hq.tracking.raw);
+frm2hr  = fns.frm2hr;
+hr2frm  = fns.hr2frm;
+msample = hq.models.functions.msample;
+
+% Preprocessing
 ex    = hq.preprocessing;
 g     = ex.combineGenotypes;
 s     = ex.combineSeedlings;
@@ -37,16 +52,16 @@ h     = ex.combineHypocotyls;
 enm   = ex.ExperimentName;
 nsdls = g.NumberOfSeedlings;
 
-fns    = getConversionFunctions(hq.tracking.raw);
-frm2hr = fns.frm2hr;
-hr2frm = fns.hr2frm;
+% Segmentation
+segs  = hq.segmentation;
+remap = hq.remapping;
 
-VVU = hq.tracking.converted.UVEL;
-VRU = hq.tracking.converted.UREGR;
-VVI = hq.tracking.converted.VI;
-VRI = hq.tracking.converted.RI;
+% Tracking
+track = hq.tracking.converted{1};
+VVU   = track.Stats.UVEL;
+VRU   = track.Stats.UREGR;
 
-% Visualize results
+% Prep for Analysis
 [figs , fnms] = makeBlankFigures(2, 1);
 
 fidx = 1;
@@ -58,26 +73,19 @@ fsz  = [5 , 8 , 8];
 fcnv = {2 , frm2hr , hr2frm};
 fblu = 0;
 
+[utbl , uimgs , umaps , uenms , usnms] = prep_overlay_movie(track, remap, g);
+
+%% Overlay REGR on seedling images
+sav  = 1;
+
 % Mean Velocity and REGR
-showTrackingProcessing(VVU,VRU, ttl, fidx, ...
+fnms{1} = showTrackingProcessing(VVU, VRU, ttl, 1, ...
     rows, fblu, vrng, rrng, fsz, fcnv);
+saveFiguresJB(1, fnms(1), rdir);
 
-% Individual Velocities and REGRs
-MRI = cellfun(@(x) interpolateGrid(x, 'xtrp', 500, 'ytrp', 500, 'fsmth', 3), ...
-    VRI, 'UniformOutput', 0);
-
-figclr(2);
-montage(MRI, 'Size', [1 , numel(MRI)], 'DisplayRange', []);
-colormap jet; colorbar; clim([0 , 10]);
-
-%%
-sav   = 1;
-fidx  = 2;
-rdate = tdate;
-
-regr_overlay_movies(T(idx), STBL, uimgs, umaps, uenms(idx), senms, msample, ...
-    'rdate', rdate, 'fidx', fidx, 'sav', sav);
-
+% Overlay REGR on seedlings
+regr_overlay_movies({track}, utbl, uimgs, umaps, uenms, usnms, msample, ...
+    'rdate', edate, 'fidx', 2, 'sav', sav, 'rdir', rdir);
 
 %% Additional options to store into tabulated csv format [to-do]
 

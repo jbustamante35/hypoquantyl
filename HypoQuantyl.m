@@ -245,7 +245,7 @@ Tb = cellfun(@(x) x.T, T, 'UniformOutput', 0);
 ty   = combineTracking(cat(1,Tb{:}), iex);
 lthr = min(cellfun(@(x) min(x(end,:)), ty.Output.Arclength.src));
 
-[ty , tu , terr , ti] = averageTracking(ty, [], [], ltrp, lthr, tsmth);
+[ty , tu , terr , ti , tl] = averageTracking(ty, [], [], ltrp, lthr, tsmth);
 
 TY  = arrayfun(@(x) x, ty, 'UniformOutput', 0);
 TRU = tu(1);
@@ -259,10 +259,8 @@ TVI = ti(2);
 fns = getConversionFunctions(TY, ...
     'pix_per_mm', pix_per_mm, 'frm_per_hr', frm_per_hr, 'fblu', fblu);
 
-frm2hr = fns.frm2hr;
-hr2frm = fns.hr2frm;
-rf2h   = fns.rf2h;
-vf2h   = fns.vf2h;
+rf2h = fns.rf2h;
+vf2h = fns.vf2h;
 
 % Convert REGR and Velocities from pix-frm to mm-hr
 VVU = cellfun(@(x) vf2h(x), TVU, 'UniformOutput', 0);
@@ -275,11 +273,17 @@ VVI = cellfun(@(y) cellfun(@(x) vf2h(x), ...
 VRI = cellfun(@(y) cellfun(@(x) rf2h(x), ...
     y, 'UniformOutput', 0), TRI, 'UniformOutput', 0);
 
+% Store Results
+TD = cellfun(@(x) x.Data, TY, 'UniformOutput', 0);
+TL = cellfun(@(x) x.Stats.LENS, TY, 'UniformOutput', 0);
+TO = struct('Velocity', {VVI}, 'REGR', {VRI});
+TS = struct('UREGR', VRU, 'UVEL', VVU, 'EREGR', VRE, 'EVEL', VVE, 'LENS', TL);
+
+TRACK.raw       = TY;
+TRACK.converted = {struct('Data', TD, 'Output', TO, 'Stats', TS)};
+
 % ---------------------------- Save Tracking --------------------------------- %
 if sav
-    TRACK.raw = TY;
-    TRACK.converted = struct('UVEL', VVU, 'UREGR', VRU, ...
-        'EVEL', VVE, 'EREGR', VRE, 'VI', VVI, 'RI', VRI);
     vdir = pprintf(sprintf('%s/output/%s/tracking', odir, edate));
     if ~isfolder(vdir); mkdir(vdir); end
     vnm  = pprintf(sprintf('%s/%s_tracking_%s_%dgenotypes', ...
@@ -291,7 +295,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Store results into .csv files
-
+% This is currently done separately in [tests/hypoquantyl_testing_script.m]
 
 % ---------------------------- Save Analysis --------------------------------- %
 % if sav
