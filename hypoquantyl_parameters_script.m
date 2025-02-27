@@ -4,7 +4,8 @@ tset = 'single'; % [single_seedling.zip]   1 cry1 mutant grown for 8h in darknes
 % tset = 'multiple'; % [multiple_seedling.zip] 5 wt seedlings grown for 2h in darkness then 6h blue light
 
 % 2) File path to where you downloaded and unzipped the sample images
-path_to_data = '/home/username/Downloads/testimages';
+% path_to_data = '/home/username/Downloads/testimages';
+path_to_data = '/home/jbustamante/Dropbox/EdgarSpalding/scratchnotes/sampledata/images';
 
 % 3) General options
 vrb   = 1;     % Verbosity [ 0 none | 1 verbose ]

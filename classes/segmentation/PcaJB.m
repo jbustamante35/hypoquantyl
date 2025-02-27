@@ -5,9 +5,9 @@ classdef PcaJB < handle
         %% Main properties
         DataName
         InputData
-        ZScoreNormalize
         NumberOfPCs
         OptimalPCs
+        ZScoreNormalize
     end
 
     properties (Access = protected)

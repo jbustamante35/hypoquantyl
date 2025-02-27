@@ -1,7 +1,12 @@
 # HypoQuantyl
 An image processing and analysis tool for automated, high-throughput
-measurements of hypocotyl growth kinematics. [*Publication currently under
-review*]
+measurements of hypocotyl growth kinematics.
+
+**Refer to the publication resulting from this study:** <br />
+[Separate sites of action for cry1 and phot1 blue-light receptors in the
+Arabidopsis hypocotyl](https://www.cell.com/current-biology/fulltext/S0960-9822(24)01562-8)
+
+![Summary Figure](misc/summary_figure_small.jpg) <br /><br />
 
 #### Growth Kinematics
 Growth kinematics describes the spatial distribution of growth along a surface.
@@ -35,14 +40,14 @@ deployment on distributed computing servers provided by
   - This software was optimized for **Linux operating systems** and has been
    tested on **MacOS**. We have not yet tested on **Windows**. There may be
    some places that do not handle the differences in file path conventions
-   *(using '/' in Linux/Mac vs '\\' in Windows*).
+   *(using '/' in Linux/Mac vs '<br />' in Windows*).
 
   - If running with `parallel` flag (`par = 1`), I recommend a machine with
   **>12 CPU cores** to ensure stability.
 
   - **8+ GB RAM** minimum, and **24+ GB** if using `parallel` flag.
 
-- **MATLAB Version**: </br>
+- **MATLAB Version**: <br />
   This tool was developed on Matlab **R2018a** to **R2022b**. Versions
   slightly earlier and later should work fine but are not guaranteed.
 
@@ -79,12 +84,12 @@ constants required to run this program *[64 MB]*.
         - [`single_seedling.zip`] Single *cry1* mutant seedling grown for 8 h in darkness *[96 MB]*
         - [`multiple_seedling.zip`] Five *wt* seedlings grown for 6 h in blue light, after an initial 2 h in darkness *[20 MB]*
 
-       **`single_seedling.zip`** </br>
-       ![Alt Text](misc/single_dark_cry1_small.png) </br>
+       **`single_seedling.zip`** <br />
+       ![Alt Text](misc/single_dark_cry1_small.png) <br />
 
-       </br></br>
+       <br /><br />
 
-       **`multiple_seedling.zip`** </br>
+       **`multiple_seedling.zip`** <br />
        ![Alt Text](misc/multiple_blue_col0_small.png)
 
      - Place image stacks and `HQ.mat` into the **same directory**. Make sure
@@ -116,13 +121,13 @@ constants required to run this program *[64 MB]*.
    edit hypoquantyl_script;
    ```
 
-2. In the script, set general options as needed: </br>
-  **(1)** [`tset `] Sample image stack to analyze  </br>
-  **(2)** [`vrb  `] Verbosity </br>
-  **(3)** [`sav  `] Save results into .mat files </br>
-  **(4)** [`par  `] Run with  parallelization [see above on *System Requirements*],  </br>
-  **(5)** [`odir `] File path to output directory </br>
-  **(6)** [`edate`] Date of analysis </br>
+2. In the script, set general options as needed: <br />
+  **(1)** [`tset `] Sample image stack to analyze  <br />
+  **(2)** [`vrb  `] Verbosity <br />
+  **(3)** [`sav  `] Save results into .mat files <br />
+  **(4)** [`par  `] Run with  parallelization [see above on *System Requirements*],  <br />
+  **(5)** [`odir `] File path to output directory <br />
+  **(6)** [`edate`] Date of analysis <br />
 
    `hypoquantyl_script.m`
    ```matlab
@@ -140,7 +145,6 @@ constants required to run this program *[64 MB]*.
    sav   = 1;     % Save results into .mat files
    par   = 0;     % Use parallel processing [0 | 1]
    odir  = pwd;   % Directory path to store results [default pwd]
-   edate = tdate; % Date of analysis [format string as 'YYMMDD' to set manually]
 
    % Advanced parameters are below, but not recommended to toggle unless you know
    % how they are implemented in this pipeline
@@ -159,7 +163,6 @@ constants required to run this program *[64 MB]*.
 
 4. Analysis of Results **[to-do]**
    - Results are stored in the location set as the output directory (`odir`).
-
 
 
 #### NOTE ABOUT PERFORMANCE
@@ -189,18 +192,19 @@ constants required to run this program *[64 MB]*.
      - **Example**:
      `.../multiple/dark/cry1/230220_dark_cry1/dark_cry1_t001.TIF`
 
-    ##### **Sample Movie** </br>
+    ##### **Sample Movie** <br />
 
-   ![Animated GIF](misc/tlapse_multiple.gif) </br></br></br>
+   ![Animated GIF](misc/tlapse_multiple.gif) <br /><br /><br />
 
 
 2. **Image Processing**: Grayscale thresholding and basic object detection to
 prepare the seedlings for segmentation.
    - Hypocotyls are isolated and split into upper and lower regions. \**
 
-   ![Image](misc/preprocess/preprocessing.png) </br></br></br>
+   ![Image](misc/preprocess/preprocessing.png) <br /><br /><br />
 
 **[to-do]** finish pipeline descriptions
+
 4. **Segmentation Pipeline**: A 3-stage machine learning pipeline generates the
    midline used to measure growth kinematics.
    - **S-Phase**: A 'seeding' phase where a convolutional neural network (CNN)
@@ -216,17 +220,16 @@ prepare the seedlings for segmentation.
    - Expressed as a %/hour to describe how 'elements' moved away from the top
      or apex of the seedling.
 
-\* *20 pixels is the threshold used for our purposes, but the actual limit may be higher.* </br>
+\* *20 pixels is the threshold used for our purposes, but the actual limit may be higher.* <br />
 \** *The segmentation pipeline processes only the upper region; lower regions are segmented using basic grayscale thresholding.*
 
 ---
 
 ### Authors
-**Julian Bustamante**, Graduate Researcher in Cellular and Molecular Biology
-(<jbustamante@wisc.edu>) \\
+**Julian Bustamante**, PhD Researcher (<jbustamante@wisc.edu>) <br />
 University of Wisconsin - Madison, Department of Botany
 
-**Nathan Miller**, Senior Scientist (<ndmill@gmail.com>) \\
+**Nathan Miller**, Senior Scientist (<ndmill@gmail.com>) <br />
 University of Wisconsin - Madison, Department of Botany
 
 #### Acknowledgements

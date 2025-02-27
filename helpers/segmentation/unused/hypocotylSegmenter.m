@@ -73,8 +73,8 @@ for gi = 1 : ngens
                         '[good] |\n'], gttl, gidx, sidx, hidx);
                 end
             catch
-                fprintf(2, ['| %s | gidx %02d | sidx %02d | hidx %02d | ' ...
-                    '[No upper image] |\n'], gttl, gidx, sidx, hidx);
+                fprintf(2, ['| %s | %s | gidx %02d | sidx %02d | hidx %02d | ' ...
+                    '[No upper image] |\n'], mfilename, gttl, gidx, sidx, hidx);
                 uimgs{hidx} = [];
             end
 
@@ -89,8 +89,8 @@ for gi = 1 : ngens
                         '[good] |\n'], gttl, gidx, sidx, hidx);
                 end
             catch
-                fprintf(2, ['| %s | gidx %02d | sidx %02d | hidx %02d | ' ...
-                    '[No lower mask] |\n'], gttl, gidx, sidx, hidx);
+                fprintf(2, ['| %s | %s | gidx %02d | sidx %02d | hidx %02d | ' ...
+                    '[No lower mask] |\n'], mfilename, gttl, gidx, sidx, hidx);
                 lmsks{hidx} = [];
             end
         end

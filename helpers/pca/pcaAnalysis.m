@@ -25,8 +25,8 @@ function mypca = pcaAnalysis(vec, npc, sav, pnm, varargin)
 
 %% PCA using my custom pca function and MATLAB's built-in pca function
 % Default to Method 1 and no visualization
-if nargin < 2; npc   = 3;              end
-if nargin < 3; sav   = 0;              end
+if nargin < 2; npc   = 3;            end
+if nargin < 3; sav   = 0;            end
 if nargin < 4; pnm = sprintf('pca'); end
 
 if nargin < 2
@@ -41,7 +41,5 @@ fname = mypca.DataName;
 
 % ---------------------------------------------------------------------------- %
 %% Save results from custom and built-in analysis
-if sav
-    save(fname, '-v7.3', 'mypca');
-end
+if sav; save(fname, '-v7.3', 'mypca'); end
 end
